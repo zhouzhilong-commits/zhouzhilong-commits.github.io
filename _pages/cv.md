@@ -11,23 +11,22 @@ redirect_from:
 
 Education
 ======
-* B.S. in GitHub, GitHub University, 2012
-* M.S. in Jekyll, GitHub University, 2014
-* Ph.D in Version Control Theory, GitHub University, 2018 (expected)
+
+* Computer science and Technology B.S. in JiLin University, 2015 - 2019
 
 Work experience
 ======
-* Summer 2015: Research Assistant
-  * Github University
-  * Duties included: Tagging issues
-  * Supervisor: Professor Git
 
-* Fall 2015: Research Assistant
-  * Github University
-  * Duties included: Merging pull requests
-  * Supervisor: Professor Hub
+* Baidu MEG UG, 2019 - 2021
+  * Data Management Platform
+  * Streaming computing
+  * data mining
   
-Skills
+* Tencent WXG TAD, 2021 - 2023
+  * Key Value Storage
+  * Lsm storage engine
+  
+<!-- Skills
 ======
 * Skill 1
 * Skill 2
@@ -56,4 +55,4 @@ Teaching
   
 Service and leadership
 ======
-* Currently signed in to 43 different slack teams
+* Currently signed in to 43 different slack teams -->
