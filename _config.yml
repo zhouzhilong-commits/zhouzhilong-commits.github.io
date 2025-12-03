@@ -82,11 +82,11 @@ analytics:
 author:
   name             : "周智龙"
   avatar           : "zhouzhilong_avatar.jpg"
-  bio              : "这是一段个人简介，可以在这里简单介绍自己的研究、工作和兴趣。"
-  location         : "Beijing"
+  bio              : "对存储与分布式系统感兴趣，长期关注高可用、高性能的大规模数据存储架构与实践，喜欢从源码和论文中拆解系统细节，会在这里记录自己在存储、性能优化和工程实践中的一些思考与笔记。"
+  location         : "Shanghai"
   employer         :
-  pubmed           : "https://www.ncbi.nlm.nih.gov/pubmed/?term=john+snow"
-  googlescholar    : "http://yourfullgooglescholarurl.com"
+  pubmed           : 
+  googlescholar    : 
   email            :
   researchgate     :  # example: "https://www.researchgate.net/profile/yourprofile"
   uri              :
@@ -103,7 +103,7 @@ author:
   impactstory      : #"https://profiles.impactstory.org/u/xxxx-xxxx-xxxx-xxxx"
   lastfm           :
   linkedin         :
-  orcid            : "http://orcid.org/yourorcidurl"
+  orcid            : 
   pinterest        :
   soundcloud       :
   stackoverflow    : # http://stackoverflow.com/users/123456/username
