@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 450">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .compile{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .runtime{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .sfinae{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .traits{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">模板元编程：编译期计算与类型操作</text>
+  <text class="muted" x="40" y="66">在编译期执行计算和类型操作，实现零开销抽象，但会增加编译时间和代码复杂度。</text>
+
+  <rect class="compile" x="40" y="95" width="200" height="150"/>
+  <text class="h" x="70" y="130">编译期（TMP）</text>
+  <text class="t" x="70" y="155">- 模板实例化时计算</text>
+  <text class="t" x="70" y="175">- 零运行时开销</text>
+  <text class="t" x="70" y="195">- 编译期错误检查</text>
+  <text class="t" x="70" y="215">- 增加编译时间</text>
+
+  <rect class="runtime" x="260" y="95" width="200" height="150"/>
+  <text class="h" x="290" y="130">运行期（普通代码）</text>
+  <text class="t" x="290" y="155">- 运行时执行</text>
+  <text class="t" x="290" y="175">- 有运行时开销</text>
+  <text class="t" x="290" y="195">- 运行时错误检查</text>
+  <text class="t" x="290" y="215">- 编译时间短</text>
+
+  <rect class="sfinae" x="480" y="95" width="220" height="120"/>
+  <text class="h" x="510" y="130">SFINAE</text>
+  <text class="t" x="510" y="155">替换失败不是错误</text>
+  <text class="t" x="510" y="175">模板匹配机制</text>
+  <text class="t" x="510" y="195">选择合适重载</text>
+
+  <rect class="traits" x="480" y="230" width="220" height="120"/>
+  <text class="h" x="510" y="265">Type Traits</text>
+  <text class="t" x="510" y="290">类型特征检查</text>
+  <text class="t" x="510" y="310">类型转换</text>
+  <text class="t" x="510" y="330">条件类型选择</text>
+
+  <rect class="box" x="40" y="370" width="660" height="60"/>
+  <text class="h" x="70" y="400">应用场景：类型萃取、编译期计算、条件编译、类型安全接口</text>
+  <text class="t" x="70" y="425">优势：零开销、类型安全、性能优化 | 劣势：编译时间长、代码复杂、调试困难</text>
+</svg>

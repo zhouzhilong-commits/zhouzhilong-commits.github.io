@@ -387,6 +387,19 @@
       
     </li>
   
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -505,6 +518,80 @@
       
 
       
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics/" class=""><span class="nav__sub-title">存储</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/" class=""><span class="nav__sub-title">论文笔记</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-foundations/" class=""><span class="nav__sub-title">计算机基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp/" class=""><span class="nav__sub-title">CPP</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
     </li>
   
 </ul>
@@ -532,7 +619,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="14"
+    data-total-pages="15"
     data-current-page="12"
   
 >
@@ -559,7 +646,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-os-note-005-cfs/" rel="permalink">操作系统笔记：调度器：时间片与 CFS 的直觉
+        <a href="/cs/network/tcp-reliability-and-cc/" rel="permalink">网络（1）：TCP 可靠传输与拥塞控制直觉
 </a>
       
     </h2>
@@ -576,12 +663,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-04-01T00:00:00+08:00">April 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-07-01T00:00:00+08:00">July 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>你在线上遇到的很多“抖动”，最后会落到一句话：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇目标：把 TCP 的两件事讲清楚——<strong>可靠传输</strong>与<strong>拥塞控制</strong>，并理解它们为什么是同一条链路上的两个侧面。</p>
 
 </p>
     
@@ -607,7 +694,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-network-note-076-cubic-bbr/" rel="permalink">网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异
+        <a href="/cs-arch-note-063-flush/" rel="permalink">计算机组成笔记：分支预测失败：流水线 flush 的代价
 </a>
       
     </h2>
@@ -624,12 +711,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-04-01T00:00:00+08:00">April 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-07-01T00:00:00+08:00">July 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：分支预测失败：流水线 flush 的代价」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
 
 </p>
     
@@ -655,7 +742,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-arch-note-070-profile-ipc-cache-miss-branch-miss/" rel="permalink">计算机组成笔记：Profile 指标：IPC、cache miss、branch miss
+        <a href="/cs-network-note-048-post/" rel="permalink">网络笔记：超时与重试：为什么会放大流量
 </a>
       
     </h2>
@@ -672,12 +759,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-04-01T00:00:00+08:00">April 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-06-01T00:00:00+08:00">June 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲一套最常用、也最容易落地的“性能诊断直觉”：当你看到 <strong>IPC 低</strong>，不要先怀疑“CPU 太慢”，而是先问一句：<strong>流水线在等什么？</strong></p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「网络笔记：超时与重试：为什么会放大流量」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
 
 </p>
     
@@ -703,7 +790,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-os-note-068-io-uring-io/" rel="permalink">操作系统笔记：io_uring：异步 IO 的模型
+        <a href="/cs-arch-note-056-fence/" rel="permalink">计算机组成笔记：内存屏障：为什么需要 fence
 </a>
       
     </h2>
@@ -720,12 +807,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-03-01T00:00:00+08:00">March 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-06-01T00:00:00+08:00">June 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：内存屏障：为什么需要 fence」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
 
 </p>
     
@@ -751,7 +838,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-network-note-055-tls/" rel="permalink">网络笔记：TLS 握手：延迟优化与会话复用
+        <a href="/cs-network-note-069-vs/" rel="permalink">网络笔记：负载均衡：四层 vs 七层
 </a>
       
     </h2>
@@ -768,12 +855,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-03-01T00:00:00+08:00">March 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-05-01T00:00:00+08:00">May 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「TLS 握手：延迟优化与会话复用」做一次工程化梳理：先把 TLS 在做什么说清楚，再解释握手为什么会慢、怎么把连接“复用起来”，最后给一套排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇把“四层 vs 七层负载均衡”讲清楚一个核心差异：<strong>看不看得懂请求</strong>。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。</p>
 
 </p>
     
@@ -846,12 +933,19 @@
         <li><a href="/page13/">13</a></li>
       
     
+      
+        
+        
+        
+        <li><a href="/page14/">14</a></li>
+      
+    
 
     
     
 
     
-      <li><a href="/page14/">14</a></li>
+      <li><a href="/page15/">15</a></li>
     
 
     

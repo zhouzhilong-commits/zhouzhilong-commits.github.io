@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .capture{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .params{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .body{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .return{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Lambda 表达式：捕获、参数、函数体的完整语法</text>
+  <text class="muted" x="40" y="66">[捕获列表](参数) mutable exception -> 返回类型 { 函数体 }</text>
+
+  <rect class="capture" x="40" y="95" width="200" height="150"/>
+  <text class="h" x="70" y="130">捕获列表</text>
+  <text class="t" x="70" y="155">- [a, b] 值捕获</text>
+  <text class="t" x="70" y="175">- [&amp;a, &amp;b] 引用捕获</text>
+  <text class="t" x="70" y="195">- [=] 隐式值捕获</text>
+  <text class="t" x="70" y="215">- [&amp;] 隐式引用捕获</text>
+  <text class="t" x="70" y="235">- [x = expr] 通用捕获</text>
+
+  <path class="arrow" d="M 240 170 L 320 170"/>
+
+  <rect class="params" x="325" y="95" width="200" height="120"/>
+  <text class="h" x="355" y="130">参数列表</text>
+  <text class="t" x="355" y="155">- (int x, int y)</text>
+  <text class="t" x="355" y="175">- () 无参数</text>
+  <text class="t" x="355" y="195">- (auto x) C++14</text>
+
+  <path class="arrow" d="M 525 155 L 605 155"/>
+
+  <rect class="return" x="610" y="95" width="200" height="120"/>
+  <text class="h" x="640" y="130">返回类型</text>
+  <text class="t" x="640" y="155">- -> int 显式</text>
+  <text class="t" x="640" y="175">- 省略自动推导</text>
+  <text class="t" x="640" y="195">- 编译器推导</text>
+
+  <path class="arrow" d="M 810 155 L 850 155"/>
+
+  <rect class="body" x="40" y="260" width="900" height="80"/>
+  <text class="h" x="70" y="295">函数体</text>
+  <text class="t" x="70" y="320">- 实现逻辑</text>
+  <text class="t" x="70" y="340">- 可以访问捕获的变量</text>
+
+  <rect class="box" x="40" y="360" width="900" height="110"/>
+  <text class="h" x="70" y="395">Lambda 特性</text>
+  <text class="t" x="70" y="420">- 每个 Lambda 有唯一类型，无法直接命名</text>
+  <text class="t" x="70" y="440">- 实际上是函数对象（functor），编译器生成匿名类</text>
+  <text class="t" x="70" y="460">- 通常可以内联，性能与函数对象相当</text>
+</svg>

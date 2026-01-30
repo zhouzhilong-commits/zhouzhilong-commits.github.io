@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .unique{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .shared{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .weak{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .object{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">智能指针的所有权模型：unique_ptr、shared_ptr、weak_ptr</text>
+  <text class="muted" x="40" y="66">unique_ptr 独占所有权，shared_ptr 共享所有权（引用计数），weak_ptr 不拥有所有权（打破循环引用）。</text>
+
+  <rect class="object" x="40" y="95" width="150" height="80"/>
+  <text class="t" x="70" y="130">对象</text>
+  <text class="muted" x="70" y="150">资源</text>
+
+  <rect class="unique" x="220" y="95" width="200" height="120"/>
+  <text class="h" x="250" y="130">unique_ptr</text>
+  <text class="t" x="250" y="155">- 独占所有权</text>
+  <text class="t" x="250" y="175">- 不能拷贝</text>
+  <text class="t" x="250" y="195">- 可以移动</text>
+  <text class="t" x="250" y="215">- 零开销</text>
+
+  <path class="arrow" d="M 200 135 L 220 135"/>
+
+  <rect class="shared" x="440" y="95" width="200" height="120"/>
+  <text class="h" x="470" y="130">shared_ptr</text>
+  <text class="t" x="470" y="155">- 共享所有权</text>
+  <text class="t" x="470" y="175">- 引用计数</text>
+  <text class="t" x="470" y="195">- 可以拷贝</text>
+  <text class="t" x="470" y="215">- 有性能开销</text>
+
+  <path class="arrow" d="M 420 135 L 440 135" stroke-dasharray="5,5"/>
+
+  <rect class="weak" x="660" y="95" width="200" height="120"/>
+  <text class="h" x="690" y="130">weak_ptr</text>
+  <text class="t" x="690" y="155">- 不拥有所有权</text>
+  <text class="t" x="690" y="175">- 不增加引用计数</text>
+  <text class="t" x="690" y="195">- 打破循环引用</text>
+  <text class="t" x="690" y="215">- 需要 lock() 使用</text>
+
+  <path class="arrow" d="M 640 135 L 660 135" stroke-dasharray="3,3"/>
+
+  <rect class="box" x="40" y="240" width="820" height="120"/>
+  <text class="h" x="70" y="275">选择指南</text>
+  <text class="t" x="70" y="300">- unique_ptr：默认选择，单一所有权，零开销，优先使用</text>
+  <text class="t" x="70" y="320">- shared_ptr：需要共享所有权时使用，有引用计数开销</text>
+  <text class="t" x="70" y="340">- weak_ptr：配合 shared_ptr 使用，打破循环引用或观察对象</text>
+
+  <rect class="box" x="40" y="380" width="820" height="90"/>
+  <text class="h" x="70" y="415">性能对比</text>
+  <text class="t" x="70" y="440">unique_ptr：1 个指针（8 字节），零运行时开销，与原始指针相同</text>
+  <text class="t" x="70" y="460">shared_ptr：2 个指针 + 控制块（约 32 字节），原子操作开销，线程安全的引用计数</text>
+</svg>

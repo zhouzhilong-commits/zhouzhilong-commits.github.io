@@ -1,0 +1,1367 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：Lambda 表达式与函数对象 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：Lambda 表达式与函数对象">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-005-lambda-function-objects/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-005-lambda-function-objects/">
+
+
+
+  <meta property="og:description" content="Lambda 表达式是 C++11 引入的匿名函数，让代码更简洁、更灵活，是现代 C++ 编程不可或缺的工具。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-05-22T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class="active"><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：Lambda 表达式与函数对象">
+    <meta itemprop="description" content="Lambda 表达式是 C++11 引入的匿名函数，让代码更简洁、更灵活，是现代 C++ 编程不可或缺的工具。">
+    <meta itemprop="datePublished" content="May 22, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：Lambda 表达式与函数对象
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  10 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-05-22T00:00:00+08:00">May 22, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>Lambda 表达式是 C++11 引入的匿名函数，让代码更简洁、更灵活，是现代 C++ 编程不可或缺的工具。</p>
+
+<p><img src="/images/diagrams/cpp-lambda-syntax.svg" alt="Lambda 表达式：捕获、参数、函数体的完整语法" /></p>
+
+<h2 id="1-lambda-表达式的基本语法">1. Lambda 表达式的基本语法</h2>
+
+<h3 id="11-完整语法结构">1.1 完整语法结构</h3>
+
+<p>Lambda 表达式的完整语法：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[</span><span class="err">捕获列表</span><span class="p">](</span><span class="err">参数列表</span><span class="p">)</span> <span class="k">mutable</span> <span class="n">exception</span> <span class="o">-&gt;</span> <span class="err">返回类型</span> <span class="p">{</span> <span class="err">函数体</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>各部分说明</strong>：</p>
+<ul>
+  <li><strong>捕获列表</strong>：指定如何捕获外部变量</li>
+  <li><strong>参数列表</strong>：函数参数（可省略）</li>
+  <li><strong>mutable</strong>：允许修改按值捕获的变量（可省略）</li>
+  <li><strong>exception</strong>：异常规范（可省略）</li>
+  <li><strong>返回类型</strong>：返回类型（可省略，编译器自动推导）</li>
+  <li><strong>函数体</strong>：函数实现</li>
+</ul>
+
+<h3 id="12-简单示例">1.2 简单示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 最简单的 lambda</span>
+<span class="k">auto</span> <span class="n">lambda1</span> <span class="o">=</span> <span class="p">[]()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">42</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 带参数的 lambda</span>
+<span class="k">auto</span> <span class="n">lambda2</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 带返回类型的 lambda</span>
+<span class="k">auto</span> <span class="n">lambda3</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 使用</span>
+<span class="kt">int</span> <span class="n">result1</span> <span class="o">=</span> <span class="n">lambda1</span><span class="p">();</span>        <span class="c1">// 42</span>
+<span class="kt">int</span> <span class="n">result2</span> <span class="o">=</span> <span class="n">lambda2</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>    <span class="c1">// 7</span>
+<span class="kt">int</span> <span class="n">result3</span> <span class="o">=</span> <span class="n">lambda3</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>       <span class="c1">// 10</span>
+</code></pre></div></div>
+
+<h3 id="13-lambda-的类型">1.3 Lambda 的类型</h3>
+
+<p>每个 lambda 表达式都有<strong>唯一的类型</strong>，无法直接命名：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">auto</span> <span class="n">lambda1</span> <span class="o">=</span> <span class="p">[]()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">auto</span> <span class="n">lambda2</span> <span class="o">=</span> <span class="p">[]()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">2</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// lambda1 和 lambda2 的类型不同，即使实现相同</span>
+<span class="c1">// decltype(lambda1) 和 decltype(lambda2) 是不同的类型</span>
+</code></pre></div></div>
+
+<h2 id="2-捕获列表详解">2. 捕获列表详解</h2>
+
+<h3 id="21-值捕获capture-by-value">2.1 值捕获（Capture by Value）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+
+<span class="c1">// 值捕获：捕获时复制变量的值</span>
+<span class="k">auto</span> <span class="n">f1</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>  <span class="c1">// 使用捕获的副本</span>
+<span class="p">};</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>  <span class="c1">// 修改原变量</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">f1</span><span class="p">();</span>  <span class="c1">// 仍然是 30（使用捕获时的值）</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>捕获时复制变量的值</li>
+  <li>Lambda 内部修改不影响外部变量</li>
+  <li>需要 <code class="language-plaintext highlighter-rouge">mutable</code> 关键字才能修改捕获的副本</li>
+</ul>
+
+<h3 id="22-引用捕获capture-by-reference">2.2 引用捕获（Capture by Reference）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+
+<span class="c1">// 引用捕获：捕获变量的引用</span>
+<span class="k">auto</span> <span class="n">f2</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">a</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="n">a</span><span class="o">++</span><span class="p">;</span>  <span class="c1">// 修改外部变量</span>
+    <span class="n">b</span><span class="o">++</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">f2</span><span class="p">();</span>
+<span class="c1">// a = 11, b = 21</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>捕获变量的引用</li>
+  <li>Lambda 内部修改会影响外部变量</li>
+  <li>需要确保被捕获的变量在 lambda 使用时仍然有效</li>
+</ul>
+
+<h3 id="23-混合捕获">2.3 混合捕获</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">30</span><span class="p">;</span>
+
+<span class="c1">// 混合捕获：部分值捕获，部分引用捕获</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="c1">// a 和 c 是值捕获</span>
+    <span class="c1">// b 是引用捕获</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="24-隐式捕获">2.4 隐式捕获</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+
+<span class="c1">// 捕获所有变量（值捕获）</span>
+<span class="k">auto</span> <span class="n">f1</span> <span class="o">=</span> <span class="p">[</span><span class="o">=</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>  <span class="c1">// 捕获所有外部变量（值）</span>
+<span class="p">};</span>
+
+<span class="c1">// 捕获所有变量（引用捕获）</span>
+<span class="k">auto</span> <span class="n">f2</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="n">a</span><span class="o">++</span><span class="p">;</span>  <span class="c1">// 捕获所有外部变量（引用）</span>
+    <span class="n">b</span><span class="o">++</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 混合：部分显式，部分隐式</span>
+<span class="k">auto</span> <span class="n">f3</span> <span class="o">=</span> <span class="p">[</span><span class="o">=</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="c1">// a 是引用捕获，其他变量是值捕获</span>
+<span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">f4</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">a</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="c1">// a 是值捕获，其他变量是引用捕获</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="25-通用捕获c14">2.5 通用捕获（C++14）</h3>
+
+<p>C++14 引入了通用捕获（generalized capture），允许在捕获时初始化：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+
+<span class="c1">// 通用捕获：在捕获时初始化</span>
+<span class="k">auto</span> <span class="n">f1</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">;</span>  <span class="c1">// x = 11</span>
+<span class="p">};</span>
+
+<span class="c1">// 移动捕获</span>
+<span class="k">auto</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">f2</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">ptr</span><span class="p">)]()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span>  <span class="c1">// 移动捕获 unique_ptr</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="26-捕获-this-指针">2.6 捕获 this 指针</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span> <span class="n">value_</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">method</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 捕获 this，访问成员变量</span>
+        <span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[</span><span class="k">this</span><span class="p">]()</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">value_</span><span class="p">;</span>  <span class="c1">// 通过 this 访问</span>
+        <span class="p">};</span>
+        
+        <span class="c1">// 或使用 [=] 隐式捕获 this（C++17 之前）</span>
+        <span class="k">auto</span> <span class="n">lambda2</span> <span class="o">=</span> <span class="p">[</span><span class="o">=</span><span class="p">]()</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">value_</span><span class="p">;</span>  <span class="c1">// 隐式捕获 this</span>
+        <span class="p">};</span>
+        
+        <span class="c1">// C++17：[*this] 按值捕获整个对象</span>
+        <span class="k">auto</span> <span class="n">lambda3</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="k">this</span><span class="p">]()</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">value_</span><span class="p">;</span>  <span class="c1">// 捕获对象的副本</span>
+        <span class="p">};</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="3-lambda-与-stl-算法">3. Lambda 与 STL 算法</h2>
+
+<h3 id="31-作为谓词predicate">3.1 作为谓词（Predicate）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">};</span>
+
+<span class="c1">// 移除偶数</span>
+<span class="n">v</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">remove_if</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}),</span>
+    <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">// 查找大于 5 的元素</span>
+<span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">find_if</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">;</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="32-作为比较函数">3.2 作为比较函数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">words</span> <span class="o">=</span> <span class="p">{</span><span class="s">"hello"</span><span class="p">,</span> <span class="s">"world"</span><span class="p">,</span> <span class="s">"cpp"</span><span class="p">,</span> <span class="s">"lambda"</span><span class="p">};</span>
+
+<span class="c1">// 按长度排序</span>
+<span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">words</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">words</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">b</span><span class="p">.</span><span class="n">length</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="c1">// 按长度降序，长度相同按字典序</span>
+<span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">words</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">words</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">!=</span> <span class="n">b</span><span class="p">.</span><span class="n">length</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">a</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">b</span><span class="p">.</span><span class="n">length</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="33-作为转换函数">3.3 作为转换函数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">numbers</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">};</span>
+
+<span class="c1">// 转换为字符串</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">strings</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">numbers</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">numbers</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> 
+               <span class="n">std</span><span class="o">::</span><span class="n">back_inserter</span><span class="p">(</span><span class="n">strings</span><span class="p">),</span>
+               <span class="p">[](</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+                   <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+               <span class="p">});</span>
+
+<span class="c1">// 计算平方</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">squares</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">numbers</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">numbers</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+               <span class="n">std</span><span class="o">::</span><span class="n">back_inserter</span><span class="p">(</span><span class="n">squares</span><span class="p">),</span>
+               <span class="p">[](</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">n</span> <span class="o">*</span> <span class="n">n</span><span class="p">;</span> <span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="34-捕获外部变量">3.4 捕获外部变量</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">threshold</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">};</span>
+
+<span class="c1">// 计数大于 threshold 的元素</span>
+<span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">count_if</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[</span><span class="n">threshold</span><span class="p">](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">;</span>
+<span class="p">});</span>
+
+<span class="c1">// 或使用引用捕获</span>
+<span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">for_each</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">sum</span><span class="p">](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">sum</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>  <span class="c1">// 修改外部变量</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h2 id="4-lambda-的实现原理">4. Lambda 的实现原理</h2>
+
+<h3 id="41-lambda-是函数对象">4.1 Lambda 是函数对象</h3>
+
+<p>Lambda 表达式实际上是一个<strong>函数对象</strong>（functor）：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Lambda</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 编译器生成的等价代码</span>
+<span class="k">struct</span> <span class="nc">Lambda</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="42-捕获变量的实现">4.2 捕获变量的实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+
+<span class="c1">// Lambda 值捕获</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 编译器生成的等价代码</span>
+<span class="k">struct</span> <span class="nc">Lambda</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">a_</span><span class="p">;</span>  <span class="c1">// 值捕获的变量成为成员变量</span>
+    <span class="kt">int</span> <span class="n">b_</span><span class="p">;</span>
+    
+    <span class="n">Lambda</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="o">:</span> <span class="n">a_</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">b_</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="p">{}</span>
+    
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">a_</span> <span class="o">+</span> <span class="n">b_</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="43-引用捕获的实现">4.3 引用捕获的实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+
+<span class="c1">// Lambda 引用捕获</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">a</span><span class="p">]()</span> <span class="p">{</span> <span class="n">a</span><span class="o">++</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// 编译器生成的等价代码</span>
+<span class="k">struct</span> <span class="nc">Lambda</span> <span class="p">{</span>
+    <span class="kt">int</span><span class="o">&amp;</span> <span class="n">a_</span><span class="p">;</span>  <span class="c1">// 引用捕获的变量成为引用成员</span>
+    
+    <span class="n">Lambda</span><span class="p">(</span><span class="kt">int</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">)</span> <span class="o">:</span> <span class="n">a_</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="p">{}</span>
+    
+    <span class="kt">void</span> <span class="k">operator</span><span class="p">()()</span> <span class="p">{</span>
+        <span class="n">a_</span><span class="o">++</span><span class="p">;</span>  <span class="c1">// 修改引用</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="44-mutable-关键字">4.4 mutable 关键字</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+
+<span class="c1">// 值捕获，但需要修改捕获的副本</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]()</span> <span class="k">mutable</span> <span class="p">{</span>
+    <span class="n">x</span><span class="o">++</span><span class="p">;</span>  <span class="c1">// 修改捕获的副本</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 等价代码</span>
+<span class="k">struct</span> <span class="nc">Lambda</span> <span class="p">{</span>
+    <span class="k">mutable</span> <span class="kt">int</span> <span class="n">x_</span><span class="p">;</span>  <span class="c1">// mutable 成员</span>
+    
+    <span class="n">Lambda</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="o">:</span> <span class="n">x_</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="p">{}</span>
+    
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()()</span> <span class="p">{</span>  <span class="c1">// 非 const operator()</span>
+        <span class="n">x_</span><span class="o">++</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">x_</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="5-函数对象function-object">5. 函数对象（Function Object）</h2>
+
+<h3 id="51-什么是函数对象">5.1 什么是函数对象</h3>
+
+<p>函数对象是重载了 <code class="language-plaintext highlighter-rouge">operator()</code> 的类，可以像函数一样调用：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">Add</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">Add</span> <span class="n">add</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+
+<span class="c1">// 或直接使用</span>
+<span class="kt">int</span> <span class="n">result2</span> <span class="o">=</span> <span class="n">Add</span><span class="p">()(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+</code></pre></div></div>
+
+<h3 id="52-函数对象的优势">5.2 函数对象的优势</h3>
+
+<p>函数对象相比普通函数有多个优势：</p>
+
+<ol>
+  <li><strong>可以携带状态</strong>：成员变量存储状态</li>
+  <li><strong>可以模板化</strong>：模板函数对象更灵活</li>
+  <li><strong>可以内联</strong>：编译器更容易内联</li>
+</ol>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 函数对象可以携带状态</span>
+<span class="k">struct</span> <span class="nc">Counter</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">count_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()()</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="o">++</span><span class="n">count_</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">Counter</span> <span class="n">counter</span><span class="p">;</span>
+<span class="n">counter</span><span class="p">();</span>  <span class="c1">// 1</span>
+<span class="n">counter</span><span class="p">();</span>  <span class="c1">// 2</span>
+<span class="n">counter</span><span class="p">();</span>  <span class="c1">// 3</span>
+</code></pre></div></div>
+
+<h3 id="53-标准库函数对象">5.3 标准库函数对象</h3>
+
+<p>标准库提供了常用的函数对象：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;functional&gt;</span><span class="cp">
+</span>
+<span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">add</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">multiplies</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">multiply</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">product</span> <span class="o">=</span> <span class="n">multiply</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 12</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">greater</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">greater</span><span class="p">;</span>
+<span class="kt">bool</span> <span class="n">is_greater</span> <span class="o">=</span> <span class="n">greater</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>  <span class="c1">// true</span>
+
+<span class="c1">// 在算法中使用</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">};</span>
+<span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">());</span>
+</code></pre></div></div>
+
+<h2 id="6-stdfunction类型擦除的可调用对象">6. std::function：类型擦除的可调用对象</h2>
+
+<h3 id="61-stdfunction-的基本使用">6.1 std::function 的基本使用</h3>
+
+<p><code class="language-plaintext highlighter-rouge">std::function</code> 可以存储任何可调用对象：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;functional&gt;</span><span class="cp">
+</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">func</span><span class="p">;</span>
+
+<span class="c1">// 存储 lambda</span>
+<span class="n">func</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">result1</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+
+<span class="c1">// 存储函数对象</span>
+<span class="n">func</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="kt">int</span> <span class="n">result2</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+
+<span class="c1">// 存储函数指针</span>
+<span class="kt">int</span> <span class="n">add_func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span> <span class="p">}</span>
+<span class="n">func</span> <span class="o">=</span> <span class="n">add_func</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">result3</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 7</span>
+</code></pre></div></div>
+
+<h3 id="62-stdfunction-的类型擦除">6.2 std::function 的类型擦除</h3>
+
+<p><code class="language-plaintext highlighter-rouge">std::function</code> 使用类型擦除（type erasure）技术：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// std::function 的实现原理（简化）</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Signature</span><span class="p">&gt;</span>
+<span class="k">class</span> <span class="nc">function</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="c1">// 类型擦除：不关心具体类型，只关心调用签名</span>
+    <span class="k">class</span> <span class="nc">callable_base</span> <span class="p">{</span>
+    <span class="nl">public:</span>
+        <span class="k">virtual</span> <span class="o">~</span><span class="n">callable_base</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+        <span class="k">virtual</span> <span class="n">ReturnType</span> <span class="n">invoke</span><span class="p">(</span><span class="n">Args</span><span class="p">...)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">};</span>
+    
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+    <span class="k">class</span> <span class="nc">callable_impl</span> <span class="o">:</span> <span class="k">public</span> <span class="n">callable_base</span> <span class="p">{</span>
+        <span class="n">T</span> <span class="n">callable_</span><span class="p">;</span>
+    <span class="nl">public:</span>
+        <span class="n">callable_impl</span><span class="p">(</span><span class="n">T</span> <span class="n">c</span><span class="p">)</span> <span class="o">:</span> <span class="n">callable_</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="p">{}</span>
+        <span class="n">ReturnType</span> <span class="n">invoke</span><span class="p">(</span><span class="n">Args</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">callable_</span><span class="p">(</span><span class="n">args</span><span class="p">...);</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+    
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">callable_base</span><span class="o">&gt;</span> <span class="n">callable_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+    <span class="n">function</span><span class="p">(</span><span class="n">T</span> <span class="n">f</span><span class="p">)</span> <span class="o">:</span> <span class="n">callable_</span><span class="p">(</span><span class="k">new</span> <span class="n">callable_impl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">f</span><span class="p">))</span> <span class="p">{}</span>
+    
+    <span class="n">ReturnType</span> <span class="k">operator</span><span class="p">()(</span><span class="n">Args</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">callable_</span><span class="o">-&gt;</span><span class="n">invoke</span><span class="p">(</span><span class="n">args</span><span class="p">...);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="63-stdfunction-的性能开销">6.3 std::function 的性能开销</h3>
+
+<p><code class="language-plaintext highlighter-rouge">std::function</code> 有类型擦除的开销：</p>
+
+<ul>
+  <li><strong>内存开销</strong>：需要存储函数对象和虚函数表</li>
+  <li><strong>时间开销</strong>：虚函数调用，可能无法内联</li>
+  <li><strong>分配开销</strong>：可能需要堆分配</li>
+</ul>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 性能对比</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span> <span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">func</span> <span class="o">=</span> <span class="n">lambda</span><span class="p">;</span>
+
+<span class="c1">// lambda 可以内联，性能最优</span>
+<span class="kt">int</span> <span class="n">result1</span> <span class="o">=</span> <span class="n">lambda</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+
+<span class="c1">// func 有虚函数调用开销，可能无法内联</span>
+<span class="kt">int</span> <span class="n">result2</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="64-何时使用-stdfunction">6.4 何时使用 std::function</h3>
+
+<p><strong>适合使用</strong>：</p>
+<ul>
+  <li>需要存储不同类型的可调用对象</li>
+  <li>需要延迟绑定函数</li>
+  <li>回调函数需要统一接口</li>
+</ul>
+
+<p><strong>不适合使用</strong>：</p>
+<ul>
+  <li>性能关键路径</li>
+  <li>可以确定具体类型时</li>
+  <li>需要内联优化时</li>
+</ul>
+
+<h2 id="7-lambda-的高级特性">7. Lambda 的高级特性</h2>
+
+<h3 id="71-递归-lambdac14">7.1 递归 Lambda（C++14）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 递归 lambda：需要显式指定类型</span>
+<span class="k">auto</span> <span class="n">factorial</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">impl</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">int</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="n">n</span> <span class="o">*</span> <span class="n">self</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">self</span><span class="p">);</span>
+    <span class="p">};</span>
+    <span class="k">return</span> <span class="n">impl</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">impl</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>  <span class="c1">// 120</span>
+</code></pre></div></div>
+
+<h3 id="72-立即调用的-lambdaiife">7.2 立即调用的 Lambda（IIFE）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// IIFE：Immediately Invoked Function Expression</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 复杂计算</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">product</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">sum</span> <span class="o">+</span> <span class="n">product</span><span class="p">;</span>
+<span class="p">}(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>  <span class="c1">// 立即调用</span>
+
+<span class="c1">// 用途：创建作用域，避免变量污染</span>
+<span class="k">auto</span> <span class="n">value</span> <span class="o">=</span> <span class="p">[]()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">temp</span> <span class="o">=</span> <span class="n">compute_complex_value</span><span class="p">();</span>
+    <span class="k">return</span> <span class="n">process</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+<span class="p">}();</span>
+</code></pre></div></div>
+
+<h3 id="73-lambda-作为返回值">7.3 Lambda 作为返回值</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 返回 lambda</span>
+<span class="k">auto</span> <span class="nf">make_adder</span><span class="p">(</span><span class="kt">int</span> <span class="n">increment</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">increment</span><span class="p">](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">increment</span><span class="p">;</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+
+<span class="k">auto</span> <span class="n">add5</span> <span class="o">=</span> <span class="n">make_adder</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">add5</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>  <span class="c1">// 15</span>
+</code></pre></div></div>
+
+<h3 id="74-lambda-作为模板参数">7.4 Lambda 作为模板参数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Func</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">call_twice</span><span class="p">(</span><span class="n">Func</span> <span class="n">f</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">f</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="n">call_twice</span><span class="p">([]()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Hello</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h2 id="8-lambda-的性能考虑">8. Lambda 的性能考虑</h2>
+
+<h3 id="81-内联优化">8.1 内联优化</h3>
+
+<p>Lambda 通常可以被完全内联：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">};</span>
+
+<span class="c1">// Lambda 可以内联</span>
+<span class="n">std</span><span class="o">::</span><span class="n">for_each</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">});</span>
+
+<span class="c1">// 等价的手写循环也可以内联</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">x</span> <span class="o">:</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="82-捕获开销">8.2 捕获开销</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 值捕获：复制变量</span>
+<span class="kt">int</span> <span class="n">large_array</span><span class="p">[</span><span class="mi">1000</span><span class="p">];</span>
+<span class="k">auto</span> <span class="n">lambda1</span> <span class="o">=</span> <span class="p">[</span><span class="n">large_array</span><span class="p">]()</span> <span class="p">{</span> <span class="cm">/* 使用数组 */</span> <span class="p">};</span>
+<span class="c1">// 开销：复制 1000 个元素</span>
+
+<span class="c1">// 引用捕获：只复制引用</span>
+<span class="k">auto</span> <span class="n">lambda2</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">large_array</span><span class="p">]()</span> <span class="p">{</span> <span class="cm">/* 使用数组 */</span> <span class="p">};</span>
+<span class="c1">// 开销：只复制一个指针</span>
+
+<span class="c1">// 移动捕获：转移所有权</span>
+<span class="k">auto</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">LargeObject</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">auto</span> <span class="n">lambda3</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">ptr</span><span class="p">)]()</span> <span class="p">{</span> <span class="cm">/* 使用对象 */</span> <span class="p">};</span>
+<span class="c1">// 开销：只移动指针</span>
+</code></pre></div></div>
+
+<h3 id="83-stdfunction-的性能">8.3 std::function 的性能</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 性能对比</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span> <span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">func</span> <span class="o">=</span> <span class="n">lambda</span><span class="p">;</span>
+
+<span class="c1">// 热路径：避免 std::function</span>
+<span class="kt">void</span> <span class="n">hot_path</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">lambda</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>  <span class="c1">// 可以内联</span>
+        <span class="c1">// func(i);  // 有虚函数调用开销</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="9-lambda-的常见陷阱">9. Lambda 的常见陷阱</h2>
+
+<h3 id="91-悬空引用">9.1 悬空引用</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 错误：捕获悬空引用</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">()</span><span class="o">&gt;</span> <span class="n">create_lambda</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="o">&amp;</span><span class="n">x</span><span class="p">]()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span><span class="p">;</span> <span class="p">};</span>  <span class="c1">// x 在函数返回后失效</span>
+<span class="p">}</span>
+
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="n">create_lambda</span><span class="p">();</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">lambda</span><span class="p">();</span>  <span class="c1">// 未定义行为</span>
+</code></pre></div></div>
+
+<p><strong>解决</strong>：使用值捕获或确保引用的生命周期</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 正确：值捕获</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">()</span><span class="o">&gt;</span> <span class="n">create_lambda</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="p">]()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span><span class="p">;</span> <span class="p">};</span>  <span class="c1">// 值捕获，安全</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="92-循环中的捕获">9.2 循环中的捕获</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 错误：所有 lambda 捕获同一个引用</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">()</span><span class="o">&gt;&gt;</span> <span class="n">funcs</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">funcs</span><span class="p">.</span><span class="n">push_back</span><span class="p">([</span><span class="o">&amp;</span><span class="n">i</span><span class="p">]()</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span> <span class="p">});</span>
+    <span class="c1">// 所有 lambda 都捕获 i 的引用，最终 i = 10</span>
+<span class="p">}</span>
+
+<span class="c1">// 正确：值捕获</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">funcs</span><span class="p">.</span><span class="n">push_back</span><span class="p">([</span><span class="n">i</span><span class="p">]()</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span> <span class="p">});</span>
+    <span class="c1">// 每个 lambda 捕获 i 的副本</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="93-mutable-的误用">9.3 mutable 的误用</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+
+<span class="c1">// mutable 只影响捕获的副本，不影响外部变量</span>
+<span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]()</span> <span class="k">mutable</span> <span class="p">{</span>
+    <span class="n">x</span><span class="o">++</span><span class="p">;</span>  <span class="c1">// 只修改副本</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">lambda</span><span class="p">();</span>  <span class="c1">// 返回 11</span>
+<span class="c1">// x 仍然是 10（外部变量未改变）</span>
+</code></pre></div></div>
+
+<h2 id="10-工程实践建议">10. 工程实践建议</h2>
+
+<h3 id="101-lambda-使用检查清单">10.1 Lambda 使用检查清单</h3>
+
+<ol>
+  <li><strong>优先使用 Lambda</strong>：代码更简洁，通常性能更好</li>
+  <li><strong>明确捕获方式</strong>：值捕获 vs 引用捕获</li>
+  <li><strong>避免悬空引用</strong>：确保捕获的引用有效</li>
+  <li><strong>避免不必要的 std::function</strong>：在可能的情况下使用 auto</li>
+  <li><strong>注意循环中的捕获</strong>：使用值捕获避免引用问题</li>
+</ol>
+
+<h3 id="102-性能优化建议">10.2 性能优化建议</h3>
+
+<ul>
+  <li><strong>优先使用 Lambda</strong>：通常可以内联，性能最优</li>
+  <li><strong>避免 std::function</strong>：在性能关键路径避免使用</li>
+  <li><strong>合理选择捕获方式</strong>：大对象使用引用或移动捕获</li>
+  <li><strong>使用 constexpr lambda（C++17）</strong>：编译期计算</li>
+</ul>
+
+<h3 id="103-代码可读性">10.3 代码可读性</h3>
+
+<ul>
+  <li><strong>保持 Lambda 简短</strong>：复杂逻辑提取为函数</li>
+  <li><strong>使用有意义的捕获</strong>：显式列出捕获的变量</li>
+  <li><strong>添加注释</strong>：复杂的 Lambda 需要注释说明</li>
+</ul>
+
+<h2 id="11-小结">11. 小结</h2>
+
+<p>Lambda 表达式是现代 C++ 编程的核心特性，它让代码更简洁、更灵活，同时保持了优秀的性能。</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li>Lambda 是匿名函数对象，每个 Lambda 有唯一类型</li>
+  <li>捕获列表控制如何访问外部变量（值捕获、引用捕获、混合捕获）</li>
+  <li>Lambda 通常可以内联，性能与函数对象相当</li>
+  <li><code class="language-plaintext highlighter-rouge">std::function</code> 提供类型擦除，但有性能开销</li>
+  <li>避免悬空引用和循环中的捕获陷阱</li>
+  <li>Lambda 是现代 C++ 编程不可或缺的工具</li>
+</ul>
+
+<p>理解和正确使用 Lambda 表达式，是写出现代、高效、易维护的 C++ 代码的关键。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

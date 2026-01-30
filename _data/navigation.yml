@@ -32,6 +32,9 @@ main:
       - title: "计算机组成"
         url: /cs/architecture/
 
+  - title: "CPP"
+    url: /cpp/
+
 # Series sidebars (used by page.series / page.sidebar.nav)
 storage_basics:
   - title: "存储基础系列"
@@ -120,6 +123,12 @@ consensus:
 paper_notes:
   - title: "论文笔记"
     children:
+      - title: "存储论文"
+        url: /paper-notes/storage/
+      - title: "数据库论文"
+        url: /paper-notes/databases/
+      - title: "分布式系统论文"
+        url: /paper-notes/distributed/
 
 paper_storage:
   - title: "存储论文"
@@ -156,10 +165,40 @@ paper_distributed:
 home:
   - title: "站点导航"
     children:
+      - title: "存储"
+        url: /storage-basics/
+      - title: "论文笔记"
+        url: /paper-notes/
+      - title: "计算机基础"
+        url: /cs-foundations/
+      - title: "CPP"
+        url: /cpp/
+
+cpp:
+  - title: "C++ 系列"
+    children:
+      - title: "C++ 笔记：RAII 与资源管理"
+        url: /cpp-note-001-raii-resource-management/
+      - title: "C++ 笔记：移动语义与完美转发"
+        url: /cpp-note-002-move-semantics-perfect-forwarding/
+      - title: "C++ 笔记：模板元编程基础"
+        url: /cpp-note-003-template-metaprogramming/
+      - title: "C++ 笔记：智能指针：unique_ptr 与 shared_ptr"
+        url: /cpp-note-004-smart-pointers/
+      - title: "C++ 笔记：Lambda 表达式与函数对象"
+        url: /cpp-note-005-lambda-function-objects/
+      - title: "C++ 笔记：异常安全与异常规范"
+        url: /cpp-note-006-exception-safety/
 
 cs_foundations:
   - title: "计算机基础"
     children:
+      - title: "操作系统"
+        url: /cs/os/
+      - title: "计算机网络"
+        url: /cs/network/
+      - title: "计算机组成"
+        url: /cs/architecture/
 
 cs_os:
   - title: "操作系统"

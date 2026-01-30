@@ -1,0 +1,1082 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：RAII 与资源管理 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：RAII 与资源管理">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-001-raii-resource-management/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-001-raii-resource-management/">
+
+
+
+  <meta property="og:description" content="RAII（Resource Acquisition Is Initialization）是 C++ 的核心设计理念之一，它通过对象的生命周期自动管理资源，是现代 C++ 编程的基础。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-01-15T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class="active"><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：RAII 与资源管理">
+    <meta itemprop="description" content="RAII（Resource Acquisition Is Initialization）是 C++ 的核心设计理念之一，它通过对象的生命周期自动管理资源，是现代 C++ 编程的基础。">
+    <meta itemprop="datePublished" content="January 15, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：RAII 与资源管理
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  4 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-01-15T00:00:00+08:00">January 15, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>RAII（Resource Acquisition Is Initialization）是 C++ 的核心设计理念之一，它通过对象的生命周期自动管理资源，是现代 C++ 编程的基础。</p>
+
+<p><img src="/images/diagrams/cpp-raii-lifecycle.svg" alt="RAII：资源获取即初始化，资源释放即析构" /></p>
+
+<h2 id="1-raii-的核心思想与历史背景">1. RAII 的核心思想与历史背景</h2>
+
+<p>RAII 由 Bjarne Stroustrup 在 1980 年代提出，是 C++ 异常安全机制的基础。其核心思想是：</p>
+
+<ul>
+  <li><strong>资源获取即初始化</strong>：在构造函数中获取资源</li>
+  <li><strong>资源释放即析构</strong>：在析构函数中释放资源</li>
+  <li><strong>异常安全</strong>：即使发生异常，析构函数也会被调用，确保资源释放</li>
+</ul>
+
+<h3 id="11-为什么叫-raii">1.1 为什么叫 RAII</h3>
+
+<p>“Resource Acquisition Is Initialization” 这个名字容易引起误解。实际上，RAII 强调的是<strong>资源的所有权与对象的生命周期绑定</strong>。当对象被构造时获取资源，当对象被销毁时释放资源。</p>
+
+<h3 id="12-raii-的哲学">1.2 RAII 的哲学</h3>
+
+<p>RAII 体现了 C++ 的设计哲学：<strong>零开销抽象</strong>。资源管理的逻辑被封装在类中，使用时的开销几乎为零，但安全性大幅提升。</p>
+
+<h2 id="2-为什么需要-raii传统资源管理的问题">2. 为什么需要 RAII：传统资源管理的问题</h2>
+
+<h3 id="21-c-风格资源管理的陷阱">2.1 C 风格资源管理的陷阱</h3>
+
+<p>传统 C 风格的资源管理存在多个问题：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">bad_example</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">f</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">"file.txt"</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">f</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>  <span class="c1">// 早期返回，文件未关闭</span>
+    
+    <span class="kt">char</span><span class="o">*</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">fclose</span><span class="p">(</span><span class="n">f</span><span class="p">);</span>  <span class="c1">// 需要手动释放</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="n">process_file</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">buffer</span><span class="p">);</span>  <span class="c1">// 如果这里抛出异常，两个资源都泄漏</span>
+    
+    <span class="n">free</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+    <span class="n">fclose</span><span class="p">(</span><span class="n">f</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>问题总结</strong>：</p>
+<ol>
+  <li><strong>多个返回点</strong>：每个返回点都需要手动释放资源</li>
+  <li><strong>异常不安全</strong>：异常发生时资源无法释放</li>
+  <li><strong>容易遗漏</strong>：复杂的控制流中容易忘记释放</li>
+  <li><strong>维护困难</strong>：添加新资源需要修改所有返回点</li>
+</ol>
+
+<h3 id="22-异常安全的三级保证">2.2 异常安全的三级保证</h3>
+
+<p>C++ 异常安全有三个级别：</p>
+
+<ul>
+  <li><strong>基本保证（Basic Guarantee）</strong>：异常发生后，程序处于有效但不确定的状态</li>
+  <li><strong>强保证（Strong Guarantee）</strong>：操作要么完全成功，要么完全失败（事务语义）</li>
+  <li><strong>不抛出保证（No-throw Guarantee）</strong>：操作保证不会抛出异常</li>
+</ul>
+
+<p>RAII 是实现这些保证的关键机制。</p>
+
+<h2 id="3-raii-的实现模式">3. RAII 的实现模式</h2>
+
+<h3 id="31-基本-raii-类">3.1 基本 RAII 类</h3>
+
+<p>一个典型的 RAII 类实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">FileHandle</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">file_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// 资源获取即初始化</span>
+    <span class="k">explicit</span> <span class="n">FileHandle</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">filename</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">mode</span><span class="p">)</span> 
+        <span class="o">:</span> <span class="n">file_</span><span class="p">(</span><span class="n">fopen</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">mode</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"Failed to open file"</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 禁止拷贝（Rule of Three/Five）</span>
+    <span class="n">FileHandle</span><span class="p">(</span><span class="k">const</span> <span class="n">FileHandle</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">FileHandle</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">FileHandle</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    
+    <span class="c1">// 允许移动</span>
+    <span class="n">FileHandle</span><span class="p">(</span><span class="n">FileHandle</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> 
+        <span class="o">:</span> <span class="n">file_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">file_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="n">FileHandle</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">FileHandle</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">close</span><span class="p">();</span>
+            <span class="n">file_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">file_</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">file_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 资源释放即析构</span>
+    <span class="o">~</span><span class="n">FileHandle</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">close</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 资源访问接口</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">get</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">file_</span><span class="p">;</span> <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">close</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fclose</span><span class="p">(</span><span class="n">file_</span><span class="p">);</span>
+            <span class="n">file_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>关键点</strong>：</p>
+<ul>
+  <li>构造函数获取资源，失败时抛出异常</li>
+  <li>析构函数释放资源，确保总是被调用</li>
+  <li>禁止拷贝，避免重复释放</li>
+  <li>允许移动，支持高效转移所有权</li>
+</ul>
+
+<h3 id="32-使用示例">3.2 使用示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">safe_example</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">FileHandle</span> <span class="n">f</span><span class="p">(</span><span class="s">"file.txt"</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
+    <span class="c1">// 即使这里抛出异常，f 的析构函数也会自动关闭文件</span>
+    <span class="n">process_file</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+    <span class="c1">// 函数返回时，f 自动析构，文件自动关闭</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-raii-的常见应用场景">4. RAII 的常见应用场景</h2>
+
+<h3 id="41-内存管理">4.1 内存管理</h3>
+
+<p>标准库提供了智能指针：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// unique_ptr：独占所有权</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">p1</span><span class="p">);</span>  <span class="c1">// 移动，不拷贝</span>
+
+<span class="c1">// shared_ptr：共享所有权</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p3</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p4</span> <span class="o">=</span> <span class="n">p3</span><span class="p">;</span>  <span class="c1">// 引用计数增加</span>
+</code></pre></div></div>
+
+<h3 id="42-文件操作">4.2 文件操作</h3>
+
+<p>标准库的流类都是 RAII：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">file</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">line</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">process</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// file 自动关闭</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="43-锁管理">4.3 锁管理</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+    <span class="c1">// 临界区代码</span>
+    <span class="c1">// lock 析构时自动解锁</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="44-自定义资源">4.4 自定义资源</h3>
+
+<p>数据库连接、网络套接字、GPU 资源等都可以用 RAII 管理：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">DatabaseConnection</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">sqlite3</span><span class="o">*</span> <span class="n">db_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">DatabaseConnection</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">db_path</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sqlite3_open</span><span class="p">(</span><span class="n">db_path</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db_</span><span class="p">)</span> <span class="o">!=</span> <span class="n">SQLITE_OK</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"Failed to open database"</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="o">~</span><span class="n">DatabaseConnection</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">db_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sqlite3_close</span><span class="p">(</span><span class="n">db_</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 禁止拷贝，允许移动</span>
+    <span class="n">DatabaseConnection</span><span class="p">(</span><span class="k">const</span> <span class="n">DatabaseConnection</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">DatabaseConnection</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">DatabaseConnection</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">DatabaseConnection</span><span class="p">(</span><span class="n">DatabaseConnection</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+    <span class="n">DatabaseConnection</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">DatabaseConnection</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+    
+    <span class="n">sqlite3</span><span class="o">*</span> <span class="n">get</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">db_</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="5-raii-与异常安全">5. RAII 与异常安全</h2>
+
+<h3 id="51-异常安全的实现">5.1 异常安全的实现</h3>
+
+<p>RAII 是实现异常安全的关键：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Transaction</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Operation</span><span class="o">&gt;</span> <span class="n">operations_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">add_operation</span><span class="p">(</span><span class="k">const</span> <span class="n">Operation</span><span class="o">&amp;</span> <span class="n">op</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">operations_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">op</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">commit</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 强保证：要么全部成功，要么全部失败</span>
+        <span class="k">auto</span> <span class="n">backup</span> <span class="o">=</span> <span class="n">state_</span><span class="p">;</span>  <span class="c1">// 先备份</span>
+        
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">op</span> <span class="o">:</span> <span class="n">operations_</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">op</span><span class="p">.</span><span class="n">execute</span><span class="p">();</span>  <span class="c1">// 可能抛出异常</span>
+            <span class="p">}</span>
+            <span class="n">state_</span> <span class="o">=</span> <span class="n">backup</span><span class="p">;</span>  <span class="c1">// 成功则更新</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+            <span class="c1">// 失败则回滚（backup 已自动保持原状）</span>
+            <span class="n">rollback</span><span class="p">();</span>
+            <span class="k">throw</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="52-异常安全与性能">5.2 异常安全与性能</h3>
+
+<p>RAII 的零开销特性：</p>
+
+<ul>
+  <li><strong>无运行时开销</strong>：资源管理逻辑在编译期确定</li>
+  <li><strong>内联优化</strong>：简单的 RAII 类可以被完全内联</li>
+  <li><strong>异常路径优化</strong>：现代编译器对异常路径有专门优化</li>
+</ul>
+
+<h2 id="6-raii-的最佳实践">6. RAII 的最佳实践</h2>
+
+<h3 id="61-rule-of-threefive">6.1 Rule of Three/Five</h3>
+
+<p>如果一个类需要自定义析构函数，通常也需要自定义拷贝/移动语义：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Resource</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Resource</span><span class="p">()</span> <span class="p">{</span> <span class="n">acquire</span><span class="p">();</span> <span class="p">}</span>
+    
+    <span class="c1">// 需要自定义析构函数</span>
+    <span class="o">~</span><span class="n">Resource</span><span class="p">()</span> <span class="p">{</span> <span class="n">release</span><span class="p">();</span> <span class="p">}</span>
+    
+    <span class="c1">// 因此需要禁止或自定义拷贝</span>
+    <span class="n">Resource</span><span class="p">(</span><span class="k">const</span> <span class="n">Resource</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>  <span class="c1">// 或实现深拷贝</span>
+    <span class="n">Resource</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">Resource</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    
+    <span class="c1">// 通常允许移动</span>
+    <span class="n">Resource</span><span class="p">(</span><span class="n">Resource</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+    <span class="n">Resource</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">Resource</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="62-析构函数不抛出异常">6.2 析构函数不抛出异常</h3>
+
+<p>析构函数应该标记为 <code class="language-plaintext highlighter-rouge">noexcept</code>，避免在异常处理过程中抛出新异常：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">~</span><span class="n">Resource</span><span class="p">()</span> <span class="k">noexcept</span> <span class="p">{</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">release</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="c1">// 记录日志，但不抛出</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"Error releasing resource</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="63-使用智能指针">6.3 使用智能指针</h3>
+
+<p>优先使用标准库的智能指针，而非手动实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 推荐</span>
+<span class="k">auto</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">();</span>
+
+<span class="c1">// 不推荐</span>
+<span class="n">MyClass</span><span class="o">*</span> <span class="n">ptr</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">MyClass</span><span class="p">();</span>
+<span class="c1">// 需要手动 delete</span>
+</code></pre></div></div>
+
+<h3 id="64-移动语义优化">6.4 移动语义优化</h3>
+
+<p>对于昂贵的资源，使用移动语义避免拷贝：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">LargeBuffer</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">char</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// 移动构造：转移所有权，不拷贝数据</span>
+    <span class="n">LargeBuffer</span><span class="p">(</span><span class="n">LargeBuffer</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span>
+        <span class="o">:</span> <span class="n">data_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">))</span>
+        <span class="p">,</span> <span class="n">size_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="7-raii-的常见陷阱">7. RAII 的常见陷阱</h2>
+
+<h3 id="71-循环依赖">7.1 循环依赖</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">Node</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">prev</span><span class="p">;</span>  <span class="c1">// 循环引用，内存泄漏</span>
+<span class="p">};</span>
+
+<span class="c1">// 解决方案：使用 weak_ptr</span>
+<span class="k">struct</span> <span class="nc">Node</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">weak_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">prev</span><span class="p">;</span>  <span class="c1">// 打破循环</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="72-过早释放">7.2 过早释放</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">bad_example</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">acquire</span><span class="p">();</span>
+    <span class="n">Resource</span><span class="o">*</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+    <span class="n">r</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>  <span class="c1">// 过早释放</span>
+    <span class="n">raw</span><span class="o">-&gt;</span><span class="n">use</span><span class="p">();</span>  <span class="c1">// 使用已释放的资源，未定义行为</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="73-所有权混淆">7.3 所有权混淆</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">transfer_ownership</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// p 拥有资源</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">bad_call</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">p</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+    <span class="n">transfer_ownership</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>  <span class="c1">// 错误：传递原始指针，所有权未转移</span>
+    <span class="c1">// p 仍然拥有资源，但 transfer_ownership 可能尝试释放</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="8-raii-与现代-c">8. RAII 与现代 C++</h2>
+
+<h3 id="81-c111417-的改进">8.1 C++11/14/17 的改进</h3>
+
+<ul>
+  <li><strong>智能指针</strong>：<code class="language-plaintext highlighter-rouge">std::unique_ptr</code>、<code class="language-plaintext highlighter-rouge">std::shared_ptr</code>、<code class="language-plaintext highlighter-rouge">std::weak_ptr</code></li>
+  <li><strong>移动语义</strong>：高效转移资源所有权</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">= default</code> 和 <code class="language-plaintext highlighter-rouge">= delete</code></strong>：明确表达意图</li>
+</ul>
+
+<h3 id="82-与其他语言的对比">8.2 与其他语言的对比</h3>
+
+<ul>
+  <li><strong>Java/C#</strong>：使用垃圾回收，但无法控制释放时机</li>
+  <li><strong>Rust</strong>：所有权系统在编译期检查，更安全但更严格</li>
+  <li><strong>Python</strong>：使用引用计数和垃圾回收，但性能开销较大</li>
+</ul>
+
+<p>C++ 的 RAII 在安全性和性能之间取得了最佳平衡。</p>
+
+<h2 id="9-工程实践建议">9. 工程实践建议</h2>
+
+<h3 id="91-资源管理检查清单">9.1 资源管理检查清单</h3>
+
+<ol>
+  <li><strong>所有资源都有 RAII 包装</strong>：文件、内存、锁、网络连接等</li>
+  <li><strong>禁止原始指针拥有资源</strong>：使用智能指针</li>
+  <li><strong>析构函数标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：避免异常传播</li>
+  <li><strong>移动操作标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：优化标准库容器性能</li>
+  <li><strong>避免循环引用</strong>：使用 <code class="language-plaintext highlighter-rouge">weak_ptr</code> 打破循环</li>
+</ol>
+
+<h3 id="92-性能优化">9.2 性能优化</h3>
+
+<ul>
+  <li><strong>零开销抽象</strong>：RAII 类应该尽可能简单，便于编译器优化</li>
+  <li><strong>移动而非拷贝</strong>：对于昂贵资源，优先使用移动语义</li>
+  <li><strong>避免不必要的引用计数</strong>：能用 <code class="language-plaintext highlighter-rouge">unique_ptr</code> 就不用 <code class="language-plaintext highlighter-rouge">shared_ptr</code></li>
+</ul>
+
+<h3 id="93-调试技巧">9.3 调试技巧</h3>
+
+<ul>
+  <li><strong>使用自定义删除器</strong>：在调试版本中添加日志</li>
+  <li><strong>检查资源泄漏</strong>：使用工具如 Valgrind、AddressSanitizer</li>
+  <li><strong>监控资源使用</strong>：在 RAII 类中添加统计信息</li>
+</ul>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>RAII 是 C++ 资源管理的核心机制，它通过对象的生命周期自动管理资源，实现了异常安全和零开销抽象。理解 RAII 的原理和实践，是写出安全、高效、易维护的 C++ 代码的基础。</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li>RAII 将资源的所有权与对象的生命周期绑定</li>
+  <li>使用智能指针而非原始指针管理内存</li>
+  <li>析构函数和移动操作应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code></li>
+  <li>避免循环引用和所有权混淆</li>
+  <li>RAII 是现代 C++ 编程的基础，所有资源都应该用 RAII 管理</li>
+</ul>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

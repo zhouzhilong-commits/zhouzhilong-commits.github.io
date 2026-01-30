@@ -1,0 +1,1155 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：移动语义与完美转发 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：移动语义与完美转发">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-002-move-semantics-perfect-forwarding/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-002-move-semantics-perfect-forwarding/">
+
+
+
+  <meta property="og:description" content="C++11 引入的移动语义和完美转发是现代 C++ 性能优化的关键特性，它们让 C++ 在保持性能优势的同时，代码更加现代化和高效。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-02-20T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class="active"><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：移动语义与完美转发">
+    <meta itemprop="description" content="C++11 引入的移动语义和完美转发是现代 C++ 性能优化的关键特性，它们让 C++ 在保持性能优势的同时，代码更加现代化和高效。">
+    <meta itemprop="datePublished" content="February 20, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：移动语义与完美转发
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-02-20T00:00:00+08:00">February 20, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>C++11 引入的移动语义和完美转发是现代 C++ 性能优化的关键特性，它们让 C++ 在保持性能优势的同时，代码更加现代化和高效。</p>
+
+<p><img src="/images/diagrams/cpp-move-semantics-lvalue-rvalue.svg" alt="移动语义：左值 vs 右值，拷贝 vs 移动" /></p>
+
+<h2 id="1-移动语义解决的问题昂贵的拷贝操作">1. 移动语义解决的问题：昂贵的拷贝操作</h2>
+
+<h3 id="11-传统-c-的拷贝开销">1.1 传统 C++ 的拷贝开销</h3>
+
+<p>在 C++98 中，对象的拷贝可能非常昂贵：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">create_large_vector</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">42</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">v</span><span class="p">;</span>  <span class="c1">// C++98: 可能触发拷贝构造，复制 100 万个元素</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">use_vector</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="n">create_large_vector</span><span class="p">();</span>  <span class="c1">// 又一次拷贝</span>
+    <span class="c1">// 总共可能拷贝了 200 万个元素</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>问题</strong>：</p>
+<ul>
+  <li>大对象的拷贝开销巨大</li>
+  <li>临时对象（右值）被拷贝后立即销毁，浪费资源</li>
+  <li>无法表达”转移所有权”的语义</li>
+</ul>
+
+<h3 id="12-返回值优化rvo的局限性">1.2 返回值优化（RVO）的局限性</h3>
+
+<p>虽然编译器可以进行返回值优化（RVO），但这只是优化，不是保证：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">func</span><span class="p">(</span><span class="kt">bool</span> <span class="n">condition</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v1</span><span class="p">(</span><span class="mi">1000000</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v2</span><span class="p">(</span><span class="mi">1000000</span><span class="p">);</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">condition</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">v1</span><span class="p">;</span>  <span class="c1">// RVO 可能失效</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">v2</span><span class="p">;</span>  <span class="c1">// 多个返回路径，RVO 失效</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>移动语义提供了语言级别的保证，而不仅仅依赖编译器优化。</p>
+
+<h2 id="2-左值右值与值类别">2. 左值、右值与值类别</h2>
+
+<h3 id="21-值类别的基础概念">2.1 值类别的基础概念</h3>
+
+<p>C++11 引入了更精确的值类别分类：</p>
+
+<ul>
+  <li><strong>左值（lvalue）</strong>：有名字的表达式，可以取地址</li>
+  <li><strong>将亡值（xvalue）</strong>：即将被销毁的对象，可以用 <code class="language-plaintext highlighter-rouge">std::move</code> 获得</li>
+  <li><strong>纯右值（prvalue）</strong>：字面量、临时对象、函数返回值</li>
+  <li><strong>右值（rvalue）</strong>：将亡值 + 纯右值</li>
+</ul>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>           <span class="c1">// a 是左值</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>            <span class="c1">// a 是左值，被拷贝</span>
+<span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>           <span class="c1">// 42 是纯右值</span>
+<span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>        <span class="c1">// a + b 是纯右值</span>
+<span class="kt">int</span> <span class="n">e</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">a</span><span class="p">);</span> <span class="c1">// std::move(a) 是将亡值</span>
+</code></pre></div></div>
+
+<h3 id="22-左值引用与右值引用">2.2 左值引用与右值引用</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">);</span>        <span class="c1">// 左值引用，只能绑定左值</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span><span class="o">&amp;&amp;</span> <span class="n">x</span><span class="p">);</span>       <span class="c1">// 右值引用，只能绑定右值</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">);</span>  <span class="c1">// 常量左值引用，可以绑定左值和右值</span>
+
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">func</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>        <span class="c1">// 调用 func(int&amp;)</span>
+<span class="n">func</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>       <span class="c1">// 调用 func(int&amp;&amp;)</span>
+<span class="n">func</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>    <span class="c1">// 调用 func(int&amp;&amp;)</span>
+</code></pre></div></div>
+
+<h3 id="23-引用折叠规则">2.3 引用折叠规则</h3>
+
+<p>在模板中，引用会折叠：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">arg</span><span class="p">);</span>  <span class="c1">// 万能引用（universal reference）</span>
+
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">func</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>        <span class="c1">// T = int&amp;,  T&amp;&amp; = int&amp;  (引用折叠)</span>
+<span class="n">func</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>       <span class="c1">// T = int,   T&amp;&amp; = int&amp;&amp;</span>
+<span class="n">func</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">a</span><span class="p">));</span> <span class="c1">// T = int, T&amp;&amp; = int&amp;&amp;</span>
+</code></pre></div></div>
+
+<p><strong>引用折叠规则</strong>：</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">T&amp; &amp;&amp;</code> → <code class="language-plaintext highlighter-rouge">T&amp;</code></li>
+  <li><code class="language-plaintext highlighter-rouge">T&amp;&amp; &amp;</code> → <code class="language-plaintext highlighter-rouge">T&amp;</code></li>
+  <li><code class="language-plaintext highlighter-rouge">T&amp;&amp; &amp;&amp;</code> → <code class="language-plaintext highlighter-rouge">T&amp;&amp;</code></li>
+</ul>
+
+<h2 id="3-移动构造函数与移动赋值运算符">3. 移动构造函数与移动赋值运算符</h2>
+
+<h3 id="31-移动构造函数的实现">3.1 移动构造函数的实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyString</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">char</span><span class="o">*</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// 拷贝构造函数（深拷贝）</span>
+    <span class="n">MyString</span><span class="p">(</span><span class="k">const</span> <span class="n">MyString</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span>
+        <span class="o">:</span> <span class="n">size_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">data_</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">char</span><span class="p">[</span><span class="n">size_</span><span class="p">];</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">,</span> <span class="n">size_</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 移动构造函数（转移所有权）</span>
+    <span class="n">MyString</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span>
+        <span class="o">:</span> <span class="n">data_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">size_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 将源对象置为空状态</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 移动赋值运算符</span>
+    <span class="n">MyString</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 释放当前资源</span>
+            <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>
+            
+            <span class="c1">// 转移所有权</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">;</span>
+            <span class="n">size_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">;</span>
+            
+            <span class="c1">// 置空源对象</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="o">~</span><span class="n">MyString</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>关键点</strong>：</p>
+<ul>
+  <li>移动构造函数接受右值引用参数</li>
+  <li>转移资源所有权，而非拷贝</li>
+  <li>将源对象置为空状态（有效但可析构）</li>
+  <li>必须标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，否则标准库容器会回退到拷贝</li>
+</ul>
+
+<h3 id="32-为什么移动操作需要-noexcept">3.2 为什么移动操作需要 noexcept</h3>
+
+<p>标准库容器（如 <code class="language-plaintext highlighter-rouge">std::vector</code>）在重新分配内存时，如果移动操作可能抛出异常，会回退到拷贝操作：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">vector_reallocate</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 如果移动构造函数可能抛出异常</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_nothrow_move_constructible_v</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 使用移动构造</span>
+        <span class="n">new_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">old_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// 回退到拷贝构造（保证强异常安全）</span>
+        <span class="n">new_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_storage</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>因此，移动操作应该总是标记 <code class="language-plaintext highlighter-rouge">noexcept</code>。</p>
+
+<h3 id="33-移动语义的性能优势">3.3 移动语义的性能优势</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 拷贝：O(n) 时间和空间</span>
+<span class="n">MyString</span> <span class="n">s1</span> <span class="o">=</span> <span class="n">create_string</span><span class="p">();</span>  <span class="c1">// 拷贝构造，分配新内存，复制数据</span>
+
+<span class="c1">// 移动：O(1) 时间，零额外空间</span>
+<span class="n">MyString</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>    <span class="c1">// 移动构造，只转移指针</span>
+</code></pre></div></div>
+
+<p>对于大对象，移动语义可以带来数量级的性能提升。</p>
+
+<h2 id="4-stdmove-的使用">4. std::move 的使用</h2>
+
+<h3 id="41-stdmove-的本质">4.1 std::move 的本质</h3>
+
+<p><code class="language-plaintext highlighter-rouge">std::move</code> 实际上是一个类型转换函数：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;&amp;</span> <span class="n">move</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;&amp;&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>它<strong>不移动任何东西</strong>，只是将左值转换为右值引用，告诉编译器”这个对象可以被移动”。</p>
+
+<h3 id="42-何时使用-stdmove">4.2 何时使用 std::move</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 1. 函数返回值（通常不需要 std::move，编译器会自动优化）</span>
+<span class="n">MyString</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">MyString</span> <span class="n">s</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">s</span><span class="p">;</span>  <span class="c1">// 编译器会自动移动，不需要 std::move(s)</span>
+<span class="p">}</span>
+
+<span class="c1">// 2. 移动赋值</span>
+<span class="n">MyString</span> <span class="n">s1</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">MyString</span> <span class="n">s2</span><span class="p">;</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>  <span class="c1">// 需要显式移动</span>
+
+<span class="c1">// 3. 容器操作</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">MyString</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="n">MyString</span> <span class="n">s</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s</span><span class="p">));</span>  <span class="c1">// 移动而非拷贝</span>
+
+<span class="c1">// 4. 函数参数传递</span>
+<span class="kt">void</span> <span class="n">process</span><span class="p">(</span><span class="n">MyString</span> <span class="n">s</span><span class="p">);</span>
+<span class="n">MyString</span> <span class="n">s</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">process</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s</span><span class="p">));</span>  <span class="c1">// 移动传递</span>
+</code></pre></div></div>
+
+<h3 id="43-stdmove-的误用">4.3 std::move 的误用</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 错误：对右值使用 std::move</span>
+<span class="n">MyString</span> <span class="n">s</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">create_string</span><span class="p">());</span>  <span class="c1">// 多余，create_string() 已经是右值</span>
+
+<span class="c1">// 错误：移动后继续使用</span>
+<span class="n">MyString</span> <span class="nf">s1</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">MyString</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
+<span class="n">s1</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="s">" world"</span><span class="p">);</span>  <span class="c1">// 未定义行为，s1 已被移动</span>
+
+<span class="c1">// 正确：移动后不再使用</span>
+<span class="n">MyString</span> <span class="nf">s1</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">MyString</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
+<span class="c1">// s1 不再使用</span>
+</code></pre></div></div>
+
+<h2 id="5-完美转发perfect-forwarding">5. 完美转发（Perfect Forwarding）</h2>
+
+<h3 id="51-完美转发的需求">5.1 完美转发的需求</h3>
+
+<p>完美转发是指在模板函数中，将参数以<strong>原始的值类别</strong>（左值或右值）转发给另一个函数：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">arg</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">arg</span><span class="p">));</span>  <span class="c1">// 完美转发</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">wrapper</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>        <span class="c1">// func 收到左值引用</span>
+<span class="n">wrapper</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>       <span class="c1">// func 收到右值引用</span>
+<span class="n">wrapper</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">a</span><span class="p">));</span> <span class="c1">// func 收到右值引用</span>
+</code></pre></div></div>
+
+<h3 id="52-stdforward-的实现">5.2 std::forward 的实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">forward</span><span class="p">(</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&amp;&amp;&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">forward</span><span class="p">(</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+    <span class="k">static_assert</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">is_lvalue_reference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">,</span>
+                  <span class="s">"Cannot forward rvalue as lvalue"</span><span class="p">);</span>
+    <span class="k">return</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&amp;&amp;&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">std::forward</code> 根据模板参数 <code class="language-plaintext highlighter-rouge">T</code> 的类型，决定是转发为左值还是右值。</p>
+
+<h3 id="53-完美转发的应用">5.3 完美转发的应用</h3>
+
+<h4 id="531-工厂函数">5.3.1 工厂函数</h4>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">,</span> <span class="k">typename</span><span class="o">...</span> <span class="nc">Args</span><span class="p">&gt;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">make_unique</span><span class="p">(</span><span class="n">Args</span><span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span>
+        <span class="k">new</span> <span class="n">T</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...)</span>
+    <span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 使用</span>
+<span class="k">auto</span> <span class="n">p</span> <span class="o">=</span> <span class="n">make_unique</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span> <span class="s">"hello"</span><span class="p">);</span>  <span class="c1">// 完美转发参数</span>
+</code></pre></div></div>
+
+<h4 id="532-包装器函数">5.3.2 包装器函数</h4>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Func</span><span class="p">,</span> <span class="k">typename</span><span class="o">...</span> <span class="nc">Args</span><span class="p">&gt;</span>
+<span class="k">auto</span> <span class="nf">call_with_log</span><span class="p">(</span><span class="n">Func</span><span class="o">&amp;&amp;</span> <span class="n">f</span><span class="p">,</span> <span class="n">Args</span><span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Calling function</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Func</span><span class="o">&gt;</span><span class="p">(</span><span class="n">f</span><span class="p">)(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="533-emplace-操作">5.3.3 emplace 操作</h4>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span><span class="o">...</span> <span class="nc">Args</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">emplace_back</span><span class="p">(</span><span class="n">Args</span><span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 在容器中直接构造对象，避免拷贝/移动</span>
+    <span class="k">new</span> <span class="p">(</span><span class="n">end_</span><span class="p">)</span> <span class="n">T</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...);</span>
+    <span class="o">++</span><span class="n">end_</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 使用</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="n">vec</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span> <span class="s">"hello"</span><span class="p">);</span>  <span class="c1">// 直接在 vector 中构造，无临时对象</span>
+</code></pre></div></div>
+
+<h2 id="6-移动语义的实际应用">6. 移动语义的实际应用</h2>
+
+<h3 id="61-标准库容器的移动语义">6.1 标准库容器的移动语义</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">create_strings</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="s">"world"</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">vec</span><span class="p">;</span>  <span class="c1">// 移动返回，不拷贝</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">use_strings</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">vec</span> <span class="o">=</span> <span class="n">create_strings</span><span class="p">();</span>  <span class="c1">// 移动构造</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="s">"!"</span><span class="p">);</span>           <span class="c1">// 修改移动后的对象</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="62-智能指针的移动语义">6.2 智能指针的移动语义</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">create_ptr</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>  <span class="c1">// 移动返回</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">use_ptr</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">p</span> <span class="o">=</span> <span class="n">create_ptr</span><span class="p">();</span>  <span class="c1">// 移动构造</span>
+    <span class="c1">// unique_ptr 只能移动，不能拷贝</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="63-函数返回值优化">6.3 函数返回值优化</h3>
+
+<p>现代 C++ 中，返回值优化（RVO）和移动语义结合：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span><span class="p">(</span><span class="mi">1000000</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">v</span><span class="p">;</span>  <span class="c1">// 优先 RVO，否则移动</span>
+<span class="p">}</span>
+
+<span class="k">auto</span> <span class="n">v</span> <span class="o">=</span> <span class="n">func</span><span class="p">();</span>  <span class="c1">// 零拷贝或移动，绝不拷贝</span>
+</code></pre></div></div>
+
+<h2 id="7-移动语义的陷阱与注意事项">7. 移动语义的陷阱与注意事项</h2>
+
+<h3 id="71-移动后的对象状态">7.1 移动后的对象状态</h3>
+
+<p>移动后的对象应该处于<strong>有效但未指定</strong>的状态：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MyString</span> <span class="nf">s1</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">MyString</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
+
+<span class="c1">// s1 的状态：</span>
+<span class="c1">// - 可以安全析构</span>
+<span class="c1">// - 可以赋值</span>
+<span class="c1">// - 值未指定（可能是空字符串）</span>
+<span class="c1">// - 不应该读取其值</span>
+</code></pre></div></div>
+
+<h3 id="72-自赋值检查">7.2 自赋值检查</h3>
+
+<p>移动赋值运算符需要检查自赋值：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MyString</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 必须检查</span>
+        <span class="c1">// 移动逻辑</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="73-异常安全">7.3 异常安全</h3>
+
+<p>移动操作应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，但如果必须抛出异常，需要保证基本异常安全：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MyString</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">new_data</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">;</span>  <span class="c1">// 先保存</span>
+        <span class="k">auto</span> <span class="n">new_size</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">;</span>
+        
+        <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>  <span class="c1">// 可能抛出？实际上不会</span>
+        
+        <span class="n">data_</span> <span class="o">=</span> <span class="n">new_data</span><span class="p">;</span>
+        <span class="n">size_</span> <span class="o">=</span> <span class="n">new_size</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="74-移动-vs-拷贝的选择">7.4 移动 vs 拷贝的选择</h3>
+
+<p>编译器会根据值类别自动选择：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="k">const</span> <span class="n">MyString</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">);</span>   <span class="c1">// 接受左值和右值，总是拷贝</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">s</span><span class="p">);</span>        <span class="c1">// 只接受右值，移动</span>
+
+<span class="n">MyString</span> <span class="nf">s</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+<span class="n">func</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>              <span class="c1">// 调用 func(const MyString&amp;)，拷贝</span>
+<span class="n">func</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">s</span><span class="p">));</span>   <span class="c1">// 调用 func(MyString&amp;&amp;)，移动</span>
+<span class="n">func</span><span class="p">(</span><span class="n">MyString</span><span class="p">(</span><span class="s">"hi"</span><span class="p">));</span> <span class="c1">// 调用 func(MyString&amp;&amp;)，移动</span>
+</code></pre></div></div>
+
+<h2 id="8-性能分析与优化">8. 性能分析与优化</h2>
+
+<h3 id="81-移动语义的性能收益">8.1 移动语义的性能收益</h3>
+
+<p>对于大对象，移动语义可以带来显著性能提升：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 拷贝：O(n) 时间和空间</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v1</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">42</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">v1</span><span class="p">;</span>  <span class="c1">// 拷贝 100 万个元素</span>
+
+<span class="c1">// 移动：O(1) 时间，零额外空间</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v3</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">v1</span><span class="p">);</span>  <span class="c1">// 只转移指针</span>
+</code></pre></div></div>
+
+<h3 id="82-何时移动不划算">8.2 何时移动不划算</h3>
+
+<p>对于小对象（如 <code class="language-plaintext highlighter-rouge">int</code>、<code class="language-plaintext highlighter-rouge">double</code>），移动的开销可能和拷贝相当，甚至更差：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>  <span class="c1">// 移动和拷贝的开销相同，移动是多余的</span>
+</code></pre></div></div>
+
+<h3 id="83-编译器优化">8.3 编译器优化</h3>
+
+<p>现代编译器会进行多种优化：</p>
+
+<ul>
+  <li><strong>RVO（返回值优化）</strong>：消除临时对象</li>
+  <li><strong>NRVO（命名返回值优化）</strong>：消除命名临时对象</li>
+  <li><strong>移动消除</strong>：在可能的情况下消除移动操作</li>
+</ul>
+
+<h2 id="9-工程实践建议">9. 工程实践建议</h2>
+
+<h3 id="91-移动语义检查清单">9.1 移动语义检查清单</h3>
+
+<ol>
+  <li><strong>所有资源管理类都应该实现移动语义</strong></li>
+  <li><strong>移动操作标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：确保标准库容器使用移动</li>
+  <li><strong>移动后对象可析构</strong>：保证异常安全</li>
+  <li><strong>避免移动后使用</strong>：移动后的对象状态未指定</li>
+  <li><strong>优先使用移动</strong>：在可能的情况下使用移动而非拷贝</li>
+</ol>
+
+<h3 id="92-性能优化建议">9.2 性能优化建议</h3>
+
+<ul>
+  <li><strong>使用 <code class="language-plaintext highlighter-rouge">emplace</code> 而非 <code class="language-plaintext highlighter-rouge">push_back</code></strong>：避免临时对象</li>
+  <li><strong>返回值使用移动语义</strong>：让编译器优化</li>
+  <li><strong>大对象使用移动传递</strong>：减少拷贝开销</li>
+  <li><strong>小对象不需要移动</strong>：移动和拷贝开销相同</li>
+</ul>
+
+<h3 id="93-调试技巧">9.3 调试技巧</h3>
+
+<ul>
+  <li><strong>使用移动语义追踪</strong>：在移动构造函数中添加日志</li>
+  <li><strong>检查移动后状态</strong>：确保移动后的对象可安全析构</li>
+  <li><strong>性能分析</strong>：使用 profiler 检查移动 vs 拷贝的开销</li>
+</ul>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>移动语义和完美转发是现代 C++ 性能优化的关键特性。它们让 C++ 在保持性能优势的同时，代码更加现代化和高效。</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li>移动语义通过转移所有权避免昂贵的拷贝</li>
+  <li>左值引用绑定左值，右值引用绑定右值</li>
+  <li>移动操作应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，确保标准库容器使用移动</li>
+  <li><code class="language-plaintext highlighter-rouge">std::move</code> 不移动任何东西，只是类型转换</li>
+  <li><code class="language-plaintext highlighter-rouge">std::forward</code> 完美转发参数的值类别</li>
+  <li>移动后的对象处于有效但未指定的状态</li>
+  <li>移动语义是现代 C++ 编程的基础，所有资源管理类都应该实现</li>
+</ul>
+
+<p>理解和正确使用移动语义和完美转发，是写出高效、现代 C++ 代码的关键。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

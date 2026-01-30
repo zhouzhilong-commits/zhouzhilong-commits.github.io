@@ -8,7 +8,6 @@
     </style>
   </defs>
   <text class="title" x="40" y="46">一致性笔记：Quorum 的直觉：读写多数派为什么能工作</text>
-  <text class="muted" x="40" y="72">（占位图已替换为固定命名 SVG，后续可继续迭代为更详细的图）</text>
   <rect class="box" x="40" y="95" width="900" height="150"/>
   <text class="t" x="70" y="140">- 语义/模型：把问题说清楚</text>
   <text class="t" x="70" y="170">- 观测信号：哪些指标能验证你的推断</text>

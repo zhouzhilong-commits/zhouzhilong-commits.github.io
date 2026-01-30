@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .basic{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .strong{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .nothrow{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">异常安全的三个级别：基本保证、强保证、不抛出保证</text>
+  <text class="muted" x="40" y="66">不同级别的异常安全保证，对应不同的实现成本和性能开销。</text>
+
+  <rect class="basic" x="40" y="95" width="280" height="180"/>
+  <text class="h" x="70" y="130">基本保证</text>
+  <text class="t" x="70" y="155">（Basic Guarantee）</text>
+  <text class="t" x="70" y="180">- 对象仍然有效</text>
+  <text class="t" x="70" y="200">- 可以安全析构</text>
+  <text class="t" x="70" y="220">- 状态不确定</text>
+  <text class="t" x="70" y="240">- 需要恢复状态</text>
+  <text class="t" x="70" y="260">- 实现成本低</text>
+
+  <rect class="strong" x="340" y="95" width="280" height="180"/>
+  <text class="h" x="370" y="130">强保证</text>
+  <text class="t" x="370" y="155">（Strong Guarantee）</text>
+  <text class="t" x="370" y="180">- 事务语义</text>
+  <text class="t" x="370" y="200">- 要么全部成功</text>
+  <text class="t" x="370" y="220">- 要么全部失败</text>
+  <text class="t" x="370" y="240">- 失败时状态不变</text>
+  <text class="t" x="370" y="260">- 实现成本高</text>
+
+  <rect class="nothrow" x="640" y="95" width="280" height="180"/>
+  <text class="h" x="670" y="130">不抛出保证</text>
+  <text class="t" x="670" y="155">（No-throw Guarantee）</text>
+  <text class="t" x="670" y="180">- 保证不抛出异常</text>
+  <text class="t" x="670" y="200">- 标记 noexcept</text>
+  <text class="t" x="670" y="220">- 编译器优化</text>
+  <text class="t" x="670" y="240">- 析构函数、移动操作</text>
+  <text class="t" x="670" y="260">- 实现最简单</text>
+
+  <rect class="box" x="40" y="300" width="880" height="160"/>
+  <text class="h" x="70" y="335">实现技巧</text>
+  <text class="t" x="70" y="360">1. RAII：通过对象生命周期自动管理资源，确保异常时资源释放</text>
+  <text class="t" x="70" y="380">2. 智能指针：自动管理内存，异常安全</text>
+  <text class="t" x="70" y="400">3. Copy-and-Swap：先修改副本，再交换，实现强保证</text>
+  <text class="t" x="70" y="420">4. noexcept：标记不抛出异常的操作，让编译器优化</text>
+  <text class="t" x="70" y="440">5. 事务性操作：要么全部成功，要么全部失败，需要回滚机制</text>
+</svg>

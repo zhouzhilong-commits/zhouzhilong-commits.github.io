@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .acquire{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .use{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .release{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .exception{fill:#ffebee;stroke:#c62828;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">RAII 生命周期：资源获取、使用、释放的自动化</text>
+  <text class="muted" x="40" y="66">对象构造时获取资源，析构时自动释放，即使发生异常也能保证资源释放。</text>
+
+  <rect class="acquire" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">1. 资源获取</text>
+  <text class="t" x="70" y="155">构造函数中获取</text>
+  <text class="t" x="70" y="175">- 打开文件</text>
+  <text class="t" x="70" y="195">- 分配内存</text>
+
+  <path class="arrow" d="M 240 155 L 320 155"/>
+
+  <rect class="use" x="325" y="95" width="200" height="120"/>
+  <text class="h" x="355" y="130">2. 资源使用</text>
+  <text class="t" x="355" y="155">对象生命周期内</text>
+  <text class="t" x="355" y="175">- 读写文件</text>
+  <text class="t" x="355" y="195">- 使用内存</text>
+
+  <path class="arrow" d="M 525 155 L 605 155"/>
+
+  <rect class="release" x="610" y="95" width="200" height="120"/>
+  <text class="h" x="640" y="130">3. 资源释放</text>
+  <text class="t" x="640" y="155">析构函数中释放</text>
+  <text class="t" x="640" y="175">- 关闭文件</text>
+  <text class="t" x="640" y="195">- 释放内存</text>
+
+  <rect class="exception" x="325" y="240" width="200" height="100"/>
+  <text class="h" x="355" y="270">异常路径</text>
+  <text class="t" x="355" y="295">即使抛出异常</text>
+  <text class="t" x="355" y="315">析构函数仍会被调用</text>
+  <text class="t" x="355" y="335">资源自动释放</text>
+
+  <path class="arrow" d="M 425 240 L 425 220" stroke-dasharray="5,5"/>
+
+  <rect class="box" x="40" y="370" width="770" height="100"/>
+  <text class="h" x="70" y="405">RAII 的优势</text>
+  <text class="t" x="70" y="430">- 异常安全：异常发生时资源也能释放</text>
+  <text class="t" x="70" y="450">- 零开销：编译期确定，运行时无额外成本</text>
+  <text class="t" x="70" y="470">- 自动化：无需手动管理，减少错误</text>
+</svg>

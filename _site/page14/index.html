@@ -59,6 +59,8 @@
   <link rel="prev" href="http://localhost:4000/page13/">
 
 
+  <link rel="next" href="http://localhost:4000/page15/">
+
 
 
 
@@ -385,6 +387,19 @@
       
     </li>
   
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -503,6 +518,80 @@
       
 
       
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics/" class=""><span class="nav__sub-title">存储</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/" class=""><span class="nav__sub-title">论文笔记</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-foundations/" class=""><span class="nav__sub-title">计算机基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp/" class=""><span class="nav__sub-title">CPP</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
     </li>
   
 </ul>
@@ -530,7 +619,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="14"
+    data-total-pages="15"
     data-current-page="14"
   
 >
@@ -557,7 +646,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-network-note-006-http-2/" rel="permalink">网络笔记：HTTP/2：多路复用与队头阻塞
+        <a href="/cs-network-note-055-tls/" rel="permalink">网络笔记：TLS 握手：延迟优化与会话复用
 </a>
       
     </h2>
@@ -574,12 +663,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-01-01T00:00:00+08:00">January 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-03-01T00:00:00+08:00">March 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>HTTP/2 解决的是 HTTP/1.1 的两个痛点：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「TLS 握手：延迟优化与会话复用」做一次工程化梳理：先把 TLS 在做什么说清楚，再解释握手为什么会慢、怎么把连接“复用起来”，最后给一套排障顺序。</p>
 
 </p>
     
@@ -605,7 +694,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs/architecture/cpu-cache-and-locality/" rel="permalink">组成（1）：CPU Cache 与局部性
+        <a href="/cs-arch-note-042-cache-line/" rel="permalink">计算机组成笔记：Cache line：伪共享与性能抖动
 </a>
       
     </h2>
@@ -622,12 +711,156 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-01-01T00:00:00+08:00">January 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-03-01T00:00:00+08:00">March 01, 2019</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇只讲一件事：<strong>为什么“局部性”几乎决定了性能上限</strong>。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：Cache line：伪共享与性能抖动」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cs/os/virtual-memory-page-table/" rel="permalink">OS（2）：虚拟内存与页表
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-02-01T00:00:00+08:00">February 01, 2019</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>虚拟内存（Virtual Memory）是现代操作系统的“地基”。这篇只讲最关键的三件事：<strong>为什么要虚拟内存、页表在干什么、缺页异常意味着什么</strong>。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cs-network-note-013-tcp-rto-fast-retransmit/" rel="permalink">网络笔记：TCP 重传：RTO 与 fast retransmit
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-02-01T00:00:00+08:00">February 01, 2019</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cs/architecture/branch-prediction-and-pipeline/" rel="permalink">组成（2）：分支预测与流水线
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-02-01T00:00:00+08:00">February 01, 2019</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>现代 CPU 会通过流水线把一条指令拆成多个阶段并行执行。分支（if/else）会让流水线面临“走哪条路”的不确定性，因此引入 <strong>分支预测</strong> 来降低停顿。</p>
 
 </p>
     
@@ -689,17 +922,21 @@
         <li><a href="/page13/">13</a></li>
       
     
-
-    
-    
-
-    
-      <li><a href="#" class="disabled current">14</a></li>
+      
+        <li><a href="/page14/" class="disabled current">14</a></li>
+      
     
 
     
     
-      <li><a href="#" class="disabled"><span aria-hidden="true">下一页</span></a></li>
+
+    
+      <li><a href="/page15/">15</a></li>
+    
+
+    
+    
+      <li><a href="/page15/">下一页</a></li>
     
   </ul>
 </nav>

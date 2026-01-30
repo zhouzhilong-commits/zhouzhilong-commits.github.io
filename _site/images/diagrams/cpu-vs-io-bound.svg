@@ -1,16 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 280">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
       .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
       .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
-      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .cpu{fill:#fff3e0;stroke:#f57c00;stroke-width:2;rx:12}
+      .io{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .lock{fill:#fce4ec;stroke:#c2185b;stroke-width:2;rx:12}
     </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
   </defs>
-  <text class="title" x="40" y="46">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</text>
-  <text class="muted" x="40" y="72">（占位图已替换为固定命名 SVG，后续可继续迭代为更详细的图）</text>
-  <rect class="box" x="40" y="95" width="900" height="150"/>
-  <text class="t" x="70" y="140">- 语义/模型：把问题说清楚</text>
-  <text class="t" x="70" y="170">- 观测信号：哪些指标能验证你的推断</text>
-  <text class="t" x="70" y="200">- 排障顺序：先定位瓶颈，再做调整</text>
+
+  <text class="title" x="40" y="42">RocksDB 性能瓶颈：CPU vs IO vs 锁</text>
+  <text class="muted" x="40" y="66">压缩/校验会改变瓶颈类型：用 CPU 换 IO，但需要根据设备特性选择策略。</text>
+
+  <rect class="cpu" x="40" y="95" width="280" height="280"/>
+  <text class="h" x="70" y="130">CPU-bound</text>
+  <text class="t" x="70" y="155">信号：</text>
+  <text class="t" x="90" y="178">- CPU 利用率高（per-core）</text>
+  <text class="t" x="90" y="198">- IPC 低 / cache miss 高</text>
+  <text class="t" x="90" y="218">- profile 中压缩/校验占比高</text>
+  <text class="t" x="70" y="250">诱因：</text>
+  <text class="t" x="90" y="273">- 压缩算法过重</text>
+  <text class="t" x="90" y="293">- checksum/verify 开销</text>
+  <text class="t" x="90" y="313">- 小 IO + 高并发</text>
+  <text class="t" x="90" y="333">- NVMe 场景常见</text>
+
+  <rect class="io" x="340" y="95" width="280" height="280"/>
+  <text class="h" x="370" y="130">IO-bound</text>
+  <text class="t" x="370" y="155">信号：</text>
+  <text class="t" x="390" y="178">- IO 延迟分位数抬头</text>
+  <text class="t" x="390" y="198">- 队列化特征明显</text>
+  <text class="t" x="390" y="218">- compaction backlog 上升</text>
+  <text class="t" x="370" y="250">诱因：</text>
+  <text class="t" x="390" y="273">- 设备抖动</text>
+  <text class="t" x="390" y="293">- 后台任务抢占</text>
+  <text class="t" x="390" y="313">- 近满盘 GC 上升</text>
+  <text class="t" x="390" y="333">- SATA/远端盘常见</text>
+
+  <rect class="lock" x="640" y="95" width="280" height="280"/>
+  <text class="h" x="670" y="130">锁/同步</text>
+  <text class="t" x="670" y="155">信号：</text>
+  <text class="t" x="690" y="178">- CPU 未满但吞吐受限</text>
+  <text class="t" x="690" y="198">- profile 中 lock 占比高</text>
+  <text class="t" x="690" y="218">- 增加线程数反而更慢</text>
+  <text class="t" x="670" y="250">诱因：</text>
+  <text class="t" x="690" y="273">- 热点列族/热点 key</text>
+  <text class="t" x="690" y="293">- group commit 竞争</text>
+  <text class="t" x="690" y="313">- 写入路径队列化</text>
+
+  <rect class="box" x="40" y="395" width="880" height="50"/>
+  <text class="h" x="70" y="425">排障顺序：先分桶（CPU/IO/锁）→ 再细化（具体指标）→ 最小 A/B 验证</text>
 </svg>

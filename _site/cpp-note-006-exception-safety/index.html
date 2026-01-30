@@ -1,0 +1,1209 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：异常安全与异常规范 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：异常安全与异常规范">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-006-exception-safety/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-006-exception-safety/">
+
+
+
+  <meta property="og:description" content="异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-06-30T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class="active"><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：异常安全与异常规范">
+    <meta itemprop="description" content="异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。">
+    <meta itemprop="datePublished" content="June 30, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：异常安全与异常规范
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-30T00:00:00+08:00">June 30, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。</p>
+
+<p><img src="/images/diagrams/cpp-exception-safety-levels.svg" alt="异常安全的三个级别：基本保证、强保证、不抛出保证" /></p>
+
+<h2 id="1-异常安全保证的三个级别">1. 异常安全保证的三个级别</h2>
+
+<h3 id="11-基本保证basic-guarantee">1.1 基本保证（Basic Guarantee）</h3>
+
+<p><strong>定义</strong>：操作失败后，对象处于有效但不确定的状态。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Vector</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">capacity_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">push_back</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">size_</span> <span class="o">&gt;=</span> <span class="n">capacity_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">resize</span><span class="p">();</span>  <span class="c1">// 可能抛出异常</span>
+        <span class="p">}</span>
+        <span class="n">data_</span><span class="p">[</span><span class="n">size_</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>  <span class="c1">// 如果这里抛出异常，对象可能处于不一致状态</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>对象仍然有效，可以安全析构</li>
+  <li>对象的状态不确定，可能部分修改</li>
+  <li>程序可以继续运行，但需要恢复状态</li>
+</ul>
+
+<h3 id="12-强保证strong-guarantee">1.2 强保证（Strong Guarantee）</h3>
+
+<p><strong>定义</strong>：操作要么完全成功，要么完全失败（事务语义）。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Vector</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">push_back</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 强保证实现：先准备，再提交</span>
+        <span class="k">auto</span> <span class="n">new_data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="p">[</span><span class="n">capacity_</span> <span class="o">*</span> <span class="mi">2</span><span class="p">];</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">data_</span> <span class="o">+</span> <span class="n">size_</span><span class="p">,</span> <span class="n">new_data</span><span class="p">);</span>
+        <span class="n">new_data</span><span class="p">[</span><span class="n">size_</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>  <span class="c1">// 如果这里抛出异常，原对象不变</span>
+        
+        <span class="c1">// 提交：原子性操作</span>
+        <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>
+        <span class="n">data_</span> <span class="o">=</span> <span class="n">new_data</span><span class="p">;</span>
+        <span class="n">size_</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">capacity_</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>操作具有原子性：要么全部成功，要么全部失败</li>
+  <li>失败时对象状态完全不变</li>
+  <li>实现成本较高，需要额外的资源或备份</li>
+</ul>
+
+<h3 id="13-不抛出保证no-throw-guarantee">1.3 不抛出保证（No-throw Guarantee）</h3>
+
+<p><strong>定义</strong>：操作保证不会抛出异常。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Vector</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 不抛出保证</span>
+    <span class="o">~</span><span class="n">Vector</span><span class="p">()</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>  <span class="c1">// delete 不会抛出异常</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 移动操作应该不抛出</span>
+    <span class="n">Vector</span><span class="p">(</span><span class="n">Vector</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span>
+        <span class="o">:</span> <span class="n">data_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">size_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">capacity_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">capacity_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">capacity_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>操作保证不会抛出异常</li>
+  <li>适用于析构函数、移动操作、swap 等</li>
+  <li>标记为 <code class="language-plaintext highlighter-rouge">noexcept</code> 让编译器优化</li>
+</ul>
+
+<h2 id="2-raii-与异常安全">2. RAII 与异常安全</h2>
+
+<h3 id="21-raii-是实现异常安全的基础">2.1 RAII 是实现异常安全的基础</h3>
+
+<p>RAII 通过对象的生命周期自动管理资源，是实现异常安全的关键：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 不安全：手动管理资源</span>
+<span class="kt">void</span> <span class="nf">unsafe_function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Resource</span><span class="o">*</span> <span class="n">r</span> <span class="o">=</span> <span class="n">acquire_resource</span><span class="p">();</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>  <span class="c1">// 如果这里抛出异常，资源泄漏</span>
+    <span class="n">release_resource</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 安全：RAII 自动管理</span>
+<span class="kt">void</span> <span class="n">safe_function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">acquire_resource</span><span class="p">();</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>  <span class="c1">// 即使抛出异常，r 的析构函数也会释放资源</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="22-异常安全的资源管理">2.2 异常安全的资源管理</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">DatabaseTransaction</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">DatabaseConnection</span><span class="o">&amp;</span> <span class="n">db_</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">committed_</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">DatabaseTransaction</span><span class="p">(</span><span class="n">DatabaseConnection</span><span class="o">&amp;</span> <span class="n">db</span><span class="p">)</span> <span class="o">:</span> <span class="n">db_</span><span class="p">(</span><span class="n">db</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">db_</span><span class="p">.</span><span class="n">begin_transaction</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">commit</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">db_</span><span class="p">.</span><span class="n">commit</span><span class="p">();</span>
+        <span class="n">committed_</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="o">~</span><span class="n">DatabaseTransaction</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">committed_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">db_</span><span class="p">.</span><span class="n">rollback</span><span class="p">();</span>  <span class="c1">// 异常时自动回滚</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 使用</span>
+<span class="kt">void</span> <span class="n">process_transaction</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">DatabaseTransaction</span> <span class="n">txn</span><span class="p">(</span><span class="n">db</span><span class="p">);</span>
+    <span class="c1">// 操作数据库</span>
+    <span class="n">txn</span><span class="p">.</span><span class="n">commit</span><span class="p">();</span>  <span class="c1">// 如果这里抛出异常，自动回滚</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="3-异常规范exception-specification">3. 异常规范（Exception Specification）</h2>
+
+<h3 id="31-c98-风格的异常规范已废弃">3.1 C++98 风格的异常规范（已废弃）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// C++98 风格（已废弃）</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">throw</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>      <span class="c1">// 只能抛出 int</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">throw</span><span class="p">();</span>         <span class="c1">// 不抛出异常</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">throw</span><span class="p">(...);</span>      <span class="c1">// 可以抛出任何异常</span>
+
+<span class="c1">// 问题：运行时检查，性能开销大，容易出错</span>
+</code></pre></div></div>
+
+<p><strong>问题</strong>：</p>
+<ul>
+  <li>运行时检查，性能开销大</li>
+  <li>容易出错，违反规范时调用 <code class="language-plaintext highlighter-rouge">std::unexpected()</code></li>
+  <li>C++11 已废弃，C++17 完全移除</li>
+</ul>
+
+<h3 id="32-c11-noexcept">3.2 C++11 noexcept</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// C++11 noexcept</span>
+<span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>           <span class="c1">// 不抛出异常</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>     <span class="c1">// 等价于 noexcept</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">(</span><span class="nb">false</span><span class="p">);</span>    <span class="c1">// 可能抛出异常</span>
+
+<span class="c1">// 条件 noexcept</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">(</span><span class="k">noexcept</span><span class="p">(</span><span class="n">other_func</span><span class="p">()));</span>  <span class="c1">// 根据 other_func 决定</span>
+</code></pre></div></div>
+
+<p><strong>特点</strong>：</p>
+<ul>
+  <li>编译期检查，无运行时开销</li>
+  <li>违反时调用 <code class="language-plaintext highlighter-rouge">std::terminate()</code>（程序终止）</li>
+  <li>让编译器优化：noexcept 函数可以更激进地优化</li>
+</ul>
+
+<h3 id="33-noexcept-的优化效果">3.3 noexcept 的优化效果</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 标准库容器的优化</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">vector_reallocate</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_nothrow_move_constructible_v</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 使用移动构造（更快）</span>
+        <span class="n">new_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">old_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// 回退到拷贝构造（保证强异常安全）</span>
+        <span class="n">new_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_storage</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>关键点</strong>：如果移动操作可能抛出异常，标准库会回退到拷贝操作，保证强异常安全。</p>
+
+<h2 id="4-移动操作与-noexcept">4. 移动操作与 noexcept</h2>
+
+<h3 id="41-为什么移动操作需要-noexcept">4.1 为什么移动操作需要 noexcept</h3>
+
+<p>标准库容器在重新分配内存时，如果移动操作可能抛出异常，会回退到拷贝操作：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 移动操作不标记 noexcept</span>
+<span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">MyClass</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 没有 noexcept</span>
+        <span class="c1">// 移动实现</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="c1">// 重新分配时，使用拷贝构造而非移动构造（性能损失）</span>
+</code></pre></div></div>
+
+<p><strong>解决方案</strong>：移动操作标记 <code class="language-plaintext highlighter-rouge">noexcept</code>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">MyClass</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>  <span class="c1">// 标记 noexcept</span>
+        <span class="c1">// 移动实现</span>
+    <span class="p">}</span>
+    
+    <span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="c1">// 移动赋值实现</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="c1">// 重新分配时，使用移动构造（性能最优）</span>
+</code></pre></div></div>
+
+<h3 id="42-移动操作的异常安全">4.2 移动操作的异常安全</h3>
+
+<p>移动操作应该实现基本异常安全：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyString</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">char</span><span class="o">*</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">MyString</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span>
+        <span class="o">:</span> <span class="n">data_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">size_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 移动操作不应该失败（基本操作）</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="n">MyString</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyString</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>  <span class="c1">// 不会抛出异常</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">;</span>
+            <span class="n">size_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="5-异常安全的实现技巧">5. 异常安全的实现技巧</h2>
+
+<h3 id="51-先修改副本再交换copy-and-swap">5.1 先修改副本，再交换（Copy-and-Swap）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">modify</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">new_data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 强保证：先修改副本，再交换</span>
+        <span class="k">auto</span> <span class="n">backup</span> <span class="o">=</span> <span class="n">data_</span><span class="p">;</span>  <span class="c1">// 备份</span>
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">new_data</span><span class="p">;</span>  <span class="c1">// 可能抛出异常</span>
+            <span class="c1">// 成功：data_ 已更新</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+            <span class="c1">// 失败：data_ 保持原状（已自动保持）</span>
+            <span class="k">throw</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 或使用 swap（更高效）</span>
+    <span class="kt">void</span> <span class="n">modify_optimized</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">new_data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">temp</span> <span class="o">=</span> <span class="n">new_data</span><span class="p">;</span>  <span class="c1">// 可能抛出异常</span>
+        <span class="n">data_</span><span class="p">.</span><span class="n">swap</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>  <span class="c1">// swap 不会抛出异常</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="52-使用智能指针">5.2 使用智能指针</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ResourceManager</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">resource_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">replace_resource</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">new_resource</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 强保证：先准备新资源，再替换</span>
+        <span class="k">auto</span> <span class="n">old_resource</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">resource_</span><span class="p">);</span>
+        <span class="n">resource_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">new_resource</span><span class="p">);</span>  <span class="c1">// 如果这里抛出异常，old_resource 仍然有效</span>
+        <span class="c1">// 成功：old_resource 自动析构</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="53-事务性操作">5.3 事务性操作</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">BankAccount</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span> <span class="n">balance_</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">transfer</span><span class="p">(</span><span class="n">BankAccount</span><span class="o">&amp;</span> <span class="n">to</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 强保证：要么全部成功，要么全部失败</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">balance_</span> <span class="o">&lt;</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"Insufficient funds"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">balance_</span> <span class="o">-=</span> <span class="n">amount</span><span class="p">;</span>  <span class="c1">// 如果这里抛出异常，状态不一致</span>
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="n">to</span><span class="p">.</span><span class="n">balance_</span> <span class="o">+=</span> <span class="n">amount</span><span class="p">;</span>  <span class="c1">// 如果这里抛出异常，需要回滚</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+            <span class="n">balance_</span> <span class="o">+=</span> <span class="n">amount</span><span class="p">;</span>  <span class="c1">// 回滚</span>
+            <span class="k">throw</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="6-析构函数与异常">6. 析构函数与异常</h2>
+
+<h3 id="61-析构函数不应该抛出异常">6.1 析构函数不应该抛出异常</h3>
+
+<p>析构函数应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，避免在异常处理过程中抛出新异常：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Resource</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="o">~</span><span class="n">Resource</span><span class="p">()</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="n">cleanup</span><span class="p">();</span>  <span class="c1">// 可能抛出异常</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+            <span class="c1">// 记录日志，但不抛出</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"Error cleaning up resource</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+            <span class="c1">// 如果这里抛出异常，程序可能终止</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>原因</strong>：</p>
+<ul>
+  <li>如果析构函数在异常处理过程中抛出异常，程序会调用 <code class="language-plaintext highlighter-rouge">std::terminate()</code></li>
+  <li>析构函数应该总是成功完成清理</li>
+</ul>
+
+<h3 id="62-异常处理中的析构">6.2 异常处理中的析构</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Resource</span> <span class="n">r</span><span class="p">;</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">risky_operation</span><span class="p">();</span>  <span class="c1">// 可能抛出异常</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="c1">// r 的析构函数会被调用</span>
+        <span class="c1">// 如果析构函数抛出异常，程序终止</span>
+        <span class="k">throw</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// r 正常析构</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="7-异常安全与性能">7. 异常安全与性能</h2>
+
+<h3 id="71-异常安全的性能成本">7.1 异常安全的性能成本</h3>
+
+<p>实现异常安全可能需要额外的资源：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 强保证：需要备份</span>
+<span class="kt">void</span> <span class="nf">strong_guarantee</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">backup</span> <span class="o">=</span> <span class="n">data_</span><span class="p">;</span>  <span class="c1">// 额外的内存和时间</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">modify</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="c1">// 回滚</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 基本保证：不需要备份</span>
+<span class="kt">void</span> <span class="n">basic_guarantee</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">modify</span><span class="p">();</span>  <span class="c1">// 可能部分修改</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="72-性能优化建议">7.2 性能优化建议</h3>
+
+<ol>
+  <li><strong>优先使用移动语义</strong>：移动操作通常比拷贝快</li>
+  <li><strong>使用 swap</strong>：swap 操作通常不抛出异常，且高效</li>
+  <li><strong>避免不必要的备份</strong>：只在需要强保证时备份</li>
+  <li><strong>标记 noexcept</strong>：让编译器优化</li>
+</ol>
+
+<h2 id="8-异常安全的实际应用">8. 异常安全的实际应用</h2>
+
+<h3 id="81-标准库的异常安全">8.1 标准库的异常安全</h3>
+
+<p>标准库容器提供不同级别的异常安全：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+
+<span class="c1">// push_back：强保证（如果元素拷贝不抛出异常）</span>
+<span class="n">v</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>  <span class="c1">// 要么成功添加，要么 v 不变</span>
+
+<span class="c1">// insert：基本保证</span>
+<span class="n">v</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>  <span class="c1">// 可能部分插入</span>
+
+<span class="c1">// clear：不抛出保证</span>
+<span class="n">v</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>  <span class="c1">// 不会抛出异常</span>
+</code></pre></div></div>
+
+<h3 id="82-自定义类的异常安全">8.2 自定义类的异常安全</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">SafeVector</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">capacity_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// push_back：强保证</span>
+    <span class="kt">void</span> <span class="n">push_back</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">size_</span> <span class="o">&gt;=</span> <span class="n">capacity_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 先分配新内存</span>
+            <span class="k">auto</span> <span class="n">new_data</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">capacity_</span> <span class="o">*</span> <span class="mi">2</span><span class="p">);</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">data_</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span> <span class="n">data_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="n">size_</span><span class="p">,</span> <span class="n">new_data</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+            
+            <span class="c1">// 再更新（原子性操作）</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">new_data</span><span class="p">);</span>
+            <span class="n">capacity_</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">data_</span><span class="p">[</span><span class="n">size_</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="9-异常安全的测试">9. 异常安全的测试</h2>
+
+<h3 id="91-测试异常安全">9.1 测试异常安全</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 测试强保证</span>
+<span class="kt">void</span> <span class="nf">test_strong_guarantee</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">MyClass</span> <span class="n">obj</span><span class="p">(</span><span class="n">initial_state</span><span class="p">);</span>
+    <span class="k">auto</span> <span class="n">backup</span> <span class="o">=</span> <span class="n">obj</span><span class="p">.</span><span class="n">get_state</span><span class="p">();</span>
+    
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">obj</span><span class="p">.</span><span class="n">risky_operation</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="n">assert</span><span class="p">(</span><span class="n">obj</span><span class="p">.</span><span class="n">get_state</span><span class="p">()</span> <span class="o">==</span> <span class="n">backup</span><span class="p">);</span>  <span class="c1">// 状态应该不变</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 测试基本保证</span>
+<span class="kt">void</span> <span class="n">test_basic_guarantee</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">MyClass</span> <span class="n">obj</span><span class="p">(</span><span class="n">initial_state</span><span class="p">);</span>
+    
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">obj</span><span class="p">.</span><span class="n">risky_operation</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="n">assert</span><span class="p">(</span><span class="n">obj</span><span class="p">.</span><span class="n">is_valid</span><span class="p">());</span>  <span class="c1">// 对象应该仍然有效</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="92-异常注入测试">9.2 异常注入测试</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 使用异常注入测试异常安全</span>
+<span class="k">class</span> <span class="nc">TestException</span> <span class="p">{};</span>
+
+<span class="kt">void</span> <span class="n">test_with_exception_injection</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">throw_count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="k">auto</span> <span class="n">risky_op</span> <span class="o">=</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">++</span><span class="n">throw_count</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">throw</span> <span class="n">TestException</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+    
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">operation_with_exceptions</span><span class="p">(</span><span class="n">risky_op</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">TestException</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 验证异常安全</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="10-工程实践建议">10. 工程实践建议</h2>
+
+<h3 id="101-异常安全检查清单">10.1 异常安全检查清单</h3>
+
+<ol>
+  <li><strong>所有资源都用 RAII 管理</strong>：确保异常时资源释放</li>
+  <li><strong>析构函数标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：避免异常传播</li>
+  <li><strong>移动操作标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：优化标准库容器性能</li>
+  <li><strong>明确异常安全级别</strong>：文档说明每个操作的异常安全保证</li>
+  <li><strong>测试异常安全</strong>：编写异常注入测试</li>
+</ol>
+
+<h3 id="102-性能优化建议">10.2 性能优化建议</h3>
+
+<ul>
+  <li><strong>优先使用移动语义</strong>：移动通常比拷贝快</li>
+  <li><strong>使用 swap 实现强保证</strong>：swap 通常不抛出且高效</li>
+  <li><strong>避免不必要的备份</strong>：只在需要强保证时备份</li>
+  <li><strong>标记 noexcept</strong>：让编译器优化</li>
+</ul>
+
+<h3 id="103-代码审查要点">10.3 代码审查要点</h3>
+
+<ul>
+  <li><strong>检查资源管理</strong>：所有资源都用 RAII 管理</li>
+  <li><strong>检查 noexcept</strong>：析构函数和移动操作应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code></li>
+  <li><strong>检查异常安全级别</strong>：文档说明每个操作的保证级别</li>
+  <li><strong>检查异常处理</strong>：确保异常被正确处理</li>
+</ul>
+
+<h2 id="11-小结">11. 小结</h2>
+
+<p>异常安全是现代 C++ 编程的重要原则，它确保程序在异常发生时仍能保持一致性。通过 RAII 和智能指针，可以自然地实现异常安全的代码。</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li>异常安全有三个级别：基本保证、强保证、不抛出保证</li>
+  <li>RAII 是实现异常安全的基础机制</li>
+  <li>析构函数应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，避免异常传播</li>
+  <li>移动操作应该标记 <code class="language-plaintext highlighter-rouge">noexcept</code>，优化标准库容器性能</li>
+  <li>使用智能指针和 RAII 类自动管理资源</li>
+  <li>先修改副本再交换，实现强保证</li>
+  <li>理解异常安全是写出健壮 C++ 代码的关键</li>
+</ul>
+
+<p>掌握异常安全的原则和实践，可以写出更安全、更健壮的 C++ 代码。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+
