@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">读放大（RA）如何被 Bloom + Cache 降下来（以 LSM/RocksDB 为例）</text>
+  <text class="muted" x="40" y="66">目标：少触碰文件、少读 block、少做随机 IO；把“负查/热点”挡在内存层。</text>
+
+  <rect class="box" x="40" y="105" width="160" height="80"/>
+  <text class="title" x="120" y="138" text-anchor="middle">Get(key)</text>
+  <text class="muted" x="120" y="162" text-anchor="middle">点查/读请求</text>
+
+  <path class="arrow" d="M 200 145 L 270 145"/>
+
+  <rect class="good" x="275" y="70" width="190" height="150"/>
+  <text class="title" x="370" y="102" text-anchor="middle">内存层</text>
+  <text class="text" x="370" y="132" text-anchor="middle">MemTable /</text>
+  <text class="text" x="370" y="154" text-anchor="middle">Block Cache</text>
+  <text class="muted" x="370" y="184" text-anchor="middle">命中：几乎 0 IO</text>
+
+  <path class="arrow" d="M 465 145 L 535 145"/>
+
+  <rect class="box" x="540" y="70" width="400" height="150"/>
+  <text class="title" x="740" y="102" text-anchor="middle">落盘层（SST files）</text>
+  <text class="text" x="740" y="132" text-anchor="middle">Bloom filter：先排除“不可能在此文件”</text>
+  <text class="text" x="740" y="154" text-anchor="middle">Index：定位目标 data block</text>
+  <text class="muted" x="740" y="184" text-anchor="middle">只读少量 block（理想：1 个）</text>
+
+  <rect class="box" x="40" y="255" width="900" height="80"/>
+  <text class="title" x="70" y="288">读放大的三个典型来源</text>
+  <text class="muted" x="70" y="313">文件数多（多层/多 run）｜负查多（没有 Bloom 或假阳性高）｜cache miss 多（工作集放不下/被 scan 污染）</text>
+</svg>
+

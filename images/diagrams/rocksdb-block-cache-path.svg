@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">RocksDB 读路径上的 Block Cache（抽象）</text>
+  <text class="muted" x="40" y="66">目标：把“频繁重复读的 SST block”留在内存，减少随机 IO 与解压/校验开销。</text>
+
+  <rect class="box" x="40" y="100" width="180" height="80"/>
+  <text class="title" x="130" y="132" text-anchor="middle">Get/Iterator</text>
+  <text class="muted" x="130" y="155" text-anchor="middle">用户读请求</text>
+
+  <path class="arrow" d="M 220 140 L 290 140"/>
+
+  <rect class="box" x="295" y="70" width="210" height="140"/>
+  <text class="title" x="400" y="102" text-anchor="middle">Block Cache</text>
+  <text class="text" x="400" y="132" text-anchor="middle">data/index/filter</text>
+  <text class="muted" x="400" y="156" text-anchor="middle">LRU / Shard / Charge</text>
+  <text class="muted" x="400" y="180" text-anchor="middle">命中 → 直接返回</text>
+
+  <path class="arrow" d="M 505 140 L 575 140"/>
+
+  <rect class="box" x="580" y="70" width="360" height="140"/>
+  <text class="title" x="760" y="102" text-anchor="middle">未命中：读取 SST</text>
+  <text class="text" x="760" y="132" text-anchor="middle">index → 找到 data block</text>
+  <text class="muted" x="760" y="156" text-anchor="middle">read (random IO) + checksum</text>
+  <text class="muted" x="760" y="180" text-anchor="middle">decompress（可选）→ 插入 cache</text>
+
+  <rect class="box" x="40" y="235" width="900" height="90"/>
+  <text class="title" x="70" y="268">命中率为什么“看起来高但还是慢”？</text>
+  <text class="muted" x="70" y="294">可能命中的是 index/filter，但 data block miss；或 block 太大导致 cache 驱逐频繁；或 CPU 被解压/校验吃掉。</text>
+</svg>
+

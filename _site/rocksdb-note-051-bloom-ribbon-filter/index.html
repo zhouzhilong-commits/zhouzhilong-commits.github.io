@@ -1,0 +1,761 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本">
+
+
+  <link rel="canonical" href="http://localhost:4000/rocksdb-note-051-bloom-ribbon-filter/">
+  <meta property="og:url" content="http://localhost:4000/rocksdb-note-051-bloom-ribbon-filter/">
+
+
+
+  <meta property="og:description" content="本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-03-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">RocksDB 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-1-write-path/" class=""><span class="nav__sub-title">RocksDB（1）：写入链路（WAL + MemTable）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-2-sst-and-read-path/" class=""><span class="nav__sub-title">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-009-block-cache/" class=""><span class="nav__sub-title">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" class="active"><span class="nav__sub-title">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" class=""><span class="nav__sub-title">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-002-writebatch-seq/" class=""><span class="nav__sub-title">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-016-cpu-io/" class=""><span class="nav__sub-title">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本">
+    <meta itemprop="description" content="本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="March 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/bloom-filter-sizing.svg" alt="RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本" /></p>
+<h2 id="1-先把问题说清楚bloomribbon-优化的是负查negative-lookup">1. 先把问题说清楚：Bloom/Ribbon 优化的是“负查”（negative lookup）</h2>
+
+<p>很多线上读放大并不是“读到了很多数据”，而是“读了很多<strong>本来就不存在</strong>的 key”。负查的典型白跑链路是：</p>
+
+<ol>
+  <li>cache miss（或根本没有 cache）</li>
+  <li>去 SST 查找：读 index/filter，甚至读 data block</li>
+  <li>最后发现 key 不存在</li>
+</ol>
+
+<p>Bloom/Ribbon 的工程语义就是：</p>
+
+<blockquote>
+  <p><strong>尽可能在不读 data block（甚至不读文件）的前提下，快速判断“这个 SST 一定没有这个 key”。</strong></p>
+</blockquote>
+
+<h2 id="2-三个关键量bpk假阳性负查占比">2. 三个关键量：bpk、假阳性、负查占比</h2>
+
+<h3 id="21-bits-per-keybpk你愿意用多少空间换少跑腿">2.1 bits-per-key（bpk）：你愿意用多少空间换少跑腿</h3>
+
+<p>bpk 越高：</p>
+
+<ul>
+  <li>filter 更大（占更多空间，构建也更重一点）</li>
+  <li>假阳性率通常更低（更少白跑）</li>
+</ul>
+
+<p>bpk 太低：</p>
+
+<ul>
+  <li>假阳性率上升</li>
+  <li>负查时仍会频繁触发无效 IO（尤其在 cache miss 时）</li>
+</ul>
+
+<h3 id="22-假阳性false-positivebloom-的唯一坏事">2.2 假阳性（false positive）：Bloom 的“唯一坏事”</h3>
+
+<p>Bloom 不会把存在的 key 判断为不存在；它唯一的坏事是 <strong>假阳性</strong>：把不存在的 key 误判为“可能存在”。</p>
+
+<p>假阳性的代价取决于读路径：</p>
+
+<ul>
+  <li>data block 多在 block cache：代价不大（多一次内存访问）</li>
+  <li>cache miss 需要读盘：代价很大（一次无效 IO）</li>
+</ul>
+
+<h3 id="23-负查占比bloom-值不值先看这个">2.3 负查占比：Bloom 值不值，先看这个</h3>
+
+<p>如果你的 workload 存在：</p>
+
+<ul>
+  <li>cache 穿透（不存在 key 的查询很多）</li>
+  <li>探测式读、过期 key、或上层业务的“先试试有没有”</li>
+</ul>
+
+<p>Bloom 往往非常值钱。反之负查占比很低时，收益会更依赖整体读路径与 cache 情况。</p>
+
+<h2 id="3-ribbon-filter概念层理解即可">3. Ribbon filter（概念层理解即可）</h2>
+
+<p>不同 filter 结构在空间/构建/查询上有不同权衡；工程上你可以先抓住不变的部分：</p>
+
+<ul>
+  <li>目标仍是降低负查的“白跑成本”</li>
+  <li>关注空间占用、构建开销、以及对读路径的实际收益</li>
+</ul>
+
+<h2 id="4-怎么验证-bloom-是否真的在帮你闭环">4. 怎么验证 Bloom 是否真的在帮你（闭环）</h2>
+
+<p>建议用“负查 → 白跑 IO”做闭环，而不是只看总体读延迟：</p>
+
+<ol>
+  <li><strong>统计负查占比</strong>：业务侧/埋点统计不存在 key 的比例</li>
+  <li><strong>看 filter 命中是否有效</strong>：负查时能否快速排除大部分 SST</li>
+  <li><strong>看白跑 IO 是否下降</strong>：cache miss 下的无效读盘是否减少</li>
+</ol>
+
+<h2 id="5-常见坑为什么我开了-bloom-还是慢">5. 常见坑：为什么我开了 Bloom 还是慢</h2>
+
+<ol>
+  <li><strong>负查占比不高</strong>：收益自然有限</li>
+  <li><strong>cache miss 太多</strong>：假阳性会更贵；甚至 filter 自己也不够热</li>
+  <li><strong>结构性读放大太大</strong>：文件数/层级太多，filter 也在为“查太多文件”付费</li>
+  <li><strong>写入高峰期波动</strong>：flush/compaction 重建与欠账会让读路径抖动</li>
+</ol>
+
+<h2 id="6-最小排障顺序">6. 最小排障顺序</h2>
+
+<ol>
+  <li><strong>先看负查占比</strong>：不存在 key 的比例是多少？</li>
+  <li><strong>看 filter 是否“在内存里且有效”</strong>：能否把 SST 直接排除？</li>
+  <li><strong>看 cache</strong>：block cache/page cache 是否让假阳性代价变小？</li>
+  <li><strong>最后看结构性读放大</strong>：文件数、层级、compaction backlog 是否在拖累读路径？</li>
+</ol>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

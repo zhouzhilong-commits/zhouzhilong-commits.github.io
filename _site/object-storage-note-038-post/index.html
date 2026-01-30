@@ -1,0 +1,729 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>对象存储笔记：分片上传与并行：大对象如何高吞吐 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="对象存储笔记：分片上传与并行：大对象如何高吞吐">
+
+
+  <link rel="canonical" href="http://localhost:4000/object-storage-note-038-post/">
+  <meta property="og:url" content="http://localhost:4000/object-storage-note-038-post/">
+
+
+
+  <meta property="og:description" content="本文围绕「对象存储笔记：分片上传与并行：大对象如何高吞吐」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-06-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">对象存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-1-core-concepts/" class=""><span class="nav__sub-title">对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-2-ec-vs-replication/" class=""><span class="nav__sub-title">对象存储（2）：纠删码（EC）与副本（Replication）取舍</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-024-ec/" class=""><span class="nav__sub-title">对象存储笔记：EC 与副本：延迟、带宽、修复成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-003-read-after-write-list/" class=""><span class="nav__sub-title">对象存储笔记：一致性模型：read-after-write 与 list 一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-010-post/" class=""><span class="nav__sub-title">对象存储笔记：元数据服务：对象索引与列目录</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-038-post/" class="active"><span class="nav__sub-title">对象存储笔记：分片上传与并行：大对象如何高吞吐</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-045-rpo-rto/" class=""><span class="nav__sub-title">对象存储笔记：多区域容灾：RPO/RTO 与复制链路</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-017-bucket-key-prefix/" class=""><span class="nav__sub-title">对象存储笔记：对象存储的命名空间：bucket、key、prefix 的含义</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-059-post/" class=""><span class="nav__sub-title">对象存储笔记：小对象与合并：小对象为什么更难</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-031-versioning/" class=""><span class="nav__sub-title">对象存储笔记：版本化（versioning）：覆盖写与回收策略</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="对象存储笔记：分片上传与并行：大对象如何高吞吐">
+    <meta itemprop="description" content="本文围绕「对象存储笔记：分片上传与并行：大对象如何高吞吐」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="June 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">对象存储笔记：分片上传与并行：大对象如何高吞吐
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「对象存储笔记：分片上传与并行：大对象如何高吞吐」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/note-generic-model-metrics.svg" alt="对象存储笔记：分片上传与并行：大对象如何高吞吐" /></p>
+<h2 id="1-先把语义模型说清楚">1. 先把语义/模型说清楚</h2>
+
+<ul>
+  <li>这件事的“成功”到底意味着什么？</li>
+  <li>哪些边界条件会让你看到反直觉现象？</li>
+</ul>
+
+<h2 id="2-你应该先看哪些指标">2. 你应该先看哪些指标</h2>
+
+<p>先找能证明因果的中间量（队列/欠账/命中率/重传率等），不要只看平均值。</p>
+
+<h2 id="3-最小排障顺序">3. 最小排障顺序</h2>
+
+<ol>
+  <li>定义承诺（语义）</li>
+  <li>验证事实（指标）</li>
+  <li>再做调整（参数/预算/架构）</li>
+</ol>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

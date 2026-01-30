@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">对象存储一致性：PUT/GET/LIST 的传播链路（为什么 LIST 更容易滞后）</text>
+  <text class="muted" x="40" y="66">对象内容（payload）与目录索引（prefix index）通常是两条链路：GET 走单 key 元数据，LIST 依赖索引聚合/异步更新。</text>
+
+  <rect class="box" x="40" y="105" width="200" height="70"/>
+  <text class="title" x="140" y="138" text-anchor="middle">Client</text>
+  <text class="muted" x="140" y="160" text-anchor="middle">PUT / GET / LIST</text>
+
+  <path class="arrow" d="M 240 140 L 320 140"/>
+
+  <rect class="good" x="325" y="85" width="260" height="110"/>
+  <text class="title" x="455" y="118" text-anchor="middle">Metadata Service</text>
+  <text class="muted" x="455" y="146" text-anchor="middle">key → location/version/etag</text>
+  <text class="muted" x="455" y="168" text-anchor="middle">GET 往往先命中这里</text>
+
+  <path class="arrow" d="M 585 140 L 665 140"/>
+
+  <rect class="good" x="670" y="85" width="270" height="110"/>
+  <text class="title" x="805" y="118" text-anchor="middle">Object Data Nodes</text>
+  <text class="muted" x="805" y="146" text-anchor="middle">payload 存储/复制</text>
+  <text class="muted" x="805" y="168" text-anchor="middle">PUT/GET 实际数据流</text>
+
+  <path class="arrow" d="M 455 195 L 455 250"/>
+
+  <rect class="warn" x="325" y="255" width="615" height="70"/>
+  <text class="title" x="632" y="288" text-anchor="middle">Prefix/Directory Index（LIST）</text>
+  <text class="muted" x="632" y="310" text-anchor="middle">prefix → keys（通常异步更新/跨分区聚合）→ “看不到/滞后”多发生在这里</text>
+</svg>

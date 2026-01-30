@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 320">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .line{stroke:#333;stroke-width:2}
+      .tick{stroke:#666;stroke-width:2}
+      .a{fill:#eaf2ff;stroke:#2c3e50;stroke-width:1.5;rx:8}
+      .b{fill:#f3fff5;stroke:#2ecc71;stroke-width:1.5;rx:8}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">group commit：把 N 次写的 fsync 合并成 1 次</text>
+  <text class="muted" x="40" y="66">收益：吞吐更高、平均更稳；代价：写入确认点变成“批次边界”，崩溃窗口由业务容忍度决定。</text>
+
+  <line class="line" x1="80" y1="110" x2="900" y2="110"/>
+  <text class="muted" x="80" y="95">时间</text>
+
+  <line class="tick" x1="220" y1="102" x2="220" y2="118"/>
+  <line class="tick" x1="360" y1="102" x2="360" y2="118"/>
+  <line class="tick" x1="500" y1="102" x2="500" y2="118"/>
+  <line class="tick" x1="640" y1="102" x2="640" y2="118"/>
+  <line class="tick" x1="780" y1="102" x2="780" y2="118"/>
+
+  <rect class="a" x="120" y="140" width="150" height="42"/>
+  <text class="text" x="195" y="168" text-anchor="middle">write #1</text>
+  <rect class="a" x="270" y="140" width="150" height="42"/>
+  <text class="text" x="345" y="168" text-anchor="middle">write #2</text>
+  <rect class="a" x="420" y="140" width="150" height="42"/>
+  <text class="text" x="495" y="168" text-anchor="middle">write #3</text>
+
+  <rect class="b" x="585" y="140" width="240" height="42"/>
+  <text class="text" x="705" y="168" text-anchor="middle">fsync（一次）</text>
+
+  <rect class="box" x="80" y="205" width="820" height="80"/>
+  <text class="title" x="110" y="238">如何理解“写成功”</text>
+  <text class="muted" x="110" y="262">ack after fsync：最稳但慢；ack before fsync：更快但有窗口；group commit 把窗口变得可控、可观测。</text>
+</svg>
+

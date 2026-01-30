@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Bloom Filter：如何用很小的内存挡住大量“负查”</text>
+  <text class="muted" x="40" y="66">关键变量：bits/key（bpk）越大 → 假阳性越低，但内存/IO 成本越高。</text>
+
+  <rect class="box" x="40" y="100" width="170" height="80"/>
+  <text class="title" x="125" y="132" text-anchor="middle">Get(key)</text>
+  <text class="muted" x="125" y="156" text-anchor="middle">可能不存在</text>
+
+  <path class="arrow" d="M 210 140 L 280 140"/>
+
+  <rect class="good" x="285" y="90" width="260" height="100"/>
+  <text class="title" x="415" y="122" text-anchor="middle">Bloom Filter</text>
+  <text class="text" x="415" y="150" text-anchor="middle">一定不存在 → 直接返回</text>
+  <text class="muted" x="415" y="174" text-anchor="middle">（省掉大量 SST/IO）</text>
+
+  <path class="arrow" d="M 545 140 L 615 140"/>
+
+  <rect class="warn" x="620" y="90" width="320" height="100"/>
+  <text class="title" x="780" y="122" text-anchor="middle">可能存在（含假阳性）</text>
+  <text class="text" x="780" y="150" text-anchor="middle">走 index → 读 data block</text>
+  <text class="muted" x="780" y="174" text-anchor="middle">假阳性越高 → 白跑越多</text>
+
+  <rect class="box" x="40" y="220" width="900" height="110"/>
+  <text class="title" x="70" y="252">参数如何理解（工程口径）</text>
+  <text class="text" x="70" y="282">- bits/key（bpk）↑ → 假阳性 p ↓（但 filter block 更大，占用内存/IO）</text>
+  <text class="text" x="70" y="306">- key 数量 n ↑（同样 bpk）→ p ↑（更容易“挤满”）</text>
+</svg>
+

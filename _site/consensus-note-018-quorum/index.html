@@ -1,0 +1,775 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>一致性笔记：Quorum 的直觉：读写多数派为什么能工作 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="一致性笔记：Quorum 的直觉：读写多数派为什么能工作">
+
+
+  <link rel="canonical" href="http://localhost:4000/consensus-note-018-quorum/">
+  <meta property="og:url" content="http://localhost:4000/consensus-note-018-quorum/">
+
+
+
+  <meta property="og:description" content="本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-03-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">分布式一致性系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-1-replication-basics/" class=""><span class="nav__sub-title">一致性（1）：从复制到一致性（Primary-Backup / Quorum）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-2-raft-intuition/" class=""><span class="nav__sub-title">一致性（2）：Raft 直觉（日志复制与提交）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-004-leader-lease/" class=""><span class="nav__sub-title">一致性笔记：Leader 选举：租约（lease）与心跳</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-018-quorum/" class="active"><span class="nav__sub-title">一致性笔记：Quorum 的直觉：读写多数派为什么能工作</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-011-post/" class=""><span class="nav__sub-title">一致性笔记：复制延迟：尾延迟如何影响提交点</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-032-post/" class=""><span class="nav__sub-title">一致性笔记：快照与日志截断：减少恢复时间</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-046-joint-consensus/" class=""><span class="nav__sub-title">一致性笔记：成员变更：joint consensus 的必要性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-053-matchindex/" class=""><span class="nav__sub-title">一致性笔记：日志复制：matchIndex 与提交规则</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-039-post/" class=""><span class="nav__sub-title">一致性笔记：线性一致性：从客户端视角理解</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/consensus-note-025-post/" class=""><span class="nav__sub-title">一致性笔记：脑裂：什么时候会发生，怎么避免</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="一致性笔记：Quorum 的直觉：读写多数派为什么能工作">
+    <meta itemprop="description" content="本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="March 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">一致性笔记：Quorum 的直觉：读写多数派为什么能工作
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/quorum-majority.svg" alt="一致性笔记：Quorum 的直觉：读写多数派为什么能工作" /></p>
+<h2 id="1-quorum-的意义在故障与不确定性里做出唯一决定">1. quorum 的意义：在故障与不确定性里做出“唯一决定”</h2>
+
+<p>分布式系统最难的不是“平时跑得快”，而是“出故障时别做错决定”。</p>
+
+<p>quorum（多数派）的核心价值是：</p>
+
+<ul>
+  <li><strong>避免双写/脑裂</strong>：同一时刻不允许两个“多数派”同时对外承诺成功</li>
+  <li><strong>允许部分故障仍可用</strong>：例如 3 副本允许坏 1 个仍能继续提供强语义（取决于读写路径）</li>
+</ul>
+
+<p>一句话：多数派是一种“仲裁机制”，让系统在网络分区/节点宕机时仍能保持安全性。</p>
+
+<h2 id="2-为什么多数派能工作交集intersection保证不会各说各话">2. 为什么多数派能工作：交集（intersection）保证“不会各说各话”</h2>
+
+<p>多数派集合有一个关键性质：</p>
+
+<blockquote>
+  <p>任意两个多数派一定有交集。</p>
+</blockquote>
+
+<p>交集意味着：如果写入需要多数派确认，那么后续任何“多数派读/多数派选主”一定能碰到至少一个知道这次写入的人（具体取决于算法实现）。</p>
+
+<p>这就是为什么多数派可以在不可靠网络里提供更强语义的直觉基础。</p>
+
+<h2 id="3-工程上的代价延迟与可用性是硬约束">3. 工程上的代价：延迟与可用性是硬约束</h2>
+
+<p>多数派不是免费的：</p>
+
+<ul>
+  <li><strong>写入确认延迟</strong>：至少要等到多数派返回（最慢的那条路径决定 P99）</li>
+  <li><strong>跨 AZ/跨 Region 更明显</strong>：RTT 拉长会把写入尾延迟直接抬高</li>
+  <li><strong>可用性门槛</strong>：丢失多数派时，强语义写入通常无法继续（系统必须选择“停写”或“降级语义”）</li>
+</ul>
+
+<h2 id="4-常见坑把quorum-成本当成了别的锅">4. 常见坑：把“quorum 成本”当成了别的锅</h2>
+
+<ul>
+  <li>平均 RTT 还行，但 <strong>P99 很差</strong>：多数派里的慢副本拖住确认点</li>
+  <li>机器没满，但写入变慢：其实是跨域/跨 AZ 的尾 RTT 把确认点抬高</li>
+  <li>频繁选主：心跳/超时没有匹配真实 RTT 分布，导致误判</li>
+</ul>
+
+<h2 id="5-你应该观测什么从最有用的开始">5. 你应该观测什么（从最有用的开始）</h2>
+
+<ul>
+  <li><strong>quorum 路径的延迟分布</strong>：写入一次需要等哪些节点？它们的 P99 是多少？</li>
+  <li><strong>慢副本比例与持续时间</strong>：慢是偶发还是长期？</li>
+  <li><strong>选主频率与原因</strong>：是否存在网络抖动/GC/IO 抢占导致心跳超时？</li>
+  <li><strong>跨 AZ/跨 Region 的 RTT 分布</strong>：不要只看平均，重点看尾部与抖动。</li>
+</ul>
+
+<h2 id="6-最小排障顺序">6. 最小排障顺序</h2>
+
+<ol>
+  <li><strong>先定位慢副本</strong>：网络 RTT、磁盘抖动、GC/CPU 抢占（慢副本=尾延迟放大器）</li>
+  <li><strong>再检查副本分布</strong>：是否把多数派路径拉长了（跨域设计是否符合目标）</li>
+  <li><strong>再看选主/超时参数</strong>：是否与真实 RTT 分布匹配（避免误判）</li>
+  <li><strong>最后才谈降级策略</strong>：当多数派不可用时，你要的是停写、还是弱一致/只读？</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>quorum 的本质是用“多数派交集”换来安全性；代价是把写入确认点绑定到多数派路径的尾延迟上。工程排障时，把注意力放在 <strong>“多数派路径的最慢一段”</strong>，往往比调参更有效。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">NVMe：多队列 + Submission/Completion 的并行模型</text>
+  <text class="muted" x="40" y="66">每个 CPU/线程可以绑定独立队列（SQ/CQ），减少锁竞争；完成通过 CQ + 中断/轮询返回。</text>
+
+  <rect class="box" x="40" y="95" width="270" height="230"/>
+  <text class="title" x="175" y="128" text-anchor="middle">Host（CPU）</text>
+  <text class="muted" x="70" y="156">App Thread A / Core 0</text>
+  <text class="muted" x="70" y="178">App Thread B / Core 1</text>
+  <text class="muted" x="70" y="200">...</text>
+  <rect class="good" x="70" y="220" width="210" height="42"/>
+  <text class="text" x="175" y="247" text-anchor="middle">提交 IO（doorbell）</text>
+
+  <path class="arrow" d="M 310 170 L 410 170"/>
+  <path class="arrow" d="M 310 250 L 410 250"/>
+
+  <rect class="box" x="415" y="95" width="260" height="230"/>
+  <text class="title" x="545" y="128" text-anchor="middle">NVMe Queues</text>
+  <rect class="good" x="445" y="150" width="200" height="55"/>
+  <text class="text" x="545" y="183" text-anchor="middle">SQ（Submission）× N</text>
+  <rect class="warn" x="445" y="225" width="200" height="55"/>
+  <text class="text" x="545" y="258" text-anchor="middle">CQ（Completion）× N</text>
+
+  <path class="arrow" d="M 675 205 L 765 205"/>
+
+  <rect class="box" x="770" y="95" width="170" height="230"/>
+  <text class="title" x="855" y="128" text-anchor="middle">Controller</text>
+  <text class="muted" x="855" y="156" text-anchor="middle">并行处理命令</text>
+  <text class="muted" x="855" y="176" text-anchor="middle">DMA / Doorbell</text>
+  <rect class="box" x="800" y="205" width="110" height="70"/>
+  <text class="text" x="855" y="235" text-anchor="middle">NAND</text>
+  <text class="muted" x="855" y="258" text-anchor="middle">内部并行</text>
+
+  <rect class="box" x="40" y="330" width="900" height="0"/>
+</svg>

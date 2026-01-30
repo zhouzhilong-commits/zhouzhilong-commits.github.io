@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">四层 vs 七层负载均衡：差别在“看不看得懂请求”</text>
+  <text class="muted" x="40" y="66">L4 看五元组/连接；L7 看 HTTP/gRPC 等应用协议，可按路径/Host/Header 做路由，但成本更高。</text>
+
+  <rect class="box" x="40" y="95" width="440" height="235"/>
+  <text class="title" x="260" y="130" text-anchor="middle">L4（传输层）</text>
+  <text class="h" x="70" y="165">看到什么</text>
+  <text class="t" x="70" y="190">- IP/Port/Protocol（五元组）</text>
+  <text class="t" x="70" y="212">- 连接状态（可选）</text>
+  <text class="h" x="70" y="245">常见能力</text>
+  <text class="t" x="70" y="270">- 高性能转发、NAT、健康检查</text>
+  <text class="t" x="70" y="292">- 一般不做内容路由/鉴权</text>
+
+  <rect class="box" x="500" y="95" width="440" height="235"/>
+  <text class="title" x="720" y="130" text-anchor="middle">L7（应用层）</text>
+  <text class="h" x="530" y="165">看到什么</text>
+  <text class="t" x="530" y="190">- HTTP Host/Path/Header/Cookie</text>
+  <text class="t" x="530" y="212">- gRPC method、请求体（可选）</text>
+  <text class="h" x="530" y="245">常见能力</text>
+  <text class="t" x="530" y="270">- 路由/灰度/限流/WAF/鉴权</text>
+  <text class="t" x="530" y="292">- TLS 终止、可观测性更强</text>
+</svg>
+

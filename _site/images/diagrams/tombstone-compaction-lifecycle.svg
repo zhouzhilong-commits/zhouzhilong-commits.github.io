@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">tombstone：删除不等于释放（以 LSM 为例）</text>
+  <text class="muted" x="40" y="66">删除=写入一个“删除标记”。真正回收空间，发生在 compaction 把旧版本合并淘汰之后。</text>
+
+  <rect class="box" x="40" y="110" width="160" height="70"/>
+  <text class="title" x="120" y="142" text-anchor="middle">Delete(key)</text>
+  <text class="muted" x="120" y="165" text-anchor="middle">写入 tombstone</text>
+
+  <path class="arrow" d="M 200 145 L 270 145"/>
+
+  <rect class="warn" x="275" y="95" width="220" height="100"/>
+  <text class="title" x="385" y="128" text-anchor="middle">立刻可见</text>
+  <text class="text" x="385" y="154" text-anchor="middle">读到 tombstone → 当作不存在</text>
+  <text class="muted" x="385" y="178" text-anchor="middle">（但空间未释放）</text>
+
+  <path class="arrow" d="M 495 145 L 565 145"/>
+
+  <rect class="warn" x="570" y="95" width="180" height="100"/>
+  <text class="title" x="660" y="128" text-anchor="middle">旧版本仍在</text>
+  <text class="text" x="660" y="154" text-anchor="middle">SST/层级里还占空间</text>
+  <text class="muted" x="660" y="178" text-anchor="middle">（写放大/空间放大）</text>
+
+  <path class="arrow" d="M 750 145 L 820 145"/>
+
+  <rect class="good" x="825" y="95" width="115" height="100"/>
+  <text class="title" x="882" y="128" text-anchor="middle">Compaction</text>
+  <text class="text" x="882" y="154" text-anchor="middle">淘汰旧版本</text>
+  <text class="muted" x="882" y="178" text-anchor="middle">回收空间</text>
+
+  <rect class="box" x="40" y="230" width="900" height="90"/>
+  <text class="title" x="70" y="262">为什么会“删了还涨盘”？</text>
+  <text class="muted" x="70" y="288">删除/覆盖多 + compaction 跟不上 → tombstone 堆积、旧版本滞留、空间回收延后。</text>
+</svg>
+

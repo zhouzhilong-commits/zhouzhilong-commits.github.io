@@ -207,6 +207,7 @@
     li {
       display: table-cell;
       vertical-align: middle;
+      position: relative;
 
       &:first-child {
         font-weight: bold;
@@ -305,6 +306,54 @@
         border-bottom: none;
       }
     }
+  }
+}
+
+/*
+   Masthead dropdown (desktop)
+   ========================================================================== */
+
+.masthead__submenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 14rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+
+  border: 1px solid $border-color;
+  border-radius: $border-radius;
+  background: rgba(#fff, 0.98);
+  box-shadow: 0 12px 30px rgba(#000, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  a, .masthead__dropdown-trigger {
+    display: block;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+  }
+
+  li {
+    display: block;
+    position: relative;
+  }
+
+  /* 2nd+ level submenu opens to the right */
+  .masthead__submenu {
+    top: 0;
+    left: 100%;
+    margin-left: 0.25rem;
+  }
+}
+
+@include breakpoint($large) {
+  .masthead__menu-item--dropdown:hover > .masthead__submenu,
+  .masthead__menu-item--dropdown:focus-within > .masthead__submenu {
+    display: block;
   }
 }
 

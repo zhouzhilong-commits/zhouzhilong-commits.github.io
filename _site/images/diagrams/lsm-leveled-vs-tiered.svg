@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .file{fill:#f7f7f7;stroke:#666;stroke-width:1.5;rx:8}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">LSM：Leveled vs Tiered（Universal）</text>
+  <text class="muted" x="40" y="66">核心区别：是否强制“底层不重叠”。Leveled 更稳读；Tiered 更少重写（WA 更低）。</text>
+
+  <rect class="box" x="40" y="95" width="440" height="235"/>
+  <text class="title" x="260" y="130" text-anchor="middle">Leveled</text>
+
+  <text class="h" x="70" y="165">结构</text>
+  <text class="t" x="70" y="190">- L1/L2… key-range 尽量不重叠（读更可控）</text>
+  <text class="t" x="70" y="212">- 为维持不重叠，需要更频繁 compaction</text>
+
+  <text class="h" x="70" y="245">倾向</text>
+  <text class="t" x="70" y="270">- RA 更低、更稳定</text>
+  <text class="t" x="70" y="292">- WA 更高（同一数据更常被重写）</text>
+
+  <rect class="box" x="500" y="95" width="440" height="235"/>
+  <text class="title" x="720" y="130" text-anchor="middle">Tiered / Universal</text>
+
+  <text class="h" x="530" y="165">结构</text>
+  <text class="t" x="530" y="190">- 多个 run 可以重叠（更像“攒批次”）</text>
+  <text class="t" x="530" y="212">- 合并更少、更大、更晚发生</text>
+
+  <text class="h" x="530" y="245">倾向</text>
+  <text class="t" x="530" y="270">- WA 更低（重写更少）</text>
+  <text class="t" x="530" y="292">- RA/空间/版本更难控（读要合并更多 run）</text>
+</svg>
+

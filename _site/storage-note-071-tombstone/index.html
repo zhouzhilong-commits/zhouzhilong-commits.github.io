@@ -1,0 +1,712 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>存储笔记：tombstone 与空间回收：为什么删除不等于释放 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="存储笔记：tombstone 与空间回收：为什么删除不等于释放">
+
+
+  <link rel="canonical" href="http://localhost:4000/storage-note-071-tombstone/">
+  <meta property="og:url" content="http://localhost:4000/storage-note-071-tombstone/">
+
+
+
+  <meta property="og:description" content="这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-11-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">存储基础系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-1-write-amplification/" class=""><span class="nav__sub-title">存储基础（1）：写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-2-read-amplification/" class=""><span class="nav__sub-title">存储基础（2）：读放大、布隆过滤器与缓存</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-3-lsm-and-compaction/" class=""><span class="nav__sub-title">存储基础（3）：LSM、Compaction 与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-4-wal-and-recovery/" class=""><span class="nav__sub-title">存储基础（4）：WAL、崩溃恢复与一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-5-btree-vs-lsm/" class=""><span class="nav__sub-title">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-001-ssd-ftl/" class=""><span class="nav__sub-title">存储笔记：SSD 写放大与 FTL：为什么随机写更贵</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-022-merge/" class=""><span class="nav__sub-title">存储笔记：写入合并（merge）与写扩散：从日志到段</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="存储笔记：tombstone 与空间回收：为什么删除不等于释放">
+    <meta itemprop="description" content="这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
+    <meta itemprop="datePublished" content="November 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">存储笔记：tombstone 与空间回收：为什么删除不等于释放
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+
+<p><img src="/images/diagrams/tombstone-compaction-lifecycle.svg" alt="tombstone 生命周期：删除可见 ≠ 空间回收" /></p>
+
+<h2 id="1-tombstone-是什么">1. tombstone 是什么</h2>
+
+<ul>
+  <li><strong>语义</strong>：对某个 key 写入一个“删除标记”，让读路径把它当作“不存在”。</li>
+  <li><strong>目的</strong>：在多层/多文件/多版本的系统里，删除需要一个“可合并的事实”，否则你很难在不扫描全量数据的情况下让删除生效。</li>
+</ul>
+
+<h2 id="2-为什么删了还占空间">2. 为什么“删了还占空间”</h2>
+
+<p>因为旧版本通常还在 SST/段文件里：</p>
+
+<ul>
+  <li>tombstone 只是覆盖在“更高层/更新的版本”上，让读看到删除</li>
+  <li>旧版本要等到 compaction 把它合并淘汰（或者 GC 回收）才会真正释放空间</li>
+</ul>
+
+<p>所以“删除多 + compaction 跟不上”时，你会观察到：<strong>盘持续增长、写放大上升、读放大也可能变差</strong>。</p>
+
+<h2 id="3-什么时候空间会真正回收">3. 什么时候空间会真正回收</h2>
+
+<p>一般需要满足：</p>
+
+<ul>
+  <li>tombstone 被 compaction 处理到足够“深”（到达能覆盖旧版本的层级/范围）</li>
+  <li>或者达到某些安全条件（例如没有更旧层还可能出现该 key 的版本）</li>
+</ul>
+
+<p>不同实现会有不同的“删标回收规则”，但共同点是：<strong>回收是异步的</strong>。</p>
+
+<h2 id="4-排查清单你该看什么">4. 排查清单（你该看什么）</h2>
+
+<ol>
+  <li><strong>删除比例</strong>：写入里 delete/overwrite 的占比是否变高？</li>
+  <li><strong>compaction backlog</strong>：pending bytes、L0 文件数、stall/throttle 是否上升？</li>
+  <li><strong>空间放大</strong>：实际磁盘占用 vs 逻辑数据量是否持续拉大？</li>
+  <li><strong>读放大信号</strong>：文件数/层数是否增加（导致读路径更复杂）？</li>
+</ol>
+
+<h2 id="5-小结">5. 小结</h2>
+
+<p>tombstone 让删除“立刻可见”，但空间回收取决于后台合并是否跟上。线上优化通常不是“多删”，而是<strong>让后台预算可控 + 合并策略匹配负载</strong>。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .m{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+    </style>
+  </defs>
+  <rect class="box" x="40" y="40" width="900" height="340"/>
+  <text class="title" x="70" y="85">日志复制：matchIndex 与提交规则</text>
+  <text class="m" x="70" y="115">（自动生成示意图：用于帮助理解本文的要点与因果关系）</text>
+  <text class="t" x="90" y="160">- 现象：延迟/吞吐/成本的哪一项先变差</text>
+  <text class="t" x="90" y="194">- 原因链：输入 → 关键路径 → 资源竞争/放大</text>
+  <text class="t" x="90" y="228">- 观测：命中率、触碰次数、backlog、资源水位</text>
+  <text class="t" x="90" y="262">- 动作：先保护尾延迟，再做结构性优化</text>
+</svg>

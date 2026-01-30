@@ -1,0 +1,784 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>网络（1）：TCP 可靠传输与拥塞控制直觉 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="网络（1）：TCP 可靠传输与拥塞控制直觉">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs/network/tcp-reliability-and-cc/">
+  <meta property="og:url" content="http://localhost:4000/cs/network/tcp-reliability-and-cc/">
+
+
+
+  <meta property="og:description" content="这篇目标：把 TCP 的两件事讲清楚——可靠传输与拥塞控制，并理解它们为什么是同一条链路上的两个侧面。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-07-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">计算机网络</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/tcp-reliability-and-cc/" class="active"><span class="nav__sub-title">网络（1）：TCP 可靠传输与拥塞控制直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/http-cache-and-cdn/" class=""><span class="nav__sub-title">网络（2）：HTTP 缓存与 CDN</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-006-http-2/" class=""><span class="nav__sub-title">网络笔记：HTTP/2：多路复用与队头阻塞</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-013-tcp-rto-fast-retransmit/" class=""><span class="nav__sub-title">网络笔记：TCP 重传：RTO 与 fast retransmit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-048-post/" class=""><span class="nav__sub-title">网络笔记：超时与重试：为什么会放大流量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-055-tls/" class=""><span class="nav__sub-title">网络笔记：TLS 握手：延迟优化与会话复用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-069-vs/" class=""><span class="nav__sub-title">网络笔记：负载均衡：四层 vs 七层</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-076-cubic-bbr/" class=""><span class="nav__sub-title">网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="网络（1）：TCP 可靠传输与拥塞控制直觉">
+    <meta itemprop="description" content="这篇目标：把 TCP 的两件事讲清楚——可靠传输与拥塞控制，并理解它们为什么是同一条链路上的两个侧面。">
+    <meta itemprop="datePublished" content="July 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">网络（1）：TCP 可靠传输与拥塞控制直觉
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-07-01T00:00:00+08:00">July 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇目标：把 TCP 的两件事讲清楚——<strong>可靠传输</strong>与<strong>拥塞控制</strong>，并理解它们为什么是同一条链路上的两个侧面。</p>
+
+<p><img src="/images/diagrams/tcp-reliability-congestion-window.svg" alt="TCP：可靠传输（ACK/重传）+ 拥塞控制（cwnd）如何一起决定吞吐与延迟" /></p>
+
+<h2 id="1-tcp-的可靠传输靠什么">1. TCP 的可靠传输靠什么</h2>
+
+<p>核心机制：</p>
+
+<ul>
+  <li><strong>序列号（seq）</strong>：数据按序编号</li>
+  <li><strong>确认（ACK）</strong>：接收端告诉发送端“收到到哪里了”</li>
+  <li><strong>重传</strong>：丢包/超时就重发（也可以基于重复 ACK 快速重传）</li>
+</ul>
+
+<p>所以“可靠”不是不丢包，而是：<strong>丢了也能被发现并补回来</strong>。</p>
+
+<h3 id="11-为什么少量丢包也会让-p99-很难看">1.1 为什么“少量丢包”也会让 P99 很难看</h3>
+
+<p>因为 TCP 是按序交付字节流：丢了中间一段，后面的数据即使到了，也要等重传补齐才能交付给上层。于是你看到的是：</p>
+
+<ul>
+  <li>平均 OK</li>
+  <li>但少量请求被“按序交付”拖成长尾</li>
+</ul>
+
+<p>这就是你在 HTTP/2、RPC 里经常看到的“同连接多路复用，丢包一起慢”的根因之一。</p>
+
+<h2 id="2-为什么需要拥塞控制">2. 为什么需要拥塞控制</h2>
+
+<p>如果发送端无限加速，会把网络里的队列塞满，导致：</p>
+
+<ul>
+  <li>排队延迟暴涨（bufferbloat）</li>
+  <li>丢包变多，重传变多</li>
+  <li>全链路吞吐反而下降</li>
+</ul>
+
+<p>拥塞控制就是在“尽量快”和“别把网络打爆”之间做动态平衡。</p>
+
+<h2 id="3-一个最有用的直觉窗口window是节流阀">3. 一个最有用的直觉：窗口（window）是节流阀</h2>
+
+<p>你可以把发送窗口理解成：</p>
+
+<ul>
+  <li><strong>对端能力（rwnd）</strong>：接收端来不来得及收</li>
+  <li><strong>网络能力（cwnd）</strong>：网络承不承受得住</li>
+</ul>
+
+<p>最终发送速率受两者共同限制。</p>
+
+<h3 id="31-关键结论吞吐由在途数据量决定">3.1 关键结论：吞吐由“在途数据量”决定</h3>
+
+<p>你可以用一句工程直觉理解吞吐上限：</p>
+
+<blockquote>
+  <p>吞吐 (\approx) 在途数据量 / RTT</p>
+</blockquote>
+
+<p>而“在途数据量”受窗口（min(rwnd, cwnd)）限制。</p>
+
+<h2 id="4-你在线上会遇到的-3-类问题以及它们分别像什么">4. 你在线上会遇到的 3 类问题（以及它们分别像什么）</h2>
+
+<h3 id="41-丢包主导重传多rto-多p99-像过山车">4.1 丢包主导：重传多、RTO 多、P99 像过山车</h3>
+
+<ul>
+  <li>dup ack / fast retransmit 上升</li>
+  <li>RTO 上升（最致命）</li>
+  <li>应用层超时/重试被触发，进一步放大流量</li>
+</ul>
+
+<h3 id="42-排队主导bufferbloat不怎么丢包但-rtt-被拉长">4.2 排队主导（bufferbloat）：不怎么丢包，但 RTT 被拉长</h3>
+
+<ul>
+  <li>RTT（尤其 P95/P99）显著高于最小 RTT</li>
+  <li>吞吐可能还行，但尾延迟很差</li>
+</ul>
+
+<h3 id="43-接收端主导rwnd-小应用读得慢">4.3 接收端主导：rwnd 小、应用读得慢</h3>
+
+<ul>
+  <li>receiver window 持续偏小</li>
+  <li>应用层处理不过来，反压到网络</li>
+</ul>
+
+<h2 id="5-你应该观测什么建议优先级">5. 你应该观测什么（建议优先级）</h2>
+
+<ol>
+  <li><strong>RTT 分布</strong>：最小 RTT vs 当前 RTT（判断是否排队）</li>
+  <li><strong>丢包/重传</strong>：retransmits、dupacks、RTO 次数</li>
+  <li><strong>吞吐与 in-flight</strong>：是否被窗口限制？</li>
+  <li><strong>应用层超时/重试</strong>：是否进入“正反馈放大”？</li>
+</ol>
+
+<h2 id="6-最小排障顺序tcp-变慢抖动">6. 最小排障顺序（TCP 变慢/抖动）</h2>
+
+<ol>
+  <li><strong>先判定是丢包主导还是排队主导</strong>：看重传与 RTT 分布</li>
+  <li><strong>再定位发生在哪一段</strong>：客户端出口/中间链路/服务端入口？</li>
+  <li><strong>最后再动策略</strong>：超时、重试、连接复用、拥塞控制算法等（先归因后调整）</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>TCP 可靠传输解决“丢了怎么办”，拥塞控制解决“别把网络打爆”。线上体验往往由“重传（丢包）+ 排队（bufferbloat）”共同决定：先把这两类问题分开，排障速度会快很多。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

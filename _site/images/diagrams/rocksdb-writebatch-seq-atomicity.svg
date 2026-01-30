@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">WriteBatch + sequence number：原子边界、可见性与确认点</text>
+  <text class="muted" x="40" y="66">batch 被分配起始 seq=S；内部每个操作逻辑上对应 S+i。可见性通常先在 MemTable 生效，持久性取决于 WAL 的 sync/ group commit。</text>
+
+  <rect class="box" x="40" y="105" width="210" height="92"/>
+  <text class="title" x="145" y="140" text-anchor="middle">WriteBatch</text>
+  <text class="muted" x="145" y="165" text-anchor="middle">Put/Delete × N</text>
+  <text class="muted" x="145" y="183" text-anchor="middle">分配起始 seq = S</text>
+
+  <path class="arrow" d="M 250 151 L 320 151"/>
+
+  <rect class="good" x="325" y="85" width="250" height="110"/>
+  <text class="title" x="450" y="120" text-anchor="middle">WAL（追加）</text>
+  <text class="text" x="450" y="148" text-anchor="middle">batch 编码后写入日志</text>
+  <text class="muted" x="450" y="172" text-anchor="middle">sync 决定确认点（durability）</text>
+
+  <rect class="good" x="325" y="210" width="250" height="110"/>
+  <text class="title" x="450" y="245" text-anchor="middle">MemTable（可见）</text>
+  <text class="text" x="450" y="273" text-anchor="middle">插入 key-value / tombstone</text>
+  <text class="muted" x="450" y="297" text-anchor="middle">读侧以 snapshot seq 判断可见性</text>
+
+  <path class="arrow" d="M 575 140 L 650 140"/>
+  <path class="arrow" d="M 575 265 L 650 265"/>
+
+  <rect class="warn" x="655" y="105" width="285" height="92"/>
+  <text class="title" x="797" y="138" text-anchor="middle">“写成功”语义</text>
+  <text class="muted" x="797" y="165" text-anchor="middle">ack after fsync：最稳</text>
+  <text class="muted" x="797" y="183" text-anchor="middle">ack before fsync：有窗口</text>
+
+  <rect class="box" x="655" y="225" width="285" height="95"/>
+  <text class="title" x="797" y="258" text-anchor="middle">对读端的承诺</text>
+  <text class="muted" x="797" y="285" text-anchor="middle">使用 snapshot：要么全看到</text>
+  <text class="muted" x="797" y="303" text-anchor="middle">要么全看不到（不见中间态）</text>
+</svg>

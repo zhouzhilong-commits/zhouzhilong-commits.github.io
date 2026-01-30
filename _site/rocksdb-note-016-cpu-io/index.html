@@ -1,0 +1,774 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 笔记：压缩与校验：CPU/IO 的权衡点 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 笔记：压缩与校验：CPU/IO 的权衡点">
+
+
+  <link rel="canonical" href="http://localhost:4000/rocksdb-note-016-cpu-io/">
+  <meta property="og:url" content="http://localhost:4000/rocksdb-note-016-cpu-io/">
+
+
+
+  <meta property="og:description" content="本文围绕「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-11-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">RocksDB 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-1-write-path/" class=""><span class="nav__sub-title">RocksDB（1）：写入链路（WAL + MemTable）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-2-sst-and-read-path/" class=""><span class="nav__sub-title">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-009-block-cache/" class=""><span class="nav__sub-title">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" class=""><span class="nav__sub-title">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" class=""><span class="nav__sub-title">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-002-writebatch-seq/" class=""><span class="nav__sub-title">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-016-cpu-io/" class="active"><span class="nav__sub-title">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 笔记：压缩与校验：CPU/IO 的权衡点">
+    <meta itemprop="description" content="本文围绕「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="November 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/cpu-vs-io-bound.svg" alt="RocksDB 笔记：压缩与校验：CPU/IO 的权衡点" /></p>
+<h2 id="1-这篇到底想解决什么别把变慢都归因给-io">1. 这篇到底想解决什么：别把“变慢”都归因给 IO</h2>
+
+<p>RocksDB 的常见误判是：</p>
+
+<ul>
+  <li>看到写入/读延迟上升，就认为是“盘慢了”</li>
+  <li>看到 NVMe 很快，就认为“IO 不可能是瓶颈”</li>
+</ul>
+
+<p>实际更常见的是：瓶颈会在不同阶段切换——尤其在启用压缩/校验、以及写入高峰触发 flush/compaction 时。</p>
+
+<h2 id="2-三类最常见瓶颈cpu--io--锁以及它们的信号">2. 三类最常见瓶颈：CPU / IO / 锁（以及它们的信号）</h2>
+
+<h3 id="21-cpu-bound压缩校验解析开销主导">2.1 CPU-bound（压缩/校验/解析开销主导）</h3>
+
+<p>典型信号：</p>
+
+<ul>
+  <li>CPU 利用率高（更关键是 <strong>per-core</strong>）</li>
+  <li>IPC 低或 cycles 高（cache miss/branch miss/前端瓶颈）</li>
+  <li>压缩/校验相关函数在 profile 中占比高</li>
+</ul>
+
+<p>常见诱因：</p>
+
+<ul>
+  <li>压缩算法过重（或压缩级别过高）</li>
+  <li>checksum/verify/解压在热路径上</li>
+  <li>小 IO + 高并发导致 CPU 侧开销被放大</li>
+</ul>
+
+<h3 id="22-io-bound设备队列化后台抢占主导">2.2 IO-bound（设备/队列化/后台抢占主导）</h3>
+
+<p>典型信号：</p>
+
+<ul>
+  <li>IO 延迟分位数抬头（P99/P999），并且呈现队列化特征</li>
+  <li>fsync/journal/page cache 回写导致周期性长尾</li>
+  <li>compaction/flush/backlog 欠账持续上升</li>
+</ul>
+
+<p>常见诱因：</p>
+
+<ul>
+  <li>设备抖动或共享盘 noisy neighbor</li>
+  <li>后台任务抢占（compaction/rebuild/备份）</li>
+  <li>近满盘导致 GC/写放大上升（SSD/FTL 也会抖）</li>
+</ul>
+
+<h3 id="23-锁同步开销并发扩展性瓶颈">2.3 锁/同步开销（并发扩展性瓶颈）</h3>
+
+<p>典型信号：</p>
+
+<ul>
+  <li>CPU 没满但吞吐上不去，延迟上升</li>
+  <li>profile 中出现大量 lock/condvar/atomic 自旋</li>
+  <li>增加线程数反而更慢（争用放大）</li>
+</ul>
+
+<p>常见诱因：</p>
+
+<ul>
+  <li>热点列族/热点 key 导致内部争用</li>
+  <li>写入路径 group commit/队列化实现导致竞争点显著</li>
+</ul>
+
+<h2 id="3-一个非常实用的先分桶再细化排障顺序">3. 一个非常实用的“先分桶再细化”排障顺序</h2>
+
+<ol>
+  <li><strong>先看现象属于读还是写</strong>：读慢常见是读放大/cache/compaction；写慢常见是 flush/L0/backlog 与确认点（fsync）。</li>
+  <li><strong>再分桶 CPU/IO/锁</strong>：
+    <ul>
+      <li>IO：看延迟分位数与队列、backlog</li>
+      <li>CPU：看 per-core、IPC/cache/branch、压缩/校验占比</li>
+      <li>锁：看争用与扩展性（线程越多越慢）</li>
+    </ul>
+  </li>
+  <li><strong>做最小 A/B 验证因果</strong>：
+    <ul>
+      <li>临时关闭/降低压缩（验证 CPU）</li>
+      <li>临时降低写入或提高后台预算（验证 IO/backlog）</li>
+      <li>限制并发或改变 workload（验证锁争用）</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="4-压缩与校验它们把瓶颈从-io-推向-cpu但可能是好事">4. 压缩与校验：它们把瓶颈从 IO 推向 CPU（但可能是好事）</h2>
+
+<p>压缩/校验本质上是在做交换：</p>
+
+<ul>
+  <li>用 CPU 换 IO（减少写入字节/读盘字节）</li>
+  <li>换来的收益取决于：你当前到底是 IO-bound 还是 CPU-bound</li>
+</ul>
+
+<p>实践中常见两种极端：</p>
+
+<ul>
+  <li><strong>SATA/远端盘</strong>：压缩往往很值（IO 更贵）</li>
+  <li><strong>NVMe</strong>：压缩可能把系统推到 CPU-bound，需要谨慎选算法与级别</li>
+</ul>
+
+<h2 id="5-小结">5. 小结</h2>
+
+<p>RocksDB 的性能问题最怕“盲猜”。先把瓶颈分成 CPU/IO/锁三类，再用最小 A/B 验证因果，调参才会变成工程而不是玄学。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

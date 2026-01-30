@@ -1,0 +1,716 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>操作系统笔记：io_uring：异步 IO 的模型 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="操作系统笔记：io_uring：异步 IO 的模型">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-os-note-068-io-uring-io/">
+  <meta property="og:url" content="http://localhost:4000/cs-os-note-068-io-uring-io/">
+
+
+
+  <meta property="og:description" content="本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-03-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">操作系统</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/process-thread-context-switch/" class=""><span class="nav__sub-title">OS（1）：进程/线程与上下文切换</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/virtual-memory-page-table/" class=""><span class="nav__sub-title">OS（2）：虚拟内存与页表</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-005-cfs/" class=""><span class="nav__sub-title">操作系统笔记：调度器：时间片与 CFS 的直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-068-io-uring-io/" class="active"><span class="nav__sub-title">操作系统笔记：io_uring：异步 IO 的模型</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="操作系统笔记：io_uring：异步 IO 的模型">
+    <meta itemprop="description" content="本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="March 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">操作系统笔记：io_uring：异步 IO 的模型
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-03-01T00:00:00+08:00">March 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/io-uring-sq-cq.svg" alt="操作系统笔记：io_uring：异步 IO 的模型" /></p>
+<h2 id="1-io_uring-的核心把提交完成变成共享内存队列">1. io_uring 的核心：把“提交/完成”变成共享内存队列</h2>
+
+<p>传统异步 IO（以及很多同步 IO 的用法）最大的问题之一是：<strong>每个 IO 都要付出系统调用与上下文切换成本</strong>。在小 IO + 高并发场景下，这个成本会吞掉大量 CPU。</p>
+
+<p>io_uring 的设计直觉是：</p>
+
+<ul>
+  <li>用户态与内核态共享两条 ring：
+    <ul>
+      <li><strong>SQ（Submission Queue）</strong>：提交 IO 请求</li>
+      <li><strong>CQ（Completion Queue）</strong>：回收 IO 完成事件</li>
+    </ul>
+  </li>
+  <li>通过批量提交与批量回收，把 “N 次 syscall” 变成 “少量 syscall/甚至轮询”</li>
+</ul>
+
+<p>因此它更像一个“高性能 IO 事件通道”，而不只是某个接口。</p>
+
+<h2 id="2-什么情况下收益最大你得先确认瓶颈在-syscall切换">2. 什么情况下收益最大：你得先确认瓶颈在 syscall/切换</h2>
+
+<p>io_uring 更容易显著提升的场景：</p>
+
+<ul>
+  <li><strong>小 IO、很多次</strong>：例如 4KB~64KB 的随机读写</li>
+  <li><strong>高并发</strong>：大量 in-flight IO</li>
+  <li><strong>IO 本身不慢</strong>：NVMe/高速网盘，否则瓶颈仍在设备</li>
+</ul>
+
+<p>而收益有限甚至更差的场景：</p>
+
+<ul>
+  <li><strong>大 IO/顺序 IO</strong>：系统调用占比本来就低</li>
+  <li><strong>文件系统/设备已经是瓶颈</strong>：你再省 syscall 也救不了</li>
+  <li><strong>错误的使用模式</strong>：提交/回收处理不及时导致 CQ 堆积（把延迟变成队列化）</li>
+</ul>
+
+<h2 id="3-两个最常见的误区">3. 两个最常见的误区</h2>
+
+<h3 id="31-把-io_uring-当成万能异步-io">3.1 把 io_uring 当成“万能异步 IO”</h3>
+
+<p>它能减少 syscall 成本，但它不会改变：</p>
+
+<ul>
+  <li>文件系统语义</li>
+  <li>设备队列化与抖动</li>
+  <li>page cache / flush / journal 带来的长尾</li>
+</ul>
+
+<h3 id="32-cq-回收不及时把系统从快用成抖">3.2 CQ 回收不及时：把系统从“快”用成“抖”</h3>
+
+<p>如果 completion 处理不及时：</p>
+
+<ul>
+  <li>CQ 堆积 → 应用看到的完成延迟上升</li>
+  <li>进一步导致上层超时/重试放大</li>
+</ul>
+
+<p>所以 io_uring 的“写法”比“开不开”更重要：提交、回收、以及背压要形成闭环。</p>
+
+<h2 id="4-怎么观测判断到底省到了什么">4. 怎么观测：判断到底省到了什么</h2>
+
+<p>建议先回答三个问题：</p>
+
+<ol>
+  <li><strong>CPU 花在哪</strong>：syscall/上下文切换占比是否下降？</li>
+  <li><strong>IO 本身是否慢</strong>：设备侧延迟分位数是否才是主导？</li>
+  <li><strong>是否出现队列化</strong>：SQ/CQ 是否堆积？in-flight 是否长期高位？</li>
+</ol>
+
+<p>如果你的平台允许，观察这些信号很有用：</p>
+
+<ul>
+  <li>context switch 频率（切换是否下降）</li>
+  <li>系统调用占比（用户态/内核态时间）</li>
+  <li>IO 延迟分位数（P99/P999）</li>
+</ul>
+
+<h2 id="5-最小排障顺序io_uring-上了但没变快变抖">5. 最小排障顺序（io_uring “上了但没变快/变抖”）</h2>
+
+<ol>
+  <li><strong>先确认瓶颈是否在 syscall</strong>：如果 IO 本身慢，收益有限</li>
+  <li><strong>看 CQ 是否堆积</strong>：是否“回收不及时”导致排队？</li>
+  <li><strong>看文件系统/回写/journal</strong>：是否长尾来自 flush/回写？</li>
+  <li><strong>最后再看参数与模式</strong>：是否需要批量提交、是否需要轮询、是否需要更明确的背压策略</li>
+</ol>
+
+<h2 id="6-小结">6. 小结</h2>
+
+<p>io_uring 的价值在于把 IO 的提交/完成做成“低开销通道”。它最适合的不是“IO 很慢”的场景，而是“IO 很多、系统调用很贵”的场景。要用好它，关键是让提交/回收形成闭环，避免把延迟变成队列化。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

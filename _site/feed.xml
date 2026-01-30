@@ -1,0 +1,661 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-01-30T11:47:34+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端</title><link href="http://localhost:4000/storage-note-036-nvme/" rel="alternate" type="text/html" title="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端" /><published>2023-04-01T00:00:00+08:00</published><updated>2023-04-01T00:00:00+08:00</updated><id>http://localhost:4000/storage-note-036-nvme</id><content type="html" xml:base="http://localhost:4000/storage-note-036-nvme/"><![CDATA[<p>本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/nvme-queue-submission-completion.svg" alt="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端" /></p>
+
+<h2 id="1-先把nvme-为什么快说清楚并行--低开销">1. 先把“NVMe 为什么快”说清楚：并行 + 低开销</h2>
+
+<p>把 NVMe 的优势概括成一句话：</p>
+
+<blockquote>
+  <p><strong>把“提交 IO → 完成 IO”做成多队列（SQ/CQ）并行模型，并尽量降低每次 IO 的协议/中断开销。</strong></p>
+</blockquote>
+
+<p>工程上你通常能直接观察到：</p>
+
+<ul>
+  <li><strong>更高 IOPS（尤其是 4KB 随机）</strong></li>
+  <li><strong>更低平均延迟</strong></li>
+  <li><strong>更容易把瓶颈暴露到软件栈/CPU/锁</strong>（NVMe 够快后，IO 不再“背锅”）</li>
+</ul>
+
+<h2 id="2-冷热分层到底在优化什么p99而不是峰值吞吐">2. 冷热分层到底在优化什么：P99，而不是峰值吞吐</h2>
+
+<p>很多系统的体验由 <strong>P99/P999</strong> 决定，而不是平均值或峰值带宽。</p>
+
+<p>一个很实用的分类：</p>
+
+<ul>
+  <li><strong>延迟敏感路径</strong>：点查、热点索引、元数据、commit/WAL、请求链路上的关键 KV。</li>
+  <li><strong>带宽敏感路径</strong>：批量 scan、离线任务、异步重建、后台 compaction/GC、跨域复制。</li>
+</ul>
+
+<p>冷热分层的目标是把“必须稳”的路径留在 NVMe，把“可以慢/可被节流”的路径放到更便宜介质，并通过预算把后台任务的抢占限制住。</p>
+
+<h2 id="3-为什么线上-nvme-也会抖最常见不是盘慢而是排队--抢占">3. 为什么线上 NVMe 也会抖：最常见不是“盘慢”，而是“排队 + 抢占”</h2>
+
+<h3 id="31-队列深度qd是双刃剑吞吐-但排队等待">3.1 队列深度（QD）是双刃剑：吞吐↑ 但排队等待↑</h3>
+
+<p>QD 变大往往能提升吞吐，但也会把排队等待叠加到尾延迟里：</p>
+
+<ul>
+  <li>QD 低：更像“低延迟模式”</li>
+  <li>QD 高：更像“高吞吐模式”，但 P99 更容易被放大</li>
+</ul>
+
+<p>实践里经常出现：压测“峰值吞吐”很漂亮，但线上“请求体验”变差，因为线上更在乎尾延迟。</p>
+
+<h3 id="32-后台任务抢占把-nvme-打成共享资源">3.2 后台任务抢占：把 NVMe 打成“共享资源”</h3>
+
+<p>典型的后台抢占源：</p>
+
+<ul>
+  <li>RocksDB/LSM：flush/compaction</li>
+  <li>存储引擎：GC、重建、checksum/压缩</li>
+  <li>系统层：page cache 回写、文件系统 journal、rebuild/replication</li>
+</ul>
+
+<p>这些任务会把 IO 变成“队列化资源”，进而放大 P99。</p>
+
+<h3 id="33-cpu-反而成瓶颈nvme-够快后更常见">3.3 CPU 反而成瓶颈：NVMe 够快后更常见</h3>
+
+<p>NVMe 变快后，你会更容易遇到：</p>
+
+<ul>
+  <li>压缩/校验把 CPU 打满</li>
+  <li>锁竞争、内存分配、系统调用成为主导</li>
+  <li>单核热点（绑核/中断/软中断）导致“平均不高但 P99 变差”</li>
+</ul>
+
+<h2 id="4-怎么观测别只看-iops带宽先看排队与分位数">4. 怎么观测：别只看 IOPS/带宽，先看“排队与分位数”</h2>
+
+<p>建议至少关注：</p>
+
+<ul>
+  <li><strong>延迟分位数</strong>：P50/P95/P99/P999（平均值最不可信）</li>
+  <li><strong>队列与在途</strong>：QD/in-flight 是否长期偏高（排队信号）</li>
+  <li><strong>IO 延迟分解</strong>：提交→设备→完成（如果平台能提供更细拆分更好）</li>
+  <li><strong>后台欠账</strong>：compaction/GC/rebuild backlog 是否持续上升</li>
+  <li><strong>per-core CPU</strong>：关键核是否被打爆（不要看平均）</li>
+</ul>
+
+<h2 id="5-怎么压测三步把瓶颈归因做出来">5. 怎么压测：三步把“瓶颈归因”做出来</h2>
+
+<ol>
+  <li><strong>设备基线</strong>：裸盘 fio（4KB randread/randwrite），固定 QD 与并发，得到延迟/吞吐基线。</li>
+  <li><strong>文件系统/缓存层</strong>：同样 workload，观察是否被 flush/page cache 影响（延迟长尾/周期性掉速）。</li>
+  <li><strong>业务全链路</strong>：打开真实的压缩/校验/后台任务，记录 P99 与 backlog 的因果关系。</li>
+</ol>
+
+<p>一个非常实用的做法：画两条曲线</p>
+
+<ul>
+  <li>固定并发，逐步增大 QD</li>
+  <li>固定 QD，逐步增大并发</li>
+</ul>
+
+<p>你会很直观地看到“吞吐提升”和“尾延迟恶化”的拐点。</p>
+
+<h2 id="6-最小排障顺序线上-p99-变差">6. 最小排障顺序（线上 P99 变差）</h2>
+
+<ol>
+  <li><strong>先看排队</strong>：QD/in-flight 是否异常？是否存在周期性掉速？</li>
+  <li><strong>再看后台欠账</strong>：compaction/GC/rebuild 是否在追债？是否抢占 NVMe？</li>
+  <li><strong>最后看 CPU/锁</strong>：NVMe 足够快后，是否已经软件栈主导？</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>NVMe 带来的价值不只是“更快”，而是“把系统从 IO-bound 推向更可控的瓶颈”。要让线上体验变稳，关键是：<strong>用冷热分层把路径拆开 + 用预算约束后台抢占 + 用 QD/并发的拐点控制尾延迟</strong>。</p>]]></content><author><name>周智龙</name></author><category term="storage" /><category term="存储" /><category term="存储基础系列" /><summary type="html"><![CDATA[本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。]]></summary></entry><entry><title type="html">对象存储（2）：纠删码（EC）与副本（Replication）取舍</title><link href="http://localhost:4000/object-storage-2-ec-vs-replication/" rel="alternate" type="text/html" title="对象存储（2）：纠删码（EC）与副本（Replication）取舍" /><published>2023-01-01T00:00:00+08:00</published><updated>2023-01-01T00:00:00+08:00</updated><id>http://localhost:4000/object-storage-2-ec-vs-replication</id><content type="html" xml:base="http://localhost:4000/object-storage-2-ec-vs-replication/"><![CDATA[<p>这一篇聊对象存储里最核心的工程取舍之一：<strong>纠删码（Erasure Coding, EC）</strong> vs <strong>多副本（Replication）</strong>。</p>
+
+<h2 id="1-先说结论它们在换什么">1. 先说结论：它们在换什么</h2>
+
+<ul>
+  <li><strong>副本</strong>：用更多空间换更简单的读写与修复</li>
+  <li><strong>纠删码</strong>：用计算与更复杂的修复换更好的存储成本</li>
+</ul>
+
+<h2 id="2-成本视角">2. 成本视角</h2>
+
+<p>如果你做 3 副本：</p>
+
+<ul>
+  <li>容量开销大约是 <strong>3x</strong></li>
+</ul>
+
+<p>如果你做 EC（例如 (k+m = 10+4)）：</p>
+
+<ul>
+  <li>容量开销大约是 (\frac{k+m}{k} = 1.4x)</li>
+</ul>
+
+<p>这就是很多对象存储系统在冷数据上偏爱 EC 的原因。</p>
+
+<h2 id="3-性能与延迟视角">3. 性能与延迟视角</h2>
+
+<p>副本通常更“直接”：</p>
+
+<ul>
+  <li>GET：从某个副本读即可（甚至就近读）</li>
+  <li>PUT：写多个副本，commit 后可读</li>
+</ul>
+
+<p>EC 的读写会更复杂：</p>
+
+<ul>
+  <li>GET：可能需要聚合多个分片，甚至做解码</li>
+  <li>PUT：需要编码并写出多个分片</li>
+</ul>
+
+<p>但实际系统会做很多优化：</p>
+
+<ul>
+  <li>热数据用副本，冷数据转 EC（Lifecycle）</li>
+  <li>局部修复策略、就近调度、缓存与预取</li>
+</ul>
+
+<h2 id="4-修复repair是-ec-的关键成本">4. 修复（Repair）是 EC 的关键成本</h2>
+
+<p>EC 的修复往往意味着：</p>
+
+<ul>
+  <li>一个分片丢了，可能要读 <strong>k</strong> 个分片再重建</li>
+  <li>这会带来明显的网络与 IO 放大</li>
+</ul>
+
+<p>因此 EC 系统通常非常在意：</p>
+
+<ul>
+  <li>故障域（rack/az）</li>
+  <li>修复并发与流量整形（避免修复把业务打崩）</li>
+</ul>
+
+<hr />
+
+<p>后续如果你愿意，我们可以继续补“对象存储一致性模型”和“元数据服务设计”，把一整套对象存储的核心组件串起来。</p>]]></content><author><name>周智龙</name></author><category term="对象存储" /><summary type="html"><![CDATA[这一篇聊对象存储里最核心的工程取舍之一：纠删码（Erasure Coding, EC） vs 多副本（Replication）。]]></summary></entry><entry><title type="html">一致性（2）：Raft 直觉（日志复制与提交）</title><link href="http://localhost:4000/consensus-2-raft-intuition/" rel="alternate" type="text/html" title="一致性（2）：Raft 直觉（日志复制与提交）" /><published>2023-01-01T00:00:00+08:00</published><updated>2023-01-01T00:00:00+08:00</updated><id>http://localhost:4000/consensus-2-raft-intuition</id><content type="html" xml:base="http://localhost:4000/consensus-2-raft-intuition/"><![CDATA[<p>这篇用“直觉模型”理解 Raft：你不需要先记住所有 RPC 和状态机细节，只需要把 <strong>日志（log）</strong> 和 <strong>提交（commit）</strong> 两个核心概念抓牢。</p>
+
+<h2 id="1-raft-在解决什么问题">1. Raft 在解决什么问题</h2>
+
+<p>在一个有副本的系统里，你希望：</p>
+
+<ul>
+  <li>大多数时候只有一个 leader 负责写入（避免冲突）</li>
+  <li>leader 把写入按顺序复制到 followers</li>
+  <li><strong>对外宣称“写成功”</strong> 必须满足一个安全条件（不被回滚）</li>
+</ul>
+
+<h2 id="2-日志复制把写入变成追加日志">2. 日志复制：把写入变成“追加日志”</h2>
+
+<p>你可以把每次写入看成一条日志 entry：</p>
+
+<ul>
+  <li>leader 接受写入，追加到本地日志</li>
+  <li>leader 把 entry 复制给 follower（AppendEntries）</li>
+  <li>follower 追加成功后返回确认</li>
+</ul>
+
+<h2 id="3-提交什么时候对外可见">3. 提交：什么时候对外可见</h2>
+
+<p>关键点是“commit index”：</p>
+
+<ul>
+  <li>leader 只有在确认某条日志 entry 被复制到 <strong>多数派</strong> 后，才推进 commit index</li>
+  <li>一旦推进，leader 才能对外返回成功，并把该 entry 应用到状态机</li>
+</ul>
+
+<p>这就是为什么多数派能提供安全性直觉：只要多数派里有一台存活，新 leader 选举时不会丢掉已提交日志。</p>
+
+<h2 id="4-你可以如何把它落到工程上">4. 你可以如何把它落到工程上</h2>
+
+<p>当你在读一个系统的“复制一致性”实现时，可以优先问：</p>
+
+<ul>
+  <li>写入是不是先变成日志？</li>
+  <li>commit 条件是什么（多数派？同步备机？）</li>
+  <li>crash/restart 时如何恢复 commit index？</li>
+</ul>
+
+<p>把这 3 个问题想清楚，基本就能读懂大部分基于 Raft 的系统实现。</p>]]></content><author><name>周智龙</name></author><category term="分布式一致性" /><summary type="html"><![CDATA[这篇用“直觉模型”理解 Raft：你不需要先记住所有 RPC 和状态机细节，只需要把 日志（log） 和 提交（commit） 两个核心概念抓牢。]]></summary></entry><entry><title type="html">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</title><link href="http://localhost:4000/rocksdb-2-sst-and-read-path/" rel="alternate" type="text/html" title="RocksDB（2）：SST 结构与读路径（Table/Block/Index）" /><published>2023-01-01T00:00:00+08:00</published><updated>2023-01-01T00:00:00+08:00</updated><id>http://localhost:4000/rocksdb-2-sst-and-read-path</id><content type="html" xml:base="http://localhost:4000/rocksdb-2-sst-and-read-path/"><![CDATA[<p>这一篇聚焦 RocksDB 的 <strong>SST（Sorted String Table）</strong>：一个 SST 里大致有什么，以及一次点查通常会经历哪些步骤。</p>
+
+<p><img src="/images/diagrams/rocksdb-sst-structure.svg" alt="SST（Table File）结构：Data/Index/Filter 的关系" /></p>
+
+<h2 id="1-sst-解决什么问题">1. SST 解决什么问题</h2>
+
+<p>SST 本质上是“磁盘上的有序 KV 文件”，它让：</p>
+
+<ul>
+  <li>flush 能顺序写出一个有序文件</li>
+  <li>读路径可以做二分查找 + block 粒度读取</li>
+</ul>
+
+<h2 id="2-你可以把-sst-理解成三层">2. 你可以把 SST 理解成三层</h2>
+
+<ul>
+  <li><strong>Data blocks</strong>：真正存 KV 数据（通常是压缩后的 block）</li>
+  <li><strong>Index blocks</strong>：告诉你某个 key 大概在哪个 data block</li>
+  <li><strong>Filter blocks</strong>（例如 Bloom Filter）：帮助快速判断 key 是否可能在该文件里</li>
+</ul>
+
+<p>所以一次点查的理想路径是：</p>
+
+<ol>
+  <li>先用 filter 排除大部分“不在这个文件里”的情况</li>
+  <li>用 index 定位到目标 data block</li>
+  <li>只读取 1 个或少量 data block</li>
+</ol>
+
+<h3 id="21-为什么只读-1-个-block是理想状态">2.1 为什么“只读 1 个 block”是理想状态</h3>
+
+<p>对点查来说，尾延迟往往由随机 IO 决定；所以你希望：</p>
+
+<ul>
+  <li>先用 filter 排除掉绝大多数不相关文件（特别是负查）</li>
+  <li>用 index 把定位范围缩小到 1 个 block</li>
+</ul>
+
+<p>只要你需要读多个文件/多个 block，尾延迟通常会明显变差（并且更难稳定）。</p>
+
+<h2 id="3-读路径为什么会变慢">3. 读路径为什么会变慢</h2>
+
+<p>常见原因：</p>
+
+<ul>
+  <li>文件数太多（读放大增加）</li>
+  <li>filter 命中差（假阳性过高或没有 filter）</li>
+  <li>cache 没命中（block cache / page cache）</li>
+</ul>
+
+<h3 id="31-更可落地的排查顺序">3.1 更可落地的排查顺序</h3>
+
+<ol>
+  <li><strong>文件数/层数</strong>：L0/L1 是否堆积（读要查更多文件）？</li>
+  <li><strong>filter 是否有效</strong>：负查是否仍然触发大量 IO（假阳性过高/没开 filter）？</li>
+  <li><strong>cache 命中</strong>：至少拆开看 data/index/filter 的命中（别只看总体）。</li>
+  <li><strong>IO vs CPU</strong>：NVMe 上经常是“解压/校验/迭代器合并”吃 CPU；HDD/远端更像 IO 瓶颈。</li>
+</ol>
+
+<p>后续我们会在“读放大”与“compaction”那一篇把这些原因串起来。</p>]]></content><author><name>周智龙</name></author><category term="RocksDB" /><summary type="html"><![CDATA[这一篇聚焦 RocksDB 的 SST（Sorted String Table）：一个 SST 里大致有什么，以及一次点查通常会经历哪些步骤。]]></summary></entry><entry><title type="html">存储笔记：写入合并（merge）与写扩散：从日志到段</title><link href="http://localhost:4000/storage-note-022-merge/" rel="alternate" type="text/html" title="存储笔记：写入合并（merge）与写扩散：从日志到段" /><published>2022-12-01T00:00:00+08:00</published><updated>2022-12-01T00:00:00+08:00</updated><id>http://localhost:4000/storage-note-022-merge</id><content type="html" xml:base="http://localhost:4000/storage-note-022-merge/"><![CDATA[<p>本文围绕「存储笔记：写入合并（merge）与写扩散：从日志到段」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/storage-write-merge-log-to-segment.svg" alt="存储笔记：写入合并（merge）与写扩散：从日志到段" /></p>
+<h2 id="1-写入合并的目标">1. 写入合并的目标</h2>
+
+<p>把随机写“聚合”为顺序写：从日志到段/从 memtable 到 SST，本质是用后台重写换取前台吞吐与稳定。</p>
+
+<h2 id="2-代价与副作用">2. 代价与副作用</h2>
+
+<ul>
+  <li>写放大（后台合并重写）</li>
+  <li>空间放大（多版本并存、tombstone）</li>
+</ul>
+
+<h2 id="3-排障顺序">3. 排障顺序</h2>
+
+<p>先看后台欠账（compaction/merge backlog），再看写入形态（覆盖写/小写），最后调预算与策略。</p>]]></content><author><name>周智龙</name></author><category term="storage" /><category term="存储" /><category term="存储基础系列" /><summary type="html"><![CDATA[本文围绕「存储笔记：写入合并（merge）与写扩散：从日志到段」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。]]></summary></entry><entry><title type="html">对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）</title><link href="http://localhost:4000/object-storage-1-core-concepts/" rel="alternate" type="text/html" title="对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）" /><published>2022-12-01T00:00:00+08:00</published><updated>2022-12-01T00:00:00+08:00</updated><id>http://localhost:4000/object-storage-1-core-concepts</id><content type="html" xml:base="http://localhost:4000/object-storage-1-core-concepts/"><![CDATA[<p>这篇是对象存储系列的第 1 篇，先把对象存储最核心的抽象讲清楚：<strong>Bucket、Object、Metadata</strong>。</p>
+
+<h2 id="1-对象存储和文件系统块存储的区别">1. 对象存储和文件系统/块存储的区别</h2>
+
+<p>你可以用一句话区分三者：</p>
+
+<ul>
+  <li><strong>块存储</strong>：提供块设备（你自己建文件系统/数据库）</li>
+  <li><strong>文件系统</strong>：提供目录树 + POSIX 语义（rename、fsync、权限等）</li>
+  <li><strong>对象存储</strong>：提供“对象（Object）”的读写接口，通常是 HTTP API</li>
+</ul>
+
+<p>对象存储通常不强调 POSIX 语义，而强调：</p>
+
+<ul>
+  <li>大规模扩展（容量、吞吐）</li>
+  <li>简单 API（PUT/GET/DELETE）</li>
+  <li>持久性与成本优势</li>
+</ul>
+
+<h2 id="2-bucket--object-是什么">2. Bucket / Object 是什么</h2>
+
+<ul>
+  <li><strong>Bucket</strong>：逻辑容器（类似“命名空间”），通常用于：
+    <ul>
+      <li>访问控制（权限）</li>
+      <li>生命周期策略（Lifecycle）</li>
+      <li>计费与统计维度</li>
+    </ul>
+  </li>
+  <li><strong>Object</strong>：真正存储的数据单元，由：
+    <ul>
+      <li>key（对象名）</li>
+      <li>data（内容）</li>
+      <li>metadata（元数据）
+组成</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="3-metadata-为什么重要">3. Metadata 为什么重要</h2>
+
+<p>对象存储系统里 metadata 常常是“性能与一致性的核心”：</p>
+
+<ul>
+  <li>你需要快速回答：对象是否存在？大小是多少？etag/version 是什么？</li>
+  <li>你需要保证：PUT/DELETE/overwrite 后 metadata 的可见性与版本关系</li>
+</ul>
+
+<p>因此很多系统都会把 metadata 放在：</p>
+
+<ul>
+  <li>专用的元数据服务（KV/DB）</li>
+  <li>或者对象存储内部的元数据层</li>
+</ul>
+
+<h2 id="4-一个最小读写路径">4. 一个最小读写路径</h2>
+
+<p>以最常见的 GET/PUT 为例：</p>
+
+<ul>
+  <li>PUT：
+    <ul>
+      <li>写 data 到后端存储（分片/纠删码/副本）</li>
+      <li>写 metadata 并提交版本</li>
+    </ul>
+  </li>
+  <li>GET：
+    <ul>
+      <li>读 metadata（确认版本、位置、权限等）</li>
+      <li>读 data（聚合分片/解码）</li>
+    </ul>
+  </li>
+</ul>
+
+<p>下一篇我们会讨论“纠删码 vs 副本”：它们分别对成本、性能、修复带来什么影响。</p>]]></content><author><name>周智龙</name></author><category term="对象存储" /><summary type="html"><![CDATA[这篇是对象存储系列的第 1 篇，先把对象存储最核心的抽象讲清楚：Bucket、Object、Metadata。]]></summary></entry><entry><title type="html">一致性（1）：从复制到一致性（Primary-Backup / Quorum）</title><link href="http://localhost:4000/consensus-1-replication-basics/" rel="alternate" type="text/html" title="一致性（1）：从复制到一致性（Primary-Backup / Quorum）" /><published>2022-12-01T00:00:00+08:00</published><updated>2022-12-01T00:00:00+08:00</updated><id>http://localhost:4000/consensus-1-replication-basics</id><content type="html" xml:base="http://localhost:4000/consensus-1-replication-basics/"><![CDATA[<p>这篇作为一致性系列的第 1 篇，先把“复制”这件事讲清楚：你做复制的目的是什么，它会引出哪些一致性语义。</p>
+
+<h2 id="1-为什么要复制">1. 为什么要复制</h2>
+
+<p>最直接的原因：</p>
+
+<ul>
+  <li><strong>高可用</strong>：一台机器挂了，服务还能继续</li>
+  <li><strong>容灾</strong>：跨机架/跨机房/跨可用区</li>
+  <li><strong>扩展读</strong>：多个副本可分担读流量（注意写一致性成本）</li>
+</ul>
+
+<h2 id="2-primary-backup最直觉的复制模型">2. Primary-Backup：最直觉的复制模型</h2>
+
+<p>Primary-Backup（主备）模型要点：</p>
+
+<ul>
+  <li>所有写入先到 primary</li>
+  <li>primary 把写复制到 backup</li>
+  <li>在某个“提交点”之后对外可见</li>
+</ul>
+
+<p>你需要回答两个问题：</p>
+
+<ul>
+  <li>primary 什么时候对外 ack？
+    <ul>
+      <li>先写本地就 ack（快，但崩溃可能丢）</li>
+      <li>等备机也确认再 ack（稳，但慢）</li>
+    </ul>
+  </li>
+  <li>failover 时如何保证不回滚已经 ack 的写？</li>
+</ul>
+
+<h2 id="3-quorum把多数派作为提交条件">3. Quorum：把“多数派”作为提交条件</h2>
+
+<p>Quorum（多数派）模型把复制抽象成：</p>
+
+<ul>
+  <li>写入成功需要写到 <strong>W 个副本</strong></li>
+  <li>读取需要读 <strong>R 个副本</strong></li>
+</ul>
+
+<p>如果副本数为 N，并且满足：</p>
+
+<p>[
+R + W &gt; N
+]</p>
+
+<p>那么读写集合一定有交集，读到的数据会更一致（在假设条件满足时）。</p>
+
+<h2 id="4-一致性语义你最终想要什么">4. 一致性语义：你最终想要什么</h2>
+
+<p>从弱到强常见有：</p>
+
+<ul>
+  <li>最终一致性</li>
+  <li>因果一致性</li>
+  <li>线性一致性（linearizability）</li>
+</ul>
+
+<p>不同系统会根据目标在性能、可用性和一致性之间取舍。</p>
+
+<p>下一篇我们会用 Raft 的直觉模型把“日志复制 + 提交”串起来，让你更容易理解一致性协议的核心。</p>]]></content><author><name>周智龙</name></author><category term="分布式一致性" /><summary type="html"><![CDATA[这篇作为一致性系列的第 1 篇，先把“复制”这件事讲清楚：你做复制的目的是什么，它会引出哪些一致性语义。]]></summary></entry><entry><title type="html">RocksDB（1）：写入链路（WAL + MemTable）</title><link href="http://localhost:4000/rocksdb-1-write-path/" rel="alternate" type="text/html" title="RocksDB（1）：写入链路（WAL + MemTable）" /><published>2022-12-01T00:00:00+08:00</published><updated>2022-12-01T00:00:00+08:00</updated><id>http://localhost:4000/rocksdb-1-write-path</id><content type="html" xml:base="http://localhost:4000/rocksdb-1-write-path/"><![CDATA[<p>这篇作为 RocksDB 系列的第 1 篇，先把「一次 <code class="language-plaintext highlighter-rouge">Put()/Write()</code> 从 API 到落盘语义」讲清楚：<strong>写入路径、确认点（durability）、以及写入抖动来自哪里</strong>。后续再分别展开 SST、读路径与 compaction 调参。</p>
+
+<p><img src="/images/diagrams/rocksdb-write-path.svg" alt="RocksDB 写入路径（抽象版）" /></p>
+
+<h2 id="1-一次写入的最短闭环">1. 一次写入的最短闭环</h2>
+
+<p>从工程视角看，一次写入至少要满足：</p>
+
+<ul>
+  <li><strong>快速</strong>：能承受高并发写入</li>
+  <li><strong>可恢复</strong>：崩溃后不能丢“已经返回成功”的写入</li>
+</ul>
+
+<p>因此 RocksDB 的典型路径是：</p>
+
+<ol>
+  <li>写 <strong>WAL（Write-Ahead Log）</strong></li>
+  <li>写入 <strong>MemTable</strong>（内存中的有序结构）</li>
+  <li>触发 <strong>Flush</strong>：把 MemTable 变成 SST 文件</li>
+  <li>后台 <strong>Compaction</strong>：合并多个 SST，回收空间并控制读放大</li>
+</ol>
+
+<h3 id="11-写入里最容易被忽略的点写入什么时候可见可恢复">1.1 写入里最容易被忽略的点：写入“什么时候可见/可恢复”</h3>
+
+<p>同样是 <code class="language-plaintext highlighter-rouge">Put()</code> 返回成功，不同配置/实现的语义可能不同：</p>
+
+<ul>
+  <li><strong>写入可见</strong>：MemTable 中可读到（通常很快）</li>
+  <li><strong>写入可恢复</strong>：WAL 已经持久化到磁盘（取决于 sync/group commit）</li>
+</ul>
+
+<p>很多线上系统会做：<code class="language-plaintext highlighter-rouge">WriteOptions.sync=false</code> + group commit（更高吞吐），并接受一个小的崩溃丢数据窗口（由业务决定）。</p>
+
+<blockquote>
+  <p>记住一句话：<strong>“返回成功”到底意味着什么</strong>，不是 RocksDB 帮你决定的，而是由你的 <code class="language-plaintext highlighter-rouge">WriteOptions</code> + 业务容忍度共同决定的。</p>
+</blockquote>
+
+<h2 id="2-wal持久性与-group-commit">2. WAL：持久性与 group commit</h2>
+
+<p>WAL 的存在让系统能在崩溃后通过重放恢复 MemTable 的状态。</p>
+
+<p>你在使用时会遇到的关键点：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">sync</code>/<code class="language-plaintext highlighter-rouge">fsync</code> 决定持久性强度（更强通常更慢）</li>
+  <li><strong>group commit</strong> 可以把多次写合并成一次 fsync，降低尾延迟</li>
+</ul>
+
+<p><img src="/images/diagrams/wal-group-commit-timeline.svg" alt="group commit：把多次 fsync 合并成一次" /></p>
+
+<h3 id="21-你会在性能上看到什么">2.1 你会在性能上看到什么</h3>
+
+<ul>
+  <li><strong>sync 打开</strong>：平均延迟上升，尾延迟更敏感（更“跟磁盘走”）</li>
+  <li><strong>sync 关闭 + group commit</strong>：吞吐更高，但崩溃窗口更大；高峰期仍可能被 flush/compaction 影响</li>
+</ul>
+
+<h3 id="22-一些非常实用的写入语义检查题">2.2 一些非常实用的“写入语义”检查题</h3>
+
+<ul>
+  <li><strong>Q1：<code class="language-plaintext highlighter-rouge">Put()</code> 成功后立刻读，是否必须读到？</strong>
+    <ul>
+      <li>通常是“是”（写入已在 MemTable 可见），但跨 DB 实例/跨进程/跨节点就变成系统级一致性问题了。</li>
+    </ul>
+  </li>
+  <li><strong>Q2：<code class="language-plaintext highlighter-rouge">Put()</code> 成功后立刻断电，是否必须保住？</strong>
+    <ul>
+      <li>取决于 <code class="language-plaintext highlighter-rouge">sync</code>；<code class="language-plaintext highlighter-rouge">sync=false</code> 时你需要接受“丢一个批次”的窗口。</li>
+    </ul>
+  </li>
+  <li><strong>Q3：我看到 P99 抖动，但平均延迟还行，最可能是什么？</strong>
+    <ul>
+      <li>常见是 fsync/flush/compaction 的竞争、write stall/throttle，或 IO 抖动放大到了确认点上。</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="3-memtable写入快但不是免费">3. MemTable：写入快但不是“免费”</h2>
+
+<p>MemTable 让写入先落在内存里，代价是：</p>
+
+<ul>
+  <li>内存占用（多个 memtable + immutable memtable）</li>
+  <li>触发 flush 后会产生 SST（开始进入“后台写放大”的链路）</li>
+</ul>
+
+<h3 id="31-immutable-队列写高峰为什么会堆起来">3.1 Immutable 队列：写高峰为什么会“堆起来”</h3>
+
+<p>写入高峰时，MemTable 会不断转成 immutable，等待后台 flush。</p>
+
+<p>如果 flush 跟不上，你会看到：</p>
+
+<ul>
+  <li>immutable 数量上升</li>
+  <li>L0 文件数上升（读放大也会变差）</li>
+  <li>最终触发 write stall / throttle（保护系统不崩）</li>
+</ul>
+
+<h2 id="4-写入抖动通常从哪里来你该先盯什么">4. 写入抖动通常从哪里来（你该先盯什么）</h2>
+
+<p>从“可解释的工程现象”出发，写入抖动最常见的来源是：</p>
+
+<ul>
+  <li><strong>确认点跟着 fsync 抖</strong>：磁盘/文件系统/虚拟化 IO 抖动直接放大到写入延迟。</li>
+  <li><strong>flush 跟不上</strong>：immutable 堆积，最终触发 stall/throttle。</li>
+  <li><strong>compaction 欠账</strong>：L0/L1 堆积、后台重写占满 IO 带宽，写入被迫限速。</li>
+</ul>
+
+<h2 id="5-你可以关注的两个核心指标--两个更实用的信号">5. 你可以关注的两个“核心指标” + 两个“更实用的信号”</h2>
+
+<p>为了后面理解性能：</p>
+
+<ul>
+  <li><strong>写放大</strong>：WAL + flush + compaction 会带来额外写入</li>
+  <li><strong>读放大</strong>：层级越多、文件越多，读路径越复杂</li>
+</ul>
+
+<h3 id="41-再补两个更实用的信号">4.1 再补两个“更实用”的信号</h3>
+
+<ul>
+  <li><strong>write stall/throttle 次数</strong>：是否在用“卡写”换稳定</li>
+  <li><strong>compaction backlog</strong>：后台是否已经欠账（欠账越多，越容易抖）</li>
+</ul>
+
+<h2 id="6-一个最小排障顺序遇到写入变慢变抖时">6. 一个最小排障顺序（遇到写入变慢/变抖时）</h2>
+
+<ol>
+  <li><strong>先确认写入语义</strong>：<code class="language-plaintext highlighter-rouge">sync</code> 到底开没开？是否有 group commit？业务能接受多大窗口？</li>
+  <li><strong>再看是否“欠账”</strong>：immutable/L0/compaction backlog 是否持续上升？</li>
+  <li><strong>最后再看资源</strong>：IO 利用率、fsync 延迟分布、CPU 是否被压缩/校验打满。</li>
+</ol>
+
+<p>下一篇我们会从 <strong>SST 文件结构</strong> 切入：SST 里面的 block / index / filter 是怎么组织的，读路径为什么能做到“尽量少读”。</p>]]></content><author><name>周智龙</name></author><category term="RocksDB" /><summary type="html"><![CDATA[这篇作为 RocksDB 系列的第 1 篇，先把「一次 Put()/Write() 从 API 到落盘语义」讲清楚：写入路径、确认点（durability）、以及写入抖动来自哪里。后续再分别展开 SST、读路径与 compaction 调参。]]></summary></entry><entry><title type="html">存储笔记：tombstone 与空间回收：为什么删除不等于释放</title><link href="http://localhost:4000/storage-note-071-tombstone/" rel="alternate" type="text/html" title="存储笔记：tombstone 与空间回收：为什么删除不等于释放" /><published>2022-11-01T00:00:00+08:00</published><updated>2022-11-01T00:00:00+08:00</updated><id>http://localhost:4000/storage-note-071-tombstone</id><content type="html" xml:base="http://localhost:4000/storage-note-071-tombstone/"><![CDATA[<p>这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+
+<p><img src="/images/diagrams/tombstone-compaction-lifecycle.svg" alt="tombstone 生命周期：删除可见 ≠ 空间回收" /></p>
+
+<h2 id="1-tombstone-是什么">1. tombstone 是什么</h2>
+
+<ul>
+  <li><strong>语义</strong>：对某个 key 写入一个“删除标记”，让读路径把它当作“不存在”。</li>
+  <li><strong>目的</strong>：在多层/多文件/多版本的系统里，删除需要一个“可合并的事实”，否则你很难在不扫描全量数据的情况下让删除生效。</li>
+</ul>
+
+<h2 id="2-为什么删了还占空间">2. 为什么“删了还占空间”</h2>
+
+<p>因为旧版本通常还在 SST/段文件里：</p>
+
+<ul>
+  <li>tombstone 只是覆盖在“更高层/更新的版本”上，让读看到删除</li>
+  <li>旧版本要等到 compaction 把它合并淘汰（或者 GC 回收）才会真正释放空间</li>
+</ul>
+
+<p>所以“删除多 + compaction 跟不上”时，你会观察到：<strong>盘持续增长、写放大上升、读放大也可能变差</strong>。</p>
+
+<h2 id="3-什么时候空间会真正回收">3. 什么时候空间会真正回收</h2>
+
+<p>一般需要满足：</p>
+
+<ul>
+  <li>tombstone 被 compaction 处理到足够“深”（到达能覆盖旧版本的层级/范围）</li>
+  <li>或者达到某些安全条件（例如没有更旧层还可能出现该 key 的版本）</li>
+</ul>
+
+<p>不同实现会有不同的“删标回收规则”，但共同点是：<strong>回收是异步的</strong>。</p>
+
+<h2 id="4-排查清单你该看什么">4. 排查清单（你该看什么）</h2>
+
+<ol>
+  <li><strong>删除比例</strong>：写入里 delete/overwrite 的占比是否变高？</li>
+  <li><strong>compaction backlog</strong>：pending bytes、L0 文件数、stall/throttle 是否上升？</li>
+  <li><strong>空间放大</strong>：实际磁盘占用 vs 逻辑数据量是否持续拉大？</li>
+  <li><strong>读放大信号</strong>：文件数/层数是否增加（导致读路径更复杂）？</li>
+</ol>
+
+<h2 id="5-小结">5. 小结</h2>
+
+<p>tombstone 让删除“立刻可见”，但空间回收取决于后台合并是否跟上。线上优化通常不是“多删”，而是<strong>让后台预算可控 + 合并策略匹配负载</strong>。</p>]]></content><author><name>周智龙</name></author><category term="storage" /><category term="存储" /><category term="存储基础系列" /><summary type="html"><![CDATA[这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。]]></summary></entry><entry><title type="html">对象存储笔记：版本化（versioning）：覆盖写与回收策略</title><link href="http://localhost:4000/object-storage-note-031-versioning/" rel="alternate" type="text/html" title="对象存储笔记：版本化（versioning）：覆盖写与回收策略" /><published>2022-11-01T00:00:00+08:00</published><updated>2022-11-01T00:00:00+08:00</updated><id>http://localhost:4000/object-storage-note-031-versioning</id><content type="html" xml:base="http://localhost:4000/object-storage-note-031-versioning/"><![CDATA[<p>对象存储的 versioning 解决的不是“好不好用”，而是两个非常工程化的问题：</p>
+
+<ul>
+  <li><strong>防误删/防覆盖</strong>：你永远能找回旧版本（合规/审计/误操作恢复）</li>
+  <li><strong>定义删除语义</strong>：DELETE 的可见性与回收策略要明确（不然会“删了又出现/删了还计费”）</li>
+</ul>
+
+<p><img src="/images/diagrams/object-storage-versioning-flow.svg" alt="对象存储 Versioning：覆盖写、delete-marker 与回收" /></p>
+
+<h2 id="1-开启-versioning-后覆盖写发生了什么">1. 开启 versioning 后，覆盖写发生了什么</h2>
+
+<p>把它理解成两步：</p>
+
+<ol>
+  <li><strong>写入新版本</strong>（生成 <code class="language-plaintext highlighter-rouge">versionId</code>）</li>
+  <li><strong>更新“当前指针”</strong>（current version 指向最新版本）</li>
+</ol>
+
+<p>所以 PUT 覆盖写不再是“原地改”，而是“追加一个版本 + 更新指针”。</p>
+
+<h2 id="2-delete-的语义常见实现">2. DELETE 的语义（常见实现）</h2>
+
+<p>很多对象存储在开启 versioning 后，DELETE 的典型行为是：</p>
+
+<ul>
+  <li>写入一个 <strong>delete-marker</strong>，让“当前指针”变为空（读默认返回 404/NotFound）</li>
+  <li>旧版本仍然存在，并且可以通过 <code class="language-plaintext highlighter-rouge">versionId</code> 访问（直到生命周期/GC 清理）</li>
+</ul>
+
+<p>这能同时满足“对外看起来删了”与“审计/找回”的需求。</p>
+
+<h2 id="3-回收策略成本如何被控制住">3. 回收策略：成本如何被控制住</h2>
+
+<p>版本化一定会带来成本问题：旧版本越多，占用越大。</p>
+
+<p>常见控制方式：</p>
+
+<ul>
+  <li><strong>生命周期策略（lifecycle）</strong>：保留最近 N 个版本 / 超过 X 天自动过期 / 只保留特定 prefix</li>
+  <li><strong>后台 GC/碎片整理</strong>：异步清理旧版本、回收元数据与数据块</li>
+</ul>
+
+<p>关键点：<strong>删除可见 ≠ 成本立刻下降</strong>，成本下降依赖异步回收。</p>
+
+<h2 id="4-排查清单落地">4. 排查清单（落地）</h2>
+
+<ol>
+  <li><strong>版本增长率</strong>：单位时间产生多少新版本？（覆盖写比例）</li>
+  <li><strong>delete-marker 数量</strong>：是否大量堆积导致 list/元数据变慢？</li>
+  <li><strong>生命周期/GC backlog</strong>：回收是否跟上？（否则“越用越贵/越慢”）</li>
+  <li><strong>一致性体验</strong>：list 的一致性窗口是否符合业务预期？（不同系统不同）</li>
+</ol>
+
+<h2 id="5-小结">5. 小结</h2>
+
+<p>versioning 的核心是：把“覆盖写/删除”变成可审计、可回滚的版本历史；代价是存储与元数据规模增长，需要 lifecycle + GC 把成本管住。</p>]]></content><author><name>周智龙</name></author><category term="storage" /><category term="存储" /><category term="对象存储" /><summary type="html"><![CDATA[对象存储的 versioning 解决的不是“好不好用”，而是两个非常工程化的问题：]]></summary></entry></feed>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .ver{fill:#f7f7f7;stroke:#666;stroke-width:1.5;rx:10}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">对象存储 Versioning：覆盖写变成“新版本 + 指针更新”</text>
+  <text class="muted" x="40" y="66">关键：最新版本可见 ≠ 旧版本回收；回收通常由生命周期策略/GC 异步完成。</text>
+
+  <rect class="box" x="40" y="105" width="220" height="90"/>
+  <text class="title" x="150" y="138" text-anchor="middle">PUT key（覆盖写）</text>
+  <text class="muted" x="150" y="162" text-anchor="middle">生成 versionId</text>
+  <text class="muted" x="150" y="180" text-anchor="middle">更新“当前指针”</text>
+
+  <path class="arrow" d="M 260 150 L 330 150"/>
+
+  <rect class="ver" x="335" y="105" width="160" height="40"/>
+  <text class="text" x="415" y="131" text-anchor="middle">v3（current）</text>
+  <rect class="ver" x="505" y="105" width="160" height="40"/>
+  <text class="text" x="585" y="131" text-anchor="middle">v2</text>
+  <rect class="ver" x="675" y="105" width="160" height="40"/>
+  <text class="text" x="755" y="131" text-anchor="middle">v1</text>
+
+  <rect class="warn" x="335" y="165" width="500" height="90"/>
+  <text class="title" x="585" y="197" text-anchor="middle">DELETE 的语义（开启 versioning）</text>
+  <text class="muted" x="585" y="222" text-anchor="middle">通常是写入 delete-marker，使“当前指针”变为空</text>
+  <text class="muted" x="585" y="244" text-anchor="middle">旧版本仍可被按 versionId 访问（直到 GC）</text>
+
+  <rect class="box" x="40" y="270" width="900" height="70"/>
+  <text class="title" x="70" y="302">回收策略</text>
+  <text class="muted" x="70" y="326">生命周期（保留 N 个版本/按天数过期）+ 后台 GC/碎片整理 → 控制成本与合规审计。</text>
+</svg>
+

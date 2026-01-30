@@ -1,0 +1,746 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>网络笔记：TCP 重传：RTO 与 fast retransmit - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="网络笔记：TCP 重传：RTO 与 fast retransmit">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-network-note-013-tcp-rto-fast-retransmit/">
+  <meta property="og:url" content="http://localhost:4000/cs-network-note-013-tcp-rto-fast-retransmit/">
+
+
+
+  <meta property="og:description" content="本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-02-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">计算机网络</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/tcp-reliability-and-cc/" class=""><span class="nav__sub-title">网络（1）：TCP 可靠传输与拥塞控制直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/http-cache-and-cdn/" class=""><span class="nav__sub-title">网络（2）：HTTP 缓存与 CDN</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-006-http-2/" class=""><span class="nav__sub-title">网络笔记：HTTP/2：多路复用与队头阻塞</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-013-tcp-rto-fast-retransmit/" class="active"><span class="nav__sub-title">网络笔记：TCP 重传：RTO 与 fast retransmit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-048-post/" class=""><span class="nav__sub-title">网络笔记：超时与重试：为什么会放大流量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-055-tls/" class=""><span class="nav__sub-title">网络笔记：TLS 握手：延迟优化与会话复用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-069-vs/" class=""><span class="nav__sub-title">网络笔记：负载均衡：四层 vs 七层</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-076-cubic-bbr/" class=""><span class="nav__sub-title">网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="网络笔记：TCP 重传：RTO 与 fast retransmit">
+    <meta itemprop="description" content="本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="February 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">网络笔记：TCP 重传：RTO 与 fast retransmit
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-02-01T00:00:00+08:00">February 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/tcp-retransmit-rto-fast.svg" alt="网络笔记：TCP 重传：RTO 与 fast retransmit" /></p>
+<h2 id="1-先把重传为什么会拖慢说清楚丢包--rtt-被放大">1. 先把“重传为什么会拖慢”说清楚：丢包 = RTT 被放大</h2>
+
+<p>TCP 的可靠性来自“丢了就重传”。问题在于：一旦发生丢包，你看到的往往不是“少丢几个包”这么简单，而是：</p>
+
+<ul>
+  <li><strong>吞吐下降</strong></li>
+  <li><strong>RTT 抖动</strong></li>
+  <li><strong>尾延迟（P99/P999）显著上升</strong></li>
+</ul>
+
+<p>原因：重传会引入额外等待（检测丢包的时间 + 重传往返），并触发拥塞控制收缩窗口。</p>
+
+<h2 id="2-fast-retransmit-vs-rto哪个更伤">2. fast retransmit vs RTO：哪个更“伤”</h2>
+
+<ul>
+  <li><strong>fast retransmit</strong>：通过重复 ACK 快速判断丢包并重传，通常比等超时更快（代价更小）。</li>
+  <li><strong>RTO（Retransmission Timeout）</strong>：等到超时才重传，意味着至少要等一个超时时间，<strong>对尾延迟最致命</strong>。</li>
+</ul>
+
+<p>一句话：RTO 更像“被迫等了一次很长的红灯”，会直接把少量请求拉成巨大长尾。</p>
+
+<h2 id="3-为什么-http2rpc-等会被放大传输层-hol--应用层重试">3. 为什么 HTTP/2、RPC 等会被放大：传输层 HoL + 应用层重试</h2>
+
+<p>丢包造成的影响经常被两层放大：</p>
+
+<ol>
+  <li><strong>传输层 HoL（按序交付）</strong>：丢了一段字节，后面的字节即使到了也不能交付（同连接内多请求一起受影响）。</li>
+  <li><strong>应用层超时/重试</strong>：请求慢 → 超时 → 重试 → 并发上升 → 队列更长 → 更慢（正反馈）。</li>
+</ol>
+
+<p>所以你线上看到的常是：</p>
+
+<blockquote>
+  <p>丢包率看起来不高，但 P99 像坐过山车；随后重试把流量“自己打爆”。</p>
+</blockquote>
+
+<h2 id="4-你应该观测什么按优先级">4. 你应该观测什么（按优先级）</h2>
+
+<ul>
+  <li><strong>重传相关</strong>：retransmits、dupacks、RTO 次数、fast-retransmit 次数</li>
+  <li><strong>丢包与队列</strong>：loss、ECN（如果有）、队列时延/Bufferbloat 信号</li>
+  <li><strong>RTT 分布</strong>：不是平均 RTT，而是 P99 与抖动</li>
+  <li><strong>应用层重试</strong>：重试率、超时率、额外 QPS 放大倍数</li>
+</ul>
+
+<h2 id="5-最小排障顺序线上-p99-抖动超时增多">5. 最小排障顺序（线上 P99 抖动/超时增多）</h2>
+
+<ol>
+  <li><strong>先确认是否丢包/重传上升</strong>：这是最常见根因（尤其是 RTO）。</li>
+  <li><strong>再看是否 bufferbloat/拥塞</strong>：队列时延上升会让 RTT 抖动，进而触发更多超时。</li>
+  <li><strong>检查连接复用策略</strong>：过度复用单连接会放大 HoL（尤其在丢包时）。</li>
+  <li><strong>最后看应用层超时与重试</strong>：
+    <ul>
+      <li>超时是否过短（与真实 RTT 分布不匹配）？</li>
+      <li>是否缺少退避/jitter 导致同步重试？</li>
+      <li>是否缺少幂等/去重导致重试副作用？</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="6-小结">6. 小结</h2>
+
+<p>TCP 重传问题的工程化处理顺序很固定：先把“是不是丢包/重传”确认清楚，再判断“是不是队列/拥塞放大”，最后才去改应用层超时与重试策略。否则很容易在应用层“越救越糟”。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

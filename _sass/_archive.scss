@@ -27,6 +27,64 @@
   }
 }
 
+/* Homepage "page size" selector (client-side enhanced pagination) */
+.home-page-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.5em 0 1.25em;
+  font-family: $sans-serif;
+  font-size: $type-size-6;
+  color: mix(#fff, $gray, 35%);
+
+  label {
+    margin: 0;
+    font-weight: bold;
+  }
+
+  select {
+    padding: 0.25em 0.5em;
+    font-family: inherit;
+    font-size: inherit;
+    color: $text-color;
+    background: $background-color;
+    border: 1px solid $border-color;
+    border-radius: $border-radius;
+  }
+}
+
+.home-page-size__hint {
+  opacity: 0.75;
+  font-size: $type-size-7;
+}
+
+/* Put the page-size selector and paginator on one row (wrap on small screens) */
+.home-pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+
+  .pagination {
+    width: auto;      /* override theme full-width paginator */
+    float: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Expand archive content when the left sidebar is collapsed */
+.sidebar--collapsed {
+  .archive {
+    @include breakpoint($large) {
+      @include span(12 of 12);
+      @include prefix(0);
+    }
+  }
+}
+
 .archive__subtitle {
   margin: 1.414em 0 0;
   padding-bottom: 0.5em;

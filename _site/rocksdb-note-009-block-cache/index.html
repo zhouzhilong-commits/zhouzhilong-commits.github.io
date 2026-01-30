@@ -1,0 +1,788 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 笔记：Block Cache：缓存什么、怎么估算命中 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 笔记：Block Cache：缓存什么、怎么估算命中">
+
+
+  <link rel="canonical" href="http://localhost:4000/rocksdb-note-009-block-cache/">
+  <meta property="og:url" content="http://localhost:4000/rocksdb-note-009-block-cache/">
+
+
+
+  <meta property="og:description" content="这篇笔记更“贴近工程现场”地回答 RocksDB 的一个高频问题：Block Cache 到底缓存什么？怎么估算需要多大？为什么“命中率看起来不低”但延迟还是很差？">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-01-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">RocksDB 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-1-write-path/" class=""><span class="nav__sub-title">RocksDB（1）：写入链路（WAL + MemTable）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-2-sst-and-read-path/" class=""><span class="nav__sub-title">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-009-block-cache/" class="active"><span class="nav__sub-title">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" class=""><span class="nav__sub-title">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" class=""><span class="nav__sub-title">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-002-writebatch-seq/" class=""><span class="nav__sub-title">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-016-cpu-io/" class=""><span class="nav__sub-title">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 笔记：Block Cache：缓存什么、怎么估算命中">
+    <meta itemprop="description" content="这篇笔记更“贴近工程现场”地回答 RocksDB 的一个高频问题：Block Cache 到底缓存什么？怎么估算需要多大？为什么“命中率看起来不低”但延迟还是很差？">
+    <meta itemprop="datePublished" content="January 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇笔记更“贴近工程现场”地回答 RocksDB 的一个高频问题：<strong>Block Cache 到底缓存什么？怎么估算需要多大？为什么“命中率看起来不低”但延迟还是很差？</strong></p>
+
+<p><img src="/images/diagrams/rocksdb-block-cache-path.svg" alt="RocksDB 读路径上的 Block Cache：命中与未命中的差别" /></p>
+
+<h2 id="1-背景这个问题通常在什么场景出现">1. 背景：这个问题通常在什么场景出现</h2>
+
+<ul>
+  <li><strong>读多写少的 KV 服务</strong>：读延迟（尤其 P95/P99）成为主矛盾，想用缓存把随机 IO 压下去。</li>
+  <li><strong>写多读也多的混合负载</strong>：Compaction 吃资源导致 cache 竞争，出现“平时快、偶发抖”的尾延迟。</li>
+  <li><strong>负查（key 不存在）很多</strong>：Bloom filter/索引块命中能省大量 IO，但 data block miss 仍然会让“存在的 key”变慢。</li>
+  <li><strong>数据压缩开启</strong>：cache 命中不仅省 IO，还省解压/校验的 CPU；反过来 miss 会放大 CPU 压力。</li>
+</ul>
+
+<blockquote>
+  <p>目标最好可量化：例如 <code class="language-plaintext highlighter-rouge">P99 read latency &lt; 5ms</code>、<code class="language-plaintext highlighter-rouge">device read bytes/s</code> 降到某阈值、或 <code class="language-plaintext highlighter-rouge">block cache data hit rate</code> 达到某区间。</p>
+</blockquote>
+
+<h2 id="2-核心概念用最少概念把模型搭起来">2. 核心概念：用最少概念把模型搭起来</h2>
+
+<p>这里用 6 个概念把模型搭起来（够用、且可落地）：</p>
+
+<ul>
+  <li><strong>Block</strong>：SST 的最小 IO 单元（通常 4KB~16KB/64KB，具体看配置/数据分布）。</li>
+  <li><strong>三类可缓存块</strong>：
+    <ul>
+      <li><strong>data block</strong>：真正的 KV 数据（通常占 cache 的大头，也是决定读性能的关键）。</li>
+      <li><strong>index block</strong>：把 key range 映射到 data block handle（更小、更容易被 cache）。</li>
+      <li><strong>filter block（Bloom）</strong>：快速判断“这个文件是否可能包含 key”（对负查收益巨大）。</li>
+    </ul>
+  </li>
+  <li><strong>命中/未命中成本差</strong>：
+    <ul>
+      <li>命中：内存读 + 少量解析（非常稳定）</li>
+      <li>未命中：随机 IO + 校验 +（可能）解压 + 插入 cache（尾延迟显著更差）</li>
+    </ul>
+  </li>
+  <li><strong>工作集（working set）</strong>：真正“频繁被读”的数据集合（不等于总数据量）。</li>
+  <li><strong>驱逐（eviction）</strong>：cache 装不下工作集时就会频繁淘汰，导致“抖”。</li>
+</ul>
+
+<blockquote>
+  <p>经验：你追求的通常不是最高平均命中率，而是<strong>稳定的 data block 命中</strong>（尤其热点表/热点 key-range）。</p>
+</blockquote>
+
+<h2 id="3-机制拆解为什么会发生因果链">3. 机制拆解：为什么会发生（因果链）</h2>
+
+<p>把它拆成“输入 → 路径 → 现象”的链路（每一项都能在指标里验证）：</p>
+
+<ul>
+  <li><strong>输入</strong>
+    <ul>
+      <li>点查 vs 范围扫：范围扫更容易触发顺序读/预取，但也更容易把 cache 冲掉</li>
+      <li>读 key 分布：Zipf（热点明显）通常更“适合 cache”，均匀分布则更难命中</li>
+      <li>value 大小：value 很大时，单个 data block 里有效数据比例会变差</li>
+    </ul>
+  </li>
+  <li><strong>路径</strong>
+    <ol>
+      <li>先查 MemTable/Immutable（命中则无需落盘读）</li>
+      <li>对每个候选 SST：先 filter（可能）→ index 定位 → data block 读</li>
+      <li>data block 读完：校验/解压 → 放入 cache（下次命中）</li>
+    </ol>
+  </li>
+  <li><strong>现象</strong>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">index/filter</code> 命中不错，但 <code class="language-plaintext highlighter-rouge">data</code> 命中差 → 看起来“有 cache”，但延迟仍差</li>
+      <li>compaction 高峰时命中率下降 → cache 与后台读写争抢内存/IO</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="31-为什么命中率不低但还是慢最常见的坑">3.1 为什么“命中率不低”但还是慢（最常见的坑）</h3>
+
+<p>你需要区分三种命中率：</p>
+
+<ul>
+  <li><strong>Block cache hit rate（总体）</strong>：可能被 index/filter 撑高</li>
+  <li><strong>Data block hit rate（关键）</strong>：决定大部分读 IO</li>
+  <li><strong>Read latency 的 P99</strong>：最终用户体验，受 miss 的尾部影响更大</li>
+</ul>
+
+<p>如果你只盯总体 hit rate，很容易误判。</p>
+
+<h2 id="4-工程权衡优化通常会带来什么副作用">4. 工程权衡：优化通常会带来什么副作用</h2>
+
+<p>把 cache 调大/调小，真正的权衡在这里：</p>
+
+<ul>
+  <li><strong>Block cache vs MemTable</strong>：cache 太大挤压 memtable，会更频繁 flush/compaction，反而把读写都拖慢。</li>
+  <li><strong>Cache vs OS page cache</strong>：你同时拥有文件系统 page cache；两者叠加可能浪费内存，也可能互补（取决于压缩/读形态）。</li>
+  <li><strong>范围扫描污染</strong>：scan 很容易把热点挤出 cache，需要隔离（例如 scan 不进 cache / scan 专用策略）。</li>
+  <li><strong>压缩与 CPU</strong>：cache 命中能省解压；但如果 CPU 已经满，miss 会更致命。</li>
+</ul>
+
+<h2 id="5-排查清单建议按顺序">5. 排查清单（建议按顺序）</h2>
+
+<ol>
+  <li><strong>拆开看命中</strong>：至少区分 <code class="language-plaintext highlighter-rouge">data/index/filter</code> 的命中（不要只看总体）</li>
+  <li><strong>看 miss 成本</strong>：miss 时每次读要触碰多少 SST？是否伴随大量负查？</li>
+  <li><strong>看 cache 驱逐</strong>：是否频繁 eviction？是否出现短时间内命中率断崖式下降？</li>
+  <li><strong>看后台干扰</strong>：compaction 期间读延迟是否同步抬头？是否有 write stall？</li>
+  <li><strong>看资源与瓶颈</strong>：
+    <ul>
+      <li>设备随机读延迟/队列深度</li>
+      <li>CPU（解压/校验）是否打满</li>
+      <li>内存是否发生频繁 GC/换页（如果你在 JVM/容器环境）</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="6-小结">6. 小结</h2>
+
+<p>Block Cache 的核心不是“把 hit rate 调到最高”，而是：</p>
+
+<ul>
+  <li>让 <strong>data block 命中</strong> 足够稳定</li>
+  <li>让 <strong>miss 的尾部成本</strong> 可控（减少需要触碰的文件数/层数）</li>
+  <li>在 <strong>memtable / cache / compaction</strong> 之间做整体预算</li>
+</ul>
+
+<p>下一步如果你愿意，我们可以把这篇继续补到“更硬核”的程度：加入 RocksDB 常用统计项（tickers/histograms）的对照表，以及一个按 workload 估算 cache size 的示例（从工作集和 block 大小推算）。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

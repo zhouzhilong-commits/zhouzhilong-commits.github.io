@@ -1,0 +1,43 @@
+{% comment %}
+  Recursive masthead navigation list.
+  Usage:
+    {% include masthead_nav_list.html items=site.data.navigation.main %}
+{% endcomment %}
+
+{% include base_path %}
+
+{% assign items = include.items | default: site.data.navigation.main %}
+{% assign level = include.level | default: 0 %}
+
+<ul class="{% if level == 0 %}visible-links{% else %}masthead__submenu{% endif %}">
+  {% if level == 0 %}
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="{{ base_path }}/">{{ site.title }}</a></li>
+  {% endif %}
+
+  {% for link in items %}
+    {% if link.url and link.url contains 'http' %}
+      {% assign domain = '' %}
+    {% else %}
+      {% assign domain = base_path %}
+    {% endif %}
+
+    {% assign has_children = false %}
+    {% if link.children and link.children.size > 0 %}
+      {% assign has_children = true %}
+    {% endif %}
+
+    <li class="masthead__menu-item{% if has_children %} masthead__menu-item--dropdown{% endif %}">
+      {% if link.url %}
+        <a href="{{ domain }}{{ link.url }}"{% if has_children %} class="masthead__dropdown-trigger" aria-haspopup="true"{% endif %}>{{ link.title }}</a>
+      {% else %}
+        <span class="masthead__dropdown-trigger">{{ link.title }}</span>
+      {% endif %}
+
+      {% if has_children %}
+        {% assign next_level = level | plus: 1 %}
+        {% include masthead_nav_list.html items=link.children level=next_level %}
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+

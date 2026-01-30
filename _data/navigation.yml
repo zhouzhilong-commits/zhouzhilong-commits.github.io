@@ -1,7 +1,212 @@
 # main links links
 main:
-  - title: "博客"
-    url: /
+  - title: "存储"
+    url: /storage-basics/
+    children:
+      - title: "存储基础"
+        url: /storage-basics/
+      - title: "RocksDB"
+        url: /rocksdb/
+      - title: "对象存储"
+        url: /object-storage/
+      - title: "分布式一致性"
+        url: /consensus/
 
-  - title: "博客归档"
-    url: /year-archive/
+  - title: "论文笔记"
+    url: /paper-notes/
+    children:
+      - title: "存储论文"
+        url: /paper-notes/storage/
+      - title: "数据库论文"
+        url: /paper-notes/databases/
+      - title: "分布式系统论文"
+        url: /paper-notes/distributed/
+
+  - title: "计算机基础"
+    url: /cs-foundations/
+    children:
+      - title: "操作系统"
+        url: /cs/os/
+      - title: "计算机网络"
+        url: /cs/network/
+      - title: "计算机组成"
+        url: /cs/architecture/
+
+# Series sidebars (used by page.series / page.sidebar.nav)
+storage_basics:
+  - title: "存储基础系列"
+    children:
+      - title: "存储基础（1）：写放大"
+        url: /storage-basics-1-write-amplification/
+      - title: "存储基础（2）：读放大、布隆过滤器与缓存"
+        url: /storage-basics-2-read-amplification/
+      - title: "存储基础（3）：LSM、Compaction 与写放大"
+        url: /storage-basics-3-lsm-and-compaction/
+      - title: "存储基础（4）：WAL、崩溃恢复与一致性"
+        url: /storage-basics-4-wal-and-recovery/
+      - title: "存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡"
+        url: /storage-basics-5-btree-vs-lsm/
+      - title: "存储笔记：SSD 写放大与 FTL：为什么随机写更贵"
+        url: /storage-note-001-ssd-ftl/
+      - title: "存储笔记：写入合并（merge）与写扩散：从日志到段"
+        url: /storage-note-022-merge/
+
+rocksdb:
+  - title: "RocksDB 系列"
+    children:
+      - title: "RocksDB（1）：写入链路（WAL + MemTable）"
+        url: /rocksdb-1-write-path/
+      - title: "RocksDB（2）：SST 结构与读路径（Table/Block/Index）"
+        url: /rocksdb-2-sst-and-read-path/
+      - title: "RocksDB 笔记：Block Cache：缓存什么、怎么估算命中"
+        url: /rocksdb-note-009-block-cache/
+      - title: "RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本"
+        url: /rocksdb-note-051-bloom-ribbon-filter/
+      - title: "RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量"
+        url: /rocksdb-note-065-flush-write-buffer-l0/
+      - title: "RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次"
+        url: /rocksdb-note-002-writebatch-seq/
+      - title: "RocksDB 笔记：压缩与校验：CPU/IO 的权衡点"
+        url: /rocksdb-note-016-cpu-io/
+
+object_storage:
+  - title: "对象存储系列"
+    children:
+      - title: "对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）"
+        url: /object-storage-1-core-concepts/
+      - title: "对象存储（2）：纠删码（EC）与副本（Replication）取舍"
+        url: /object-storage-2-ec-vs-replication/
+      - title: "对象存储笔记：EC 与副本：延迟、带宽、修复成本"
+        url: /object-storage-note-024-ec/
+      - title: "对象存储笔记：一致性模型：read-after-write 与 list 一致性"
+        url: /object-storage-note-003-read-after-write-list/
+      - title: "对象存储笔记：元数据服务：对象索引与列目录"
+        url: /object-storage-note-010-post/
+      - title: "对象存储笔记：分片上传与并行：大对象如何高吞吐"
+        url: /object-storage-note-038-post/
+      - title: "对象存储笔记：多区域容灾：RPO/RTO 与复制链路"
+        url: /object-storage-note-045-rpo-rto/
+      - title: "对象存储笔记：对象存储的命名空间：bucket、key、prefix 的含义"
+        url: /object-storage-note-017-bucket-key-prefix/
+      - title: "对象存储笔记：小对象与合并：小对象为什么更难"
+        url: /object-storage-note-059-post/
+      - title: "对象存储笔记：版本化（versioning）：覆盖写与回收策略"
+        url: /object-storage-note-031-versioning/
+
+consensus:
+  - title: "分布式一致性系列"
+    children:
+      - title: "一致性（1）：从复制到一致性（Primary-Backup / Quorum）"
+        url: /consensus-1-replication-basics/
+      - title: "一致性（2）：Raft 直觉（日志复制与提交）"
+        url: /consensus-2-raft-intuition/
+      - title: "一致性笔记：Leader 选举：租约（lease）与心跳"
+        url: /consensus-note-004-leader-lease/
+      - title: "一致性笔记：Quorum 的直觉：读写多数派为什么能工作"
+        url: /consensus-note-018-quorum/
+      - title: "一致性笔记：复制延迟：尾延迟如何影响提交点"
+        url: /consensus-note-011-post/
+      - title: "一致性笔记：快照与日志截断：减少恢复时间"
+        url: /consensus-note-032-post/
+      - title: "一致性笔记：成员变更：joint consensus 的必要性"
+        url: /consensus-note-046-joint-consensus/
+      - title: "一致性笔记：日志复制：matchIndex 与提交规则"
+        url: /consensus-note-053-matchindex/
+      - title: "一致性笔记：线性一致性：从客户端视角理解"
+        url: /consensus-note-039-post/
+      - title: "一致性笔记：脑裂：什么时候会发生，怎么避免"
+        url: /consensus-note-025-post/
+
+paper_notes:
+  - title: "论文笔记"
+    children:
+
+paper_storage:
+  - title: "存储论文"
+    children:
+      - title: "Bigtable：A Distributed Storage System for Structured Data（论文笔记）"
+        url: /paper-notes/storage/bigtable/
+      - title: "Dynamo：Amazon's Highly Available Key-value Store（论文笔记）"
+        url: /paper-notes/storage/dynamo/
+      - title: "GFS：The Google File System（论文笔记）"
+        url: /paper-notes/storage/gfs/
+      - title: "LSM-Tree：The Log-Structured Merge-Tree（论文笔记）"
+        url: /paper-notes/storage/lsm-tree/
+
+paper_databases:
+  - title: "数据库论文"
+    children:
+      - title: "ARIES：Recovery Algorithm（论文笔记）"
+        url: /paper-notes/databases/aries-recovery/
+      - title: "Silo：High Performance OLTP（论文笔记）"
+        url: /paper-notes/databases/silo-oltp/
+      - title: "System R：Access Path Selection（论文笔记）"
+        url: /paper-notes/databases/system-r-access-path-selection/
+
+paper_distributed:
+  - title: "分布式系统论文"
+    children:
+      - title: "Chubby：A Lock Service（论文笔记）"
+        url: /paper-notes/distributed/chubby/
+      - title: "MapReduce：Simplified Data Processing（论文笔记）"
+        url: /paper-notes/distributed/mapreduce/
+      - title: "Spanner：Globally-Distributed Database（论文笔记）"
+        url: /paper-notes/distributed/spanner/
+
+home:
+  - title: "站点导航"
+    children:
+
+cs_foundations:
+  - title: "计算机基础"
+    children:
+
+cs_os:
+  - title: "操作系统"
+    children:
+      - title: "OS（1）：进程/线程与上下文切换"
+        url: /cs/os/process-thread-context-switch/
+      - title: "OS（2）：虚拟内存与页表"
+        url: /cs/os/virtual-memory-page-table/
+      - title: "操作系统笔记：调度器：时间片与 CFS 的直觉"
+        url: /cs-os-note-005-cfs/
+      - title: "操作系统笔记：io_uring：异步 IO 的模型"
+        url: /cs-os-note-068-io-uring-io/
+
+cs_network:
+  - title: "计算机网络"
+    children:
+      - title: "网络（1）：TCP 可靠传输与拥塞控制直觉"
+        url: /cs/network/tcp-reliability-and-cc/
+      - title: "网络（2）：HTTP 缓存与 CDN"
+        url: /cs/network/http-cache-and-cdn/
+      - title: "网络笔记：HTTP/2：多路复用与队头阻塞"
+        url: /cs-network-note-006-http-2/
+      - title: "网络笔记：TCP 重传：RTO 与 fast retransmit"
+        url: /cs-network-note-013-tcp-rto-fast-retransmit/
+      - title: "网络笔记：超时与重试：为什么会放大流量"
+        url: /cs-network-note-048-post/
+      - title: "网络笔记：TLS 握手：延迟优化与会话复用"
+        url: /cs-network-note-055-tls/
+      - title: "网络笔记：负载均衡：四层 vs 七层"
+        url: /cs-network-note-069-vs/
+      - title: "网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异"
+        url: /cs-network-note-076-cubic-bbr/
+
+cs_arch:
+  - title: "计算机组成"
+    children:
+      - title: "组成（1）：CPU Cache 与局部性"
+        url: /cs/architecture/cpu-cache-and-locality/
+      - title: "组成（2）：分支预测与流水线"
+        url: /cs/architecture/branch-prediction-and-pipeline/
+      - title: "计算机组成笔记：Cache line：伪共享与性能抖动"
+        url: /cs-arch-note-042-cache-line/
+      - title: "计算机组成笔记：Profile 指标：IPC、cache miss、branch miss"
+        url: /cs-arch-note-070-profile-ipc-cache-miss-branch-miss/
+      - title: "计算机组成笔记：SIMD：什么时候能提速，什么时候不行"
+        url: /cs-arch-note-007-simd/
+      - title: "计算机组成笔记：内存屏障：为什么需要 fence"
+        url: /cs-arch-note-056-fence/
+      - title: "计算机组成笔记：分支预测失败：流水线 flush 的代价"
+        url: /cs-arch-note-063-flush/

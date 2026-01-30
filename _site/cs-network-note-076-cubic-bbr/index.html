@@ -1,0 +1,760 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-network-note-076-cubic-bbr/">
+  <meta property="og:url" content="http://localhost:4000/cs-network-note-076-cubic-bbr/">
+
+
+
+  <meta property="og:description" content="本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-04-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">计算机网络</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/tcp-reliability-and-cc/" class=""><span class="nav__sub-title">网络（1）：TCP 可靠传输与拥塞控制直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/network/http-cache-and-cdn/" class=""><span class="nav__sub-title">网络（2）：HTTP 缓存与 CDN</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-006-http-2/" class=""><span class="nav__sub-title">网络笔记：HTTP/2：多路复用与队头阻塞</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-013-tcp-rto-fast-retransmit/" class=""><span class="nav__sub-title">网络笔记：TCP 重传：RTO 与 fast retransmit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-048-post/" class=""><span class="nav__sub-title">网络笔记：超时与重试：为什么会放大流量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-055-tls/" class=""><span class="nav__sub-title">网络笔记：TLS 握手：延迟优化与会话复用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-069-vs/" class=""><span class="nav__sub-title">网络笔记：负载均衡：四层 vs 七层</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-network-note-076-cubic-bbr/" class="active"><span class="nav__sub-title">网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异">
+    <meta itemprop="description" content="本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。">
+    <meta itemprop="datePublished" content="April 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-04-01T00:00:00+08:00">April 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。</p>
+
+<p><img src="/images/diagrams/tcp-cc-cubic-bbr.svg" alt="网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异" /></p>
+<h2 id="1-拥塞控制到底在控制什么吞吐延迟与排队">1. 拥塞控制到底在控制什么：吞吐、延迟与“排队”</h2>
+
+<p>网络里“慢”通常有两种本质：</p>
+
+<ul>
+  <li><strong>带宽不够</strong>：链路本身吞吐上不去</li>
+  <li><strong>排队太多（bufferbloat）</strong>：带宽够，但队列把 RTT 拉长，P99 变差</li>
+</ul>
+
+<p>拥塞控制做的事就是：在不把网络塞爆的前提下尽量吃到带宽，同时尽量避免形成巨大的排队。</p>
+
+<h2 id="2-cubic-的直觉更像以丢包为拥塞信号">2. CUBIC 的直觉：更像“以丢包为拥塞信号”</h2>
+
+<p>工程上你可以把 CUBIC 理解为：</p>
+
+<ul>
+  <li>窗口会按某种增长曲线增加</li>
+  <li>一旦出现拥塞信号（经常表现为丢包/重传），窗口收缩</li>
+</ul>
+
+<p>因此它的行为更容易受这些因素影响：</p>
+
+<ul>
+  <li>丢包率/重传</li>
+  <li>中间盒子/队列策略（是否容易触发丢包）</li>
+</ul>
+
+<h2 id="3-bbr-的直觉更像测带宽与-rtt用模型控制排队">3. BBR 的直觉：更像“测带宽与 RTT，用模型控制排队”</h2>
+
+<p>BBR 的工程直觉是：</p>
+
+<ul>
+  <li>试图测到“可用带宽（BtlBw）”和“最小 RTT（RTprop）”</li>
+  <li>用模型控制发送速率，让链路处于高利用率但不制造过多排队</li>
+</ul>
+
+<p>因此它更敏感于：</p>
+
+<ul>
+  <li>RTT 估计是否稳定（是否有长期排队把 min RTT 污染）</li>
+  <li>链路是否存在复杂的整形/队列策略（影响带宽估计）</li>
+</ul>
+
+<h2 id="4-线上你会看到什么同样吞吐不同延迟分布">4. 线上你会看到什么：同样吞吐，不同延迟分布</h2>
+
+<p>常见体验差异：</p>
+
+<ul>
+  <li>有些场景下，BBR 更容易把排队压下来（P99 更稳）</li>
+  <li>有些场景下，BBR 的估计不稳定会导致吞吐抖动或与其它流量竞争行为不同</li>
+</ul>
+
+<blockquote>
+  <p>工程上不要“迷信算法名字”，先看你的链路是否是 bufferbloat 主导，还是丢包主导。</p>
+</blockquote>
+
+<h2 id="5-你应该观测什么排障信号">5. 你应该观测什么（排障信号）</h2>
+
+<ul>
+  <li><strong>RTT 分布</strong>：尤其是 P95/P99 与最小 RTT 是否被污染</li>
+  <li><strong>丢包/重传</strong>：retransmits、dupacks、RTO</li>
+  <li><strong>队列时延/排队信号</strong>：是否存在长期排队（bufferbloat）</li>
+  <li><strong>吞吐稳定性</strong>：是否存在明显的周期性抖动</li>
+</ul>
+
+<h2 id="6-最小排障顺序吞吐不稳延迟很差">6. 最小排障顺序（“吞吐不稳/延迟很差”）</h2>
+
+<ol>
+  <li><strong>先判断是不是 bufferbloat</strong>：RTT 是否被排队拉长（最小 RTT vs 当前 RTT）</li>
+  <li><strong>再看丢包与重传</strong>：是否因丢包触发窗口收缩/恢复</li>
+  <li><strong>确认链路是否有整形/中间盒子</strong>：会影响算法对信号的解释</li>
+  <li><strong>最后再比较 CUBIC vs BBR</strong>：同一链路同一 workload 下对比（用数据说话）</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>CUBIC 更像“以丢包为拥塞信号的窗口控制”，BBR 更像“用带宽/RTT 模型控制排队”。选型与排障的关键不是背原理，而是先识别你的链路是“丢包主导”还是“排队主导”，再决定用哪种控制策略更合适。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

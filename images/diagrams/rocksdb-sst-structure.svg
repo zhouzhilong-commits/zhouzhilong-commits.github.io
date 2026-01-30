@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .slot{fill:#f7f7f7;stroke:#666;stroke-width:1.5;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">SST（Table File）结构：你可以当成“分层索引的有序文件”</text>
+  <text class="muted" x="40" y="66">读路径目标：尽量少读 IO —— 先 filter 排除，再用 index 定位，最后只读少量 data block。</text>
+
+  <rect class="box" x="40" y="90" width="900" height="210"/>
+
+  <!-- left: data blocks -->
+  <rect class="slot" x="70" y="120" width="260" height="150"/>
+  <text class="title" x="200" y="150" text-anchor="middle">Data Blocks</text>
+  <text class="text" x="200" y="178" text-anchor="middle">KV（压缩后）</text>
+  <text class="muted" x="200" y="205" text-anchor="middle">restart points</text>
+  <text class="muted" x="200" y="225" text-anchor="middle">checksum</text>
+
+  <!-- middle: index -->
+  <rect class="slot" x="360" y="120" width="260" height="150"/>
+  <text class="title" x="490" y="150" text-anchor="middle">Index Block</text>
+  <text class="text" x="490" y="178" text-anchor="middle">key → block handle</text>
+  <text class="muted" x="490" y="205" text-anchor="middle">二分/分段查找</text>
+  <text class="muted" x="490" y="225" text-anchor="middle">（顶层索引可缓存）</text>
+
+  <!-- right: filter/meta/footer -->
+  <rect class="slot" x="650" y="120" width="260" height="70"/>
+  <text class="title" x="780" y="150" text-anchor="middle">Filter Block</text>
+  <text class="muted" x="780" y="175" text-anchor="middle">Bloom / ribbon ...</text>
+
+  <rect class="slot" x="650" y="200" width="260" height="70"/>
+  <text class="title" x="780" y="230" text-anchor="middle">MetaIndex + Footer</text>
+  <text class="muted" x="780" y="255" text-anchor="middle">定位 index/filter</text>
+
+  <text class="muted" x="40" y="325">提示：RocksDB 还有 block cache / pinning / prefetch 等机制，让“少读+复用”更有效。</text>
+</svg>
+

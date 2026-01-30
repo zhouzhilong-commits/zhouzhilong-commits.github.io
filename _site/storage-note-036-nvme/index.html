@@ -1,0 +1,774 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端">
+
+
+  <link rel="canonical" href="http://localhost:4000/storage-note-036-nvme/">
+  <meta property="og:url" content="http://localhost:4000/storage-note-036-nvme/">
+
+
+
+  <meta property="og:description" content="本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2023-04-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">存储基础系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-1-write-amplification/" class=""><span class="nav__sub-title">存储基础（1）：写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-2-read-amplification/" class=""><span class="nav__sub-title">存储基础（2）：读放大、布隆过滤器与缓存</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-3-lsm-and-compaction/" class=""><span class="nav__sub-title">存储基础（3）：LSM、Compaction 与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-4-wal-and-recovery/" class=""><span class="nav__sub-title">存储基础（4）：WAL、崩溃恢复与一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-5-btree-vs-lsm/" class=""><span class="nav__sub-title">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-001-ssd-ftl/" class=""><span class="nav__sub-title">存储笔记：SSD 写放大与 FTL：为什么随机写更贵</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-022-merge/" class=""><span class="nav__sub-title">存储笔记：写入合并（merge）与写扩散：从日志到段</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端">
+    <meta itemprop="description" content="本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="datePublished" content="April 01, 2023">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-04-01T00:00:00+08:00">April 01, 2023</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+<p><img src="/images/diagrams/nvme-queue-submission-completion.svg" alt="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端" /></p>
+
+<h2 id="1-先把nvme-为什么快说清楚并行--低开销">1. 先把“NVMe 为什么快”说清楚：并行 + 低开销</h2>
+
+<p>把 NVMe 的优势概括成一句话：</p>
+
+<blockquote>
+  <p><strong>把“提交 IO → 完成 IO”做成多队列（SQ/CQ）并行模型，并尽量降低每次 IO 的协议/中断开销。</strong></p>
+</blockquote>
+
+<p>工程上你通常能直接观察到：</p>
+
+<ul>
+  <li><strong>更高 IOPS（尤其是 4KB 随机）</strong></li>
+  <li><strong>更低平均延迟</strong></li>
+  <li><strong>更容易把瓶颈暴露到软件栈/CPU/锁</strong>（NVMe 够快后，IO 不再“背锅”）</li>
+</ul>
+
+<h2 id="2-冷热分层到底在优化什么p99而不是峰值吞吐">2. 冷热分层到底在优化什么：P99，而不是峰值吞吐</h2>
+
+<p>很多系统的体验由 <strong>P99/P999</strong> 决定，而不是平均值或峰值带宽。</p>
+
+<p>一个很实用的分类：</p>
+
+<ul>
+  <li><strong>延迟敏感路径</strong>：点查、热点索引、元数据、commit/WAL、请求链路上的关键 KV。</li>
+  <li><strong>带宽敏感路径</strong>：批量 scan、离线任务、异步重建、后台 compaction/GC、跨域复制。</li>
+</ul>
+
+<p>冷热分层的目标是把“必须稳”的路径留在 NVMe，把“可以慢/可被节流”的路径放到更便宜介质，并通过预算把后台任务的抢占限制住。</p>
+
+<h2 id="3-为什么线上-nvme-也会抖最常见不是盘慢而是排队--抢占">3. 为什么线上 NVMe 也会抖：最常见不是“盘慢”，而是“排队 + 抢占”</h2>
+
+<h3 id="31-队列深度qd是双刃剑吞吐-但排队等待">3.1 队列深度（QD）是双刃剑：吞吐↑ 但排队等待↑</h3>
+
+<p>QD 变大往往能提升吞吐，但也会把排队等待叠加到尾延迟里：</p>
+
+<ul>
+  <li>QD 低：更像“低延迟模式”</li>
+  <li>QD 高：更像“高吞吐模式”，但 P99 更容易被放大</li>
+</ul>
+
+<p>实践里经常出现：压测“峰值吞吐”很漂亮，但线上“请求体验”变差，因为线上更在乎尾延迟。</p>
+
+<h3 id="32-后台任务抢占把-nvme-打成共享资源">3.2 后台任务抢占：把 NVMe 打成“共享资源”</h3>
+
+<p>典型的后台抢占源：</p>
+
+<ul>
+  <li>RocksDB/LSM：flush/compaction</li>
+  <li>存储引擎：GC、重建、checksum/压缩</li>
+  <li>系统层：page cache 回写、文件系统 journal、rebuild/replication</li>
+</ul>
+
+<p>这些任务会把 IO 变成“队列化资源”，进而放大 P99。</p>
+
+<h3 id="33-cpu-反而成瓶颈nvme-够快后更常见">3.3 CPU 反而成瓶颈：NVMe 够快后更常见</h3>
+
+<p>NVMe 变快后，你会更容易遇到：</p>
+
+<ul>
+  <li>压缩/校验把 CPU 打满</li>
+  <li>锁竞争、内存分配、系统调用成为主导</li>
+  <li>单核热点（绑核/中断/软中断）导致“平均不高但 P99 变差”</li>
+</ul>
+
+<h2 id="4-怎么观测别只看-iops带宽先看排队与分位数">4. 怎么观测：别只看 IOPS/带宽，先看“排队与分位数”</h2>
+
+<p>建议至少关注：</p>
+
+<ul>
+  <li><strong>延迟分位数</strong>：P50/P95/P99/P999（平均值最不可信）</li>
+  <li><strong>队列与在途</strong>：QD/in-flight 是否长期偏高（排队信号）</li>
+  <li><strong>IO 延迟分解</strong>：提交→设备→完成（如果平台能提供更细拆分更好）</li>
+  <li><strong>后台欠账</strong>：compaction/GC/rebuild backlog 是否持续上升</li>
+  <li><strong>per-core CPU</strong>：关键核是否被打爆（不要看平均）</li>
+</ul>
+
+<h2 id="5-怎么压测三步把瓶颈归因做出来">5. 怎么压测：三步把“瓶颈归因”做出来</h2>
+
+<ol>
+  <li><strong>设备基线</strong>：裸盘 fio（4KB randread/randwrite），固定 QD 与并发，得到延迟/吞吐基线。</li>
+  <li><strong>文件系统/缓存层</strong>：同样 workload，观察是否被 flush/page cache 影响（延迟长尾/周期性掉速）。</li>
+  <li><strong>业务全链路</strong>：打开真实的压缩/校验/后台任务，记录 P99 与 backlog 的因果关系。</li>
+</ol>
+
+<p>一个非常实用的做法：画两条曲线</p>
+
+<ul>
+  <li>固定并发，逐步增大 QD</li>
+  <li>固定 QD，逐步增大并发</li>
+</ul>
+
+<p>你会很直观地看到“吞吐提升”和“尾延迟恶化”的拐点。</p>
+
+<h2 id="6-最小排障顺序线上-p99-变差">6. 最小排障顺序（线上 P99 变差）</h2>
+
+<ol>
+  <li><strong>先看排队</strong>：QD/in-flight 是否异常？是否存在周期性掉速？</li>
+  <li><strong>再看后台欠账</strong>：compaction/GC/rebuild 是否在追债？是否抢占 NVMe？</li>
+  <li><strong>最后看 CPU/锁</strong>：NVMe 足够快后，是否已经软件栈主导？</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>NVMe 带来的价值不只是“更快”，而是“把系统从 IO-bound 推向更可控的瓶颈”。要让线上体验变稳，关键是：<strong>用冷热分层把路径拆开 + 用预算约束后台抢占 + 用 QD/并发的拐点控制尾延迟</strong>。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

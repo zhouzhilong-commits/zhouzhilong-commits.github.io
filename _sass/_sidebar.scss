@@ -7,6 +7,7 @@
    ========================================================================== */
 
 .sidebar {
+  position: relative;
   -webkit-transform: translate3d(0, 0 , 0);
           transform: translate3d(0, 0 , 0);
 
@@ -46,6 +47,98 @@
 
   img {
     width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Collapsible sidebar toggle
+   ========================================================================== */
+
+/* Button inside sidebar (top, easy to reach) */
+.sidebar__toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  z-index: 20;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+  padding: 0;
+
+  border: 1px solid mix(#fff, $border-color, 35%);
+  border-radius: 9999px;
+  background: rgba(#fff, 0.92);
+  color: $text-color;
+  font-family: $sans-serif;
+  font-size: $type-size-5;
+  line-height: 1;
+  box-shadow: 0 10px 20px rgba(#000, 0.10);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  &:hover {
+    box-shadow: 0 12px 26px rgba(#000, 0.16);
+  }
+
+  &:focus {
+    outline: 0;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px rgba($link-color, 0.25), 0 12px 26px rgba(#000, 0.16);
+  }
+}
+
+/* Floating reopen button (only visible when collapsed) */
+.sidebar__toggle-float {
+  position: fixed;
+  top: 50%;
+  left: 0.85rem;
+  transform: translateY(-50%);
+  z-index: 1000;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid mix(#fff, $border-color, 35%);
+  border-radius: 9999px;
+  background: rgba(#fff, 0.92);
+  color: $text-color;
+  font-family: $sans-serif;
+  font-size: $type-size-5;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(#000, 0.14);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  &:hover {
+    box-shadow: 0 12px 30px rgba(#000, 0.18);
+  }
+
+  &:focus {
+    outline: 0;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px rgba($link-color, 0.25), 0 12px 30px rgba(#000, 0.18);
+  }
+}
+
+/* When collapsed, hide the whole left sidebar */
+.sidebar--collapsed {
+  .sidebar {
+    display: none !important;
   }
 }
 

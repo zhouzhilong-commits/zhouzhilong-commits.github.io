@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">CFS：run queue 按 vruntime 排序（谁最“欠账”谁先跑）</text>
+  <text class="muted" x="40" y="66">vruntime 增长与权重（nice）相关：权重大→增长慢→更容易被选中。slice 随 runnable 数量动态变化。</text>
+
+  <rect class="box" x="40" y="95" width="280" height="235"/>
+  <text class="title" x="180" y="128" text-anchor="middle">CPU Core</text>
+  <rect class="good" x="70" y="155" width="220" height="55"/>
+  <text class="text" x="180" y="188" text-anchor="middle">Running task（当前运行）</text>
+  <rect class="warn" x="70" y="225" width="220" height="75"/>
+  <text class="text" x="180" y="255" text-anchor="middle">调度点/抢占</text>
+  <text class="muted" x="180" y="278" text-anchor="middle">slice 到期 / 更欠账任务出现</text>
+
+  <path class="arrow" d="M 320 210 L 420 210"/>
+
+  <rect class="box" x="425" y="95" width="515" height="235"/>
+  <text class="title" x="682" y="128" text-anchor="middle">Run Queue（按 vruntime 排序）</text>
+
+  <rect class="good" x="455" y="155" width="455" height="42"/>
+  <text class="text" x="682" y="182" text-anchor="middle">Task B：vruntime = 10（最小） → next</text>
+  <rect class="box" x="455" y="205" width="455" height="42"/>
+  <text class="text" x="682" y="232" text-anchor="middle">Task A：vruntime = 12</text>
+  <rect class="box" x="455" y="255" width="455" height="42"/>
+  <text class="text" x="682" y="282" text-anchor="middle">Task C：vruntime = 18（最不欠账）</text>
+
+  <path class="arrow" d="M 585 155 L 320 155"/>
+</svg>

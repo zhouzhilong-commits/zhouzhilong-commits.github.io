@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">SIMD 提速的边界：算力提升 ≠ 整体加速</text>
+  <text class="muted" x="40" y="66">当瓶颈在内存带宽/分支/数据布局时，向量宽度变大也可能“跑不满”或收益很小。</text>
+
+  <rect class="good" x="40" y="105" width="260" height="90"/>
+  <text class="title" x="170" y="138" text-anchor="middle">Compute-bound</text>
+  <text class="muted" x="170" y="162" text-anchor="middle">算得多、分支少</text>
+  <text class="muted" x="170" y="182" text-anchor="middle">SIMD 更容易提速</text>
+
+  <path class="arrow" d="M 300 150 L 380 150"/>
+
+  <rect class="warn" x="385" y="95" width="555" height="235"/>
+  <text class="title" x="662" y="128" text-anchor="middle">常见“提速上限”</text>
+
+  <rect class="box" x="415" y="150" width="495" height="52"/>
+  <text class="text" x="662" y="182" text-anchor="middle">内存带宽/缓存 miss 主导（memory-bound）</text>
+  <text class="muted" x="662" y="204" text-anchor="middle">向量化只会更快打满带宽 → IPC 不上去</text>
+
+  <rect class="box" x="415" y="212" width="495" height="52"/>
+  <text class="text" x="662" y="244" text-anchor="middle">分支/数据依赖（control-bound）</text>
+  <text class="muted" x="662" y="266" text-anchor="middle">mask/gather 也有成本 → 吞吐被吃掉</text>
+
+  <rect class="box" x="415" y="274" width="495" height="52"/>
+  <text class="text" x="662" y="306" text-anchor="middle">数据布局/对齐差（AoS、跨 cache line）</text>
+  <text class="muted" x="662" y="328" text-anchor="middle">取数成本高 → SIMD “喂不饱”</text>
+</svg>

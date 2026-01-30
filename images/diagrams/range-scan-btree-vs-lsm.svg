@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .seg{fill:#f7f7f7;stroke:#666;stroke-width:1.5;rx:8}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">范围扫描：B+Tree 通常更“天然”，LSM 需要合并多个来源</text>
+  <text class="muted" x="40" y="66">核心区别：B+Tree 叶子按 key 连续；LSM 的同一 key-range 分散在多层多文件，需要 iterator merge。</text>
+
+  <rect class="box" x="40" y="95" width="440" height="235"/>
+  <text class="title" x="260" y="130" text-anchor="middle">B+Tree（叶子链表）</text>
+  <rect class="seg" x="90" y="170" width="70" height="40"/><rect class="seg" x="165" y="170" width="70" height="40"/>
+  <rect class="seg" x="240" y="170" width="70" height="40"/><rect class="seg" x="315" y="170" width="70" height="40"/>
+  <path class="arrow" d="M 110 240 L 390 240"/>
+  <text class="t" x="90" y="265">顺序走 leaf pages：更容易变成顺序 IO/预取</text>
+
+  <rect class="box" x="500" y="95" width="440" height="235"/>
+  <text class="title" x="720" y="130" text-anchor="middle">LSM（多层多文件）</text>
+  <rect class="seg" x="560" y="160" width="110" height="32"/><rect class="seg" x="680" y="160" width="110" height="32"/>
+  <rect class="seg" x="540" y="205" width="150" height="32"/><rect class="seg" x="700" y="205" width="150" height="32"/>
+  <rect class="seg" x="520" y="250" width="190" height="32"/><rect class="seg" x="720" y="250" width="190" height="32"/>
+  <text class="t" x="530" y="295">Iterator merge：跨层合并 + 过滤 tombstone/旧版本</text>
+</svg>
+

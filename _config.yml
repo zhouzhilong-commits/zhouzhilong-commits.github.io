@@ -82,7 +82,7 @@ analytics:
 author:
   name             : "周智龙"
   avatar           : "zhouzhilong_avatar.jpg"
-  bio              : "对存储与分布式系统感兴趣，长期关注高可用、高性能的大规模数据存储架构与实践，喜欢从源码和论文中拆解系统细节，会在这里记录自己在存储、性能优化和工程实践中的一些思考与笔记。"
+  bio              : "Hello World"
   location         : "Shanghai"
   employer         :
   pubmed           : 
@@ -173,22 +173,6 @@ kramdown:
   enable_coderay: false
 
 
-# Collections
-collections:
-  teaching:
-    output: true
-    permalink: /:collection/:path/
-  publications:
-    output: true
-    permalink: /:collection/:path/
-  portfolio:
-    output: true
-    permalink: /:collection/:path/
-  talks:
-    output: true
-    permalink: /:collection/:path/
-
-
 # Defaults
 defaults:
   # _posts
@@ -197,7 +181,7 @@ defaults:
       type: posts
     values:
       layout: single
-      author_profile: true
+      author_profile: false
       read_time: true
       comments: true
       share: true
@@ -209,41 +193,6 @@ defaults:
     values:
       layout: single
       author_profile: true
-  # _teaching
-  - scope:
-      path: ""
-      type: teaching
-    values:
-      layout: single
-      author_profile: true
-      share: true
-      comments: true
-  # _publications
-  - scope:
-      path: ""
-      type: publications
-    values:
-      layout: single
-      author_profile: true
-      share: true
-      comments: true
-  # _portfolio
-  - scope:
-      path: ""
-      type: portfolio
-    values:
-      layout: single
-      author_profile: true
-      share: true
-      comment: true
-  # _talks
-  - scope:
-      path: ""
-      type: talks
-    values:
-      layout: talk
-      author_profile: true
-      share: true
 
 # Sass/SCSS
 sass:
@@ -253,8 +202,8 @@ sass:
 
 # Outputting
 permalink: /:categories/:title/
-# paginate: 5 # amount of posts to show
-# paginate_path: /page:num/
+paginate: 5 # amount of posts to show on the homepage
+paginate_path: /page:num/
 timezone: Asia/Shanghai # http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 

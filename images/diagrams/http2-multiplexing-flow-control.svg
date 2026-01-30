@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+      .frame{fill:#eaf2ff;stroke:#2c3e50;stroke-width:1.5;rx:8}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">HTTP/2：多路复用（frames 交错）+ 流控（背压）+ TCP 层 HoL</text>
+  <text class="muted" x="40" y="66">HTTP/2 消除了应用层 HoL，但底层仍是 TCP 字节流：丢包会阻塞同连接内所有 stream 的交付。</text>
+
+  <rect class="box" x="40" y="95" width="270" height="235"/>
+  <text class="title" x="175" y="128" text-anchor="middle">HTTP/2 Streams</text>
+  <text class="muted" x="70" y="158">Stream 1：req/res</text>
+  <text class="muted" x="70" y="182">Stream 3：req/res</text>
+  <text class="muted" x="70" y="206">Stream 5：req/res</text>
+  <rect class="warn" x="70" y="235" width="210" height="70"/>
+  <text class="text" x="175" y="264" text-anchor="middle">Flow control</text>
+  <text class="muted" x="175" y="288" text-anchor="middle">窗口=背压（慢消费者会拖慢）</text>
+
+  <path class="arrow" d="M 310 210 L 420 210"/>
+
+  <rect class="box" x="425" y="95" width="515" height="115"/>
+  <text class="title" x="682" y="128" text-anchor="middle">Frames on one connection（交错发送）</text>
+  <rect class="frame" x="455" y="150" width="80" height="40"/>
+  <text class="muted" x="495" y="176" text-anchor="middle">S1</text>
+  <rect class="frame" x="545" y="150" width="80" height="40"/>
+  <text class="muted" x="585" y="176" text-anchor="middle">S3</text>
+  <rect class="frame" x="635" y="150" width="80" height="40"/>
+  <text class="muted" x="675" y="176" text-anchor="middle">S1</text>
+  <rect class="frame" x="725" y="150" width="80" height="40"/>
+  <text class="muted" x="765" y="176" text-anchor="middle">S5</text>
+  <rect class="frame" x="815" y="150" width="80" height="40"/>
+  <text class="muted" x="855" y="176" text-anchor="middle">S3</text>
+
+  <rect class="warn" x="425" y="225" width="515" height="105"/>
+  <text class="title" x="682" y="258" text-anchor="middle">TCP byte-stream HoL（传输层队头阻塞）</text>
+  <text class="muted" x="682" y="284" text-anchor="middle">如果某段字节丢了 → 必须等重传 → 后续字节不能交付给上层</text>
+  <text class="muted" x="682" y="306" text-anchor="middle">结果：同连接内多个 stream 可能一起变慢</text>
+</svg>

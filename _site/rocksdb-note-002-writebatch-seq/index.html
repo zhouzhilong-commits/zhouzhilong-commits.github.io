@@ -1,0 +1,760 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次">
+
+
+  <link rel="canonical" href="http://localhost:4000/rocksdb-note-002-writebatch-seq/">
+  <meta property="og:url" content="http://localhost:4000/rocksdb-note-002-writebatch-seq/">
+
+
+
+  <meta property="og:description" content="这篇讲清楚两件事：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-10-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">RocksDB 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-1-write-path/" class=""><span class="nav__sub-title">RocksDB（1）：写入链路（WAL + MemTable）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-2-sst-and-read-path/" class=""><span class="nav__sub-title">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-009-block-cache/" class=""><span class="nav__sub-title">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" class=""><span class="nav__sub-title">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" class=""><span class="nav__sub-title">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-002-writebatch-seq/" class="active"><span class="nav__sub-title">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-016-cpu-io/" class=""><span class="nav__sub-title">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次">
+    <meta itemprop="description" content="这篇讲清楚两件事：">
+    <meta itemprop="datePublished" content="October 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇讲清楚两件事：</p>
+
+<ul>
+  <li><strong>WriteBatch</strong>：把多次 Put/Delete 合成一次写入（从“业务事务视角”看更自然）。</li>
+  <li><strong>sequence number（seq）</strong>：让“写入可见性/顺序/原子性”变得可定义、可推理。</li>
+</ul>
+
+<p><img src="/images/diagrams/rocksdb-writebatch-seq-atomicity.svg" alt="WriteBatch 与 seq：原子批次、可见性与确认点" /></p>
+
+<h2 id="1-你为什么会关心-writebatch--seq">1. 你为什么会关心 WriteBatch / seq</h2>
+
+<p>线上常见触发点：</p>
+
+<ul>
+  <li><strong>你想要“要么全写入、要么全不写入”</strong>：例如写一条主记录 + 两个索引更新；或者 Put 新值同时 Delete 旧 key。</li>
+  <li><strong>你遇到“读到了半套数据”</strong>：多 key 更新没有原子边界，读端在更新中间切入。</li>
+  <li><strong>你在 debug“乱序/覆盖”</strong>：同一个 key 连续写，多线程并发下到底谁赢？读到的是哪次写？</li>
+</ul>
+
+<p>一句话：<strong>WriteBatch 提供“原子边界”，seq 提供“全局顺序”</strong>（以 DB 为单位）。</p>
+
+<h2 id="2-核心模型用-4-个概念把写入讲清楚">2. 核心模型：用 4 个概念把写入讲清楚</h2>
+
+<ul>
+  <li><strong>Batch</strong>：一个 write request 里包含 N 个操作（Put/Delete/Merge…）。</li>
+  <li><strong>seq（序列号）</strong>：给写入打一个单调递增的编号；读的时候“以 seq 为时间线”做可见性判断。</li>
+  <li><strong>确认点（durability）</strong>：<code class="language-plaintext highlighter-rouge">WriteOptions.sync</code> 决定“返回成功时”是否已经 fsync。</li>
+  <li><strong>可见性（visibility）</strong>：成功写入后，通常会在 MemTable 可见；持久化则取决于 WAL 的确认点。</li>
+</ul>
+
+<h2 id="3-机制拆解一次-writebatch-到底发生了什么高层">3. 机制拆解：一次 WriteBatch 到底发生了什么（高层）</h2>
+
+<p>你可以把它当成下面这个最短闭环：</p>
+
+<ol>
+  <li><strong>给 batch 分配一个起始 seq</strong>（比如 <code class="language-plaintext highlighter-rouge">seq = S</code>）。</li>
+  <li>batch 内的第 i 个操作，逻辑上对应 <code class="language-plaintext highlighter-rouge">S + i</code>（实现上可能通过 encode/iterate 实现）。</li>
+  <li><strong>写 WAL（追加）</strong>：把 batch 编码后写入日志（<code class="language-plaintext highlighter-rouge">sync</code> 可选）。</li>
+  <li><strong>写 MemTable</strong>：把 batch 拆成多条 key-value / tombstone 插入内存结构。</li>
+  <li><code class="language-plaintext highlighter-rouge">Write()</code> 返回：此时<strong>可见性</strong>通常成立；<strong>可恢复性</strong>取决于 WAL 的确认策略。</li>
+</ol>
+
+<h3 id="31-原子是什么意思对读端的承诺">3.1 “原子”是什么意思：对读端的承诺</h3>
+
+<p>业务在乎的通常不是“物理上一步完成”，而是<strong>读端是否会看到“半套更新”</strong>。</p>
+
+<ul>
+  <li>如果读操作是“以某个 seq 作为 snapshot”，那么它要么看到更新前，要么看到更新后（不会看到中间态）。</li>
+  <li>WriteBatch 的价值在于：它给“多 key 更新”提供了一个可描述的边界（配合 snapshot/事务层，才能真正做到强语义）。</li>
+</ul>
+
+<blockquote>
+  <p>注意：不同读 API（是否使用 snapshot）会影响你能得到的语义；不要把“单 key 读到新值”误当成“多 key 原子可见”。</p>
+</blockquote>
+
+<h2 id="4-你会在系统里看到的现象可观测信号">4. 你会在系统里看到的现象（可观测信号）</h2>
+
+<p>当 write path 出问题时，WriteBatch/seq 往往体现在这些地方：</p>
+
+<ul>
+  <li><strong>WAL 变大、fsync 变慢</strong>：batch 更大 → 单次写入更重；同时 group commit 会改变延迟分布。</li>
+  <li><strong>写放大上升</strong>：batch 合并能减少用户态调用次数，但 flush/compaction 仍可能主导总写入量。</li>
+  <li><strong>尾延迟变“批次化”</strong>：batch 的边界会让 ack 更像“成批确认”。</li>
+</ul>
+
+<h2 id="5-工程建议怎么用好-writebatch">5. 工程建议：怎么用好 WriteBatch</h2>
+
+<ul>
+  <li><strong>把“逻辑事务”做成 batch</strong>：主记录 + 索引更新尽量同批（否则你要自己处理崩溃恢复/补偿）。</li>
+  <li><strong>不要为了吞吐盲目变大</strong>：batch 过大可能拉高 P99（尤其当你开启 sync 或磁盘抖动时）。</li>
+  <li><strong>明确一致性目标</strong>：
+    <ul>
+      <li>只要“单 key 最终正确”：写后读一般就够。</li>
+      <li>需要“多 key 强一致”：读侧必须使用 snapshot/事务语义（否则中间态依然可能被看到）。</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="6-最小排障清单按优先级">6. 最小排障清单（按优先级）</h2>
+
+<ol>
+  <li><strong>确认写入语义</strong>：<code class="language-plaintext highlighter-rouge">sync</code> 是否打开？是否有 group commit？业务能接受多大崩溃窗口？</li>
+  <li><strong>确认读语义</strong>：读侧是否用了 snapshot/事务？是否存在“读到中间态”的可能？</li>
+  <li><strong>确认 batch 大小分布</strong>：平均很小但偶发巨大（会直接制造 tail latency）。</li>
+  <li><strong>看 WAL/fsync 延迟分布</strong>：尾延迟是否被磁盘确认点主导？</li>
+</ol>
+
+<h2 id="7-参考">7. 参考</h2>
+
+<ul>
+  <li>RocksDB Wiki / Blog：Write path、WriteBatch、WAL（以你的版本为准）</li>
+  <li>任何线上排障都建议把“语义 → 指标 → 实验”闭环跑一遍：先定义承诺，再验证事实。</li>
+</ul>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

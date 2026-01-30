@@ -1,0 +1,795 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量">
+
+
+  <link rel="canonical" href="http://localhost:4000/rocksdb-note-065-flush-write-buffer-l0/">
+  <meta property="og:url" content="http://localhost:4000/rocksdb-note-065-flush-write-buffer-l0/">
+
+
+
+  <meta property="og:description" content="你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-05-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">RocksDB 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-1-write-path/" class=""><span class="nav__sub-title">RocksDB（1）：写入链路（WAL + MemTable）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-2-sst-and-read-path/" class=""><span class="nav__sub-title">RocksDB（2）：SST 结构与读路径（Table/Block/Index）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-009-block-cache/" class=""><span class="nav__sub-title">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" class=""><span class="nav__sub-title">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" class="active"><span class="nav__sub-title">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-002-writebatch-seq/" class=""><span class="nav__sub-title">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/rocksdb-note-016-cpu-io/" class=""><span class="nav__sub-title">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量">
+    <meta itemprop="description" content="你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：">
+    <meta itemprop="datePublished" content="May 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：</p>
+
+<ul>
+  <li>写入延迟开始抖（P99 上升）</li>
+  <li>甚至出现 <strong>write stall / throttle</strong>（写被限速或阻塞）</li>
+</ul>
+
+<p>它们经常不是 WAL 的锅，而是这条链路欠账了：</p>
+
+<blockquote>
+  <p><strong>write buffer（memtable）→ flush 产生 L0 → L0 触发 compaction</strong></p>
+</blockquote>
+
+<p><img src="/images/diagrams/rocksdb-flush-l0-stall.svg" alt="RocksDB：write buffer / flush / L0 / stall 的关系" /></p>
+
+<h2 id="1-先把术语对齐write-buffer--memtable--flush--l0">1. 先把术语对齐：write buffer / memtable / flush / L0</h2>
+
+<ul>
+  <li><strong>memtable</strong>：内存中的写入缓冲（通常是有序结构），写入先落这里。</li>
+  <li><strong>write buffer</strong>：你可以把它理解成 memtable 占用的预算（受 <code class="language-plaintext highlighter-rouge">write_buffer_size</code>、memtable 数量等影响）。</li>
+  <li><strong>flush</strong>：把 immutable memtable 持久化为 SST 文件（通常落到 <strong>L0</strong>）。</li>
+  <li><strong>L0</strong>：RocksDB 分层里的第 0 层，文件之间可能重叠，读放大敏感，也容易引发后续 compaction 压力。</li>
+</ul>
+
+<h2 id="2-为什么会出现-l0-堆积这是后台欠账的最直接信号">2. 为什么会出现 L0 堆积：这是“后台欠账”的最直接信号</h2>
+
+<p>当写入速度 &gt; flush + compaction 的后台能力时，就会出现：</p>
+
+<ol>
+  <li>memtable 频繁转 immutable</li>
+  <li>flush 不断生成 L0 文件</li>
+  <li>L0 文件数上升，读放大变差</li>
+  <li>compaction 跟不上，进一步挤占 IO</li>
+  <li>最终触发写入限速/阻塞（保护系统）</li>
+</ol>
+
+<p>这是一条典型的“雪球链”：<strong>越欠账，越抖；越抖，越欠账</strong>。</p>
+
+<h2 id="3-写入为什么会-stall两道保险丝">3. 写入为什么会 stall：两道“保险丝”</h2>
+
+<p>RocksDB 需要保证自己不会把系统写爆或把读拖垮，所以常见有两类保护动作：</p>
+
+<ul>
+  <li><strong>write throttle</strong>：还能写，但限速（更像“踩刹车”）。</li>
+  <li><strong>write stall</strong>：直接卡写（更像“停车”）。</li>
+</ul>
+
+<p>触发点通常与两类资源有关：</p>
+
+<ul>
+  <li><strong>memtable/immutable 太多</strong>：flush 跟不上。</li>
+  <li><strong>L0 太多</strong>：compaction 跟不上（且 L0 对读放大影响大）。</li>
+</ul>
+
+<h2 id="4-你应该看哪些指标从最有用的开始">4. 你应该看哪些指标（从最有用的开始）</h2>
+
+<p>建议优先盯这几类“因果链中间量”：</p>
+
+<ul>
+  <li><strong>immutable memtable 数量</strong>：是否持续上升？</li>
+  <li><strong>L0 文件数量 / L0 size</strong>：是否持续上升？是否触顶？</li>
+  <li><strong>compaction backlog / pending bytes</strong>：后台是否欠账？</li>
+  <li><strong>flush/compaction 的吞吐与耗时分布</strong>：是否出现长尾？</li>
+  <li><strong>stall/throttle 次数</strong>：是否频繁触发保护？</li>
+</ul>
+
+<blockquote>
+  <p>经验：如果你只看“磁盘利用率/IOPS”，很容易误判。关键是 <strong>队列化 + 欠账</strong>。</p>
+</blockquote>
+
+<h2 id="5-怎么调不要从参数开始要从瓶颈归因开始">5. 怎么调：不要从“参数”开始，要从“瓶颈归因”开始</h2>
+
+<p>先问两个问题：</p>
+
+<ul>
+  <li><strong>flush 慢</strong> 还是 <strong>compaction 慢</strong>？</li>
+  <li>主要瓶颈是 <strong>IO</strong> 还是 <strong>CPU（压缩/校验）</strong>？</li>
+</ul>
+
+<h3 id="51-flush-跟不上你在攒-immutable">5.1 flush 跟不上：你在“攒 immutable”</h3>
+
+<p>常见策略：</p>
+
+<ul>
+  <li>适当增大写入缓冲预算（例如调 <code class="language-plaintext highlighter-rouge">write_buffer_size</code>、可用 memtable 数量）以吸收短峰值</li>
+  <li>提升 flush 并行/预算（取决于你的 RocksDB 版本与配置项）</li>
+  <li>避免让后台任务与前台争抢同一块 IO（尤其是在 compaction 也很重时）</li>
+</ul>
+
+<h3 id="52-compaction-跟不上你在攒-l0">5.2 compaction 跟不上：你在“攒 L0”</h3>
+
+<p>常见策略：</p>
+
+<ul>
+  <li>给 compaction 足够资源预算（线程/带宽），否则它永远在追债</li>
+  <li>让 L0 的压力不要无限累积（否则读放大和写抖动都会一起恶化）</li>
+  <li>如果压缩很重：确认 CPU 是否已经成为瓶颈（NVMe 上经常如此）</li>
+</ul>
+
+<h2 id="6-一套最小实验10-分钟确认是谁欠账">6. 一套最小实验：10 分钟确认“是谁欠账”</h2>
+
+<ol>
+  <li>固定 workload，记录一段时间：
+    <ul>
+      <li>immutable 数量</li>
+      <li>L0 文件数</li>
+      <li>compaction backlog</li>
+      <li>P99 写入延迟</li>
+    </ul>
+  </li>
+  <li><strong>只提升 flush 能力</strong>（例如增加 flush 线程/预算）观察 L0 变化</li>
+  <li><strong>只提升 compaction 能力</strong>观察 L0 与 P99 的变化</li>
+</ol>
+
+<p>你会很快知道：到底是 flush 还是 compaction 主导欠账。</p>
+
+<h2 id="7-最小排障清单线上写入变慢变抖">7. 最小排障清单（线上写入变慢/变抖）</h2>
+
+<ol>
+  <li><strong>先看 L0 与 backlog</strong>：是否在持续上升？</li>
+  <li><strong>再看 immutable</strong>：是否在堆积？</li>
+  <li><strong>确认是不是后台任务抢占</strong>：compaction/flush 是否把 IO/CPU 打满？</li>
+  <li><strong>最后才谈调参</strong>：先归因再调整，不要“玄学”改一堆参数。</li>
+</ol>
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>write buffer、flush、L0 本质是一条“后台债务链”。只要你能把“欠账信号”观测出来（immutable/L0/backlog），写入抖动问题通常就能从“感觉”变成“可解释、可验证”的工程问题。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

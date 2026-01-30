@@ -1,0 +1,887 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>存储基础（1）：写放大 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="存储基础（1）：写放大">
+
+
+  <link rel="canonical" href="http://localhost:4000/storage-basics-1-write-amplification/">
+  <meta property="og:url" content="http://localhost:4000/storage-basics-1-write-amplification/">
+
+
+
+  <meta property="og:description" content="  本文是「存储基础系列」第 1 篇：解释写放大（Write Amplification）是什么、为什么几乎所有存储系统都绕不开它，以及工程上如何衡量与优化。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-01-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">存储基础系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-1-write-amplification/" class="active"><span class="nav__sub-title">存储基础（1）：写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-2-read-amplification/" class=""><span class="nav__sub-title">存储基础（2）：读放大、布隆过滤器与缓存</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-3-lsm-and-compaction/" class=""><span class="nav__sub-title">存储基础（3）：LSM、Compaction 与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-4-wal-and-recovery/" class=""><span class="nav__sub-title">存储基础（4）：WAL、崩溃恢复与一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-5-btree-vs-lsm/" class=""><span class="nav__sub-title">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-001-ssd-ftl/" class=""><span class="nav__sub-title">存储笔记：SSD 写放大与 FTL：为什么随机写更贵</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-022-merge/" class=""><span class="nav__sub-title">存储笔记：写入合并（merge）与写扩散：从日志到段</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="存储基础（1）：写放大">
+    <meta itemprop="description" content="  本文是「存储基础系列」第 1 篇：解释写放大（Write Amplification）是什么、为什么几乎所有存储系统都绕不开它，以及工程上如何衡量与优化。">
+    <meta itemprop="datePublished" content="January 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">存储基础（1）：写放大
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>本文是「存储基础系列」第 1 篇：解释<strong>写放大（Write Amplification）</strong>是什么、为什么几乎所有存储系统都绕不开它，以及工程上如何衡量与优化。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="1-什么是写放大">1. 什么是写放大</h2>
+
+<p>写放大可以用一句话概括：</p>
+
+<blockquote>
+  <p><strong>应用层写入 1 份数据，存储系统为了完成这次写入，实际写了多份数据。</strong></p>
+</blockquote>
+
+<p>一个常见定义是写放大系数：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WA = 系统实际写入的字节数 / 用户逻辑写入的字节数
+</code></pre></div></div>
+
+<p>如果 <code class="language-plaintext highlighter-rouge">WA = 4</code>，意思就是：用户写了 1GB，系统最终在磁盘/SSD 上写了 4GB（包含日志、索引、合并重写等所有“额外写入”）。</p>
+
+<p><img src="/images/diagrams/write-amplification-sources.svg" alt="写放大的常见来源：日志、索引/元数据、后台合并重写" /></p>
+
+<h3 id="11-两个写放大不要混">1.1 两个“写放大”不要混</h3>
+
+<p>实际排查时，建议你把写放大拆成两个层级，否则很容易鸡同鸭讲：</p>
+
+<ul>
+  <li><strong>引擎内写放大（engine WA）</strong>：单机存储引擎内部的额外写入（WAL、flush、compaction、元数据）。</li>
+  <li><strong>系统总写放大（system WA）</strong>：复制/纠删码导致的额外写入（比如 3 副本就是 <em>至少</em> 3× 的“集群写入”）。</li>
+</ul>
+
+<p>本文主要讲 <strong>引擎内写放大</strong>，因为它决定了单机上限与尾延迟稳定性；系统总写放大是分布式层面的成本模型，后面一致性/复制系列再展开。</p>
+
+<h2 id="2-写放大从哪来通用来源">2. 写放大从哪来（通用来源）</h2>
+
+<p>不同系统的细节不同，但写放大通常来自这些“额外写”：</p>
+
+<ul>
+  <li><strong>日志（WAL / redo log）</strong>：为了崩溃恢复，先写一份顺序日志。</li>
+  <li><strong>索引与元数据</strong>：写 data 的同时，还要写 index、filter、manifest、checkpoint 等结构。</li>
+  <li><strong>覆盖写与版本管理</strong>：更新同一条记录，会产生旧版本、tombstone，最终通过后台回收。</li>
+  <li><strong>后台重写（compaction / merge / GC）</strong>：为了读性能或空间回收，把数据反复合并并重写。</li>
+</ul>
+
+<blockquote>
+  <p>如果你把“集群写入字节”也算进去，多副本复制会进一步放大成本（这是另一层面的“系统总写入成本”，和单机引擎内部的 WA 不同，但同样重要）。</p>
+</blockquote>
+
+<h3 id="21-一个最小闭环的写入至少写两份">2.1 一个“最小闭环”的写入至少写两份</h3>
+
+<p>很多初学者会惊讶：为什么即便没有 compaction，写放大也不可能是 1？</p>
+
+<p>因为你至少需要：</p>
+
+<ul>
+  <li><strong>WAL</strong>：保证“返回成功”的写崩溃后可恢复（顺序写）。</li>
+  <li><strong>数据文件/页</strong>：把数据落到最终结构里（页/段/SST）。</li>
+</ul>
+
+<p>所以即便没有任何后台重写，你也经常会看到：</p>
+
+<ul>
+  <li><strong>强持久（每次 fsync）</strong>：更稳但更慢，且尾延迟更敏感。</li>
+  <li><strong>group commit（批量 fsync）</strong>：吞吐更高，但允许更大的“未落盘窗口”。</li>
+</ul>
+
+<h2 id="3-lsm--compaction-为什么容易产生写放大">3. LSM / Compaction 为什么容易产生写放大</h2>
+
+<p>LSM 的核心是把随机写变成顺序写（WAL + memtable + SST），吞吐很高；但代价是后台合并（compaction）会不断重写数据。</p>
+
+<p>一个直觉模型：</p>
+
+<ul>
+  <li>新数据先进入更“上层”（更小、更热）</li>
+  <li>后台把上层文件不断合并进下层</li>
+  <li><strong>同一条记录可能会随着层级下沉，被重写多次</strong></li>
+</ul>
+
+<p>于是你会看到典型现象：</p>
+
+<ul>
+  <li>compaction backlog 增长 → 写延迟抖动</li>
+  <li>删除/覆盖很多 → tombstone 需要 compaction 才能真正回收空间</li>
+</ul>
+
+<p>因此，LSM 的“经典三角”就是：</p>
+
+<ul>
+  <li><strong>写放大（WA）</strong></li>
+  <li><strong>读放大（RA）</strong></li>
+  <li><strong>空间放大（SA）</strong></li>
+</ul>
+
+<p>你降低 WA，往往会在 RA 或 SA 上付出代价。</p>
+
+<h3 id="31-直觉公式为什么-leveled-compaction-wa-往往更高">3.1 直觉公式：为什么 leveled compaction WA 往往更高</h3>
+
+<p>不追求严格推导，只给一个工程直觉：在 <strong>leveled</strong> 策略里，数据会随着层级下沉，多次参与合并。</p>
+
+<p>如果我们把每层容量比近似成 <code class="language-plaintext highlighter-rouge">T</code>（例如 10），层数为 <code class="language-plaintext highlighter-rouge">L</code>，那么“同一条数据被重写次数”大致与 <code class="language-plaintext highlighter-rouge">L</code> 同阶，写放大常常会接近一个“每层重写一次”的量级（再叠加 WAL / 元数据）。</p>
+
+<p>这就是为什么：</p>
+
+<ul>
+  <li><strong>tiered（更少合并）</strong> 往往 WA 更低，但读要合并更多 run，RA 更难。</li>
+  <li><strong>leveled（更积极合并）</strong> 往往读更稳，但 WA 更高，且 compaction 更容易成为后台热点。</li>
+</ul>
+
+<p><img src="/images/diagrams/lsm-leveled-vs-tiered.svg" alt="Leveled vs Tiered：为什么一个更稳读，一个更低 WA" /></p>
+
+<h2 id="4-btree-就没有写放大吗">4. B+Tree 就没有写放大吗？</h2>
+
+<p>也不是。</p>
+
+<p>B+Tree 常被认为“就地更新”，但它也会出现写放大：</p>
+
+<ul>
+  <li>page 分裂/合并会导致额外写</li>
+  <li>WAL + page flush（甚至 doublewrite）依然是“写两份/多份”</li>
+  <li>checkpoint/刷脏页也会带来额外写入</li>
+</ul>
+
+<p>区别是：B+Tree 的写放大更集中在“页级随机写 + 日志”，而 LSM 的写放大更集中在“后台合并重写”。</p>
+
+<h2 id="5-如何衡量写放大建议两个视角一起看">5. 如何衡量写放大（建议两个视角一起看）</h2>
+
+<ul>
+  <li><strong>设备视角（真实成本）</strong>：SSD/NVMe 的写入字节（最接近真实成本）。</li>
+  <li><strong>引擎视角（可解释）</strong>：把写入分解成 WAL bytes、flush bytes、compaction bytes 等。</li>
+</ul>
+
+<p>排查时你最需要回答：</p>
+
+<ul>
+  <li>WA 主要来自 <strong>WAL</strong> 还是 <strong>compaction</strong>？</li>
+  <li>compaction 写放大主要来自 <strong>覆盖/删除</strong> 还是 <strong>策略本身</strong>？</li>
+</ul>
+
+<h3 id="51-最实用的度量组合建议你以后固定这么看">5.1 最实用的度量组合（建议你以后固定这么看）</h3>
+
+<ul>
+  <li><strong>设备写入字节</strong>：最接近 SSD 寿命与成本（“真实写”）。</li>
+  <li><strong>引擎分解指标</strong>：例如 <code class="language-plaintext highlighter-rouge">WAL bytes / flush bytes / compaction bytes</code>（“可解释”）。</li>
+  <li><strong>写停顿信号</strong>：stall/throttle 次数、L0 文件数、compaction pending bytes（“会不会抖”）。</li>
+</ul>
+
+<p>当三者一起看，你能很快把问题归因到“写路径的哪个阶段”。</p>
+
+<h3 id="52-一个可落地的写放大拆账例子用数字说话">5.2 一个可落地的“写放大拆账”例子（用数字说话）</h3>
+
+<p>假设业务 1 小时内逻辑写入 10GB（<code class="language-plaintext highlighter-rouge">user bytes = 10GB</code>），你从系统里观测到：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WAL 写入：10GB
+Flush 写入：10GB
+Compaction 写入：30GB
+</code></pre></div></div>
+
+<p>那么可以粗略拆成：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>engine WA ≈ (10 + 10 + 30) / 10 = 5
+</code></pre></div></div>
+
+<p>这类拆账在工程上很有用，因为它直接告诉你“主要成本在 compaction”，你接下来应该优先盯 compaction backlog、合并策略、冷热分层与删除/覆盖比例，而不是去纠结 WAL 的细枝末节。</p>
+
+<blockquote>
+  <p>注意：这是“引擎口径”。如果你还有 3 副本复制，系统总写入成本还要再乘以复制因子。</p>
+</blockquote>
+
+<h2 id="6-常见优化手段从不会错的方向开始">6. 常见优化手段（从“不会错”的方向开始）</h2>
+
+<p>不同系统参数名不一样，但思路高度一致：</p>
+
+<ul>
+  <li><strong>写入批量化</strong>：group commit、批量写入、合并小写，提高日志与落盘效率。</li>
+  <li><strong>减少无效重写</strong>：更合理的 compaction 选择策略，避免频繁重写热点数据。</li>
+  <li><strong>合并策略取舍</strong>：leveled vs tiered（一般 leveled 读更稳，但 WA 更高；tiered 往往 WA 更低但读更复杂）。</li>
+  <li><strong>压缩策略权衡</strong>：压缩可能降低设备写入字节（改善真实写入成本），但会消耗 CPU；要选“速度/压缩比”合适的算法与级别。</li>
+  <li><strong>冷热分层/TTL</strong>：让短生命周期数据尽快过期/隔离，避免被多次合并重写。</li>
+</ul>
+
+<h3 id="61-两个高频误区">6.1 两个高频误区</h3>
+
+<ul>
+  <li>
+    <p><strong>误区 A：把 compaction 开得越猛越好</strong><br />
+Compaction 过猛会把后台 IO/CPU 吃满，写入尾延迟反而更差；正确做法是“让后台可控”，并在 backlog 变大时做节流保护。</p>
+  </li>
+  <li>
+    <p><strong>误区 B：只盯 WA，不看 RA/SA</strong><br />
+你把 WA 压得很低，可能换来更高的读放大（更多文件要查）或更高的空间放大（更多重叠数据/版本）。线上更重要的是<strong>稳定的尾延迟</strong>与<strong>总成本</strong>。</p>
+  </li>
+</ul>
+
+<h3 id="62-快速定位与动作清单建议收藏">6.2 快速定位与动作清单（建议收藏）</h3>
+
+<p>当你发现 WA 很高时，按这个顺序做更高效：</p>
+
+<ol>
+  <li><strong>先拆账</strong>：WAL/flush/compaction 哪个占大头？（先定方向）</li>
+  <li><strong>再看写抖动</strong>：stall/throttle、L0 文件数、pending compaction bytes 是否上升？</li>
+  <li><strong>再看数据形态</strong>：覆盖/删除是否很重？是否有 TTL/短生命周期数据搅局？</li>
+  <li><strong>最后调策略</strong>：合并策略（leveled/tiered）、压缩、后台资源预算（并发/速率/优先级）</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>写放大几乎决定了：</p>
+
+<ul>
+  <li>写入吞吐上限</li>
+  <li>写延迟稳定性（抖不抖）</li>
+  <li>SSD 寿命与成本</li>
+</ul>
+
+<p>后面你看到任何系统参数（compaction、flush、WAL、cache），都可以回到这个问题：它是在降低写放大，还是在用写放大换读性能？</p>
+
+<hr />
+
+<p>下一篇会从“读放大”切入，并把 Bloom Filter 与缓存放到读路径里一起看。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

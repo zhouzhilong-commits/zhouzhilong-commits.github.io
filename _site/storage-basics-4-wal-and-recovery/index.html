@@ -1,0 +1,824 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>存储基础（4）：WAL、崩溃恢复与一致性 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="存储基础（4）：WAL、崩溃恢复与一致性">
+
+
+  <link rel="canonical" href="http://localhost:4000/storage-basics-4-wal-and-recovery/">
+  <meta property="og:url" content="http://localhost:4000/storage-basics-4-wal-and-recovery/">
+
+
+
+  <meta property="og:description" content="这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-04-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">存储基础系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-1-write-amplification/" class=""><span class="nav__sub-title">存储基础（1）：写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-2-read-amplification/" class=""><span class="nav__sub-title">存储基础（2）：读放大、布隆过滤器与缓存</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-3-lsm-and-compaction/" class=""><span class="nav__sub-title">存储基础（3）：LSM、Compaction 与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-4-wal-and-recovery/" class="active"><span class="nav__sub-title">存储基础（4）：WAL、崩溃恢复与一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-basics-5-btree-vs-lsm/" class=""><span class="nav__sub-title">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-001-ssd-ftl/" class=""><span class="nav__sub-title">存储笔记：SSD 写放大与 FTL：为什么随机写更贵</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/storage-note-022-merge/" class=""><span class="nav__sub-title">存储笔记：写入合并（merge）与写扩散：从日志到段</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="存储基础（4）：WAL、崩溃恢复与一致性">
+    <meta itemprop="description" content="这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
+    <meta itemprop="datePublished" content="April 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">存储基础（4）：WAL、崩溃恢复与一致性
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。</p>
+
+<p><img src="/images/diagrams/wal-recovery-flow.svg" alt="WAL + 恢复：最小闭环" /></p>
+
+<p><img src="/images/diagrams/wal-group-commit-timeline.svg" alt="group commit：把多次 fsync 合并成一次" /></p>
+
+<h2 id="1-为什么要-wal">1. 为什么要 WAL</h2>
+
+<p>WAL（Write-Ahead Log，写前日志）解决的是最朴素的问题：</p>
+
+<blockquote>
+  <p>机器突然断电/进程崩溃后，数据不能“写丢”或“写一半”</p>
+</blockquote>
+
+<p>思路是：</p>
+
+<ul>
+  <li><strong>先把写入意图顺序写入日志</strong>（WAL）</li>
+  <li>再把数据写入更复杂的结构（memtable / B+Tree / LSM 文件等）</li>
+</ul>
+
+<p>顺序写日志通常更快、更稳定，也更容易做校验与截断。</p>
+
+<h3 id="11-wal-解决的不是性能而是确定性">1.1 WAL 解决的“不是性能”，而是确定性</h3>
+
+<p>WAL 的核心价值是：<strong>把“崩溃后的状态”变成可推理的</strong>。</p>
+
+<p>没有 WAL，你往往会掉进这些坑：</p>
+
+<ul>
+  <li>数据结构本身写入是“多处更新”的（例如 B+Tree 页、LSM 的元数据），崩溃时很难保证原子性</li>
+  <li>page cache 里可能存在“看起来写了但其实没落盘”的数据</li>
+</ul>
+
+<p>WAL 把复杂问题简化为：<strong>只要日志可用，就可以重放</strong>（至少能恢复到某个一致点）。</p>
+
+<h2 id="2-一致性要先说清楚你要的是什么保证">2. 一致性要先说清楚：你要的是什么保证</h2>
+
+<p>不同系统的目标不同，常见的保证有：</p>
+
+<ul>
+  <li><strong>durability（持久性）</strong>：返回成功的写，崩溃后仍然存在</li>
+  <li><strong>atomicity（原子性）</strong>：要么全成功，要么全失败（不出现半写入）</li>
+  <li><strong>ordering（顺序性）</strong>：按某种顺序提交与可见（例如 LSN 单调递增）</li>
+</ul>
+
+<p>WAL 通常负责 durability + 崩溃后的重放顺序，至于更强的一致性（事务/隔离级别）则需要更完整的机制。</p>
+
+<h3 id="21-写成功的定义必须明确">2.1 “写成功”的定义必须明确</h3>
+
+<p>很多线上事故的本质是：应用以为“写成功”了，但系统其实只做到了“写进了缓存”。</p>
+
+<p>你需要明确：</p>
+
+<ul>
+  <li><strong>ack before fsync</strong>：吞吐更高，但允许崩溃丢最近一段写入（窗口）</li>
+  <li><strong>ack after fsync</strong>：强持久，但更依赖磁盘延迟与批量化策略</li>
+</ul>
+
+<p>这不是对错问题，是产品/业务的选择：RPO（可接受丢数据窗口）与延迟目标之间的权衡。</p>
+
+<h2 id="3-一个最小可用的恢复流程">3. 一个最小可用的恢复流程</h2>
+
+<p>一个“够用”的恢复流程一般是：</p>
+
+<ul>
+  <li><strong>日志里每条记录带校验</strong>（CRC 等），能识别尾部半写</li>
+  <li>启动时从 WAL 读取：
+    <ul>
+      <li>找到最后一个合法位置（截断无效尾部）</li>
+      <li>重新把日志里的写入“重放”到内存结构</li>
+    </ul>
+  </li>
+  <li>完成后服务对外可读可写</li>
+</ul>
+
+<p>如果系统还会持久化更大结构（比如 LSM 的 SST、B+Tree 的 page），则需要：</p>
+
+<ul>
+  <li>checkpoint / manifest / 元数据（知道哪些文件/page 是最新的）</li>
+  <li>与 WAL 的“截断点”配合（旧日志可以丢弃）</li>
+</ul>
+
+<h3 id="31-checkpoint截断点否则-wal-会无限长">3.1 Checkpoint/截断点：否则 WAL 会无限长</h3>
+
+<p>光有 WAL 还不够，你还需要一个“推进点”：</p>
+
+<ul>
+  <li><strong>checkpoint</strong>：把内存状态/脏页/元数据推进到磁盘结构中</li>
+  <li><strong>truncate point</strong>：从哪条日志之前的数据已经“安全落盘”，旧日志可以删</li>
+</ul>
+
+<p>工程上常见做法是：给每条日志打序号（LSN/seq），checkpoint 记录“已持久化到哪里”。</p>
+
+<h3 id="32-恢复时间rto怎么估别等事故时才发现太慢">3.2 恢复时间（RTO）怎么估：别等事故时才发现太慢</h3>
+
+<p>一个非常工程化的估算是：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>replay_time ≈ WAL_to_replay_bytes / replay_throughput
+</code></pre></div></div>
+
+<p>你要确保在“最坏情况下”（例如上次 checkpoint 后写入很多）恢复时间仍在可接受范围内，否则就要更频繁 checkpoint、加快回放路径、或者做快照/分段恢复。</p>
+
+<h2 id="4-fsync你到底落盘了吗">4. fsync：你到底“落盘”了吗</h2>
+
+<p>工程上最容易踩坑的是：</p>
+
+<ul>
+  <li>写了文件/写了日志，但 <strong>没 fsync</strong></li>
+  <li>系统崩溃后发现数据还是丢了</li>
+</ul>
+
+<p>因为写入可能只在 page cache 里，还没真正落到磁盘介质。</p>
+
+<p>所以你需要明确：</p>
+
+<ul>
+  <li>返回成功前是否要 fsync（强持久 vs 弱持久）</li>
+  <li>批量 fsync（group commit）怎么做，才能兼顾吞吐与延迟</li>
+</ul>
+
+<h3 id="41-group-commit为什么它几乎是必选项">4.1 group commit：为什么它几乎是必选项</h3>
+
+<p>如果每次写都 fsync，吞吐通常会非常差，因为 fsync 有固定成本。</p>
+
+<p>group commit 的核心是：<strong>把 N 次写的 fsync 合并成 1 次</strong>，代价是写入的可见性/延迟分布发生变化（但整体更可控）。</p>
+
+<h2 id="5-读写路径里日志是如何影响性能的">5. 读写路径里“日志”是如何影响性能的</h2>
+
+<p>WAL 的代价主要在：</p>
+
+<ul>
+  <li>fsync 的固定成本（尤其是小写、高频写）</li>
+  <li>写放大（日志 + 数据结构各写一遍）</li>
+</ul>
+
+<p>优化思路通常是：</p>
+
+<ul>
+  <li>group commit（攒一批再 fsync）</li>
+  <li>WAL 与数据文件分盘/分设备（减少竞争）</li>
+  <li>合理的刷盘策略（在吞吐与丢数据窗口之间权衡）</li>
+</ul>
+
+<h3 id="51-一个可落地的观测清单">5.1 一个可落地的观测清单</h3>
+
+<p>排查 WAL/恢复相关问题时，建议你至少能回答：</p>
+
+<ul>
+  <li>平均/尾部 fsync 延迟是多少？（是否与写延迟高度相关）</li>
+  <li>WAL 写入带宽占比多少？（是否与 compaction/flush 抢 IO）</li>
+  <li>崩溃恢复需要扫多少日志？恢复耗时是否可接受？</li>
+</ul>
+
+<hr />
+
+<p>下一篇我们会聊“索引与查找”：B+Tree / LSM 读路径的差异，以及为什么范围查询通常更偏爱 B+Tree 家族。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .col{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">B+Tree vs LSM：选型速览（按工作负载）</text>
+  <text class="muted" x="40" y="66">没有“更好”，只有“更适合”：点查/范围/写入/尾延迟/成本 的权衡。</text>
+
+  <rect class="col" x="40" y="95" width="440" height="235"/>
+  <text class="title" x="260" y="130" text-anchor="middle">B+Tree</text>
+
+  <text class="h" x="70" y="165">优势</text>
+  <text class="t" x="70" y="190">- 范围扫描自然（叶子有序，顺序读更容易）</text>
+  <text class="t" x="70" y="212">- 点查路径更可预测（树高稳定）</text>
+  <text class="t" x="70" y="234">- “读写分离”思路清晰（page + buffer pool）</text>
+
+  <text class="h" x="70" y="265">代价</text>
+  <text class="t" x="70" y="290">- 随机写更多（页分裂/合并、刷脏页）</text>
+  <text class="t" x="70" y="312">- 高写入下，需要精细的刷盘/检查点策略</text>
+
+  <rect class="col" x="500" y="95" width="440" height="235"/>
+  <text class="title" x="720" y="130" text-anchor="middle">LSM</text>
+
+  <text class="h" x="530" y="165">优势</text>
+  <text class="t" x="530" y="190">- 写入吞吐高（随机写→顺序写：WAL+MemTable+SST）</text>
+  <text class="t" x="530" y="212">- 写放大/读放大可通过参数与资源预算调节</text>
+  <text class="t" x="530" y="234">- 适合写多点查多（Bloom+cache）</text>
+
+  <text class="h" x="530" y="265">代价</text>
+  <text class="t" x="530" y="290">- Compaction 会带来写放大与延迟抖动</text>
+  <text class="t" x="530" y="312">- 范围扫描更复杂（多层多文件合并）</text>
+</svg>
+

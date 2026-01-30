@@ -1,0 +1,22 @@
+---
+layout: archive
+permalink: /categories/
+title: "分类"
+author_profile: false
+---
+
+{% include base_path %}
+
+{% assign categories = site.categories | sort %}
+
+{% for category in categories %}
+  {% assign category_name = category[0] %}
+  {% assign posts = category[1] %}
+
+  <h2 id="{{ category_name | slugify }}" class="archive__subtitle">{{ category_name }}</h2>
+
+  {% for post in posts %}
+    {% include archive-single.html %}
+  {% endfor %}
+{% endfor %}
+

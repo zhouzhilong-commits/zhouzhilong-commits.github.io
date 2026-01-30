@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">进程 / 线程 / 上下文切换：从“隔离”到“代价”</text>
+  <text class="muted" x="40" y="66">进程=资源隔离容器；线程=执行单元。切换成本主要来自工作集与 TLB/Cache 失效，而不仅是保存寄存器。</text>
+
+  <rect class="box" x="40" y="95" width="420" height="235"/>
+  <text class="h" x="70" y="130">Process（资源隔离）</text>
+  <text class="t" x="70" y="155">- 虚拟地址空间</text>
+  <text class="t" x="70" y="175">- FD 表/权限/命名空间</text>
+  <text class="t" x="70" y="195">- 资源限制（cgroup 等）</text>
+  <rect class="good" x="70" y="220" width="360" height="85"/>
+  <text class="h" x="90" y="248">Threads（并发执行）</text>
+  <text class="t" x="90" y="270">- 共享地址空间/FD</text>
+  <text class="t" x="90" y="290">- 各自寄存器/栈/PC</text>
+
+  <path class="arrow" d="M 460 212 L 540 212"/>
+
+  <rect class="box" x="545" y="95" width="395" height="235"/>
+  <text class="h" x="575" y="130">Context switch（切换）</text>
+  <text class="t" x="575" y="155">触发：时间片到/阻塞/抢占/中断</text>
+  <rect class="warn" x="575" y="175" width="335" height="110"/>
+  <text class="h" x="600" y="205">主要成本（工程视角）</text>
+  <text class="t" x="600" y="230">- Cache 污染：工作集变冷</text>
+  <text class="t" x="600" y="250">- TLB miss：页表遍历增多</text>
+  <text class="t" x="600" y="270">- 调度开销：队列/锁/统计</text>
+</svg>

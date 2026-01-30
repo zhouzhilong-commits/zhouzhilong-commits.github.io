@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:12}
+      .title{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .text{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .file{fill:#f7f7f7;stroke:#666;stroke-width:1.5;rx:8}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="45">LSM（leveled）直觉</text>
+  <text class="muted" x="40" y="70">写入先变成顺序写（WAL+MemTable→Flush），后台 Compaction 把“上层小文件”合并进“下层大文件”。</text>
+
+  <rect class="box" x="40" y="95" width="220" height="90"/>
+  <text class="title" x="150" y="130" text-anchor="middle">MemTable</text>
+  <text class="text" x="150" y="155" text-anchor="middle">内存有序结构</text>
+  <text class="muted" x="150" y="175" text-anchor="middle">到阈值触发 Flush</text>
+
+  <path class="arrow" d="M 260 140 L 335 140"/>
+  <text class="muted" x="300" y="125" text-anchor="middle">Flush</text>
+
+  <rect class="box" x="340" y="95" width="600" height="240"/>
+  <text class="title" x="370" y="125">SST Levels</text>
+
+  <!-- L0 -->
+  <text class="text" x="380" y="160">L0（文件可重叠）</text>
+  <rect class="file" x="540" y="140" width="90" height="36"/>
+  <rect class="file" x="640" y="140" width="90" height="36"/>
+  <rect class="file" x="740" y="140" width="90" height="36"/>
+
+  <!-- L1 -->
+  <text class="text" x="380" y="220">L1（key 范围不重叠）</text>
+  <rect class="file" x="520" y="200" width="140" height="36"/>
+  <rect class="file" x="670" y="200" width="140" height="36"/>
+  <rect class="file" x="820" y="200" width="90" height="36"/>
+
+  <!-- L2 -->
+  <text class="text" x="380" y="280">L2（更大，更多数据）</text>
+  <rect class="file" x="500" y="260" width="200" height="36"/>
+  <rect class="file" x="710" y="260" width="200" height="36"/>
+
+  <!-- compaction arrows -->
+  <path class="arrow" d="M 585 178 L 585 198"/>
+  <path class="arrow" d="M 740 178 L 740 198"/>
+  <text class="muted" x="690" y="190" text-anchor="middle">Compaction</text>
+
+  <path class="arrow" d="M 620 238 L 620 258"/>
+  <text class="muted" x="620" y="252" text-anchor="middle">Compaction</text>
+
+  <text class="muted" x="40" y="345">核心权衡：更积极的 Compaction → 读更稳，但写放大更高；更“松”的合并 → 写放大更低，但读/空间更难。</text>
+</svg>
+

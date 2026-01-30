@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 360">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .t{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .good{fill:#f3fff5;stroke:#2ecc71;stroke-width:2;rx:12}
+      .warn{fill:#fff8e6;stroke:#f39c12;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">虚拟地址 → 物理地址：TLB + 多级页表 + page fault</text>
+  <text class="muted" x="40" y="66">TLB 命中走快路径；TLB miss 触发页表遍历；映射缺失/权限不足触发 page fault（minor/major）。</text>
+
+  <rect class="box" x="40" y="95" width="250" height="80"/>
+  <text class="t" x="70" y="130">CPU 发起内存访问</text>
+  <text class="muted" x="70" y="155">VA（虚拟地址）</text>
+
+  <path class="arrow" d="M 290 135 L 370 135"/>
+
+  <rect class="good" x="375" y="95" width="220" height="80"/>
+  <text class="t" x="405" y="128">TLB lookup</text>
+  <text class="muted" x="405" y="152">hit → 得到 PA</text>
+
+  <path class="arrow" d="M 595 120 L 690 120"/>
+
+  <rect class="good" x="695" y="95" width="245" height="80"/>
+  <text class="t" x="725" y="128">访问内存（PA）</text>
+  <text class="muted" x="725" y="152">cache / DRAM</text>
+
+  <path class="arrow" d="M 485 175 L 485 235"/>
+
+  <rect class="box" x="320" y="240" width="330" height="90"/>
+  <text class="t" x="350" y="275">TLB miss → page walk</text>
+  <text class="muted" x="350" y="299">多级页表查 VA→PTE→PA</text>
+
+  <path class="arrow" d="M 650 285 L 760 285"/>
+
+  <rect class="warn" x="765" y="240" width="175" height="90"/>
+  <text class="t" x="790" y="275">page fault</text>
+  <text class="muted" x="790" y="299">minor / major</text>
+</svg>

@@ -1,11 +1,8 @@
 ---
-permalink: /
-title: "Wlecome"
-excerpt: "About me"
+permalink: /about/
+title: "关于"
+excerpt: "关于我"
 author_profile: true
-redirect_from: 
-  - /about/
-  - /about.html
 ---
 
-This is a personal website used for technical records
+这里是周智龙的个人博客，主要记录存储、性能优化、工程实践相关的思考与笔记。

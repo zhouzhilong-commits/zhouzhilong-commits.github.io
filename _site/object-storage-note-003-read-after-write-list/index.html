@@ -1,0 +1,847 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>对象存储笔记：一致性模型：read-after-write 与 list 一致性 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="对象存储笔记：一致性模型：read-after-write 与 list 一致性">
+
+
+  <link rel="canonical" href="http://localhost:4000/object-storage-note-003-read-after-write-list/">
+  <meta property="og:url" content="http://localhost:4000/object-storage-note-003-read-after-write-list/">
+
+
+
+  <meta property="og:description" content="对象存储里最容易踩坑的是一句话：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-02-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">对象存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-1-core-concepts/" class=""><span class="nav__sub-title">对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-2-ec-vs-replication/" class=""><span class="nav__sub-title">对象存储（2）：纠删码（EC）与副本（Replication）取舍</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-024-ec/" class=""><span class="nav__sub-title">对象存储笔记：EC 与副本：延迟、带宽、修复成本</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-003-read-after-write-list/" class="active"><span class="nav__sub-title">对象存储笔记：一致性模型：read-after-write 与 list 一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-010-post/" class=""><span class="nav__sub-title">对象存储笔记：元数据服务：对象索引与列目录</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-038-post/" class=""><span class="nav__sub-title">对象存储笔记：分片上传与并行：大对象如何高吞吐</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-045-rpo-rto/" class=""><span class="nav__sub-title">对象存储笔记：多区域容灾：RPO/RTO 与复制链路</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-017-bucket-key-prefix/" class=""><span class="nav__sub-title">对象存储笔记：对象存储的命名空间：bucket、key、prefix 的含义</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-059-post/" class=""><span class="nav__sub-title">对象存储笔记：小对象与合并：小对象为什么更难</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/object-storage-note-031-versioning/" class=""><span class="nav__sub-title">对象存储笔记：版本化（versioning）：覆盖写与回收策略</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="对象存储笔记：一致性模型：read-after-write 与 list 一致性">
+    <meta itemprop="description" content="对象存储里最容易踩坑的是一句话：">
+    <meta itemprop="datePublished" content="February 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">对象存储笔记：一致性模型：read-after-write 与 list 一致性
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-02-01T00:00:00+08:00">February 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>对象存储里最容易踩坑的是一句话：</p>
+
+<blockquote>
+  <p><strong>“我写成功了”并不等于 “所有读路径（尤其是 LIST）立刻都能看到”。</strong></p>
+</blockquote>
+
+<p>这篇把一致性拆成四类语义（新建/覆盖/删除/列表），并给出工程上最常用的应对方式。</p>
+
+<p><img src="/images/diagrams/object-storage-consistency-put-get-list.svg" alt="对象存储一致性：PUT/GET/LIST 的传播链路与“列表滞后”来源" /></p>
+
+<h2 id="1-先把问题说清楚你关心的是哪一种一致性">1. 先把问题说清楚：你关心的是哪一种一致性</h2>
+
+<p>对象存储常见 API：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">PUT object</code>：创建/覆盖对象</li>
+  <li><code class="language-plaintext highlighter-rouge">GET object</code>：读取对象内容</li>
+  <li><code class="language-plaintext highlighter-rouge">DELETE object</code>：删除（可能是 delete-marker）</li>
+  <li><code class="language-plaintext highlighter-rouge">LIST prefix</code>：列举某个前缀下的对象集合</li>
+</ul>
+
+<p>一致性语义不是一句 “strong / eventual” 能概括的，至少要区分：</p>
+
+<ul>
+  <li><strong>新建对象</strong>（key 之前不存在）</li>
+  <li><strong>覆盖对象</strong>（同 key 写新版本）</li>
+  <li><strong>删除对象</strong></li>
+  <li><strong>列表/目录视图</strong>（LIST/HEAD 的索引视图）</li>
+</ul>
+
+<h2 id="2-一个非常实用的语义表写系统写业务都够用">2. 一个非常实用的“语义表”（写系统/写业务都够用）</h2>
+
+<p>你可以用下面的问题自测你需要什么承诺：</p>
+
+<ul>
+  <li><strong>Q1：PUT 成功后，立刻 GET，必须读到新内容吗？</strong></li>
+  <li><strong>Q2：PUT 覆盖旧对象后，立刻 GET，允许读到旧内容吗？允许多久？</strong></li>
+  <li><strong>Q3：DELETE 后，立刻 GET，允许短暂读到旧内容吗？</strong></li>
+  <li><strong>Q4：PUT/DELETE 后，立刻 LIST，必须立刻出现在列表里吗？</strong></li>
+</ul>
+
+<blockquote>
+  <p>大多数系统里，<strong>GET 的一致性比 LIST 更容易做强</strong>：GET 只需要命中单 key 的元数据/路由；LIST 往往依赖“前缀索引/目录索引”的异步更新。</p>
+</blockquote>
+
+<h2 id="3-为什么-list-更容易看不到本质是索引传播问题">3. 为什么 LIST 更容易“看不到”：本质是索引传播问题</h2>
+
+<p>LIST 背后通常不是“扫全量数据”，而是：</p>
+
+<ul>
+  <li>维护一个 <strong>prefix → keys</strong> 的目录/索引（为了性能与成本）</li>
+  <li>写入路径先保证对象内容/元数据落盘，然后<strong>异步</strong>更新索引（或跨分区聚合）</li>
+</ul>
+
+<p>于是就出现经典现象：</p>
+
+<ul>
+  <li>PUT 成功后 <strong>GET 能读到</strong></li>
+  <li>但 <strong>LIST 暂时看不到</strong></li>
+</ul>
+
+<p>这不是 bug，而是架构选择：用更弱的 LIST 语义换取更可扩展的目录服务。</p>
+
+<h2 id="4-工程上怎么把语义补回来4-种常用打法">4. 工程上怎么“把语义补回来”（4 种常用打法）</h2>
+
+<h3 id="41-版本化versioning-条件读if-match--if-none-match">4.1 版本化（versioning）+ 条件读（If-Match / If-None-Match）</h3>
+
+<p>核心思路：<strong>业务对“哪个版本算成功”有明确标识</strong>，而不是靠 LIST 的“目录视图”判断。</p>
+
+<ul>
+  <li>写入返回 <code class="language-plaintext highlighter-rouge">versionId/etag</code></li>
+  <li>读时带条件：读不到就重试或回退</li>
+</ul>
+
+<h3 id="42-commit-marker--manifest把可见性显式化">4.2 commit marker / manifest（把“可见性”显式化）</h3>
+
+<p>典型做法：</p>
+
+<ol>
+  <li>先 PUT 数据对象（可能是分片）</li>
+  <li>最后 PUT 一个小的 <code class="language-plaintext highlighter-rouge">manifest/commit</code> 对象作为“完成标志”</li>
+  <li>读侧只信 commit 对象（而不是信 LIST）</li>
+</ol>
+
+<p>这能把“读到半套数据”的概率降到非常低。</p>
+
+<h3 id="43-业务侧不要用-list-当强一致目录">4.3 业务侧不要用 LIST 当强一致目录</h3>
+
+<p>如果你需要“目录强一致”，建议引入独立的强一致元数据系统（DB/KV）：</p>
+
+<ul>
+  <li>DB 存目录与版本</li>
+  <li>对象存储只放大对象（payload）</li>
+</ul>
+
+<p>这也是很多大型系统的标准拆分：<strong>元数据强一致，数据弱一致</strong>。</p>
+
+<h3 id="44-对象覆盖写尽量写新-key再切换指针">4.4 对象覆盖写：尽量“写新 key，再切换指针”</h3>
+
+<p>覆盖同 key 更容易出现“读旧内容/旧缓存”的问题。常用技巧：</p>
+
+<ul>
+  <li>写到新 key（带版本/时间戳）</li>
+  <li>更新一个指针/元数据（强一致）</li>
+  <li>旧 key 延后 GC</li>
+</ul>
+
+<h2 id="5-怎么验证观测把一致性变成可量化指标">5. 怎么验证/观测：把一致性变成可量化指标</h2>
+
+<p>建议定义两个指标（非常实用）：</p>
+
+<ul>
+  <li><strong>Read-after-write success rate</strong>：PUT 后立刻 GET，成功比例（按时间窗分桶）。</li>
+  <li><strong>List visibility lag</strong>：PUT 后多久能在 LIST 出现（统计分位数）。</li>
+</ul>
+
+<p>再配一套最小实验：</p>
+
+<ol>
+  <li>对同一 prefix 连续 PUT 多个对象</li>
+  <li>每次 PUT 后立刻 GET 校验内容</li>
+  <li>同时循环 LIST，记录“第一次看到该 key 的时间”</li>
+</ol>
+
+<p>你会很快得到：不同 region、不同负载下，LIST 的滞后分布长什么样。</p>
+
+<h2 id="6-最小排障清单线上出现写了但看不到">6. 最小排障清单（线上出现“写了但看不到”）</h2>
+
+<ol>
+  <li><strong>先区分 GET vs LIST</strong>：到底是读不到对象，还是列表看不到？</li>
+  <li><strong>确认是否覆盖写</strong>：覆盖写比新建更容易出现缓存/旧版本问题。</li>
+  <li><strong>确认是否跨 region/跨 AZ</strong>：跨域复制会引入天然传播延迟。</li>
+  <li><strong>不要用 LIST 当强一致目录</strong>：用 commit marker 或强一致元数据系统兜底。</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>对象存储的一致性问题，99% 都能用“把语义说清楚 + 把可见性显式化 + 把 LIST 当成弱一致索引”来解决。真正难的不是实现，而是<strong>业务是否接受明确的语义边界</strong>。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+
