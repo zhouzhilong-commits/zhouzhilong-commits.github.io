@@ -12,9 +12,22 @@
 
   var baseurl = root.getAttribute("data-baseurl") || "";
   var currentPage = parseInt(root.getAttribute("data-current-page") || "1", 10);
+  // Extract pathname from baseurl if it's a full URL, otherwise use as-is
+  var basePath = baseurl;
+  if (baseurl && baseurl.indexOf("://") > -1) {
+    // It's a full URL, extract the pathname part
+    try {
+      var urlObj = new URL(baseurl);
+      basePath = urlObj.pathname;
+    } catch (e) {
+      // Fallback: try to extract pathname manually
+      var match = baseurl.match(/https?:\/\/[^\/]+(\/.*)?$/);
+      basePath = match ? (match[1] || "") : "";
+    }
+  }
   // Enhance paginated index pages too (/, /page2/, /page3/ ...), respecting baseurl.
-  var homePath = (baseurl + "/").replace(/\/+$/, "/");
-  var pagedRe = new RegExp("^" + (baseurl || "") + "/page\\d+/?$");
+  var homePath = (basePath + "/").replace(/\/+$/, "/");
+  var pagedRe = new RegExp("^" + basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/page\\d+/?$");
   if (window.location.pathname !== homePath && !pagedRe.test(window.location.pathname)) return;
 
   var content = $("#home-archive-content", root);
@@ -77,7 +90,9 @@
         if (nextPageToFetch > totalPages) return resolve();
 
         fetching = true;
-        fetch((baseurl || "") + "/page" + nextPageToFetch + "/")
+        // Use baseurl for fetch (full URL in production, relative path in dev)
+        var fetchUrl = (baseurl || "") + "/page" + nextPageToFetch + "/";
+        fetch(fetchUrl)
           .then(function (r) { return r.text(); })
           .then(function (html) {
             var doc = new DOMParser().parseFromString(html, "text/html");

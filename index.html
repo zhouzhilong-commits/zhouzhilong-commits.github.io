@@ -21,7 +21,7 @@ redirect_from:
 <div
   id="home-archive"
   data-home-pagination="true"
-  data-baseurl="{{ site.baseurl }}"
+  data-baseurl="{{ base_path }}"
   data-base-page-size="{{ site.paginate | default: 10 }}"
   {% if paginator %}
     data-total-pages="{{ paginator.total_pages | default: 1 }}"
