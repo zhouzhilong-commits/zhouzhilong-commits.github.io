@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。">
+  <meta property="og:description" content="前言">
 
 
 
@@ -223,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -582,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="C++ 笔记：异常安全与异常规范">
-    <meta itemprop="description" content="异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。">
+    <meta itemprop="description" content="前言">
     <meta itemprop="datePublished" content="June 30, 2021">
     
 
@@ -596,7 +596,7 @@
 
 
   
-	  5 分钟阅读
+	  6 分钟阅读
 	
 </p>
           
@@ -615,7 +615,9 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>异常安全是 C++ 编程中的重要概念，确保程序在异常发生时仍能保持一致性。理解异常安全是写出健壮 C++ 代码的关键。</p>
+        <h2 id="前言">前言</h2>
+
+<p>异常安全是现代 C++ 编程的重要原则，它确保程序在异常发生时仍能保持一致性。理解异常安全不仅是写出健壮代码的关键，更是掌握 RAII、智能指针、移动语义等高级特性的基础。本文将从原理、实现、应用等多个维度深入解析异常安全，帮助读者全面理解这一重要概念。</p>
 
 <p><img src="/images/diagrams/cpp-exception-safety-levels.svg" alt="异常安全的三个级别：基本保证、强保证、不抛出保证" /></p>
 
@@ -1143,9 +1145,128 @@
   <li><strong>检查异常处理</strong>：确保异常被正确处理</li>
 </ul>
 
-<h2 id="11-小结">11. 小结</h2>
+<h2 id="11-异常安全的设计模式与架构">11. 异常安全的设计模式与架构</h2>
+
+<h3 id="111-设计模式视角">11.1 设计模式视角</h3>
+
+<p>异常安全体现了多个设计模式：</p>
+
+<ol>
+  <li><strong>RAII 模式</strong>：通过对象生命周期保证资源释放</li>
+  <li><strong>事务模式</strong>：强保证实现了事务语义</li>
+  <li><strong>回滚模式</strong>：失败时回滚到之前的状态</li>
+</ol>
+
+<h3 id="112-架构原则">11.2 架构原则</h3>
+
+<ul>
+  <li><strong>异常安全保证</strong>：每个操作都应该有明确的异常安全级别</li>
+  <li><strong>资源管理</strong>：所有资源都用 RAII 管理</li>
+  <li><strong>异常规范</strong>：使用 <code class="language-plaintext highlighter-rouge">noexcept</code> 明确异常规范</li>
+</ul>
+
+<h3 id="113-异常安全的层次结构">11.3 异常安全的层次结构</h3>
+
+<pre><code class="language-mermaid">graph TD
+    A[异常安全] --&gt; B[基本保证]
+    A --&gt; C[强保证]
+    A --&gt; D[不抛出保证]
+    
+    B --&gt; E[对象有效]
+    C --&gt; F[状态不变]
+    D --&gt; G[不会抛出]
+    
+    H[RAII] --&gt; B
+    I[事务模式] --&gt; C
+    J[noexcept] --&gt; D
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+</code></pre>
+
+<h2 id="12-实际工程案例">12. 实际工程案例</h2>
+
+<h3 id="121-标准库的异常安全">12.1 标准库的异常安全</h3>
+
+<p>标准库容器提供不同级别的异常安全：</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">push_back</code></strong>：强保证（如果元素拷贝不抛出异常）</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">insert</code></strong>：基本保证</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">clear</code></strong>：不抛出保证</li>
+</ul>
+
+<h3 id="122-自定义类的异常安全实现">12.2 自定义类的异常安全实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 强保证的容器操作</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="k">class</span> <span class="nc">SafeVector</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">T</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">capacity_</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// push_back：强保证</span>
+    <span class="kt">void</span> <span class="n">push_back</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">size_</span> <span class="o">&gt;=</span> <span class="n">capacity_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 先分配新内存（可能抛出异常）</span>
+            <span class="k">auto</span> <span class="n">new_data</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">T</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">capacity_</span> <span class="o">*</span> <span class="mi">2</span><span class="p">);</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">data_</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span> <span class="n">data_</span><span class="p">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="n">size_</span><span class="p">,</span> <span class="n">new_data</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+            
+            <span class="c1">// 再更新（原子性操作）</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">new_data</span><span class="p">);</span>
+            <span class="n">capacity_</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">data_</span><span class="p">[</span><span class="n">size_</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>  <span class="c1">// 如果这里抛出异常，对象状态不变</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="13-性能分析与优化">13. 性能分析与优化</h2>
+
+<h3 id="131-异常安全的性能成本">13.1 异常安全的性能成本</h3>
+
+<p>实现异常安全可能需要额外的资源：</p>
+
+<ul>
+  <li><strong>强保证</strong>：需要备份或额外资源</li>
+  <li><strong>基本保证</strong>：通常不需要额外资源</li>
+  <li><strong>不抛出保证</strong>：可能限制实现方式</li>
+</ul>
+
+<h3 id="132-性能优化建议">13.2 性能优化建议</h3>
+
+<ol>
+  <li><strong>优先使用移动语义</strong>：移动操作通常比拷贝快</li>
+  <li><strong>使用 swap</strong>：swap 操作通常不抛出异常，且高效</li>
+  <li><strong>避免不必要的备份</strong>：只在需要强保证时备份</li>
+  <li><strong>标记 <code class="language-plaintext highlighter-rouge">noexcept</code></strong>：让编译器优化</li>
+</ol>
+
+<h2 id="14-小结">14. 小结</h2>
 
 <p>异常安全是现代 C++ 编程的重要原则，它确保程序在异常发生时仍能保持一致性。通过 RAII 和智能指针，可以自然地实现异常安全的代码。</p>
+
+<p><strong>核心概念总结</strong>：</p>
+
+<ul>
+  <li><strong>异常安全级别</strong>：基本保证、强保证、不抛出保证三个级别</li>
+  <li><strong>RAII 机制</strong>：通过对象生命周期保证资源释放，是实现异常安全的基础</li>
+  <li><strong>异常规范</strong>：使用 <code class="language-plaintext highlighter-rouge">noexcept</code> 明确异常规范，优化编译器性能</li>
+  <li><strong>设计模式</strong>：体现了 RAII、事务、回滚等设计思想</li>
+</ul>
+
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>自动化资源管理</strong>：RAII 确保异常时资源也能释放</li>
+  <li><strong>状态一致性</strong>：强保证确保操作要么完全成功，要么完全失败</li>
+  <li><strong>性能优化</strong>：<code class="language-plaintext highlighter-rouge">noexcept</code> 让编译器进行更激进的优化</li>
+  <li><strong>类型安全</strong>：通过类型系统保证异常安全的实现</li>
+  <li><strong>可维护性</strong>：异常安全让代码更健壮、更易维护</li>
+</ol>
 
 <p><strong>关键要点</strong>：</p>
 <ul>

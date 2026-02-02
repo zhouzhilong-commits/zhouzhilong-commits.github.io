@@ -1,0 +1,1069 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>KV存储笔记：Compaction 策略与写放大 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="KV存储笔记：Compaction 策略与写放大">
+
+
+  <link rel="canonical" href="http://localhost:4000/kv-storage-note-002-compaction/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-note-002-compaction/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-06-25T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">KV存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-1-core-concepts/" class=""><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-2-lsm-vs-btree/" class=""><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-001-wal-recovery/" class=""><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-002-compaction/" class="active"><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="KV存储笔记：Compaction 策略与写放大">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="June 25, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">KV存储笔记：Compaction 策略与写放大
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  3 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-25T00:00:00+08:00">June 25, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>Compaction 是 LSM-Tree 存储引擎的核心操作，负责合并多个 SSTable 文件，减少文件数量并回收空间。本文从 KV 存储系统的实际实现角度，介绍 Compaction 在 KV 存储中的策略选择、写放大控制、性能优化以及实际应用案例。</p>
+
+<blockquote>
+  <p>注：本文聚焦于 KV 存储系统中 Compaction 的具体实现。关于 LSM-Tree 和 Compaction 的通用原理，请参考「存储基础系列」的相关文章。</p>
+</blockquote>
+
+<h2 id="1-compaction-的目的">1. Compaction 的目的</h2>
+
+<p>Compaction 的主要目的：</p>
+
+<ol>
+  <li><strong>减少文件数量</strong>：合并多个小文件为一个大文件</li>
+  <li><strong>回收空间</strong>：删除已覆盖或已删除的数据</li>
+  <li><strong>优化读取</strong>：减少查询时需要访问的文件数量</li>
+  <li><strong>控制层级</strong>：维护 LSM-Tree 的层级结构</li>
+</ol>
+
+<h2 id="2-compaction-策略">2. Compaction 策略</h2>
+
+<h3 id="21-leveled-compaction">2.1 Leveled Compaction</h3>
+
+<p>将数据组织成多个层级，每个层级有固定的大小限制：</p>
+
+<ul>
+  <li><strong>L0</strong>：MemTable 刷盘后的文件，可能有重叠</li>
+  <li><strong>L1-Ln</strong>：每层文件大小递增，且同一层内文件不重叠</li>
+  <li><strong>Compaction</strong>：将上层文件合并到下层</li>
+</ul>
+
+<p><strong>优点</strong>：</p>
+<ul>
+  <li>读取性能稳定</li>
+  <li>空间放大可控</li>
+</ul>
+
+<p><strong>缺点</strong>：</p>
+<ul>
+  <li>写放大较大</li>
+  <li>Compaction 开销高</li>
+</ul>
+
+<h3 id="22-size-tiered-compaction">2.2 Size-Tiered Compaction</h3>
+
+<p>将大小相近的文件合并：</p>
+
+<ul>
+  <li>当同层文件数量达到阈值时触发合并</li>
+  <li>合并后的文件大小翻倍</li>
+  <li>继续合并直到达到最大文件大小</li>
+</ul>
+
+<p><strong>优点</strong>：</p>
+<ul>
+  <li>写放大相对较小</li>
+  <li>实现简单</li>
+</ul>
+
+<p><strong>缺点</strong>：</p>
+<ul>
+  <li>读取可能需要访问多个文件</li>
+  <li>空间放大较大</li>
+</ul>
+
+<h3 id="23-tiered--leveled-混合策略">2.3 Tiered + Leveled 混合策略</h3>
+
+<p>结合两种策略的优点：</p>
+
+<ul>
+  <li>上层使用 Size-Tiered</li>
+  <li>下层使用 Leveled</li>
+  <li>平衡写放大和读性能</li>
+</ul>
+
+<h2 id="3-写放大问题">3. 写放大问题</h2>
+
+<h3 id="31-写放大的来源">3.1 写放大的来源</h3>
+
+<p>写放大（Write Amplification）是指实际写入磁盘的数据量大于用户写入的数据量：</p>
+
+<ul>
+  <li><strong>重复写入</strong>：数据在 Compaction 过程中被多次写入</li>
+  <li><strong>索引更新</strong>：需要更新索引结构</li>
+  <li><strong>元数据写入</strong>：需要写入文件元数据</li>
+</ul>
+
+<h3 id="32-写放大的计算">3.2 写放大的计算</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>写放大 = 实际写入磁盘的数据量 / 用户写入的数据量
+</code></pre></div></div>
+
+<h3 id="33-如何减少写放大">3.3 如何减少写放大</h3>
+
+<ol>
+  <li><strong>调整 Compaction 策略</strong>：选择写放大较小的策略</li>
+  <li><strong>增加层级大小</strong>：减少 Compaction 频率</li>
+  <li><strong>批量 Compaction</strong>：合并多个小 Compaction 为一个大 Compaction</li>
+  <li><strong>延迟 Compaction</strong>：在低峰期执行 Compaction</li>
+</ol>
+
+<h2 id="4-compaction-的触发条件">4. Compaction 的触发条件</h2>
+
+<h3 id="41-基于文件数量">4.1 基于文件数量</h3>
+
+<ul>
+  <li>当某一层的文件数量达到阈值时触发</li>
+  <li>简单直接，易于实现</li>
+</ul>
+
+<h3 id="42-基于文件大小">4.2 基于文件大小</h3>
+
+<ul>
+  <li>当文件总大小达到阈值时触发</li>
+  <li>可以更好地控制空间使用</li>
+</ul>
+
+<h3 id="43-基于时间">4.3 基于时间</h3>
+
+<ul>
+  <li>定期执行 Compaction</li>
+  <li>保证数据及时整理</li>
+</ul>
+
+<h3 id="44-基于读取放大">4.4 基于读取放大</h3>
+
+<ul>
+  <li>监控读取需要访问的文件数量</li>
+  <li>当读取放大过大时触发 Compaction</li>
+</ul>
+
+<h2 id="5-compaction-的性能优化">5. Compaction 的性能优化</h2>
+
+<h3 id="51-并行-compaction">5.1 并行 Compaction</h3>
+
+<ul>
+  <li>多个 Compaction 任务并行执行</li>
+  <li>充分利用多核 CPU 和磁盘 IO</li>
+</ul>
+
+<h3 id="52-增量-compaction">5.2 增量 Compaction</h3>
+
+<ul>
+  <li>只合并变化的部分</li>
+  <li>减少 Compaction 的数据量</li>
+</ul>
+
+<h3 id="53-优先级调度">5.3 优先级调度</h3>
+
+<ul>
+  <li>优先 Compaction 热点数据</li>
+  <li>延迟 Compaction 冷数据</li>
+</ul>
+
+<h3 id="54-io-限流">5.4 IO 限流</h3>
+
+<ul>
+  <li>控制 Compaction 的 IO 速率</li>
+  <li>避免影响正常读写操作</li>
+</ul>
+
+<h2 id="6-compaction-与查询性能">6. Compaction 与查询性能</h2>
+
+<h3 id="61-文件数量对查询的影响">6.1 文件数量对查询的影响</h3>
+
+<ul>
+  <li>文件数量越多，查询需要访问的文件越多</li>
+  <li>Compaction 可以减少文件数量，提高查询性能</li>
+</ul>
+
+<h3 id="62-bloom-filter-的作用">6.2 Bloom Filter 的作用</h3>
+
+<ul>
+  <li>每个 SSTable 可以配备 Bloom Filter</li>
+  <li>快速判断键是否存在于文件中</li>
+  <li>减少不必要的文件访问</li>
+</ul>
+
+<h2 id="7-kv-存储系统中的-compaction-实现案例">7. KV 存储系统中的 Compaction 实现案例</h2>
+
+<h3 id="71-rocksdb-的-compaction-策略">7.1 RocksDB 的 Compaction 策略</h3>
+
+<p>RocksDB 支持多种 Compaction 策略：</p>
+
+<ul>
+  <li><strong>Leveled Compaction</strong>：默认策略，适合大多数场景</li>
+  <li><strong>Universal Compaction</strong>：适合写多读少的场景</li>
+  <li><strong>FIFO Compaction</strong>：适合时序数据，自动删除最旧的数据</li>
+  <li><strong>Tiered Compaction</strong>：适合写放大敏感的场景</li>
+</ul>
+
+<h3 id="72-leveldb-的-compaction-策略">7.2 LevelDB 的 Compaction 策略</h3>
+
+<p>LevelDB 使用 Leveled Compaction：</p>
+
+<ul>
+  <li><strong>固定层级大小</strong>：每层大小固定，便于控制</li>
+  <li><strong>自动触发</strong>：当文件数量或大小达到阈值时自动触发</li>
+  <li><strong>优先级调度</strong>：优先 Compaction 上层文件</li>
+</ul>
+
+<h3 id="73-badgerdb-的-compaction-策略">7.3 BadgerDB 的 Compaction 策略</h3>
+
+<p>BadgerDB 使用特殊的 Compaction 策略：</p>
+
+<ul>
+  <li><strong>Value Log Compaction</strong>：专门针对大 Value 的 Compaction</li>
+  <li><strong>LSM Compaction</strong>：针对 Key 的 Compaction</li>
+  <li><strong>分离设计</strong>：Key 和 Value 分别 Compaction</li>
+</ul>
+
+<h2 id="8-kv-存储系统中的特殊优化">8. KV 存储系统中的特殊优化</h2>
+
+<h3 id="81-ttl-数据的-compaction">8.1 TTL 数据的 Compaction</h3>
+
+<p>KV 存储系统通常支持 TTL（Time To Live），Compaction 需要：</p>
+
+<ul>
+  <li><strong>过期检测</strong>：在 Compaction 时检测并删除过期数据</li>
+  <li><strong>批量删除</strong>：批量删除过期数据，提高效率</li>
+  <li><strong>时间窗口</strong>：根据时间窗口组织数据，便于批量删除</li>
+</ul>
+
+<h3 id="82-大-value-的-compaction">8.2 大 Value 的 Compaction</h3>
+
+<p>KV 存储系统的 Value 可能很大，Compaction 需要：</p>
+
+<ul>
+  <li><strong>Value 分离</strong>：大 Value 存储在单独的文件中</li>
+  <li><strong>增量 Compaction</strong>：只 Compaction 变化的部分</li>
+  <li><strong>流式处理</strong>：支持流式处理大 Value，避免内存占用过大</li>
+</ul>
+
+<h3 id="83-多版本数据的-compaction">8.3 多版本数据的 Compaction</h3>
+
+<p>KV 存储系统可能需要多版本，Compaction 需要：</p>
+
+<ul>
+  <li><strong>版本合并</strong>：合并多个版本，只保留最新版本</li>
+  <li><strong>版本清理</strong>：清理旧版本，回收空间</li>
+  <li><strong>快照支持</strong>：支持快照，避免清理正在使用的版本</li>
+</ul>
+
+<h2 id="9-性能调优实践">9. 性能调优实践</h2>
+
+<h3 id="91-compaction-参数调优">9.1 Compaction 参数调优</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// KV 存储系统的 Compaction 参数配置示例</span>
+<span class="k">struct</span> <span class="nc">CompactionOptions</span> <span class="p">{</span>
+    <span class="c1">// Leveled Compaction 参数</span>
+    <span class="kt">int</span> <span class="n">max_levels</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>              <span class="c1">// 最大层级数</span>
+    <span class="kt">size_t</span> <span class="n">level0_file_num</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>      <span class="c1">// L0 文件数量阈值</span>
+    <span class="kt">size_t</span> <span class="n">level0_size</span> <span class="o">=</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">MB</span><span class="p">;</span>   <span class="c1">// L0 大小阈值</span>
+    
+    <span class="c1">// 写放大控制</span>
+    <span class="kt">double</span> <span class="n">max_write_amplification</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">;</span>  <span class="c1">// 最大写放大</span>
+    <span class="kt">int</span> <span class="n">compaction_priority</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>            <span class="c1">// Compaction 优先级</span>
+    
+    <span class="c1">// 性能优化</span>
+    <span class="kt">int</span> <span class="n">max_compaction_threads</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>   <span class="c1">// 最大 Compaction 线程数</span>
+    <span class="kt">size_t</span> <span class="n">compaction_buffer_size</span> <span class="o">=</span> <span class="mi">64</span> <span class="o">*</span> <span class="n">MB</span><span class="p">;</span>  <span class="c1">// Compaction 缓冲区大小</span>
+    <span class="kt">bool</span> <span class="n">enable_parallel_compaction</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>   <span class="c1">// 启用并行 Compaction</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="92-动态调整策略">9.2 动态调整策略</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// KV 存储系统的动态 Compaction 调整</span>
+<span class="k">class</span> <span class="nc">AdaptiveCompaction</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="n">adjust_compaction_strategy</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 根据系统负载动态调整</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">write_amplification</span> <span class="o">&gt;</span> <span class="n">threshold_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 写放大过大，减少 Compaction 频率</span>
+            <span class="n">increase_compaction_interval</span><span class="p">();</span>
+        <span class="p">}</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">read_amplification</span> <span class="o">&gt;</span> <span class="n">threshold_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 读放大过大，增加 Compaction 频率</span>
+            <span class="n">decrease_compaction_interval</span><span class="p">();</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 根据 IO 负载调整</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">io_utilization</span> <span class="o">&gt;</span> <span class="n">threshold_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// IO 负载高，降低 Compaction 优先级</span>
+            <span class="n">reduce_compaction_priority</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="10-监控与诊断">10. 监控与诊断</h2>
+
+<h3 id="101-关键指标">10.1 关键指标</h3>
+
+<p>KV 存储系统需要监控的 Compaction 指标：</p>
+
+<ul>
+  <li><strong>写放大</strong>：实际写入量 / 用户写入量</li>
+  <li><strong>读放大</strong>：查询需要访问的文件数量</li>
+  <li><strong>空间放大</strong>：实际占用空间 / 逻辑数据大小</li>
+  <li><strong>Compaction 延迟</strong>：Compaction 操作的耗时</li>
+  <li><strong>Compaction 吞吐</strong>：Compaction 的数据量</li>
+</ul>
+
+<h3 id="102-问题诊断">10.2 问题诊断</h3>
+
+<p>常见问题及诊断方法：</p>
+
+<ul>
+  <li><strong>写放大过大</strong>：检查 Compaction 策略，考虑切换到 Tiered</li>
+  <li><strong>读放大过大</strong>：检查文件数量，增加 Compaction 频率</li>
+  <li><strong>Compaction 延迟高</strong>：检查 IO 负载，调整 Compaction 优先级</li>
+  <li><strong>空间放大过大</strong>：检查删除操作，确保 Compaction 及时清理</li>
+</ul>
+
+<h2 id="11-小结">11. 小结</h2>
+
+<p>Compaction 是 LSM-Tree 存储引擎的关键操作，需要在写放大、读性能、空间效率之间找到平衡。</p>
+
+<p><strong>核心要点</strong>：</p>
+
+<ul>
+  <li><strong>Compaction 的目的</strong>：减少文件数量、回收空间、优化读取、控制层级</li>
+  <li><strong>策略选择</strong>：Leveled、Tiered、混合策略各有优劣</li>
+  <li><strong>写放大控制</strong>：通过调整策略、增加层级大小、批量 Compaction 等方式减少写放大</li>
+  <li><strong>性能优化</strong>：并行 Compaction、增量 Compaction、优先级调度、IO 限流</li>
+</ul>
+
+<p><strong>在 KV 存储系统中的特殊考虑</strong>：</p>
+
+<ul>
+  <li><strong>TTL 支持</strong>：需要在 Compaction 时处理过期数据</li>
+  <li><strong>大 Value 处理</strong>：需要特殊设计避免 Compaction 开销过大</li>
+  <li><strong>多版本支持</strong>：需要合并和清理多个版本</li>
+</ul>
+
+<p>选择合适的 Compaction 策略和优化方案，可以显著提升 KV 存储系统的整体性能。不同的 KV 存储系统根据其应用场景，会采用不同的 Compaction 实现策略。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -22,7 +22,7 @@
 
 
 
-<title>博客 - zhouzhilong - 页 19</title>
+<title>KV存储（1）：KV存储的核心概念 - zhouzhilong</title>
 
 
 
@@ -32,15 +32,15 @@
 
 <meta property="og:locale" content="zh-CN">
 <meta property="og:site_name" content="zhouzhilong">
-<meta property="og:title" content="博客">
+<meta property="og:title" content="KV存储（1）：KV存储的核心概念">
 
 
-  <link rel="canonical" href="http://localhost:4000/page19/">
-  <meta property="og:url" content="http://localhost:4000/page19/">
+  <link rel="canonical" href="http://localhost:4000/kv-storage-1-core-concepts/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-1-core-concepts/">
 
 
 
-  <meta property="og:description" content="按年份归档的文章列表（支持分页）">
+  <meta property="og:description" content="这篇是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。">
 
 
 
@@ -54,9 +54,10 @@
 
 
 
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-03-15T00:00:00+08:00">
 
 
-  <link rel="prev" href="http://localhost:4000/page18/">
 
 
 
@@ -222,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -424,6 +425,9 @@
 
 
 
+
+
+
 <div id="main" role="main">
   
 
@@ -437,74 +441,8 @@
 
 
 
-  <div class="sidebar sticky" data-sidebar-toggle="false">
+  <div class="sidebar sticky" data-sidebar-toggle="true">
   
-
-
-
-
-<div itemscope itemtype="http://schema.org/Person">
-
-  <div class="author__avatar">
-    
-    	<img src="/images/zhouzhilong_avatar.jpg" class="author__avatar" alt="周智龙">
-    
-  </div>
-
-  <div class="author__content">
-    <h3 class="author__name">周智龙</h3>
-    <p class="author__bio">Hello World</p>
-  </div>
-
-  <div class="author__urls-wrapper">
-    <button class="btn btn--inverse">Follow</button>
-    <ul class="author__urls social-icons">
-      
-        <li><i class="fa fa-fw fa-map-marker" aria-hidden="true"></i> Shanghai</li>
-      
-      
-      
-      
-      
-       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-        <li><a href="https://github.com/zhouzhilong-commits"><i class="fab fa-fw fa-github" aria-hidden="true"></i> Github</a></li>
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-    </ul>
-  </div>
-</div>
-
-  
-    
-      
-      
-      
-    
   
 
   
@@ -525,7 +463,7 @@
 
     <li>
       
-        <span class="nav__sub-title">站点导航</span>
+        <span class="nav__sub-title">KV存储系列</span>
       
 
       
@@ -549,7 +487,7 @@
         
         
 
-        <a href="/storage-basics/" class=""><span class="nav__sub-title">存储</span></a>
+        <a href="/kv-storage-1-core-concepts/" class="active"><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
       
 
       
@@ -563,7 +501,7 @@
         
         
 
-        <a href="/paper-notes/" class=""><span class="nav__sub-title">论文笔记</span></a>
+        <a href="/kv-storage-2-lsm-vs-btree/" class=""><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
       
 
       
@@ -577,7 +515,7 @@
         
         
 
-        <a href="/cs-foundations/" class=""><span class="nav__sub-title">计算机基础</span></a>
+        <a href="/kv-storage-note-001-wal-recovery/" class=""><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
       
 
       
@@ -591,21 +529,7 @@
         
         
 
-        <a href="/cpp/" class=""><span class="nav__sub-title">CPP</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/indexlib/" class=""><span class="nav__sub-title">IndexLib</span></a>
+        <a href="/kv-storage-note-002-compaction/" class=""><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
       
 
       
@@ -628,262 +552,131 @@
   </div>
 
 
-  <div class="archive">
-    
-      <h1 class="page__title">博客</h1>
-    
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="KV存储（1）：KV存储的核心概念">
+    <meta itemprop="description" content="这篇是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。">
+    <meta itemprop="datePublished" content="March 15, 2021">
     
 
-
-
-
-
-<div
-  id="home-archive"
-  data-home-pagination="true"
-  data-baseurl=""
-  data-base-page-size="5"
-  
-    data-total-pages="19"
-    data-current-page="19"
-  
->
-  <div id="home-archive-content">
-    
-    
+    <div class="page__inner-wrap">
       
-      
-        
-        <section class="archive__year" data-year="2019">
-          <h2 id="2019" class="archive__subtitle">2019</h2>
-        
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/cs/os/process-thread-context-switch/" rel="permalink">OS（1）：进程/线程与上下文切换
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+        <header>
+          <h1 class="page__title" itemprop="headline">KV存储（1）：KV存储的核心概念
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
 
 
   
 	  少于 1 分钟阅读
 	
 </p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-01-01T00:00:00+08:00">January 01, 2019</time></p>
           
         
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇用“足够工程化的直觉”理解三个问题：</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/cs-network-note-006-http-2/" rel="permalink">网络笔记：HTTP/2：多路复用与队头阻塞
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-01-01T00:00:00+08:00">January 01, 2019</time></p>
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-03-15T00:00:00+08:00">March 15, 2021</time></p>
           
         
-
+        
+             
+        
     
-    <p class="archive__item-excerpt" itemprop="description"><p>HTTP/2 解决的是 HTTP/1.1 的两个痛点：</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
+        </header>
       
 
+      <section class="page__content" itemprop="text">
+        <p>这篇是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。</p>
 
+<h2 id="1-什么是kv存储">1. 什么是KV存储</h2>
 
+<p>KV存储（Key-Value Store）是一种简单的数据存储模型，提供基于键值对的读写接口。每个数据项由两部分组成：</p>
+<ul>
+  <li><strong>Key（键）</strong>：唯一标识符，用于定位数据</li>
+  <li><strong>Value（值）</strong>：实际存储的数据内容</li>
+</ul>
 
+<h2 id="2-kv存储的核心操作">2. KV存储的核心操作</h2>
 
+<p>KV存储通常提供以下基本操作：</p>
 
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
+<ul>
+  <li><strong>Put(key, value)</strong>：写入或更新一个键值对</li>
+  <li><strong>Get(key)</strong>：根据键读取对应的值</li>
+  <li><strong>Delete(key)</strong>：删除指定的键值对</li>
+  <li><strong>Scan(start_key, end_key)</strong>：范围扫描，获取指定范围内的键值对</li>
+</ul>
 
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/cs/architecture/cpu-cache-and-locality/" rel="permalink">组成（1）：CPU Cache 与局部性
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+<h2 id="3-kv存储的特点">3. KV存储的特点</h2>
 
+<h3 id="31-简单性">3.1 简单性</h3>
 
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
+<p>KV存储的接口非常简单，不需要复杂的查询语言，只需要提供键就能访问数据。这种简单性使得KV存储易于实现和使用。</p>
+
+<h3 id="32-高性能">3.2 高性能</h3>
+
+<p>由于接口简单，KV存储可以针对读写操作进行深度优化，通常能提供很高的性能。</p>
+
+<h3 id="33-可扩展性">3.3 可扩展性</h3>
+
+<p>KV存储通常采用分布式架构，可以水平扩展，支持大规模数据存储。</p>
+
+<h2 id="4-kv存储的应用场景">4. KV存储的应用场景</h2>
+
+<ul>
+  <li><strong>缓存系统</strong>：Redis、Memcached 等</li>
+  <li><strong>配置存储</strong>：存储系统配置信息</li>
+  <li><strong>会话存储</strong>：Web 应用的会话数据</li>
+  <li><strong>元数据存储</strong>：分布式系统的元数据管理</li>
+  <li><strong>时序数据</strong>：时间序列数据库的底层存储</li>
+</ul>
+
+<h2 id="5-常见的kv存储实现">5. 常见的KV存储实现</h2>
+
+<h3 id="51-内存型kv存储">5.1 内存型KV存储</h3>
+
+<ul>
+  <li><strong>Redis</strong>：支持多种数据结构，提供持久化功能</li>
+  <li><strong>Memcached</strong>：纯内存缓存，不支持持久化</li>
+</ul>
+
+<h3 id="52-持久化kv存储">5.2 持久化KV存储</h3>
+
+<ul>
+  <li><strong>RocksDB</strong>：基于 LSM-Tree 的嵌入式 KV 存储</li>
+  <li><strong>LevelDB</strong>：Google 开发的 LSM-Tree 实现</li>
+  <li><strong>BadgerDB</strong>：Go 语言实现的 LSM-Tree KV 存储</li>
+</ul>
+
+<h3 id="53-分布式kv存储">5.3 分布式KV存储</h3>
+
+<ul>
+  <li><strong>DynamoDB</strong>：AWS 的托管 KV 存储服务</li>
+  <li><strong>Cassandra</strong>：分布式 NoSQL 数据库</li>
+  <li><strong>HBase</strong>：基于 HDFS 的分布式 KV 存储</li>
+</ul>
+
+<h2 id="6-小结">6. 小结</h2>
+
+<p>KV存储是一种简单而强大的数据存储模型，通过键值对的抽象提供了高性能的数据访问能力。在后续文章中，我们将深入探讨KV存储的实现细节，包括存储引擎的选择、一致性保证、性能优化等方面。</p>
 
         
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-01-01T00:00:00+08:00">January 01, 2019</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇只讲一件事：<strong>为什么“局部性”几乎决定了性能上限</strong>。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-    
       </section>
-    
-  </div>
-</div>
 
-<div class="home-pagination-bar">
-  
-
-
-
-<nav class="pagination">
-  <ul>
-    
-    
-      
-        <li><a href="/page18/">上一页</a></li>
-      
-    
-
-    
-    
-      <li><a href="/">1</a></li>
-    
-
-    
-    
-      
-      
-      <li><a href="#" class="disabled">&hellip;</a></li>
-    
-
-    
-    
-    
-
-    
-      
+      <footer class="page__meta">
         
         
-        
-        <li><a href="/page17/">17</a></li>
-      
-    
-      
-        
-        
-        
-        <li><a href="/page18/">18</a></li>
-      
-    
+      </footer>
 
-    
-    
-
-    
-      <li><a href="#" class="disabled current">19</a></li>
-    
-
-    
-    
-      <li><a href="#" class="disabled"><span aria-hidden="true">下一页</span></a></li>
-    
-  </ul>
-</nav>
-
-  <div id="home-archive-controls">
-    <div class="home-page-size">
-      <label for="homePageSizeSelect">每页显示：</label>
       
+
       
-      
-      <select id="homePageSizeSelect">
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="25">25</option>
-      </select>
-      <span class="home-page-size__hint">（会自动加载更多内容）</span>
     </div>
-  </div>
-</div>
 
+    
+  </article>
 
-  </div>
 </div>
 
 

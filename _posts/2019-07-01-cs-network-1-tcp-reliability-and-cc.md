@@ -6,7 +6,9 @@ permalink: /cs/network/tcp-reliability-and-cc/
 tags: [计算机网络]
 ---
 
-这篇目标：把 TCP 的两件事讲清楚——**可靠传输**与**拥塞控制**，并理解它们为什么是同一条链路上的两个侧面。
+## 前言
+
+TCP 是互联网最重要的传输协议，它通过可靠传输和拥塞控制两个核心机制，保证了数据在网络中的可靠、高效传输。理解 TCP 的工作原理不仅是掌握网络编程的关键，更是进行网络优化和问题排查的基础。本文将从原理、实现、性能等多个维度深入解析 TCP 的可靠传输和拥塞控制，帮助读者全面理解这一重要协议。
 
 ![TCP：可靠传输（ACK/重传）+ 拥塞控制（cwnd）如何一起决定吞吐与延迟](/images/diagrams/tcp-reliability-congestion-window.svg)
 
@@ -87,6 +89,139 @@ tags: [计算机网络]
 2. **再定位发生在哪一段**：客户端出口/中间链路/服务端入口？
 3. **最后再动策略**：超时、重试、连接复用、拥塞控制算法等（先归因后调整）
 
-## 7. 小结
+## 7. TCP 的设计模式与架构
 
-TCP 可靠传输解决“丢了怎么办”，拥塞控制解决“别把网络打爆”。线上体验往往由“重传（丢包）+ 排队（bufferbloat）”共同决定：先把这两类问题分开，排障速度会快很多。
+### 7.1 设计模式视角
+
+TCP 体现了多个设计模式：
+
+1. **状态机模式**：TCP 连接通过状态机管理连接生命周期
+2. **滑动窗口模式**：通过滑动窗口实现流量控制
+3. **重传模式**：通过超时和快速重传实现可靠传输
+
+### 7.2 TCP 的状态机
+
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> LISTEN: 被动打开
+    LISTEN --> SYN_SENT: 发送SYN
+    SYN_SENT --> ESTABLISHED: 收到SYN+ACK
+    LISTEN --> SYN_RCVD: 收到SYN
+    SYN_RCVD --> ESTABLISHED: 收到ACK
+    ESTABLISHED --> FIN_WAIT_1: 主动关闭
+    FIN_WAIT_1 --> FIN_WAIT_2: 收到ACK
+    FIN_WAIT_2 --> TIME_WAIT: 收到FIN
+    ESTABLISHED --> CLOSE_WAIT: 收到FIN
+    CLOSE_WAIT --> LAST_ACK: 发送FIN
+    LAST_ACK --> CLOSED: 收到ACK
+    TIME_WAIT --> CLOSED: 2MSL超时
+    
+    style ESTABLISHED fill:#e8f5e9
+    style CLOSED fill:#ffebee
+```
+
+### 7.3 TCP 的架构层次
+
+```mermaid
+graph TD
+    A[应用层] --> B[TCP层]
+    B --> C[IP层]
+    C --> D[链路层]
+    
+    B --> E[可靠传输]
+    B --> F[拥塞控制]
+    B --> G[流量控制]
+    
+    E --> H[序列号]
+    E --> I[确认机制]
+    E --> J[重传机制]
+    
+    F --> K[拥塞窗口]
+    F --> L[慢启动]
+    F --> M[拥塞避免]
+    
+    style B fill:#e3f2fd
+    style E fill:#fff3e0
+    style F fill:#f3e5f5
+```
+
+## 8. 实际工程案例
+
+### 8.1 TCP 连接优化
+
+```cpp
+// TCP 连接优化配置
+int set_tcp_options(int sockfd) {
+    // 开启 TCP_NODELAY：禁用 Nagle 算法，减少延迟
+    int flag = 1;
+    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    
+    // 设置接收缓冲区大小
+    int recv_buf = 1024 * 1024;  // 1MB
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buf, sizeof(recv_buf));
+    
+    // 设置发送缓冲区大小
+    int send_buf = 1024 * 1024;  // 1MB
+    setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buf, sizeof(send_buf));
+    
+    // 开启 TCP_QUICKACK：快速确认
+    flag = 1;
+    setsockopt(sockfd, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+    
+    return 0;
+}
+```
+
+### 8.2 拥塞控制算法选择
+
+不同的拥塞控制算法适用于不同场景：
+
+- **CUBIC**：默认算法，适合长距离、高带宽网络
+- **BBR**：Google 开发，适合高带宽、低延迟网络
+- **Reno**：经典算法，适合大多数场景
+
+## 9. 性能分析与优化
+
+### 9.1 TCP 性能的关键指标
+
+1. **吞吐量**：受窗口大小和 RTT 限制
+   - 吞吐量 ≈ 窗口大小 / RTT
+2. **延迟**：受 RTT、排队延迟、重传延迟影响
+3. **重传率**：反映网络质量，重传率高说明网络不稳定
+
+### 9.2 性能优化策略
+
+1. **增大窗口大小**：提高吞吐量上限
+2. **减少 RTT**：使用 CDN、优化路由
+3. **减少重传**：优化网络质量、调整超时参数
+4. **选择合适的拥塞控制算法**：根据网络特征选择
+
+## 10. 小结
+
+TCP 可靠传输解决"丢了怎么办"，拥塞控制解决"别把网络打爆"。线上体验往往由"重传（丢包）+ 排队（bufferbloat）"共同决定：先把这两类问题分开，排障速度会快很多。
+
+**核心概念总结**：
+
+- **可靠传输原理**：通过序列号、确认、重传机制保证数据可靠传输
+- **拥塞控制原理**：通过动态调整发送窗口避免网络拥塞
+- **窗口机制**：发送窗口受接收窗口和拥塞窗口共同限制
+- **性能优化**：通过增大窗口、减少 RTT、优化算法等提升性能
+
+**设计亮点**：
+
+1. **可靠传输**：通过序列号、确认、重传机制保证数据不丢失、不重复、有序
+2. **拥塞控制**：通过动态调整发送速率避免网络拥塞
+3. **流量控制**：通过接收窗口防止接收端缓冲区溢出
+4. **状态管理**：通过状态机管理连接生命周期
+5. **性能优化**：通过多种机制优化传输性能
+
+**关键要点**：
+
+- TCP 可靠传输解决"丢了怎么办"，拥塞控制解决"别把网络打爆"
+- 吞吐量受窗口大小和 RTT 限制：吞吐量 ≈ 窗口大小 / RTT
+- 线上体验往往由"重传（丢包）+ 排队（bufferbloat）"共同决定
+- 先把丢包和排队两类问题分开，排障速度会快很多
+- 理解 TCP 的工作原理是进行网络优化和问题排查的基础
+
+掌握 TCP 的可靠传输和拥塞控制原理，可以更好地进行网络设计、性能优化和问题排查。

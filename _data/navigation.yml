@@ -7,8 +7,8 @@ main:
         url: /storage-basics/
       - title: "RocksDB"
         url: /rocksdb/
-      - title: "对象存储"
-        url: /object-storage/
+      - title: "KV存储"
+        url: /kv-storage/
       - title: "分布式一致性"
         url: /consensus/
       - title: "IndexLib"
@@ -74,29 +74,17 @@ rocksdb:
       - title: "RocksDB 笔记：压缩与校验：CPU/IO 的权衡点"
         url: /rocksdb-note-016-cpu-io/
 
-object_storage:
-  - title: "对象存储系列"
+kv_storage:
+  - title: "KV存储系列"
     children:
-      - title: "对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）"
-        url: /object-storage-1-core-concepts/
-      - title: "对象存储（2）：纠删码（EC）与副本（Replication）取舍"
-        url: /object-storage-2-ec-vs-replication/
-      - title: "对象存储笔记：EC 与副本：延迟、带宽、修复成本"
-        url: /object-storage-note-024-ec/
-      - title: "对象存储笔记：一致性模型：read-after-write 与 list 一致性"
-        url: /object-storage-note-003-read-after-write-list/
-      - title: "对象存储笔记：元数据服务：对象索引与列目录"
-        url: /object-storage-note-010-post/
-      - title: "对象存储笔记：分片上传与并行：大对象如何高吞吐"
-        url: /object-storage-note-038-post/
-      - title: "对象存储笔记：多区域容灾：RPO/RTO 与复制链路"
-        url: /object-storage-note-045-rpo-rto/
-      - title: "对象存储笔记：对象存储的命名空间：bucket、key、prefix 的含义"
-        url: /object-storage-note-017-bucket-key-prefix/
-      - title: "对象存储笔记：小对象与合并：小对象为什么更难"
-        url: /object-storage-note-059-post/
-      - title: "对象存储笔记：版本化（versioning）：覆盖写与回收策略"
-        url: /object-storage-note-031-versioning/
+      - title: "KV存储（1）：KV存储的核心概念"
+        url: /kv-storage-1-core-concepts/
+      - title: "KV存储（2）：LSM-Tree 与 B+Tree 的权衡"
+        url: /kv-storage-2-lsm-vs-btree/
+      - title: "KV存储笔记：WAL 与崩溃恢复"
+        url: /kv-storage-note-001-wal-recovery/
+      - title: "KV存储笔记：Compaction 策略与写放大"
+        url: /kv-storage-note-002-compaction/
 
 consensus:
   - title: "分布式一致性系列"

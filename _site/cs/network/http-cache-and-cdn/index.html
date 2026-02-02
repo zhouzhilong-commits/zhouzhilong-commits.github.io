@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇用最短路径理解两件事：">
+  <meta property="og:description" content="前言">
 
 
 
@@ -223,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -610,7 +610,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="网络（2）：HTTP 缓存与 CDN">
-    <meta itemprop="description" content="这篇用最短路径理解两件事：">
+    <meta itemprop="description" content="前言">
     <meta itemprop="datePublished" content="August 01, 2019">
     
 
@@ -624,7 +624,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  2 分钟阅读
 	
 </p>
           
@@ -643,12 +643,9 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇用最短路径理解两件事：</p>
+        <h2 id="前言">前言</h2>
 
-<ul>
-  <li>HTTP 缓存为什么能显著降低延迟与带宽成本</li>
-  <li>CDN 为什么能把“离用户更近”变成确定收益</li>
-</ul>
+<p>HTTP 缓存和 CDN 是现代 Web 性能优化的核心技术，它们通过减少网络传输和降低延迟，显著提升了用户体验。理解 HTTP 缓存的工作原理和 CDN 的架构设计，不仅是掌握 Web 性能优化的关键，更是进行系统架构设计的基础。本文将从原理、实现、性能等多个维度深入解析 HTTP 缓存和 CDN，帮助读者全面理解这一重要技术。</p>
 
 <h2 id="1-http-缓存的目标">1. HTTP 缓存的目标</h2>
 
@@ -686,12 +683,187 @@
   <li>动态内容也能通过边缘计算/缓存策略部分加速</li>
 </ul>
 
-<h2 id="4-实战关注点">4. 实战关注点</h2>
+<h2 id="4-http-缓存的架构设计">4. HTTP 缓存的架构设计</h2>
+
+<h3 id="41-缓存层次结构">4.1 缓存层次结构</h3>
+
+<pre><code class="language-mermaid">graph TD
+    A[用户请求] --&gt; B[浏览器缓存]
+    B --&gt;|未命中| C[CDN边缘节点]
+    C --&gt;|未命中| D[CDN中间节点]
+    D --&gt;|未命中| E[源站]
+    
+    B --&gt;|命中| F[直接返回]
+    C --&gt;|命中| F
+    D --&gt;|命中| F
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+    style E fill:#ffebee
+</code></pre>
+
+<h3 id="42-缓存键的设计">4.2 缓存键的设计</h3>
+
+<p>缓存键的设计直接影响缓存命中率：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 缓存键的组成</span>
+<span class="k">struct</span> <span class="nc">CacheKey</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">url</span><span class="p">;</span>           <span class="c1">// URL 路径</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">query_string</span><span class="p">;</span>  <span class="c1">// 查询参数</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">host</span><span class="p">;</span>          <span class="c1">// 主机名</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">vary_header</span><span class="p">;</span>   <span class="c1">// Vary 头指定的头部</span>
+<span class="p">};</span>
+
+<span class="c1">// 缓存键生成</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">generate_cache_key</span><span class="p">(</span><span class="k">const</span> <span class="n">HttpRequest</span><span class="o">&amp;</span> <span class="n">req</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">key</span> <span class="o">=</span> <span class="n">req</span><span class="p">.</span><span class="n">host</span> <span class="o">+</span> <span class="n">req</span><span class="p">.</span><span class="n">path</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">req</span><span class="p">.</span><span class="n">query_string</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">key</span> <span class="o">+=</span> <span class="s">"?"</span> <span class="o">+</span> <span class="n">req</span><span class="p">.</span><span class="n">query_string</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// 根据 Vary 头添加相关头部</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">req</span><span class="p">.</span><span class="n">vary_header</span> <span class="o">==</span> <span class="s">"Accept-Language"</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">key</span> <span class="o">+=</span> <span class="s">"|"</span> <span class="o">+</span> <span class="n">req</span><span class="p">.</span><span class="n">headers</span><span class="p">[</span><span class="s">"Accept-Language"</span><span class="p">];</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">hash</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="5-cdn-的架构设计">5. CDN 的架构设计</h2>
+
+<h3 id="51-cdn-的分层架构">5.1 CDN 的分层架构</h3>
+
+<pre><code class="language-mermaid">graph TD
+    A[用户] --&gt; B[边缘节点 Edge]
+    B --&gt;|未命中| C[中间节点 Mid]
+    C --&gt;|未命中| D[中心节点 Core]
+    D --&gt;|未命中| E[源站 Origin]
+    
+    B --&gt;|命中| F[返回内容]
+    C --&gt;|命中| F
+    D --&gt;|命中| F
+    E --&gt;|回源| G[更新缓存]
+    G --&gt; F
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+    style E fill:#ffebee
+</code></pre>
+
+<h3 id="52-cdn-的路由机制">5.2 CDN 的路由机制</h3>
+
+<p>CDN 通过 DNS 和 Anycast 实现就近路由：</p>
+
+<ol>
+  <li><strong>DNS 解析</strong>：根据用户地理位置返回最近的边缘节点 IP</li>
+  <li><strong>Anycast</strong>：多个节点共享同一 IP，路由到最近的节点</li>
+  <li><strong>健康检查</strong>：定期检查节点健康状态，故障时切换</li>
+</ol>
+
+<h2 id="6-实际工程案例">6. 实际工程案例</h2>
+
+<h3 id="61-缓存策略配置">6.1 缓存策略配置</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// HTTP 缓存头设置</span>
+<span class="kt">void</span> <span class="nf">set_cache_headers</span><span class="p">(</span><span class="n">HttpResponse</span><span class="o">&amp;</span> <span class="n">resp</span><span class="p">,</span> <span class="kt">int</span> <span class="n">max_age</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 强缓存</span>
+    <span class="n">resp</span><span class="p">.</span><span class="n">headers</span><span class="p">[</span><span class="s">"Cache-Control"</span><span class="p">]</span> <span class="o">=</span> <span class="s">"public, max-age="</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">max_age</span><span class="p">);</span>
+    
+    <span class="c1">// 协商缓存</span>
+    <span class="n">resp</span><span class="p">.</span><span class="n">headers</span><span class="p">[</span><span class="s">"ETag"</span><span class="p">]</span> <span class="o">=</span> <span class="n">generate_etag</span><span class="p">(</span><span class="n">resp</span><span class="p">.</span><span class="n">body</span><span class="p">);</span>
+    <span class="n">resp</span><span class="p">.</span><span class="n">headers</span><span class="p">[</span><span class="s">"Last-Modified"</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_last_modified</span><span class="p">();</span>
+    
+    <span class="c1">// 禁止缓存</span>
+    <span class="c1">// resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="62-cdn-缓存预热">6.2 CDN 缓存预热</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// CDN 缓存预热：提前将热点内容推送到边缘节点</span>
+<span class="kt">void</span> <span class="nf">warmup_cdn_cache</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;&amp;</span> <span class="n">urls</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">url</span> <span class="o">:</span> <span class="n">urls</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 向 CDN 发送预热请求</span>
+        <span class="n">http_get</span><span class="p">(</span><span class="n">cdn_endpoint</span> <span class="o">+</span> <span class="n">url</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="7-性能分析与优化">7. 性能分析与优化</h2>
+
+<h3 id="71-缓存命中率的影响因素">7.1 缓存命中率的影响因素</h3>
+
+<ol>
+  <li><strong>TTL 设置</strong>：TTL 越长，命中率越高，但更新延迟越大</li>
+  <li><strong>缓存键设计</strong>：合理的缓存键设计可以提高命中率</li>
+  <li><strong>内容更新频率</strong>：更新频率高的内容命中率低</li>
+  <li><strong>用户访问模式</strong>：热点内容命中率高</li>
+</ol>
+
+<h3 id="72-cdn-性能优化">7.2 CDN 性能优化</h3>
+
+<ol>
+  <li><strong>边缘节点分布</strong>：节点越靠近用户，延迟越低</li>
+  <li><strong>缓存策略</strong>：合理的缓存策略可以提高命中率</li>
+  <li><strong>回源优化</strong>：优化回源路径，减少回源延迟</li>
+  <li><strong>压缩传输</strong>：使用 Gzip/Brotli 压缩减少传输量</li>
+</ol>
+
+<h2 id="8-设计模式与架构原则">8. 设计模式与架构原则</h2>
+
+<h3 id="81-设计模式视角">8.1 设计模式视角</h3>
+
+<p>HTTP 缓存和 CDN 体现了多个设计模式：</p>
+
+<ol>
+  <li><strong>缓存模式</strong>：通过多级缓存提高性能</li>
+  <li><strong>代理模式</strong>：CDN 节点作为源站的代理</li>
+  <li><strong>策略模式</strong>：不同的缓存策略适用于不同场景</li>
+</ol>
+
+<h3 id="82-架构原则">8.2 架构原则</h3>
 
 <ul>
-  <li>缓存键（URL/Query/Header）设计不当会导致命中率差</li>
-  <li>过长 TTL 会带来更新不及时，需要配合 purge/版本号（hash）策略</li>
+  <li><strong>就近原则</strong>：内容越靠近用户，延迟越低</li>
+  <li><strong>分层缓存</strong>：通过多级缓存提高命中率</li>
+  <li><strong>失效策略</strong>：合理的失效策略保证内容新鲜度</li>
 </ul>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>HTTP 缓存和 CDN 是现代 Web 性能优化的核心技术，它们通过减少网络传输和降低延迟，显著提升了用户体验。</p>
+
+<p><strong>核心概念总结</strong>：</p>
+
+<ul>
+  <li><strong>HTTP 缓存原理</strong>：通过强缓存和协商缓存减少重复请求</li>
+  <li><strong>CDN 架构</strong>：通过边缘节点就近分发内容，降低延迟</li>
+  <li><strong>缓存策略</strong>：合理的缓存策略可以提高命中率和用户体验</li>
+  <li><strong>性能优化</strong>：通过多级缓存、压缩传输等机制优化性能</li>
+</ul>
+
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>多级缓存</strong>：浏览器、CDN、源站多级缓存提高命中率</li>
+  <li><strong>就近分发</strong>：通过边缘节点降低延迟</li>
+  <li><strong>智能路由</strong>：通过 DNS 和 Anycast 实现智能路由</li>
+  <li><strong>缓存策略</strong>：通过强缓存和协商缓存平衡性能和新鲜度</li>
+  <li><strong>性能优化</strong>：通过多种机制优化传输性能</li>
+</ol>
+
+<p><strong>关键要点</strong>：</p>
+
+<ul>
+  <li>HTTP 缓存通过强缓存和协商缓存减少重复请求，降低延迟和带宽成本</li>
+  <li>CDN 通过边缘节点就近分发内容，把”离用户更近”变成确定收益</li>
+  <li>缓存键设计不当会导致命中率差，需要合理设计</li>
+  <li>过长 TTL 会带来更新不及时，需要配合 purge/版本号（hash）策略</li>
+  <li>理解 HTTP 缓存和 CDN 是进行 Web 性能优化的基础</li>
+</ul>
+
+<p>掌握 HTTP 缓存和 CDN 的原理，可以更好地进行系统架构设计和性能优化。</p>
 
 
         

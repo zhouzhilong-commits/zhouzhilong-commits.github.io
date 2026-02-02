@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇只讲一件事：为什么“局部性”几乎决定了性能上限。">
+  <meta property="og:description" content="前言">
 
 
 
@@ -223,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -596,7 +596,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="组成（1）：CPU Cache 与局部性">
-    <meta itemprop="description" content="这篇只讲一件事：为什么“局部性”几乎决定了性能上限。">
+    <meta itemprop="description" content="前言">
     <meta itemprop="datePublished" content="January 01, 2019">
     
 
@@ -610,7 +610,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
           
@@ -629,7 +629,9 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇只讲一件事：<strong>为什么“局部性”几乎决定了性能上限</strong>。</p>
+        <h2 id="前言">前言</h2>
+
+<p>CPU Cache 是现代计算机系统性能的关键，它通过利用程序的局部性原理，大幅提升了内存访问速度。理解 Cache 的工作原理和局部性的影响，不仅是掌握计算机组成原理的关键，更是进行性能优化的基础。本文将从原理、实现、性能等多个维度深入解析 CPU Cache 和局部性，帮助读者全面理解这一重要机制。</p>
 
 <h2 id="1-为什么需要-cache">1. 为什么需要 Cache</h2>
 
@@ -645,13 +647,297 @@ Cache 的目标是：把“可能马上要用的数据”放在更快的层级�
 
 <p>这也是为什么顺序扫描通常比随机访问更快。</p>
 
-<h2 id="3-你会在工程里直接感受到的点">3. 你会在工程里直接感受到的点</h2>
+<h2 id="3-cpu-cache-的层次结构">3. CPU Cache 的层次结构</h2>
+
+<h3 id="31-多级-cache-架构">3.1 多级 Cache 架构</h3>
+
+<p>现代 CPU 通常采用多级 Cache 架构：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[CPU核心] --&gt; B[L1 Cache]
+    B --&gt; C[L2 Cache]
+    C --&gt; D[L3 Cache]
+    D --&gt; E[主内存]
+    
+    B --&gt; F[L1指令Cache]
+    B --&gt; G[L1数据Cache]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#f3e5f5
+    style D fill:#e8f5e9
+    style E fill:#ffebee
+</code></pre>
+
+<p><strong>Cache 层次特征</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>层级</th>
+      <th>容量</th>
+      <th>延迟</th>
+      <th>位置</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>L1</td>
+      <td>32-64KB</td>
+      <td>1-3 周期</td>
+      <td>CPU 核心内</td>
+    </tr>
+    <tr>
+      <td>L2</td>
+      <td>256KB-1MB</td>
+      <td>10-20 周期</td>
+      <td>CPU 核心内</td>
+    </tr>
+    <tr>
+      <td>L3</td>
+      <td>8-32MB</td>
+      <td>40-75 周期</td>
+      <td>共享</td>
+    </tr>
+    <tr>
+      <td>主内存</td>
+      <td>GB 级</td>
+      <td>100-300 周期</td>
+      <td>片外</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="32-cache-的组织方式">3.2 Cache 的组织方式</h3>
+
+<p>Cache 通常采用组相联（Set-Associative）组织方式：</p>
+
+<pre><code class="language-mermaid">graph LR
+    A[内存地址] --&gt; B[Tag]
+    A --&gt; C[Set Index]
+    A --&gt; D[Offset]
+    
+    C --&gt; E[Cache Set]
+    E --&gt; F[Way 0]
+    E --&gt; G[Way 1]
+    E --&gt; H[Way N]
+    
+    F --&gt; I[Tag比较]
+    G --&gt; I
+    H --&gt; I
+    
+    I --&gt;|匹配| J[Cache Hit]
+    I --&gt;|不匹配| K[Cache Miss]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+    style J fill:#e8f5e9
+    style K fill:#ffebee
+</code></pre>
+
+<h2 id="4-局部性原理的深入分析">4. 局部性原理的深入分析</h2>
+
+<h3 id="41-时间局部性temporal-locality">4.1 时间局部性（Temporal Locality）</h3>
+
+<p>时间局部性是指：<strong>刚访问过的数据，短时间内很可能再次被访问</strong>。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 时间局部性的例子</span>
+<span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">sum</span> <span class="o">+=</span> <span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>  <span class="c1">// array[i] 在循环中多次访问，时间局部性好</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="42-空间局部性spatial-locality">4.2 空间局部性（Spatial Locality）</h3>
+
+<p>空间局部性是指：<strong>访问某个地址后，附近地址很可能也会被访问</strong>。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 空间局部性的例子</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>  <span class="c1">// 顺序访问，空间局部性好</span>
+<span class="p">}</span>
+
+<span class="c1">// 随机访问，空间局部性差</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">index</span><span class="p">]);</span>  <span class="c1">// 随机访问，空间局部性差</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="43-局部性对性能的影响">4.3 局部性对性能的影响</h3>
+
+<pre><code class="language-mermaid">graph TD
+    A[程序访问模式] --&gt; B{局部性好?}
+    B --&gt;|是| C[Cache命中率高]
+    B --&gt;|否| D[Cache命中率低]
+    
+    C --&gt; E[性能好]
+    D --&gt; F[性能差]
+    
+    G[顺序访问] --&gt; C
+    H[随机访问] --&gt; D
+    I[重复访问] --&gt; C
+    J[一次性访问] --&gt; D
+    
+    style C fill:#e8f5e9
+    style D fill:#ffebee
+    style E fill:#e3f2fd
+    style F fill:#fff3e0
+</code></pre>
+
+<h2 id="5-cache-替换策略">5. Cache 替换策略</h2>
+
+<h3 id="51-常见的替换策略">5.1 常见的替换策略</h3>
+
+<ol>
+  <li><strong>LRU（Least Recently Used）</strong>：淘汰最近最少使用的 Cache line</li>
+  <li><strong>FIFO（First In First Out）</strong>：淘汰最早进入的 Cache line</li>
+  <li><strong>Random</strong>：随机淘汰</li>
+</ol>
+
+<h3 id="52-lru-的实现">5.2 LRU 的实现</h3>
+
+<pre><code class="language-mermaid">graph LR
+    A[Cache访问] --&gt; B{Cache Hit?}
+    B --&gt;|是| C[更新LRU顺序]
+    B --&gt;|否| D[Cache Miss]
+    D --&gt; E[选择Victim]
+    E --&gt; F[LRU策略]
+    F --&gt; G[淘汰最久未使用]
+    G --&gt; H[加载新数据]
+    
+    style B fill:#e3f2fd
+    style D fill:#ffebee
+    style F fill:#fff3e0
+</code></pre>
+
+<h2 id="6-实际工程案例">6. 实际工程案例</h2>
+
+<h3 id="61-数据结构对-cache-性能的影响">6.1 数据结构对 Cache 性能的影响</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 数组：顺序访问，Cache 友好</span>
+<span class="kt">int</span> <span class="nf">sum_array</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sum</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>  <span class="c1">// 顺序访问，空间局部性好</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">sum</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 链表：随机访问，Cache 不友好</span>
+<span class="kt">int</span> <span class="n">sum_list</span><span class="p">(</span><span class="n">Node</span><span class="o">*</span> <span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sum</span> <span class="o">+=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">;</span>  <span class="c1">// 随机访问，空间局部性差</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">sum</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="62-false-sharing-问题">6.2 False Sharing 问题</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// False Sharing：多个变量在同一 Cache line，导致性能下降</span>
+<span class="k">struct</span> <span class="nc">BadAlignment</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>  <span class="c1">// 与 counter2 在同一 Cache line</span>
+    <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>  <span class="c1">// 不同线程写这两个变量会导致 Cache line 失效</span>
+<span class="p">};</span>
+
+<span class="c1">// 解决：使用 padding 或 alignas 分离</span>
+<span class="k">struct</span> <span class="nc">GoodAlignment</span> <span class="p">{</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>  <span class="c1">// 64 字节对齐，确保不在同一 Cache line</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="7-性能分析与优化">7. 性能分析与优化</h2>
+
+<h3 id="71-cache-性能指标">7.1 Cache 性能指标</h3>
+
+<ol>
+  <li><strong>Cache Hit Rate</strong>：Cache 命中率，越高越好</li>
+  <li><strong>Cache Miss Penalty</strong>：Cache miss 的代价，取决于内存延迟</li>
+  <li><strong>AMAT（Average Memory Access Time）</strong>：平均内存访问时间</li>
+</ol>
+
+<h3 id="72-性能优化策略">7.2 性能优化策略</h3>
+
+<ol>
+  <li><strong>提升局部性</strong>：
+    <ul>
+      <li>顺序访问而非随机访问</li>
+      <li>重用数据而非一次性访问</li>
+      <li>紧凑的数据结构</li>
+    </ul>
+  </li>
+  <li><strong>减少 False Sharing</strong>：
+    <ul>
+      <li>使用 padding 分离热点变量</li>
+      <li>使用 <code class="language-plaintext highlighter-rouge">alignas</code> 确保对齐</li>
+    </ul>
+  </li>
+  <li><strong>预取优化</strong>：
+    <ul>
+      <li>使用 <code class="language-plaintext highlighter-rouge">__builtin_prefetch</code> 预取数据</li>
+      <li>编译器自动预取</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="8-设计模式与架构原则">8. 设计模式与架构原则</h2>
+
+<h3 id="81-设计模式视角">8.1 设计模式视角</h3>
+
+<p>CPU Cache 体现了多个设计模式：</p>
+
+<ol>
+  <li><strong>缓存模式</strong>：通过缓存提高访问速度</li>
+  <li><strong>分层模式</strong>：多级 Cache 形成层次结构</li>
+  <li><strong>替换策略模式</strong>：不同的替换策略适用于不同场景</li>
+</ol>
+
+<h3 id="82-架构原则">8.2 架构原则</h3>
 
 <ul>
-  <li>数据结构设计会影响 cache miss（例如链表 vs 数组）</li>
-  <li>访问模式会影响预取效果（prefetch）</li>
-  <li>false sharing 会让多线程性能崩掉（同一 cache line 被不同线程频繁写）</li>
+  <li><strong>局部性原理</strong>：利用程序的局部性提高 Cache 命中率</li>
+  <li><strong>层次化设计</strong>：多级 Cache 平衡容量和速度</li>
+  <li><strong>性能优化</strong>：通过多种机制优化 Cache 性能</li>
 </ul>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>CPU Cache 是现代计算机系统性能的关键，它通过利用程序的局部性原理，大幅提升了内存访问速度。</p>
+
+<p><strong>核心概念总结</strong>：</p>
+
+<ul>
+  <li><strong>Cache 原理</strong>：通过多级 Cache 层次结构提高内存访问速度</li>
+  <li><strong>局部性原理</strong>：时间局部性和空间局部性是 Cache 性能的基础</li>
+  <li><strong>替换策略</strong>：LRU 等策略决定哪些数据保留在 Cache 中</li>
+  <li><strong>性能优化</strong>：通过提升局部性、减少 False Sharing 等优化性能</li>
+</ul>
+
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>多级层次</strong>：L1/L2/L3 Cache 形成层次结构，平衡容量和速度</li>
+  <li><strong>局部性利用</strong>：通过时间局部性和空间局部性提高命中率</li>
+  <li><strong>智能替换</strong>：通过 LRU 等策略保留最可能使用的数据</li>
+  <li><strong>预取机制</strong>：通过硬件和软件预取提前加载数据</li>
+  <li><strong>性能优化</strong>：通过多种机制优化 Cache 性能</li>
+</ol>
+
+<p><strong>关键要点</strong>：</p>
+
+<ul>
+  <li>局部性几乎决定了性能上限，顺序访问比随机访问快得多</li>
+  <li>数据结构设计会影响 cache miss，数组通常比链表更 Cache 友好</li>
+  <li>访问模式会影响预取效果，顺序访问可以充分利用预取</li>
+  <li>False sharing 会让多线程性能崩掉，需要合理对齐和分离</li>
+  <li>理解 Cache 和局部性是进行性能优化的基础</li>
+</ul>
+
+<p>掌握 CPU Cache 和局部性的原理，可以更好地进行性能优化和系统设计。</p>
 
 
         

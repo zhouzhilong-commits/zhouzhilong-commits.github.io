@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="智能指针是 C++11 引入的自动内存管理工具，通过 RAII 机制自动管理动态分配的内存，是现代 C++ 编程的必备技能。">
+  <meta property="og:description" content="前言">
 
 
 
@@ -223,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -582,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="C++ 笔记：智能指针：unique_ptr 与 shared_ptr">
-    <meta itemprop="description" content="智能指针是 C++11 引入的自动内存管理工具，通过 RAII 机制自动管理动态分配的内存，是现代 C++ 编程的必备技能。">
+    <meta itemprop="description" content="前言">
     <meta itemprop="datePublished" content="April 18, 2021">
     
 
@@ -596,7 +596,7 @@
 
 
   
-	  6 分钟阅读
+	  7 分钟阅读
 	
 </p>
           
@@ -615,7 +615,9 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>智能指针是 C++11 引入的自动内存管理工具，通过 RAII 机制自动管理动态分配的内存，是现代 C++ 编程的必备技能。</p>
+        <h2 id="前言">前言</h2>
+
+<p>智能指针是现代 C++ 内存管理的核心工具，它们通过 RAII 机制自动管理动态分配的内存，解决了原始指针的诸多问题。理解智能指针不仅是掌握现代 C++ 的关键，更是写出安全、高效代码的基础。本文将从原理、实现、应用等多个维度深入解析智能指针，帮助读者全面理解这一重要特性。</p>
 
 <p><img src="/images/diagrams/cpp-smart-pointers-ownership.svg" alt="智能指针：unique_ptr、shared_ptr、weak_ptr 的所有权模型" /></p>
 
@@ -1184,9 +1186,139 @@
   <li><strong>避免在热路径上频繁创建智能指针</strong>：考虑对象池</li>
 </ul>
 
-<h2 id="10-小结">10. 小结</h2>
+<h2 id="10-智能指针的设计模式与架构">10. 智能指针的设计模式与架构</h2>
+
+<h3 id="101-设计模式视角">10.1 设计模式视角</h3>
+
+<p>智能指针体现了多个设计模式：</p>
+
+<ol>
+  <li><strong>RAII 模式</strong>：通过对象生命周期管理资源</li>
+  <li><strong>所有权模式</strong>：明确资源的所有权关系</li>
+  <li><strong>引用计数模式</strong>：<code class="language-plaintext highlighter-rouge">shared_ptr</code> 使用引用计数实现共享所有权</li>
+</ol>
+
+<h3 id="102-架构原则">10.2 架构原则</h3>
+
+<ul>
+  <li><strong>单一职责</strong>：智能指针只负责内存管理</li>
+  <li><strong>所有权明确</strong>：通过类型系统明确所有权关系</li>
+  <li><strong>异常安全</strong>：智能指针保证异常时资源也能释放</li>
+</ul>
+
+<h3 id="103-智能指针的类图">10.3 智能指针的类图</h3>
+
+<pre><code class="language-mermaid">classDiagram
+    class SmartPointer {
+        &lt;&lt;abstract&gt;&gt;
+        +get() T*
+        +reset() void
+        +operator*() T&amp;
+        +operator-&gt;() T*
+    }
+    
+    class unique_ptr {
+        -T* ptr_
+        +unique_ptr()
+        +~unique_ptr()
+        +release() T*
+        +reset() void
+    }
+    
+    class shared_ptr {
+        -T* ptr_
+        -ControlBlock* ctrl_
+        +shared_ptr()
+        +~shared_ptr()
+        +use_count() size_t
+    }
+    
+    class weak_ptr {
+        -ControlBlock* ctrl_
+        +weak_ptr()
+        +lock() shared_ptr
+        +expired() bool
+    }
+    
+    SmartPointer &lt;|-- unique_ptr
+    SmartPointer &lt;|-- shared_ptr
+    shared_ptr --&gt; weak_ptr : 打破循环引用
+    
+    note for unique_ptr "独占所有权\n零开销"
+    note for shared_ptr "共享所有权\n引用计数"
+</code></pre>
+
+<h2 id="11-实际工程案例">11. 实际工程案例</h2>
+
+<h3 id="111-标准库中的智能指针">11.1 标准库中的智能指针</h3>
+
+<p>标准库提供了三种智能指针：</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">std::unique_ptr</code></strong>：独占所有权，零开销</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">std::shared_ptr</code></strong>：共享所有权，引用计数</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">std::weak_ptr</code></strong>：不拥有所有权，打破循环引用</li>
+</ul>
+
+<h3 id="112-自定义资源管理">11.2 自定义资源管理</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 使用智能指针管理自定义资源</span>
+<span class="k">class</span> <span class="nc">CustomDeleter</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="k">operator</span><span class="p">()(</span><span class="n">CustomResource</span><span class="o">*</span> <span class="n">ptr</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="c1">// 自定义删除逻辑</span>
+        <span class="n">custom_cleanup</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+        <span class="k">delete</span> <span class="n">ptr</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">CustomResource</span><span class="p">,</span> <span class="n">CustomDeleter</span><span class="o">&gt;</span> 
+    <span class="n">resource</span><span class="p">(</span><span class="n">acquire_resource</span><span class="p">(),</span> <span class="n">CustomDeleter</span><span class="p">{});</span>
+</code></pre></div></div>
+
+<h2 id="12-性能分析与优化">12. 性能分析与优化</h2>
+
+<h3 id="121-性能对比">12.1 性能对比</h3>
+
+<p>智能指针的性能特征：</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">unique_ptr</code></strong>：与原始指针性能相同，零开销</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">shared_ptr</code></strong>：有引用计数开销，但提供共享所有权</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">weak_ptr</code></strong>：开销很小，主要用于打破循环引用</li>
+</ul>
+
+<h3 id="122-性能优化建议">12.2 性能优化建议</h3>
+
+<ol>
+  <li><strong>优先使用 <code class="language-plaintext highlighter-rouge">unique_ptr</code></strong>：零开销，性能最优</li>
+  <li><strong>避免不必要的 <code class="language-plaintext highlighter-rouge">shared_ptr</code> 拷贝</strong>：减少原子操作</li>
+  <li><strong>使用 <code class="language-plaintext highlighter-rouge">make_shared</code></strong>：减少内存分配次数</li>
+  <li><strong>避免循环引用</strong>：使用 <code class="language-plaintext highlighter-rouge">weak_ptr</code> 打破循环</li>
+</ol>
+
+<h2 id="13-小结">13. 小结</h2>
 
 <p>智能指针是现代 C++ 内存管理的标准方式，通过 RAII 自动管理动态分配的内存，实现了异常安全和自动化资源管理。</p>
+
+<p><strong>核心概念总结</strong>：</p>
+
+<ul>
+  <li><strong>智能指针原理</strong>：通过 RAII 机制自动管理内存，构造时获取，析构时释放</li>
+  <li><strong>所有权模型</strong>：<code class="language-plaintext highlighter-rouge">unique_ptr</code> 独占所有权，<code class="language-plaintext highlighter-rouge">shared_ptr</code> 共享所有权</li>
+  <li><strong>引用计数</strong>：<code class="language-plaintext highlighter-rouge">shared_ptr</code> 使用原子引用计数实现线程安全的共享所有权</li>
+  <li><strong>设计模式</strong>：体现了 RAII、所有权、引用计数等设计思想</li>
+</ul>
+
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>自动化内存管理</strong>：无需手动 <code class="language-plaintext highlighter-rouge">delete</code>，减少内存泄漏</li>
+  <li><strong>异常安全</strong>：异常发生时内存也能正确释放</li>
+  <li><strong>零开销抽象</strong>：<code class="language-plaintext highlighter-rouge">unique_ptr</code> 与原始指针性能相同</li>
+  <li><strong>类型安全</strong>：通过类型系统保证内存正确使用</li>
+  <li><strong>所有权明确</strong>：通过类型系统明确所有权关系</li>
+</ol>
 
 <p><strong>关键要点</strong>：</p>
 <ul>

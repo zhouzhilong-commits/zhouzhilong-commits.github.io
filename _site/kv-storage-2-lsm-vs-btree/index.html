@@ -22,7 +22,7 @@
 
 
 
-<title>对象存储笔记：一致性模型：read-after-write 与 list 一致性 - zhouzhilong</title>
+<title>KV存储（2）：LSM-Tree 与 B+Tree 的权衡 - zhouzhilong</title>
 
 
 
@@ -32,15 +32,15 @@
 
 <meta property="og:locale" content="zh-CN">
 <meta property="og:site_name" content="zhouzhilong">
-<meta property="og:title" content="对象存储笔记：一致性模型：read-after-write 与 list 一致性">
+<meta property="og:title" content="KV存储（2）：LSM-Tree 与 B+Tree 的权衡">
 
 
-  <link rel="canonical" href="http://localhost:4000/object-storage-note-003-read-after-write-list/">
-  <meta property="og:url" content="http://localhost:4000/object-storage-note-003-read-after-write-list/">
+  <link rel="canonical" href="http://localhost:4000/kv-storage-2-lsm-vs-btree/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-2-lsm-vs-btree/">
 
 
 
-  <meta property="og:description" content="对象存储里最容易踩坑的是一句话：">
+  <meta property="og:description" content="前言">
 
 
 
@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2022-02-01T00:00:00+08:00">
+  <meta property="article:published_time" content="2021-04-20T00:00:00+08:00">
 
 
 
@@ -223,7 +223,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -463,7 +463,7 @@
 
     <li>
       
-        <span class="nav__sub-title">对象存储系列</span>
+        <span class="nav__sub-title">KV存储系列</span>
       
 
       
@@ -487,7 +487,7 @@
         
         
 
-        <a href="/object-storage-1-core-concepts/" class=""><span class="nav__sub-title">对象存储（1）：对象存储的核心概念（Bucket/Object/Metadata）</span></a>
+        <a href="/kv-storage-1-core-concepts/" class=""><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
       
 
       
@@ -501,7 +501,7 @@
         
         
 
-        <a href="/object-storage-2-ec-vs-replication/" class=""><span class="nav__sub-title">对象存储（2）：纠删码（EC）与副本（Replication）取舍</span></a>
+        <a href="/kv-storage-2-lsm-vs-btree/" class="active"><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
       
 
       
@@ -515,7 +515,7 @@
         
         
 
-        <a href="/object-storage-note-024-ec/" class=""><span class="nav__sub-title">对象存储笔记：EC 与副本：延迟、带宽、修复成本</span></a>
+        <a href="/kv-storage-note-001-wal-recovery/" class=""><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
       
 
       
@@ -529,91 +529,7 @@
         
         
 
-        <a href="/object-storage-note-003-read-after-write-list/" class="active"><span class="nav__sub-title">对象存储笔记：一致性模型：read-after-write 与 list 一致性</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-010-post/" class=""><span class="nav__sub-title">对象存储笔记：元数据服务：对象索引与列目录</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-038-post/" class=""><span class="nav__sub-title">对象存储笔记：分片上传与并行：大对象如何高吞吐</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-045-rpo-rto/" class=""><span class="nav__sub-title">对象存储笔记：多区域容灾：RPO/RTO 与复制链路</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-017-bucket-key-prefix/" class=""><span class="nav__sub-title">对象存储笔记：对象存储的命名空间：bucket、key、prefix 的含义</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-059-post/" class=""><span class="nav__sub-title">对象存储笔记：小对象与合并：小对象为什么更难</span></a>
-      
-
-      
-    </li>
-  
-    
-    
-
-    <li>
-      
-        
-        
-
-        <a href="/object-storage-note-031-versioning/" class=""><span class="nav__sub-title">对象存储笔记：版本化（versioning）：覆盖写与回收策略</span></a>
+        <a href="/kv-storage-note-002-compaction/" class=""><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
       
 
       
@@ -637,15 +553,15 @@
 
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
-    <meta itemprop="headline" content="对象存储笔记：一致性模型：read-after-write 与 list 一致性">
-    <meta itemprop="description" content="对象存储里最容易踩坑的是一句话：">
-    <meta itemprop="datePublished" content="February 01, 2022">
+    <meta itemprop="headline" content="KV存储（2）：LSM-Tree 与 B+Tree 的权衡">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="April 20, 2021">
     
 
     <div class="page__inner-wrap">
       
         <header>
-          <h1 class="page__title" itemprop="headline">对象存储笔记：一致性模型：read-after-write 与 list 一致性
+          <h1 class="page__title" itemprop="headline">KV存储（2）：LSM-Tree 与 B+Tree 的权衡
 </h1>
           
             <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
@@ -660,7 +576,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-02-01T00:00:00+08:00">February 01, 2022</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-04-20T00:00:00+08:00">April 20, 2021</time></p>
           
         
         
@@ -671,145 +587,270 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>对象存储里最容易踩坑的是一句话：</p>
+        <h2 id="前言">前言</h2>
+
+<p>在 KV 存储系统的实现中，存储引擎的选择至关重要。LSM-Tree 和 B+Tree 是两种最主流的存储引擎，它们各有优劣。本文将从 KV 存储系统的实际应用角度，对比这两种存储引擎在 KV 存储场景下的表现，帮助读者理解如何为 KV 存储系统选择合适的存储引擎。</p>
 
 <blockquote>
-  <p><strong>“我写成功了”并不等于 “所有读路径（尤其是 LIST）立刻都能看到”。</strong></p>
+  <p>注：本文聚焦于 KV 存储系统的实际应用场景。关于 B+Tree 和 LSM 的通用原理和底层机制，请参考「存储基础系列」的相关文章。</p>
 </blockquote>
 
-<p>这篇把一致性拆成四类语义（新建/覆盖/删除/列表），并给出工程上最常用的应对方式。</p>
+<h2 id="1-lsm-tree-概述">1. LSM-Tree 概述</h2>
 
-<p><img src="/images/diagrams/object-storage-consistency-put-get-list.svg" alt="对象存储一致性：PUT/GET/LIST 的传播链路与“列表滞后”来源" /></p>
+<p>LSM-Tree（Log-Structured Merge-Tree）是一种写优化的存储结构，将随机写转换为顺序写，从而提高写入性能。</p>
 
-<h2 id="1-先把问题说清楚你关心的是哪一种一致性">1. 先把问题说清楚：你关心的是哪一种一致性</h2>
+<h3 id="11-基本结构">1.1 基本结构</h3>
 
-<p>对象存储常见 API：</p>
-
+<p>LSM-Tree 通常包含：</p>
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">PUT object</code>：创建/覆盖对象</li>
-  <li><code class="language-plaintext highlighter-rouge">GET object</code>：读取对象内容</li>
-  <li><code class="language-plaintext highlighter-rouge">DELETE object</code>：删除（可能是 delete-marker）</li>
-  <li><code class="language-plaintext highlighter-rouge">LIST prefix</code>：列举某个前缀下的对象集合</li>
+  <li><strong>MemTable</strong>：内存中的有序表，接收写入请求</li>
+  <li><strong>SSTable</strong>：磁盘上的有序表，由 MemTable 刷盘生成</li>
+  <li><strong>Compaction</strong>：定期合并多个 SSTable，减少文件数量</li>
 </ul>
 
-<p>一致性语义不是一句 “strong / eventual” 能概括的，至少要区分：</p>
-
-<ul>
-  <li><strong>新建对象</strong>（key 之前不存在）</li>
-  <li><strong>覆盖对象</strong>（同 key 写新版本）</li>
-  <li><strong>删除对象</strong></li>
-  <li><strong>列表/目录视图</strong>（LIST/HEAD 的索引视图）</li>
-</ul>
-
-<h2 id="2-一个非常实用的语义表写系统写业务都够用">2. 一个非常实用的“语义表”（写系统/写业务都够用）</h2>
-
-<p>你可以用下面的问题自测你需要什么承诺：</p>
-
-<ul>
-  <li><strong>Q1：PUT 成功后，立刻 GET，必须读到新内容吗？</strong></li>
-  <li><strong>Q2：PUT 覆盖旧对象后，立刻 GET，允许读到旧内容吗？允许多久？</strong></li>
-  <li><strong>Q3：DELETE 后，立刻 GET，允许短暂读到旧内容吗？</strong></li>
-  <li><strong>Q4：PUT/DELETE 后，立刻 LIST，必须立刻出现在列表里吗？</strong></li>
-</ul>
-
-<blockquote>
-  <p>大多数系统里，<strong>GET 的一致性比 LIST 更容易做强</strong>：GET 只需要命中单 key 的元数据/路由；LIST 往往依赖“前缀索引/目录索引”的异步更新。</p>
-</blockquote>
-
-<h2 id="3-为什么-list-更容易看不到本质是索引传播问题">3. 为什么 LIST 更容易“看不到”：本质是索引传播问题</h2>
-
-<p>LIST 背后通常不是“扫全量数据”，而是：</p>
-
-<ul>
-  <li>维护一个 <strong>prefix → keys</strong> 的目录/索引（为了性能与成本）</li>
-  <li>写入路径先保证对象内容/元数据落盘，然后<strong>异步</strong>更新索引（或跨分区聚合）</li>
-</ul>
-
-<p>于是就出现经典现象：</p>
-
-<ul>
-  <li>PUT 成功后 <strong>GET 能读到</strong></li>
-  <li>但 <strong>LIST 暂时看不到</strong></li>
-</ul>
-
-<p>这不是 bug，而是架构选择：用更弱的 LIST 语义换取更可扩展的目录服务。</p>
-
-<h2 id="4-工程上怎么把语义补回来4-种常用打法">4. 工程上怎么“把语义补回来”（4 种常用打法）</h2>
-
-<h3 id="41-版本化versioning-条件读if-match--if-none-match">4.1 版本化（versioning）+ 条件读（If-Match / If-None-Match）</h3>
-
-<p>核心思路：<strong>业务对“哪个版本算成功”有明确标识</strong>，而不是靠 LIST 的“目录视图”判断。</p>
-
-<ul>
-  <li>写入返回 <code class="language-plaintext highlighter-rouge">versionId/etag</code></li>
-  <li>读时带条件：读不到就重试或回退</li>
-</ul>
-
-<h3 id="42-commit-marker--manifest把可见性显式化">4.2 commit marker / manifest（把“可见性”显式化）</h3>
-
-<p>典型做法：</p>
+<h3 id="12-写入流程">1.2 写入流程</h3>
 
 <ol>
-  <li>先 PUT 数据对象（可能是分片）</li>
-  <li>最后 PUT 一个小的 <code class="language-plaintext highlighter-rouge">manifest/commit</code> 对象作为“完成标志”</li>
-  <li>读侧只信 commit 对象（而不是信 LIST）</li>
+  <li>写入请求首先进入 MemTable</li>
+  <li>当 MemTable 达到阈值时，刷盘生成 SSTable</li>
+  <li>后台线程定期执行 Compaction，合并多个 SSTable</li>
 </ol>
 
-<p>这能把“读到半套数据”的概率降到非常低。</p>
+<h2 id="2-btree-概述">2. B+Tree 概述</h2>
 
-<h3 id="43-业务侧不要用-list-当强一致目录">4.3 业务侧不要用 LIST 当强一致目录</h3>
+<p>B+Tree 是一种平衡多路搜索树，广泛应用于数据库和文件系统。</p>
 
-<p>如果你需要“目录强一致”，建议引入独立的强一致元数据系统（DB/KV）：</p>
+<h3 id="21-基本结构">2.1 基本结构</h3>
 
+<p>B+Tree 的特点：</p>
 <ul>
-  <li>DB 存目录与版本</li>
-  <li>对象存储只放大对象（payload）</li>
+  <li>所有数据存储在叶子节点</li>
+  <li>内部节点只存储索引信息</li>
+  <li>节点大小通常等于磁盘页大小</li>
 </ul>
 
-<p>这也是很多大型系统的标准拆分：<strong>元数据强一致，数据弱一致</strong>。</p>
-
-<h3 id="44-对象覆盖写尽量写新-key再切换指针">4.4 对象覆盖写：尽量“写新 key，再切换指针”</h3>
-
-<p>覆盖同 key 更容易出现“读旧内容/旧缓存”的问题。常用技巧：</p>
-
-<ul>
-  <li>写到新 key（带版本/时间戳）</li>
-  <li>更新一个指针/元数据（强一致）</li>
-  <li>旧 key 延后 GC</li>
-</ul>
-
-<h2 id="5-怎么验证观测把一致性变成可量化指标">5. 怎么验证/观测：把一致性变成可量化指标</h2>
-
-<p>建议定义两个指标（非常实用）：</p>
-
-<ul>
-  <li><strong>Read-after-write success rate</strong>：PUT 后立刻 GET，成功比例（按时间窗分桶）。</li>
-  <li><strong>List visibility lag</strong>：PUT 后多久能在 LIST 出现（统计分位数）。</li>
-</ul>
-
-<p>再配一套最小实验：</p>
+<h3 id="22-写入流程">2.2 写入流程</h3>
 
 <ol>
-  <li>对同一 prefix 连续 PUT 多个对象</li>
-  <li>每次 PUT 后立刻 GET 校验内容</li>
-  <li>同时循环 LIST，记录“第一次看到该 key 的时间”</li>
+  <li>查找目标键所在的叶子节点</li>
+  <li>在叶子节点中插入或更新数据</li>
+  <li>如果节点溢出，进行分裂操作</li>
+  <li>更新父节点的索引信息</li>
 </ol>
 
-<p>你会很快得到：不同 region、不同负载下，LIST 的滞后分布长什么样。</p>
+<h2 id="3-性能对比">3. 性能对比</h2>
 
-<h2 id="6-最小排障清单线上出现写了但看不到">6. 最小排障清单（线上出现“写了但看不到”）</h2>
+<h3 id="31-写入性能">3.1 写入性能</h3>
+
+<p><strong>LSM-Tree 优势</strong>：</p>
+<ul>
+  <li>写入是顺序的，性能高</li>
+  <li>批量写入效率高</li>
+  <li>写放大相对可控</li>
+</ul>
+
+<p><strong>B+Tree 劣势</strong>：</p>
+<ul>
+  <li>随机写入需要多次磁盘 IO</li>
+  <li>节点分裂可能导致写放大</li>
+  <li>需要维护索引结构</li>
+</ul>
+
+<h3 id="32-读取性能">3.2 读取性能</h3>
+
+<p><strong>B+Tree 优势</strong>：</p>
+<ul>
+  <li>查询路径固定，通常只需要 O(log n) 次 IO</li>
+  <li>点查询性能稳定</li>
+</ul>
+
+<p><strong>LSM-Tree 劣势</strong>：</p>
+<ul>
+  <li>可能需要查询多个 SSTable</li>
+  <li>需要合并多个版本的数据</li>
+  <li>点查询性能可能不稳定</li>
+</ul>
+
+<h3 id="33-范围查询">3.3 范围查询</h3>
+
+<p><strong>B+Tree 优势</strong>：</p>
+<ul>
+  <li>叶子节点有序，范围查询高效</li>
+  <li>顺序扫描性能好</li>
+</ul>
+
+<p><strong>LSM-Tree 特点</strong>：</p>
+<ul>
+  <li>每个 SSTable 内部有序</li>
+  <li>需要合并多个 SSTable 的结果</li>
+  <li>性能取决于 Compaction 策略</li>
+</ul>
+
+<h2 id="4-空间效率">4. 空间效率</h2>
+
+<h3 id="41-写放大">4.1 写放大</h3>
+
+<p><strong>LSM-Tree</strong>：</p>
+<ul>
+  <li>写放大主要来自 Compaction</li>
+  <li>可以通过调整 Compaction 策略控制</li>
+</ul>
+
+<p><strong>B+Tree</strong>：</p>
+<ul>
+  <li>写放大主要来自节点分裂和索引更新</li>
+  <li>相对可控</li>
+</ul>
+
+<h3 id="42-空间利用率">4.2 空间利用率</h3>
+
+<p><strong>B+Tree</strong>：</p>
+<ul>
+  <li>节点分裂可能导致空间浪费</li>
+  <li>需要定期整理碎片</li>
+</ul>
+
+<p><strong>LSM-Tree</strong>：</p>
+<ul>
+  <li>Compaction 可以回收空间</li>
+  <li>空间利用率相对较高</li>
+</ul>
+
+<h2 id="5-一致性保证">5. 一致性保证</h2>
+
+<h3 id="51-事务支持">5.1 事务支持</h3>
+
+<p><strong>B+Tree</strong>：</p>
+<ul>
+  <li>天然支持事务</li>
+  <li>可以通过锁机制保证一致性</li>
+</ul>
+
+<p><strong>LSM-Tree</strong>：</p>
+<ul>
+  <li>需要额外的机制保证一致性</li>
+  <li>通常通过 WAL 和版本控制实现</li>
+</ul>
+
+<h3 id="52-崩溃恢复">5.2 崩溃恢复</h3>
+
+<p><strong>LSM-Tree</strong>：</p>
+<ul>
+  <li>通过 WAL 恢复未刷盘的数据</li>
+  <li>恢复相对简单</li>
+</ul>
+
+<p><strong>B+Tree</strong>：</p>
+<ul>
+  <li>需要恢复索引结构</li>
+  <li>恢复过程可能较复杂</li>
+</ul>
+
+<h2 id="6-适用场景">6. 适用场景</h2>
+
+<h3 id="61-选择-lsm-tree-的场景">6.1 选择 LSM-Tree 的场景</h3>
+
+<ul>
+  <li>写多读少的场景</li>
+  <li>需要高写入吞吐量</li>
+  <li>数据可以容忍一定的读延迟</li>
+  <li>需要良好的压缩比</li>
+</ul>
+
+<h3 id="62-选择-btree-的场景">6.2 选择 B+Tree 的场景</h3>
+
+<ul>
+  <li>读多写少的场景</li>
+  <li>需要稳定的点查询性能</li>
+  <li>需要频繁的范围查询</li>
+  <li>需要强一致性保证</li>
+</ul>
+
+<h2 id="7-kv-存储系统中的实际应用">7. KV 存储系统中的实际应用</h2>
+
+<h3 id="71-典型-kv-存储系统的选择">7.1 典型 KV 存储系统的选择</h3>
+
+<p><strong>使用 LSM-Tree 的 KV 存储系统</strong>：</p>
+<ul>
+  <li><strong>RocksDB</strong>：Facebook 开发，广泛用于分布式系统</li>
+  <li><strong>LevelDB</strong>：Google 开发，RocksDB 的前身</li>
+  <li><strong>BadgerDB</strong>：Go 语言实现，适合 Go 生态</li>
+  <li><strong>Cassandra</strong>：分布式 NoSQL 数据库，底层使用 LSM</li>
+</ul>
+
+<p><strong>使用 B+Tree 的 KV 存储系统</strong>：</p>
+<ul>
+  <li><strong>Berkeley DB</strong>：经典的嵌入式数据库</li>
+  <li><strong>WiredTiger</strong>：MongoDB 的存储引擎</li>
+  <li><strong>InnoDB</strong>：MySQL 的存储引擎（虽然主要用于关系型数据库，但也支持 KV 操作）</li>
+</ul>
+
+<h3 id="72-混合方案">7.2 混合方案</h3>
+
+<p>一些 KV 存储系统采用混合方案：</p>
+
+<ul>
+  <li><strong>内存中使用 B+Tree</strong>：利用 B+Tree 的点查询优势</li>
+  <li><strong>磁盘上使用 LSM-Tree</strong>：利用 LSM-Tree 的写入优势</li>
+  <li><strong>根据数据热度动态选择</strong>：热数据用 B+Tree，冷数据用 LSM-Tree</li>
+</ul>
+
+<h3 id="73-kv-存储系统的特殊考虑">7.3 KV 存储系统的特殊考虑</h3>
+
+<p>在 KV 存储系统中，还需要考虑：</p>
 
 <ol>
-  <li><strong>先区分 GET vs LIST</strong>：到底是读不到对象，还是列表看不到？</li>
-  <li><strong>确认是否覆盖写</strong>：覆盖写比新建更容易出现缓存/旧版本问题。</li>
-  <li><strong>确认是否跨 region/跨 AZ</strong>：跨域复制会引入天然传播延迟。</li>
-  <li><strong>不要用 LIST 当强一致目录</strong>：用 commit marker 或强一致元数据系统兜底。</li>
+  <li><strong>批量操作</strong>：KV 存储通常支持批量 Put/Get，LSM-Tree 的批量写入优势更明显</li>
+  <li><strong>TTL 支持</strong>：KV 存储需要支持过期删除，LSM-Tree 的 tombstone 机制更适合</li>
+  <li><strong>压缩支持</strong>：KV 存储的 Value 可能很大，LSM-Tree 的压缩支持更好</li>
+  <li><strong>多版本支持</strong>：KV 存储可能需要多版本，LSM-Tree 天然支持</li>
 </ol>
 
-<h2 id="7-小结">7. 小结</h2>
+<h2 id="8-性能调优建议">8. 性能调优建议</h2>
 
-<p>对象存储的一致性问题，99% 都能用“把语义说清楚 + 把可见性显式化 + 把 LIST 当成弱一致索引”来解决。真正难的不是实现，而是<strong>业务是否接受明确的语义边界</strong>。</p>
+<h3 id="81-lsm-tree-的调优">8.1 LSM-Tree 的调优</h3>
 
+<p>对于使用 LSM-Tree 的 KV 存储系统：</p>
+
+<ul>
+  <li><strong>调整 Compaction 策略</strong>：根据读写比例选择 Leveled 或 Tiered</li>
+  <li><strong>优化 MemTable 大小</strong>：平衡内存使用和刷盘频率</li>
+  <li><strong>配置 Bloom Filter</strong>：减少读放大</li>
+  <li><strong>调整层级大小</strong>：控制写放大和读放大</li>
+</ul>
+
+<h3 id="82-btree-的调优">8.2 B+Tree 的调优</h3>
+
+<p>对于使用 B+Tree 的 KV 存储系统：</p>
+
+<ul>
+  <li><strong>调整页大小</strong>：根据 Value 大小选择合适的页大小</li>
+  <li><strong>优化 Buffer Pool</strong>：提高缓存命中率</li>
+  <li><strong>调整分裂策略</strong>：减少写放大</li>
+  <li><strong>优化索引结构</strong>：提高查询性能</li>
+</ul>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>LSM-Tree 和 B+Tree 各有优劣，选择哪种存储引擎需要根据具体的 KV 存储应用场景来决定。</p>
+
+<p><strong>核心要点</strong>：</p>
+
+<ul>
+  <li><strong>LSM-Tree 适合</strong>：写多读少、批量写入、需要高压缩比、支持 TTL 的场景</li>
+  <li><strong>B+Tree 适合</strong>：读多写少、点查询为主、需要稳定延迟、范围查询多的场景</li>
+  <li><strong>混合方案</strong>：可以兼顾两者的优势，但实现复杂度更高</li>
+</ul>
+
+<p><strong>在 KV 存储系统中的实际应用</strong>：</p>
+
+<ul>
+  <li>大多数现代 KV 存储系统选择 LSM-Tree，因为 KV 存储通常写多读少</li>
+  <li>一些嵌入式 KV 存储系统选择 B+Tree，因为需要稳定的点查询性能</li>
+  <li>混合方案在特定场景下可以提供最佳性能</li>
+</ul>
+
+<p>在实际的 KV 存储系统中，也有采用混合方案的，比如在内存中使用 B+Tree，在磁盘上使用 LSM-Tree，以兼顾两者的优势。选择存储引擎时，需要综合考虑读写比例、延迟要求、一致性要求、运维复杂度等多个因素。</p>
 
         
       </section>

@@ -6,7 +6,9 @@ permalink: /cpp-note-004-smart-pointers/
 tags: [C++, 编程语言]
 ---
 
-智能指针是 C++11 引入的自动内存管理工具，通过 RAII 机制自动管理动态分配的内存，是现代 C++ 编程的必备技能。
+## 前言
+
+智能指针是现代 C++ 内存管理的核心工具，它们通过 RAII 机制自动管理动态分配的内存，解决了原始指针的诸多问题。理解智能指针不仅是掌握现代 C++ 的关键，更是写出安全、高效代码的基础。本文将从原理、实现、应用等多个维度深入解析智能指针，帮助读者全面理解这一重要特性。
 
 ![智能指针：unique_ptr、shared_ptr、weak_ptr 的所有权模型](/images/diagrams/cpp-smart-pointers-ownership.svg)
 
@@ -537,9 +539,127 @@ std::thread t2([p]() {  // 拷贝 shared_ptr，引用计数原子增加
 - **使用 make_shared**：减少内存分配
 - **避免在热路径上频繁创建智能指针**：考虑对象池
 
-## 10. 小结
+## 10. 智能指针的设计模式与架构
+
+### 10.1 设计模式视角
+
+智能指针体现了多个设计模式：
+
+1. **RAII 模式**：通过对象生命周期管理资源
+2. **所有权模式**：明确资源的所有权关系
+3. **引用计数模式**：`shared_ptr` 使用引用计数实现共享所有权
+
+### 10.2 架构原则
+
+- **单一职责**：智能指针只负责内存管理
+- **所有权明确**：通过类型系统明确所有权关系
+- **异常安全**：智能指针保证异常时资源也能释放
+
+### 10.3 智能指针的类图
+
+```mermaid
+classDiagram
+    class SmartPointer {
+        <<abstract>>
+        +get() T*
+        +reset() void
+        +operator*() T&
+        +operator->() T*
+    }
+    
+    class unique_ptr {
+        -T* ptr_
+        +unique_ptr()
+        +~unique_ptr()
+        +release() T*
+        +reset() void
+    }
+    
+    class shared_ptr {
+        -T* ptr_
+        -ControlBlock* ctrl_
+        +shared_ptr()
+        +~shared_ptr()
+        +use_count() size_t
+    }
+    
+    class weak_ptr {
+        -ControlBlock* ctrl_
+        +weak_ptr()
+        +lock() shared_ptr
+        +expired() bool
+    }
+    
+    SmartPointer <|-- unique_ptr
+    SmartPointer <|-- shared_ptr
+    shared_ptr --> weak_ptr : 打破循环引用
+    
+    note for unique_ptr "独占所有权\n零开销"
+    note for shared_ptr "共享所有权\n引用计数"
+```
+
+## 11. 实际工程案例
+
+### 11.1 标准库中的智能指针
+
+标准库提供了三种智能指针：
+
+- **`std::unique_ptr`**：独占所有权，零开销
+- **`std::shared_ptr`**：共享所有权，引用计数
+- **`std::weak_ptr`**：不拥有所有权，打破循环引用
+
+### 11.2 自定义资源管理
+
+```cpp
+// 使用智能指针管理自定义资源
+class CustomDeleter {
+public:
+    void operator()(CustomResource* ptr) const {
+        // 自定义删除逻辑
+        custom_cleanup(ptr);
+        delete ptr;
+    }
+};
+
+std::unique_ptr<CustomResource, CustomDeleter> 
+    resource(acquire_resource(), CustomDeleter{});
+```
+
+## 12. 性能分析与优化
+
+### 12.1 性能对比
+
+智能指针的性能特征：
+
+- **`unique_ptr`**：与原始指针性能相同，零开销
+- **`shared_ptr`**：有引用计数开销，但提供共享所有权
+- **`weak_ptr`**：开销很小，主要用于打破循环引用
+
+### 12.2 性能优化建议
+
+1. **优先使用 `unique_ptr`**：零开销，性能最优
+2. **避免不必要的 `shared_ptr` 拷贝**：减少原子操作
+3. **使用 `make_shared`**：减少内存分配次数
+4. **避免循环引用**：使用 `weak_ptr` 打破循环
+
+## 13. 小结
 
 智能指针是现代 C++ 内存管理的标准方式，通过 RAII 自动管理动态分配的内存，实现了异常安全和自动化资源管理。
+
+**核心概念总结**：
+
+- **智能指针原理**：通过 RAII 机制自动管理内存，构造时获取，析构时释放
+- **所有权模型**：`unique_ptr` 独占所有权，`shared_ptr` 共享所有权
+- **引用计数**：`shared_ptr` 使用原子引用计数实现线程安全的共享所有权
+- **设计模式**：体现了 RAII、所有权、引用计数等设计思想
+
+**设计亮点**：
+
+1. **自动化内存管理**：无需手动 `delete`，减少内存泄漏
+2. **异常安全**：异常发生时内存也能正确释放
+3. **零开销抽象**：`unique_ptr` 与原始指针性能相同
+4. **类型安全**：通过类型系统保证内存正确使用
+5. **所有权明确**：通过类型系统明确所有权关系
 
 **关键要点**：
 - `unique_ptr`：独占所有权，零开销，优先使用

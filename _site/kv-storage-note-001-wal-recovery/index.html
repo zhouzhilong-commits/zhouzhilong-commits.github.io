@@ -1,0 +1,995 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>KV存储笔记：WAL 与崩溃恢复 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="KV存储笔记：WAL 与崩溃恢复">
+
+
+  <link rel="canonical" href="http://localhost:4000/kv-storage-note-001-wal-recovery/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-note-001-wal-recovery/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-05-18T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">KV存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-1-core-concepts/" class=""><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-2-lsm-vs-btree/" class=""><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-001-wal-recovery/" class="active"><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-002-compaction/" class=""><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="KV存储笔记：WAL 与崩溃恢复">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="May 18, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">KV存储笔记：WAL 与崩溃恢复
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  2 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-05-18T00:00:00+08:00">May 18, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>WAL（Write-Ahead Log）是 KV 存储系统中保证数据持久性和崩溃恢复的关键机制。本文从 KV 存储系统的实际实现角度，介绍 WAL 在 KV 存储中的工作原理、格式设计、崩溃恢复流程以及性能优化策略。</p>
+
+<blockquote>
+  <p>注：本文聚焦于 KV 存储系统中 WAL 的具体实现。关于 WAL 的通用原理和底层机制，请参考「存储基础系列」的相关文章。</p>
+</blockquote>
+
+<h2 id="1-wal-的作用">1. WAL 的作用</h2>
+
+<p>WAL 的核心思想是：<strong>在数据写入存储引擎之前，先将操作记录写入日志</strong>。这样可以：</p>
+
+<ol>
+  <li><strong>保证持久性</strong>：即使系统崩溃，已提交的操作也不会丢失</li>
+  <li><strong>支持崩溃恢复</strong>：重启后可以通过重放日志恢复数据</li>
+  <li><strong>提高写入性能</strong>：顺序写入日志比随机写入数据更快</li>
+</ol>
+
+<h2 id="2-wal-的写入流程">2. WAL 的写入流程</h2>
+
+<h3 id="21-基本流程">2.1 基本流程</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 接收写入请求 (Put/Delete)
+2. 将操作序列化并写入 WAL
+3. 同步 WAL 到磁盘（可选，取决于持久性要求）
+4. 将数据写入 MemTable
+5. 返回成功
+</code></pre></div></div>
+
+<h3 id="22-同步策略">2.2 同步策略</h3>
+
+<ul>
+  <li><strong>同步写入</strong>：每次写入后立即同步到磁盘，保证强持久性</li>
+  <li><strong>异步写入</strong>：批量同步，提高性能但可能丢失最近的数据</li>
+  <li><strong>定期同步</strong>：按时间间隔同步，平衡性能和持久性</li>
+</ul>
+
+<h2 id="3-wal-的格式">3. WAL 的格式</h2>
+
+<p>WAL 通常采用二进制格式，包含：</p>
+
+<ul>
+  <li><strong>操作类型</strong>：Put、Delete 等</li>
+  <li><strong>Key</strong>：键的长度和内容</li>
+  <li><strong>Value</strong>：值的长度和内容（Delete 操作没有 Value）</li>
+  <li><strong>序列号</strong>：用于去重和排序</li>
+  <li><strong>校验和</strong>：用于检测数据损坏</li>
+</ul>
+
+<h2 id="4-崩溃恢复流程">4. 崩溃恢复流程</h2>
+
+<h3 id="41-恢复步骤">4.1 恢复步骤</h3>
+
+<ol>
+  <li><strong>扫描 WAL 文件</strong>：找到所有未处理的日志条目</li>
+  <li><strong>重放日志</strong>：按顺序将操作应用到 MemTable</li>
+  <li><strong>重建索引</strong>：如果使用 B+Tree，需要重建索引结构</li>
+  <li><strong>验证数据</strong>：检查数据的完整性和一致性</li>
+</ol>
+
+<h3 id="42-去重处理">4.2 去重处理</h3>
+
+<p>由于 WAL 可能包含重复的操作，恢复时需要：</p>
+<ul>
+  <li>使用序列号去重</li>
+  <li>只保留最新的操作</li>
+  <li>跳过已处理的操作</li>
+</ul>
+
+<h2 id="5-wal-的管理">5. WAL 的管理</h2>
+
+<h3 id="51-日志轮转">5.1 日志轮转</h3>
+
+<p>当日志文件过大时，需要：</p>
+<ul>
+  <li>创建新的日志文件</li>
+  <li>将旧日志归档或删除</li>
+  <li>更新日志文件列表</li>
+</ul>
+
+<h3 id="52-日志清理">5.2 日志清理</h3>
+
+<p>当数据已持久化到存储引擎后：</p>
+<ul>
+  <li>可以安全删除对应的日志</li>
+  <li>需要跟踪哪些日志可以清理</li>
+  <li>避免过早删除导致无法恢复</li>
+</ul>
+
+<h2 id="6-性能优化">6. 性能优化</h2>
+
+<h3 id="61-批量写入">6.1 批量写入</h3>
+
+<ul>
+  <li>将多个操作合并写入日志</li>
+  <li>减少系统调用和磁盘 IO</li>
+  <li>提高写入吞吐量</li>
+</ul>
+
+<h3 id="62-压缩">6.2 压缩</h3>
+
+<ul>
+  <li>对日志进行压缩</li>
+  <li>减少磁盘空间占用</li>
+  <li>降低 IO 开销</li>
+</ul>
+
+<h3 id="63-异步刷新">6.3 异步刷新</h3>
+
+<ul>
+  <li>使用异步 IO 刷新日志</li>
+  <li>不阻塞写入操作</li>
+  <li>提高并发性能</li>
+</ul>
+
+<h2 id="7-kv-存储系统中的-wal-实现案例">7. KV 存储系统中的 WAL 实现案例</h2>
+
+<h3 id="71-rocksdb-的-wal-实现">7.1 RocksDB 的 WAL 实现</h3>
+
+<p>RocksDB 的 WAL 特点：</p>
+
+<ul>
+  <li><strong>格式</strong>：使用 RecordBatch 格式，支持批量写入</li>
+  <li><strong>同步策略</strong>：支持 <code class="language-plaintext highlighter-rouge">sync</code> 和 <code class="language-plaintext highlighter-rouge">async</code> 两种模式</li>
+  <li><strong>压缩</strong>：支持 WAL 压缩，减少磁盘空间</li>
+  <li><strong>轮转</strong>：自动轮转 WAL 文件，避免单个文件过大</li>
+</ul>
+
+<h3 id="72-leveldb-的-wal-实现">7.2 LevelDB 的 WAL 实现</h3>
+
+<p>LevelDB 的 WAL 特点：</p>
+
+<ul>
+  <li><strong>格式</strong>：使用变长记录格式，每条记录包含类型、长度、数据</li>
+  <li><strong>同步策略</strong>：默认异步写入，可配置同步写入</li>
+  <li><strong>恢复</strong>：启动时自动扫描并重放 WAL</li>
+</ul>
+
+<h3 id="73-badgerdb-的-wal-实现">7.3 BadgerDB 的 WAL 实现</h3>
+
+<p>BadgerDB 的 WAL 特点：</p>
+
+<ul>
+  <li><strong>格式</strong>：使用 Value Log（vlog）格式，专门优化大 Value</li>
+  <li><strong>分离设计</strong>：Key 和 Value 分离存储，Value 存储在 vlog 中</li>
+  <li><strong>异步刷新</strong>：使用异步 IO 刷新，提高性能</li>
+</ul>
+
+<h2 id="8-kv-存储系统中的特殊考虑">8. KV 存储系统中的特殊考虑</h2>
+
+<h3 id="81-大-value-的处理">8.1 大 Value 的处理</h3>
+
+<p>KV 存储系统的 Value 可能很大，WAL 设计需要考虑：</p>
+
+<ul>
+  <li><strong>Value 分离</strong>：大 Value 可以存储在单独的文件中，WAL 只记录引用</li>
+  <li><strong>压缩</strong>：对大 Value 进行压缩，减少 WAL 大小</li>
+  <li><strong>流式写入</strong>：支持流式写入大 Value，避免内存占用过大</li>
+</ul>
+
+<h3 id="82-批量操作的支持">8.2 批量操作的支持</h3>
+
+<p>KV 存储系统通常支持批量操作，WAL 需要支持：</p>
+
+<ul>
+  <li><strong>批量记录</strong>：将多个操作合并为一条 WAL 记录</li>
+  <li><strong>事务支持</strong>：支持事务的原子性写入</li>
+  <li><strong>部分失败处理</strong>：批量操作中部分失败时的恢复</li>
+</ul>
+
+<h3 id="83-多版本支持">8.3 多版本支持</h3>
+
+<p>KV 存储系统可能需要多版本，WAL 需要支持：</p>
+
+<ul>
+  <li><strong>版本号</strong>：每条记录包含版本号</li>
+  <li><strong>版本合并</strong>：恢复时合并多个版本</li>
+  <li><strong>版本清理</strong>：定期清理旧版本</li>
+</ul>
+
+<h2 id="9-性能优化实践">9. 性能优化实践</h2>
+
+<h3 id="91-写入路径优化">9.1 写入路径优化</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// KV 存储系统的 WAL 写入优化示例</span>
+<span class="k">class</span> <span class="nc">KVStorageWAL</span> <span class="p">{</span>
+    <span class="c1">// 批量写入缓冲区</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">WALRecord</span><span class="o">&gt;</span> <span class="n">write_buffer_</span><span class="p">;</span>
+    
+    <span class="c1">// 异步刷新线程</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">flush_thread_</span><span class="p">;</span>
+    
+    <span class="kt">void</span> <span class="n">write</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">KVOperation</span><span class="o">&gt;&amp;</span> <span class="n">ops</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 1. 序列化操作到缓冲区</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">op</span> <span class="o">:</span> <span class="n">ops</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">write_buffer_</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">serialize</span><span class="p">(</span><span class="n">op</span><span class="p">));</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 2. 批量写入 WAL（减少系统调用）</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">write_buffer_</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">batch_size_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">flush</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">flush</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 批量写入磁盘</span>
+        <span class="n">wal_file_</span><span class="o">-&gt;</span><span class="n">write_batch</span><span class="p">(</span><span class="n">write_buffer_</span><span class="p">);</span>
+        
+        <span class="c1">// 根据持久性要求决定是否 fsync</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">sync_mode_</span> <span class="o">==</span> <span class="n">SYNC</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">wal_file_</span><span class="o">-&gt;</span><span class="n">fsync</span><span class="p">();</span>
+        <span class="p">}</span>
+        
+        <span class="n">write_buffer_</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="92-恢复路径优化">9.2 恢复路径优化</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// KV 存储系统的 WAL 恢复优化</span>
+<span class="k">class</span> <span class="nc">KVStorageRecovery</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="n">recover</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 1. 扫描 WAL 文件（并行扫描多个文件）</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">WALRecord</span><span class="o">&gt;</span> <span class="n">records</span> <span class="o">=</span> <span class="n">scan_wal_files</span><span class="p">();</span>
+        
+        <span class="c1">// 2. 按序列号排序</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">records</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">records</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> 
+                  <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+                      <span class="k">return</span> <span class="n">a</span><span class="p">.</span><span class="n">seq</span> <span class="o">&lt;</span> <span class="n">b</span><span class="p">.</span><span class="n">seq</span><span class="p">;</span>
+                  <span class="p">});</span>
+        
+        <span class="c1">// 3. 去重（只保留最新的操作）</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="n">deduplicate</span><span class="p">(</span><span class="n">records</span><span class="p">);</span>
+        
+        <span class="c1">// 4. 批量重放到 MemTable</span>
+        <span class="n">batch_replay_to_memtable</span><span class="p">(</span><span class="n">records</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>WAL 是 KV 存储系统保证数据持久性的关键机制。通过先写日志再写数据，可以在系统崩溃后恢复数据，保证已提交的操作不丢失。</p>
+
+<p><strong>核心要点</strong>：</p>
+
+<ul>
+  <li><strong>WAL 的作用</strong>：保证持久性、支持崩溃恢复、提高写入性能</li>
+  <li><strong>同步策略</strong>：需要在持久性和性能之间权衡</li>
+  <li><strong>恢复流程</strong>：扫描、重放、去重、验证</li>
+  <li><strong>性能优化</strong>：批量写入、压缩、异步刷新</li>
+</ul>
+
+<p><strong>在 KV 存储系统中的特殊考虑</strong>：</p>
+
+<ul>
+  <li><strong>大 Value 处理</strong>：需要特殊设计避免 WAL 过大</li>
+  <li><strong>批量操作支持</strong>：需要支持批量写入和事务</li>
+  <li><strong>多版本支持</strong>：需要支持版本号和版本合并</li>
+</ul>
+
+<p>在实际实现中，需要平衡持久性要求和性能开销，选择合适的同步策略和优化方案。不同的 KV 存储系统根据其应用场景，会采用不同的 WAL 实现策略。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

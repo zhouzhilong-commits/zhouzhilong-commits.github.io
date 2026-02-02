@@ -224,7 +224,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -646,7 +646,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="16"
     data-current-page="10"
   
 >
@@ -673,55 +673,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-note-065-flush-write-buffer-l0/" rel="permalink">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/storage-basics-4-wal-and-recovery/" rel="permalink">存储基础（4）：WAL、崩溃恢复与一致性
+        <a href="/paper-notes/storage/bigtable/" rel="permalink">Bigtable：A Distributed Storage System for Structured Data（论文笔记）
 </a>
       
     </h2>
@@ -738,61 +690,13 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/paper-notes/storage/lsm-tree/" rel="permalink">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：The Log-Structured Merge-Tree（O’Neil et al.）</p>
+  <p>论文：Bigtable: A Distributed Storage System for Structured Data（Chang et al.）</p>
 </blockquote>
 
 </p>
@@ -819,7 +723,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/object-storage-note-010-post/" rel="permalink">对象存储笔记：元数据服务：对象索引与列目录
+        <a href="/paper-notes/databases/aries-recovery/" rel="permalink">ARIES：Recovery Algorithm（论文笔记）
 </a>
       
     </h2>
@@ -836,12 +740,14 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「对象存储笔记：元数据服务：对象索引与列目录」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks</p>
+</blockquote>
 
 </p>
     
@@ -867,7 +773,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-note-011-post/" rel="permalink">一致性笔记：复制延迟：尾延迟如何影响提交点
+        <a href="/consensus-note-004-leader-lease/" rel="permalink">一致性笔记：Leader 选举：租约（lease）与心跳
 </a>
       
     </h2>
@@ -884,12 +790,115 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：Leader 选举：租约（lease）与心跳」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+        
+          </section>
+        
+        <section class="archive__year" data-year="2021">
+          <h2 id="2021" class="archive__subtitle">2021</h2>
+        
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cpp-note-006-exception-safety/" rel="permalink">C++ 笔记：异常安全与异常规范
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  6 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-30T00:00:00+08:00">June 30, 2021</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/kv-storage-note-002-compaction/" rel="permalink">KV存储笔记：Compaction 策略与写放大
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  3 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-25T00:00:00+08:00">June 25, 2021</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
 
 </p>
     
@@ -976,7 +985,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page16/">16</a></li>
     
 
     

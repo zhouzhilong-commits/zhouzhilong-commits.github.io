@@ -224,7 +224,7 @@
 
     <li class="masthead__menu-item">
       
-        <a href="/object-storage/">对象存储</a>
+        <a href="/kv-storage/">KV存储</a>
       
 
       
@@ -646,7 +646,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="16"
     data-current-page="7"
   
 >
@@ -673,7 +673,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/object-storage-note-031-versioning/" rel="permalink">对象存储笔记：版本化（versioning）：覆盖写与回收策略
+        <a href="/paper-notes/storage/lsm-tree/" rel="permalink">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）
 </a>
       
     </h2>
@@ -690,12 +690,14 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>对象存储的 versioning 解决的不是“好不好用”，而是两个非常工程化的问题：</p>
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>论文：The Log-Structured Merge-Tree（O’Neil et al.）</p>
+</blockquote>
 
 </p>
     
@@ -721,7 +723,55 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-note-002-writebatch-seq/" rel="permalink">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次
+        <a href="/consensus-note-011-post/" rel="permalink">一致性笔记：复制延迟：尾延迟如何影响提交点
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/storage-basics-3-lsm-and-compaction/" rel="permalink">存储基础（3）：LSM、Compaction 与写放大
 </a>
       
     </h2>
@@ -738,12 +788,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚两件事：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
 
 </p>
     
@@ -769,7 +819,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/object-storage-note-059-post/" rel="permalink">对象存储笔记：小对象与合并：小对象为什么更难
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" rel="permalink">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本
 </a>
       
     </h2>
@@ -786,12 +836,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「对象存储笔记：小对象与合并：小对象为什么更难」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
 
 </p>
     
@@ -817,7 +867,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-note-025-post/" rel="permalink">一致性笔记：脑裂：什么时候会发生，怎么避免
+        <a href="/paper-notes/databases/system-r-access-path-selection/" rel="permalink">System R：Access Path Selection（论文笔记）
 </a>
       
     </h2>
@@ -834,60 +884,14 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：脑裂：什么时候会发生，怎么避免」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/rocksdb-note-058-write-stall/" rel="permalink">RocksDB 笔记：Write stall：为什么会卡住、如何定位
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-09-01T00:00:00+08:00">September 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>论文：Access Path Selection in a Relational Database Management System（System R）</p>
+</blockquote>
 
 </p>
     
@@ -974,7 +978,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page16/">16</a></li>
     
 
     
