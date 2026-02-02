@@ -67,7 +67,7 @@
   <text class="t" x="750" y="335">SchemaId</text>
   <text class="t" x="750" y="355">支持 Schema 演进</text>
 
-  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <rect class="box" x="40" y="395" width="920" height="115.0"/>
   <text class="h" x="70" y="430">版本管理架构的关键设计</text>
   <text class="t" x="70" y="455">1. Version 管理 Segment 列表和 Locator，记录版本信息和数据处理位置</text>
   <text class="t" x="70" y="475">2. Locator 记录数据处理位置，通过 IsFasterThan() 判断哪些数据已处理，实现增量更新</text>

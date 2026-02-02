@@ -52,7 +52,7 @@
   <text class="t" x="810" y="295">磁盘索引</text>
   <text class="t" x="810" y="315">ST_BUILT</text>
 
-  <rect class="box" x="40" y="355" width="920" height="120"/>
+  <rect class="box" x="40" y="355" width="920" height="160.0"/>
   <text class="h" x="70" y="390">Flush 流程的关键步骤</text>
   <text class="t" x="70" y="415">1. 检查转储条件：判断是否需要转储（内存阈值、文档数量、时间阈值等）</text>
   <text class="t" x="70" y="435">2. 创建 SegmentDumper：创建转储器，设置 MemSegment 状态为 ST_DUMPING</text>

@@ -26,7 +26,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="locator" x="280" y="95" width="200" height="100"/>
+  <rect class="locator" x="280" y="95" width="200" height="120.0"/>
   <text class="h" x="310" y="130">2. 检查 Locator</text>
   <text class="t" x="310" y="155">IsFasterThan()</text>
   <text class="t" x="310" y="175">判断数据是否已处理</text>
@@ -52,7 +52,7 @@
   <text class="t" x="830" y="295">Commit 时更新</text>
   <text class="t" x="830" y="315">Version 的 Locator</text>
 
-  <rect class="box" x="40" y="355" width="880" height="170"/>
+  <rect class="box" x="40" y="355" width="880" height="205.0"/>
   <text class="h" x="70" y="390">增量更新流程的关键步骤</text>
   <text class="t" x="70" y="415">1. 读取数据源：从数据源读取数据，获取数据的 timestamp 等信息</text>
   <text class="t" x="70" y="435">2. 检查 Locator：通过 IsFasterThan() 判断数据是否已处理，如果已处理则跳过</text>

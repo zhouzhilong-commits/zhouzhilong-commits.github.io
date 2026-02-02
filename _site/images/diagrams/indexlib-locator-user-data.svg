@@ -13,14 +13,14 @@
 
   <text class="title" x="40" y="42">用户数据支持：通过 _userData 存储自定义信息</text>
   <text class="muted" x="40" y="66">Locator 通过 _userData 支持存储自定义信息，可以用于扩展功能。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">自定义数据</text>
-  <text class="t" x="70" y="140">可以存储任意自定义数据，用于扩展功能</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">可以存储任意自定义数据，用于扩展功能</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">序列化支持</text>
-  <text class="t" x="70" y="210">支持序列化和反序列化，可以持久化存储</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">支持序列化和反序列化，可以持久化存储</text>
+  <rect class="item" x="40" y="235" width="920" height="110.0"/>
   <text class="h" x="70" y="260">灵活扩展</text>
-  <text class="t" x="70" y="280">通过 _userData 可以灵活扩展 Locator 的功能</text>
+  <text class="t" x="70" y="285.0">通过 _userData 可以灵活扩展 Locator 的功能</text>
   <text class="muted" x="40" y="325">理解 用户数据支持，是掌握 Locator 机制的关键</text>
 </svg>

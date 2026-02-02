@@ -68,7 +68,7 @@
   <text class="t" x="750" y="335">保证系统稳定性</text>
   <text class="t" x="750" y="355">避免内存泄漏</text>
 
-  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <rect class="box" x="40" y="395" width="920" height="115.0"/>
   <text class="h" x="70" y="430">内存管理架构的关键设计</text>
   <text class="t" x="70" y="455">1. MemoryQuotaController 控制内存配额，支持层级配额管理，避免内存溢出</text>
   <text class="t" x="70" y="475">2. TabletMemoryCalculator 统计内存使用，监控内存状态，优化内存使用</text>

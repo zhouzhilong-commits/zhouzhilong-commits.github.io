@@ -58,7 +58,7 @@
   <text class="t" x="330" y="295">提交新版本</text>
   <text class="t" x="330" y="315">更新 TabletData</text>
 
-  <rect class="box" x="520" y="235" width="440" height="220"/>
+  <rect class="box" x="520" y="235" width="440" height="240.0"/>
   <text class="h" x="550" y="270">Segment 合并流程的关键步骤</text>
   <text class="t" x="550" y="295">1. 检查合并条件：判断是否需要合并（Segment 数量、大小等）</text>
   <text class="t" x="550" y="315">2. 创建合并计划：调用 MergeStrategy 创建合并计划，决定哪些 Segment 参与合并</text>

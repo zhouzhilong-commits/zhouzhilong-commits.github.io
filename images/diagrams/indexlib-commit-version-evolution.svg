@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .version{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000 600.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -65,7 +65,7 @@
   <text class="t" x="590" y="335">关键设计：版本演进需要保证一致性，新版本包含所有旧版本的数据，加上新增的数据，保证数据完整性</text>
   <text class="t" x="590" y="355">关键设计：版本演进需要保证性能，版本切换应该快速，不影响查询性能</text>
 
-  <rect class="box" x="40" y="395" width="920" height="130"/>
+  <rect class="box" x="40" y="395" width="920" height="175.0"/>
   <text class="h" x="70" y="430">版本演进的关键设计</text>
   <text class="t" x="70" y="455">1. Segment 管理：版本演进通过 Segment 的保留、删除、新增等操作，实现索引的增量更新，保证数据完整性和一致性</text>
   <text class="t" x="70" y="475">2. Locator 更新：版本演进通过 Locator 的更新，反映数据进度，保证数据一致性和增量更新的正确性</text>

@@ -56,7 +56,7 @@
   <text class="t" x="790" y="255">支持增量更新</text>
   <text class="t" x="790" y="275">支持故障恢复</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="185.0"/>
   <text class="h" x="70" y="350">Locator 与数据一致性的关键机制</text>
   <text class="t" x="70" y="375">1. Locator 结构：包含数据源标识、多进度信息、用户数据等关键字段，记录数据处理位置，支持增量更新和多数据源场景</text>
   <text class="t" x="70" y="395">2. 比较逻辑：通过 IsFasterThan() 判断数据是否已处理，支持多种比较结果（LCR_INVALID、LCR_SLOWER、LCR_PARTIAL_FASTER、LCR_FULLY_FASTER）</text>

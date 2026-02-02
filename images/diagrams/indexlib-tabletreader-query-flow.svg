@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">TabletReader 查询流程：从 JSON 查询到结果返回</text>
   <text class="muted" x="40" y="66">查询流程包括解析、获取 IndexReader、遍历 Segment、合并结果等步骤。</text>
 
-  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <rect class="step" x="40" y="95" width="160" height="120.0"/>
   <text class="h" x="70" y="130">1. 解析查询</text>
   <text class="t" x="70" y="155">JSON → 查询对象</text>
   <text class="t" x="70" y="175">提取索引类型</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 200 145 L 240 145"/>
 
-  <rect class="step" x="250" y="95" width="180" height="100"/>
+  <rect class="step" x="250" y="95" width="180" height="120.0"/>
   <text class="h" x="280" y="130">2. 获取 IndexReader</text>
   <text class="t" x="280" y="155">从 _indexReaderMap</text>
   <text class="t" x="280" y="175">获取或创建</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 430 145 L 470 145"/>
 
-  <rect class="step" x="480" y="95" width="180" height="100"/>
+  <rect class="step" x="480" y="95" width="180" height="120.0"/>
   <text class="h" x="510" y="130">3. 遍历 Segment</text>
   <text class="t" x="510" y="155">TabletData-></text>
   <text class="t" x="510" y="175">CreateSlice(ST_BUILT)</text>
@@ -41,7 +41,7 @@
 
   <path class="arrow" d="M 660 145 L 700 145"/>
 
-  <rect class="step" x="710" y="95" width="160" height="100"/>
+  <rect class="step" x="710" y="95" width="160" height="120.0"/>
   <text class="h" x="740" y="130">4. 并行查询</text>
   <text class="t" x="740" y="155">对每个 Segment</text>
   <text class="t" x="740" y="175">调用 Indexer</text>
@@ -49,7 +49,7 @@
 
   <path class="arrow" d="M 870 145 L 910 145"/>
 
-  <rect class="step" x="40" y="215" width="160" height="100"/>
+  <rect class="step" x="40" y="215" width="160" height="120.0"/>
   <text class="h" x="70" y="250">5. 合并结果</text>
   <text class="t" x="70" y="275">去重、排序</text>
   <text class="t" x="70" y="295">聚合统计</text>
@@ -62,7 +62,7 @@
   <text class="t" x="280" y="275">序列化为 JSON</text>
   <text class="t" x="280" y="295">返回给调用者</text>
 
-  <rect class="box" x="430" y="215" width="440" height="220"/>
+  <rect class="box" x="430" y="215" width="440" height="300.0"/>
   <text class="h" x="460" y="250">关键代码逻辑</text>
   <text class="t" x="460" y="275">// 1. 解析查询</text>
   <text class="t" x="460" y="295">Query query = ParseJsonQuery(jsonQuery);</text>

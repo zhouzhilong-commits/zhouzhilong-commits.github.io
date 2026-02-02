@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 670">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -25,23 +25,24 @@
   <text class="h" x="70" y="130">Application Layer（应用层）</text>
   <text class="t" x="70" y="155">Havenask、业务应用 - 使用 IndexLib 提供的接口构建和查询索引</text>
 
-  <rect class="framework" x="40" y="195" width="920" height="120"/>
+  <rect class="framework" x="40" y="195" width="920" height="140"/>
   <text class="h" x="70" y="230">Framework Layer（框架层）</text>
-  <text class="t" x="70" y="255">- ITablet：索引表核心接口，管理索引生命周期</text>
-  <text class="t" x="70" y="275">- TabletData：管理索引数据，包含多个 Segment</text>
-  <text class="t" x="70" y="295">- Segment：索引基本单元（MemSegment / DiskSegment）</text>
+  <text class="t" x="70" y="255">- ITablet：索引表核心接口，管理索引生命周期（Open、Build、Flush、Seal、Commit）</text>
+  <text class="t" x="70" y="275">- TabletData：管理索引数据，包含多个 Segment 和 Version</text>
+  <text class="t" x="70" y="295">- Segment：索引基本单元，分为 MemSegment（内存段）和 DiskSegment（磁盘段）</text>
+  <text class="t" x="70" y="315">- Version：版本信息，记录索引包含哪些 Segment，支持增量更新和版本管理</text>
 
-  <rect class="index" x="40" y="335" width="920" height="100"/>
-  <text class="h" x="70" y="370">Index Layer（索引层）</text>
-  <text class="t" x="70" y="395">- Normal Table：标准表，支持倒排索引、正排索引、摘要</text>
-  <text class="t" x="70" y="415">- KKV Table：Key-Key-Value 表，两级 Key 查询</text>
-  <text class="t" x="70" y="435">- KV Table：Key-Value 表，简单存储</text>
+  <rect class="index" x="40" y="355" width="920" height="110"/>
+  <text class="h" x="70" y="385">Index Layer（索引层）</text>
+  <text class="t" x="70" y="410">- Normal Table：标准表，支持倒排索引、正排索引、摘要</text>
+  <text class="t" x="70" y="430">- KKV Table：Key-Key-Value 表，两级 Key 查询</text>
+  <text class="t" x="70" y="450">- KV Table：Key-Value 表，简单存储</text>
 
-  <rect class="document" x="40" y="455" width="920" height="60"/>
-  <text class="h" x="70" y="490">Document Layer（文档层）</text>
-  <text class="t" x="70" y="515">Document、Field - 文档解析、验证、转换</text>
+  <rect class="document" x="40" y="485" width="920" height="70"/>
+  <text class="h" x="70" y="515">Document Layer（文档层）</text>
+  <text class="t" x="70" y="540">Document、Field - 文档解析、验证、转换</text>
 
-  <rect class="filesystem" x="40" y="535" width="920" height="50"/>
-  <text class="h" x="70" y="570">File System Layer（文件系统层）</text>
-  <text class="t" x="70" y="590">Directory、File - 抽象文件系统，支持本地/分布式文件系统</text>
+  <rect class="filesystem" x="40" y="575" width="920" height="75"/>
+  <text class="h" x="70" y="610">File System Layer（文件系统层）</text>
+  <text class="t" x="70" y="635">Directory、File - 抽象文件系统，支持本地/分布式文件系统</text>
 </svg>

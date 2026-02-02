@@ -57,7 +57,7 @@
   <text class="t" x="790" y="255">支持并发访问</text>
   <text class="t" x="790" y="275">提高安全性</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">逻辑路径设计的关键要点</text>
   <text class="t" x="70" y="375">1. 路径映射：通过 MountVersion()、MountDir()、MountFile() 等操作将物理路径映射到逻辑路径，支持版本管理和 Segment 管理</text>
   <text class="t" x="70" y="395">2. 版本管理：不同版本的文件可以映射到相同的逻辑路径，支持版本切换和版本回滚，用户无需关心版本细节</text>

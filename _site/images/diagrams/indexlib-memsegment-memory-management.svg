@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">MemSegment 内存管理：估算、评估、控制内存使用</text>
   <text class="muted" x="40" y="66">通过估算、评估、控制三个环节，严格控制 MemSegment 的内存使用。</text>
 
-  <rect class="estimate" x="40" y="95" width="280" height="150"/>
+  <rect class="estimate" x="40" y="95" width="280" height="160.0"/>
   <text class="h" x="70" y="130">估算（Estimate）</text>
   <text class="t" x="70" y="155">EstimateMemUsed()</text>
   <text class="t" x="70" y="175">- 构建前估算</text>
@@ -29,7 +29,7 @@
 
   <path class="arrow" d="M 320 170 L 360 170"/>
 
-  <rect class="evaluate" x="370" y="95" width="280" height="150"/>
+  <rect class="evaluate" x="370" y="95" width="280" height="160.0"/>
   <text class="h" x="400" y="130">评估（Evaluate）</text>
   <text class="t" x="400" y="155">EvaluateCurrentMemUsed()</text>
   <text class="t" x="400" y="175">- 构建中实时评估</text>
@@ -39,7 +39,7 @@
 
   <path class="arrow" d="M 650 170 L 690 170"/>
 
-  <rect class="control" x="700" y="95" width="260" height="150"/>
+  <rect class="control" x="700" y="95" width="260" height="160.0"/>
   <text class="h" x="730" y="130">控制（Control）</text>
   <text class="t" x="730" y="155">MemoryQuotaController</text>
   <text class="t" x="730" y="175">- 设置内存上限</text>

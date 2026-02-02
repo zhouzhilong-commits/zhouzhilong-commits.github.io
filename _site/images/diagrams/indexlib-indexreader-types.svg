@@ -13,21 +13,21 @@
   <text class="title" x="40" y="42">不同类型的 IndexReader：倒排索引、正排索引、主键索引等</text>
   <text class="muted" x="40" y="66">IndexLib 支持多种类型的 IndexReader，每种类型提供不同的索引查询能力。</text>
 
-  <rect class="type" x="40" y="95" width="220" height="120"/>
+  <rect class="type" x="40" y="95" width="220" height="140.0"/>
   <text class="h" x="70" y="130">InvertedIndexReader</text>
   <text class="t" x="70" y="155">倒排索引 Reader</text>
   <text class="t" x="70" y="175">用于全文检索</text>
   <text class="t" x="70" y="195">term 查询</text>
   <text class="t" x="70" y="215">返回 DocId 列表</text>
 
-  <rect class="type" x="280" y="95" width="220" height="120"/>
+  <rect class="type" x="280" y="95" width="220" height="140.0"/>
   <text class="h" x="310" y="130">AttributeReader</text>
   <text class="t" x="310" y="155">正排索引 Reader</text>
   <text class="t" x="310" y="175">用于属性查询</text>
   <text class="t" x="310" y="195">属性值查询</text>
   <text class="t" x="310" y="215">返回属性值</text>
 
-  <rect class="type" x="520" y="95" width="220" height="120"/>
+  <rect class="type" x="520" y="95" width="220" height="140.0"/>
   <text class="h" x="550" y="130">PrimaryKeyReader</text>
   <text class="t" x="550" y="155">主键索引 Reader</text>
   <text class="t" x="550" y="175">用于主键查询</text>

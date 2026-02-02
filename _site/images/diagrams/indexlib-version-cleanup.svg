@@ -39,7 +39,7 @@
   <text class="t" x="670" y="175">当前版本</text>
   <text class="t" x="670" y="195">不清理</text>
 
-  <rect class="clean" x="40" y="235" width="900" height="220"/>
+  <rect class="clean" x="40" y="235" width="900" height="255.0"/>
   <text class="h" x="70" y="270">版本清理的关键步骤</text>
   <text class="t" x="70" y="295">1. 保留版本列表：保留指定数量的版本（如最近 3 个版本），清理其他版本</text>
   <text class="t" x="70" y="315">2. 清理版本文件：清理不再被保留的版本文件（version.0、version.1 等）</text>

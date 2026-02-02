@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -10,7 +10,7 @@
       .memory{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
       .control{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000 540.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -54,7 +54,7 @@
   <text class="t" x="750" y="255">创建 DiskSegment</text>
   <text class="t" x="750" y="275">提高性能</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">转储内存成本控制的关键设计</text>
   <text class="t" x="70" y="375">1. 内存估算：通过 EstimateDumpMemUsed() 估算转储所需内存，包括 MemSegment 大小、临时缓冲区、压缩缓冲区、DumpExpandMemSize 等</text>
   <text class="t" x="70" y="395">2. 内存配额检查：检查是否有足够的内存配额，预留转储内存，控制转储任务的并发度，避免内存不足导致转储失败</text>

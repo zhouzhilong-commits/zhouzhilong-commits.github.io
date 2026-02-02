@@ -15,7 +15,7 @@
   <text class="title" x="40" y="42">索引类型对比：Normal、KV、KKV 的数据模型和查询方式</text>
   <text class="muted" x="40" y="66">三种索引类型有不同的数据模型和查询方式，适用于不同的应用场景。</text>
 
-  <rect class="normal" x="40" y="95" width="280" height="200"/>
+  <rect class="normal" x="40" y="95" width="280" height="220.0"/>
   <text class="h" x="70" y="130">NormalTable</text>
   <text class="t" x="70" y="155">数据模型：</text>
   <text class="t" x="70" y="175">文档（Document）</text>
@@ -26,7 +26,7 @@
   <text class="t" x="70" y="275">- 主键查询（主键索引）</text>
   <text class="t" x="70" y="295">- 复合查询</text>
 
-  <rect class="kv" x="340" y="95" width="280" height="200"/>
+  <rect class="kv" x="340" y="95" width="280" height="220.0"/>
   <text class="h" x="370" y="130">KVTable</text>
   <text class="t" x="370" y="155">数据模型：</text>
   <text class="t" x="370" y="175">键值对（Key-Value）</text>
@@ -37,7 +37,7 @@
   <text class="t" x="370" y="275">- 属性查询</text>
   <text class="t" x="370" y="295">查询简单高效</text>
 
-  <rect class="kkv" x="640" y="95" width="320" height="200"/>
+  <rect class="kkv" x="640" y="95" width="320" height="220.0"/>
   <text class="h" x="670" y="130">KKVTable</text>
   <text class="t" x="670" y="155">数据模型：</text>
   <text class="t" x="670" y="175">键键值（Key-Key-Value）</text>
@@ -48,7 +48,7 @@
   <text class="t" x="670" y="275">- 范围查询</text>
   <text class="t" x="670" y="295">- 属性查询</text>
 
-  <rect class="box" x="40" y="315" width="920" height="200"/>
+  <rect class="box" x="40" y="315" width="920" height="235.0"/>
   <text class="h" x="70" y="350">索引类型对比的关键差异</text>
   <text class="t" x="70" y="375">1. 数据模型：NormalTable 使用文档模型，KVTable 使用键值对模型，KKVTable 使用键键值模型</text>
   <text class="t" x="70" y="395">2. 查询方式：NormalTable 支持全文检索、属性查询、主键查询等多种查询方式，KVTable 主要支持主键查询，KKVTable 支持主键+排序键查询</text>

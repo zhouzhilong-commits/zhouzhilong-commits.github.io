@@ -44,7 +44,7 @@
   <text class="t" x="850" y="155">NeedDump()</text>
   <text class="t" x="850" y="175">返回 true</text>
 
-  <rect class="box" x="40" y="215" width="900" height="200"/>
+  <rect class="box" x="40" y="215" width="900" height="245.0"/>
   <text class="h" x="70" y="250">内存控制的关键机制</text>
   <text class="t" x="70" y="275">1. 内存估算：构建前估算所需内存，检查内存配额是否足够</text>
   <text class="t" x="70" y="295">2. 内存评估：构建过程中评估实际内存使用，实时监控内存状态</text>

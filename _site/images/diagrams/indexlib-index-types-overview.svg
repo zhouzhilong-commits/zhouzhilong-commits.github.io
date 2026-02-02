@@ -57,7 +57,7 @@
   <text class="t" x="670" y="335">支持范围查询</text>
   <text class="t" x="670" y="355">支持有序存储</text>
 
-  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <rect class="box" x="40" y="395" width="920" height="115.0"/>
   <text class="h" x="70" y="430">索引类型的关键特点</text>
   <text class="t" x="70" y="455">1. NormalTable：标准表，支持全文检索、倒排索引、正排索引等，适用于全文检索和复杂查询场景</text>
   <text class="t" x="70" y="475">2. KVTable：键值表，支持主键查询，适用于简单的键值存储场景，查询性能高</text>

@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">TabletData Slice 使用场景：查询、写入、合并时的 Segment 筛选</text>
   <text class="muted" x="40" y="66">Slice 提供灵活的 Segment 筛选能力，不同场景使用不同状态的 Segment。</text>
 
-  <rect class="query" x="40" y="95" width="280" height="180"/>
+  <rect class="query" x="40" y="95" width="280" height="195.0"/>
   <text class="h" x="70" y="130">查询场景</text>
   <text class="t" x="70" y="155">CreateSlice(ST_BUILT)</text>
   <text class="t" x="70" y="180">获取：</text>
@@ -28,7 +28,7 @@
   <text class="t" x="90" y="245">- DiskSegment 3</text>
   <text class="t" x="70" y="270">用途：只查询已持久化的 Segment，保证数据一致性</text>
 
-  <rect class="write" x="340" y="95" width="280" height="180"/>
+  <rect class="write" x="340" y="95" width="280" height="195.0"/>
   <text class="h" x="370" y="130">写入场景</text>
   <text class="t" x="370" y="155">CreateSlice(ST_BUILDING)</text>
   <text class="t" x="370" y="180">获取：</text>
@@ -37,7 +37,7 @@
   <text class="t" x="370" y="250">特点：通常只有一个 MemSegment</text>
   <text class="t" x="370" y="270">在构建中</text>
 
-  <rect class="merge" x="640" y="95" width="320" height="180"/>
+  <rect class="merge" x="640" y="95" width="320" height="195.0"/>
   <text class="h" x="670" y="130">合并场景</text>
   <text class="t" x="670" y="155">CreateSlice(ST_BUILT)</text>
   <text class="t" x="670" y="180">获取：</text>

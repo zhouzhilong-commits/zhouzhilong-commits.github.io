@@ -30,7 +30,7 @@
 
   <path class="arrow" d="M 320 195 L 360 195"/>
 
-  <rect class="query" x="380" y="95" width="580" height="200"/>
+  <rect class="query" x="380" y="95" width="580" height="220.0"/>
   <text class="h" x="410" y="130">内部查询对象</text>
   <text class="t" x="410" y="155">Query {</text>
   <text class="t" x="430" y="175">    queryType: TERM_QUERY,</text>
@@ -41,7 +41,7 @@
   <text class="t" x="430" y="275">    sort: Sort [...]</text>
   <text class="t" x="410" y="295">}</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">查询解析的关键步骤</text>
   <text class="t" x="70" y="375">1. 解析 JSON：解析 JSON 格式的查询字符串，提取各个字段</text>
   <text class="t" x="70" y="395">2. 提取查询类型：提取查询类型（term 查询、范围查询、逻辑查询等）</text>

@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">版本回滚：回滚到历史版本</text>
   <text class="muted" x="40" y="66">版本回滚支持回滚到历史版本，包括选择目标版本、验证版本、加载版本、更新 TabletData 等步骤。</text>
 
-  <rect class="current" x="40" y="95" width="200" height="120"/>
+  <rect class="current" x="40" y="95" width="200" height="140.0"/>
   <text class="h" x="70" y="130">当前版本</text>
   <text class="t" x="70" y="155">Version 3</text>
   <text class="t" x="70" y="175">Segments: [4, 5]</text>
@@ -55,7 +55,7 @@
   <text class="h" x="850" y="290">4. 更新 TabletData</text>
   <text class="t" x="850" y="315">恢复到目标版本</text>
 
-  <rect class="box" x="40" y="375" width="900" height="50"/>
+  <rect class="box" x="40" y="375" width="900" height="140.0"/>
   <text class="h" x="70" y="410">版本回滚的关键步骤</text>
   <text class="t" x="70" y="435">1. 选择目标版本：选择要回滚到的目标版本（通常是上一个稳定版本）</text>
   <text class="t" x="70" y="455">2. 验证版本：验证目标版本的有效性，检查 Segment 是否存在、Schema 是否兼容等</text>

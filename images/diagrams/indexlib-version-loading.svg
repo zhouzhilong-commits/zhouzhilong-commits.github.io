@@ -44,7 +44,7 @@
   <text class="t" x="850" y="155">根据 Version</text>
   <text class="t" x="850" y="175">中的 Segment 列表</text>
 
-  <rect class="box" x="40" y="215" width="900" height="200"/>
+  <rect class="box" x="40" y="215" width="900" height="245.0"/>
   <text class="h" x="70" y="250">Version 加载的关键步骤</text>
   <text class="t" x="70" y="275">1. 读取版本文件：从磁盘读取版本文件（version.0、version.1 等），支持指定版本号加载</text>
   <text class="t" x="70" y="295">2. 解析 Version：解析 JSON 格式的版本信息，包括 Segment 列表、Locator、SchemaId 等</text>

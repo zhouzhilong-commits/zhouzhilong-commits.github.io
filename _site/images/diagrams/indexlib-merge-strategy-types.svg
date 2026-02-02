@@ -13,35 +13,35 @@
   <text class="title" x="40" y="42">合并策略类型：Optimize、Realtime、ShardBased 等</text>
   <text class="muted" x="40" y="66">IndexLib 支持多种合并策略，每种策略适用于不同的场景，提供不同的合并行为。</text>
 
-  <rect class="type" x="40" y="95" width="220" height="120"/>
+  <rect class="type" x="40" y="95" width="220" height="140.0"/>
   <text class="h" x="70" y="130">OptimizeMergeStrategy</text>
   <text class="t" x="70" y="155">优化合并策略</text>
   <text class="t" x="70" y="175">合并所有符合条件的 Segment</text>
   <text class="t" x="70" y="195">适用于全量合并</text>
   <text class="t" x="70" y="215">支持参数控制</text>
 
-  <rect class="type" x="280" y="95" width="220" height="120"/>
+  <rect class="type" x="280" y="95" width="220" height="140.0"/>
   <text class="h" x="310" y="130">RealtimeMergeStrategy</text>
   <text class="t" x="310" y="155">实时合并策略</text>
   <text class="t" x="310" y="175">实时合并小 Segment</text>
   <text class="t" x="310" y="195">适用于实时场景</text>
   <text class="t" x="310" y="215">保持索引结构优化</text>
 
-  <rect class="type" x="520" y="95" width="220" height="120"/>
+  <rect class="type" x="520" y="95" width="220" height="140.0"/>
   <text class="h" x="550" y="130">ShardBasedMergeStrategy</text>
   <text class="t" x="550" y="155">分片合并策略</text>
   <text class="t" x="550" y="175">按分片合并 Segment</text>
   <text class="t" x="550" y="195">适用于分片场景</text>
   <text class="t" x="550" y="215">支持分片级合并</text>
 
-  <rect class="type" x="760" y="95" width="200" height="120"/>
+  <rect class="type" x="760" y="95" width="200" height="140.0"/>
   <text class="h" x="790" y="130">KeyValueOptimizeMergeStrategy</text>
   <text class="t" x="790" y="155">KV 优化合并策略</text>
   <text class="t" x="790" y="175">针对 KV 表的优化合并</text>
   <text class="t" x="790" y="195">适用于 KV 表</text>
   <text class="t" x="790" y="215">优化 KV 索引</text>
 
-  <rect class="box" x="40" y="235" width="920" height="230"/>
+  <rect class="box" x="40" y="235" width="920" height="265.0"/>
   <text class="h" x="70" y="270">合并策略类型的关键特点</text>
   <text class="t" x="70" y="295">1. OptimizeMergeStrategy：优化合并策略，合并所有符合条件的 Segment，适用于全量合并，支持参数控制（maxDocCount、afterMergeMaxDocCount 等）</text>
   <text class="t" x="70" y="315">2. RealtimeMergeStrategy：实时合并策略，实时合并小 Segment，适用于实时场景，保持索引结构优化</text>

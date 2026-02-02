@@ -13,35 +13,35 @@
   <text class="title" x="40" y="42">增量更新场景：实时写入、批量更新等</text>
   <text class="muted" x="40" y="66">增量更新适用于实时写入、批量更新、多数据源、故障恢复等场景，通过 Locator 保证数据一致性。</text>
 
-  <rect class="scenario" x="40" y="95" width="220" height="120"/>
+  <rect class="scenario" x="40" y="95" width="220" height="140.0"/>
   <text class="h" x="70" y="130">实时写入</text>
   <text class="t" x="70" y="155">实时接收数据流</text>
   <text class="t" x="70" y="175">通过 Locator 判断</text>
   <text class="t" x="70" y="195">哪些数据已处理</text>
   <text class="t" x="70" y="215">只处理新数据</text>
 
-  <rect class="scenario" x="280" y="95" width="220" height="120"/>
+  <rect class="scenario" x="280" y="95" width="220" height="140.0"/>
   <text class="h" x="310" y="130">批量更新</text>
   <text class="t" x="310" y="155">批量处理数据</text>
   <text class="t" x="310" y="175">通过 Locator 避免</text>
   <text class="t" x="310" y="195">重复处理</text>
   <text class="t" x="310" y="215">提高处理效率</text>
 
-  <rect class="scenario" x="520" y="95" width="220" height="120"/>
+  <rect class="scenario" x="520" y="95" width="220" height="140.0"/>
   <text class="h" x="550" y="130">多数据源</text>
   <text class="t" x="550" y="155">从多个数据源</text>
   <text class="t" x="550" y="175">读取数据</text>
   <text class="t" x="550" y="195">通过 Locator 保证</text>
   <text class="t" x="550" y="215">数据一致性</text>
 
-  <rect class="scenario" x="760" y="95" width="200" height="120"/>
+  <rect class="scenario" x="760" y="95" width="200" height="140.0"/>
   <text class="h" x="790" y="130">故障恢复</text>
   <text class="t" x="790" y="155">故障恢复时</text>
   <text class="t" x="790" y="175">通过 Locator 判断</text>
   <text class="t" x="790" y="195">需要重新处理</text>
   <text class="t" x="790" y="215">的数据</text>
 
-  <rect class="box" x="40" y="235" width="920" height="230"/>
+  <rect class="box" x="40" y="235" width="920" height="265.0"/>
   <text class="h" x="70" y="270">增量更新场景的关键特点</text>
   <text class="t" x="70" y="295">1. 实时写入：实时接收数据流，通过 Locator 判断哪些数据已处理，只处理新数据，实现实时增量更新</text>
   <text class="t" x="70" y="315">2. 批量更新：批量处理数据，通过 Locator 避免重复处理，提高处理效率，支持大规模数据更新</text>

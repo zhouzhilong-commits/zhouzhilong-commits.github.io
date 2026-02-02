@@ -56,7 +56,7 @@
   <text class="t" x="790" y="255">文件写入功能</text>
   <text class="t" x="790" y="275">支持异步写入</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="185.0"/>
   <text class="h" x="70" y="350">文件系统抽象的关键组件</text>
   <text class="t" x="70" y="375">1. IFileSystem：文件系统接口，提供文件系统的基本操作，支持版本挂载和路径映射，支持多种存储后端</text>
   <text class="t" x="70" y="395">2. IDirectory：目录接口，提供目录和文件的操作，支持逻辑路径管理，支持版本管理和 Segment 管理</text>

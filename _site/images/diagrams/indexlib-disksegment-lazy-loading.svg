@@ -23,22 +23,22 @@
   <text class="h" x="70" y="130">NORMAL 模式（立即加载）</text>
   <text class="t" x="70" y="155">Open() 时立即加载所有 Indexer</text>
 
-  <rect class="indexer" x="70" y="180" width="180" height="80"/>
+  <rect class="indexer" x="70" y="180" width="180" height="95.0"/>
   <text class="h" x="90" y="210">Indexer 1</text>
   <text class="t" x="90" y="235">立即加载</text>
   <text class="t" x="90" y="255">内存占用：高</text>
 
-  <rect class="indexer" x="270" y="180" width="180" height="80"/>
+  <rect class="indexer" x="270" y="180" width="180" height="95.0"/>
   <text class="h" x="290" y="210">Indexer 2</text>
   <text class="t" x="290" y="235">立即加载</text>
   <text class="t" x="290" y="255">内存占用：高</text>
 
-  <rect class="indexer" x="70" y="280" width="180" height="80"/>
+  <rect class="indexer" x="70" y="280" width="180" height="95.0"/>
   <text class="h" x="90" y="310">Indexer 3</text>
   <text class="t" x="90" y="335">立即加载</text>
   <text class="t" x="90" y="355">内存占用：高</text>
 
-  <rect class="indexer" x="270" y="280" width="180" height="80"/>
+  <rect class="indexer" x="270" y="280" width="180" height="95.0"/>
   <text class="h" x="290" y="310">Indexer 4</text>
   <text class="t" x="290" y="335">立即加载</text>
   <text class="t" x="290" y="355">内存占用：高</text>
@@ -50,22 +50,22 @@
   <text class="h" x="530" y="130">LAZY 模式（按需加载）</text>
   <text class="t" x="530" y="155">Open() 时不加载，GetIndexer() 时按需加载</text>
 
-  <rect class="indexer" x="530" y="180" width="180" height="80"/>
+  <rect class="indexer" x="530" y="180" width="180" height="95.0"/>
   <text class="h" x="550" y="210">Indexer 1</text>
   <text class="t" x="550" y="235">按需加载</text>
   <text class="t" x="550" y="255">内存占用：低</text>
 
-  <rect class="indexer" x="730" y="180" width="180" height="80"/>
+  <rect class="indexer" x="730" y="180" width="180" height="95.0"/>
   <text class="h" x="750" y="210">Indexer 2</text>
   <text class="t" x="750" y="235">未加载</text>
   <text class="t" x="750" y="255">内存占用：0</text>
 
-  <rect class="indexer" x="530" y="280" width="180" height="80"/>
+  <rect class="indexer" x="530" y="280" width="180" height="95.0"/>
   <text class="h" x="550" y="310">Indexer 3</text>
   <text class="t" x="550" y="335">未加载</text>
   <text class="t" x="550" y="355">内存占用：0</text>
 
-  <rect class="indexer" x="730" y="280" width="180" height="80"/>
+  <rect class="indexer" x="730" y="280" width="180" height="95.0"/>
   <text class="h" x="750" y="310">Indexer 4</text>
   <text class="t" x="750" y="335">未加载</text>
   <text class="t" x="750" y="355">内存占用：0</text>
@@ -73,6 +73,6 @@
   <text class="t" x="530" y="385">启动速度：快（不需要等待加载）</text>
   <text class="t" x="530" y="405">适用场景：离线场景，部分索引查询</text>
 
-  <rect class="box" x="40" y="435" width="900" height="10"/>
+  <rect class="box" x="40" y="435" width="900" height="35.0"/>
   <text class="muted" x="40" y="450">优势：减少内存占用，提高启动速度，支持部分索引查询场景</text>
 </svg>

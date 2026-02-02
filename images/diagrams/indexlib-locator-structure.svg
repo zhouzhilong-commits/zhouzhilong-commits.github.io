@@ -22,7 +22,7 @@
   <rect class="locator" x="40" y="95" width="920" height="320"/>
   <text class="h" x="70" y="130">Locator</text>
 
-  <rect class="docinfo" x="70" y="150" width="280" height="200"/>
+  <rect class="docinfo" x="70" y="150" width="280" height="230.0"/>
   <text class="h" x="90" y="180">DocInfo（文档信息）</text>
   <text class="t" x="90" y="205">timestamp: 1000</text>
   <text class="t" x="90" y="225">- 时间戳，记录数据的时间位置</text>

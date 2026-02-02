@@ -20,7 +20,7 @@
   <text class="title" x="40" y="42">索引构建完整流程：从 Build 到 Commit 的各个阶段</text>
   <text class="muted" x="40" y="66">索引构建包括 Build、Flush、Seal、Commit 四个核心阶段，每个阶段都有特定的职责和实现机制。</text>
 
-  <rect class="build" x="40" y="95" width="200" height="120"/>
+  <rect class="build" x="40" y="95" width="200" height="140.0"/>
   <text class="h" x="70" y="130">1. Build</text>
   <text class="t" x="70" y="155">接收文档批次</text>
   <text class="t" x="70" y="175">构建索引到内存</text>
@@ -29,7 +29,7 @@
 
   <path class="arrow" d="M 240 155 L 280 155"/>
 
-  <rect class="flush" x="300" y="95" width="200" height="120"/>
+  <rect class="flush" x="300" y="95" width="200" height="140.0"/>
   <text class="h" x="330" y="130">2. Flush</text>
   <text class="t" x="330" y="155">检查转储条件</text>
   <text class="t" x="330" y="175">创建 SegmentDumper</text>
@@ -38,7 +38,7 @@
 
   <path class="arrow" d="M 500 155 L 540 155"/>
 
-  <rect class="seal" x="560" y="95" width="200" height="120"/>
+  <rect class="seal" x="560" y="95" width="200" height="140.0"/>
   <text class="h" x="590" y="130">3. Seal</text>
   <text class="t" x="590" y="155">封存 Segment</text>
   <text class="t" x="590" y="175">标记为只读</text>
@@ -47,14 +47,14 @@
 
   <path class="arrow" d="M 760 155 L 800 155"/>
 
-  <rect class="commit" x="820" y="95" width="140" height="120"/>
+  <rect class="commit" x="820" y="95" width="140" height="140.0"/>
   <text class="h" x="850" y="130">4. Commit</text>
   <text class="t" x="850" y="155">准备版本信息</text>
   <text class="t" x="850" y="175">创建 Fence</text>
   <text class="t" x="850" y="195">持久化 Version</text>
   <text class="t" x="850" y="215">更新 TabletData</text>
 
-  <rect class="box" x="40" y="235" width="920" height="240"/>
+  <rect class="box" x="40" y="235" width="920" height="275.0"/>
   <text class="h" x="70" y="270">各阶段的关键特点</text>
   <text class="t" x="70" y="295">Build：持续构建，接收文档并写入 MemSegment，支持实时写入</text>
   <text class="t" x="70" y="315">Flush：触发转储，将 MemSegment 转为 DiskSegment，异步执行不阻塞写入</text>

@@ -17,37 +17,37 @@
   <rect class="interface" x="40" y="95" width="920" height="380"/>
   <text class="h" x="70" y="130">IFileSystem</text>
 
-  <rect class="method" x="70" y="155" width="400" height="80"/>
+  <rect class="method" x="70" y="155" width="400" height="90.0"/>
   <text class="h" x="90" y="180">Init()</text>
   <text class="t" x="90" y="205">初始化文件系统</text>
   <text class="t" x="90" y="225">设置文件系统选项</text>
 
-  <rect class="method" x="490" y="155" width="400" height="80"/>
+  <rect class="method" x="490" y="155" width="400" height="90.0"/>
   <text class="h" x="510" y="180">MountVersion()</text>
   <text class="t" x="510" y="205">挂载版本</text>
   <text class="t" x="510" y="225">将物理路径映射到逻辑路径</text>
 
-  <rect class="method" x="70" y="255" width="400" height="80"/>
+  <rect class="method" x="70" y="255" width="400" height="90.0"/>
   <text class="h" x="90" y="280">MountDir()</text>
   <text class="t" x="90" y="305">挂载目录</text>
   <text class="t" x="90" y="325">支持目录级别的挂载</text>
 
-  <rect class="method" x="490" y="255" width="400" height="80"/>
+  <rect class="method" x="490" y="255" width="400" height="90.0"/>
   <text class="h" x="510" y="280">MountFile()</text>
   <text class="t" x="510" y="305">挂载文件</text>
   <text class="t" x="510" y="325">支持文件级别的挂载</text>
 
-  <rect class="method" x="70" y="355" width="400" height="80"/>
+  <rect class="method" x="70" y="355" width="400" height="90.0"/>
   <text class="h" x="90" y="380">CreateFileReader()</text>
   <text class="t" x="90" y="405">创建文件读取器</text>
   <text class="t" x="90" y="425">支持逻辑路径访问</text>
 
-  <rect class="box" x="490" y="355" width="400" height="80"/>
+  <rect class="box" x="490" y="355" width="400" height="90.0"/>
   <text class="h" x="510" y="380">CreateFileWriter()</text>
   <text class="t" x="510" y="405">创建文件写入器</text>
   <text class="t" x="510" y="425">支持逻辑路径访问</text>
 
-  <rect class="box" x="70" y="455" width="820" height="10"/>
+  <rect class="box" x="70" y="455" width="820" height="120.0"/>
   <text class="h" x="90" y="470">IFileSystem 的关键设计</text>
   <text class="t" x="90" y="495">1. Init()：初始化文件系统，设置文件系统选项，支持多种存储后端</text>
   <text class="t" x="90" y="515">2. MountVersion()：挂载版本，将物理路径映射到逻辑路径，支持版本管理</text>

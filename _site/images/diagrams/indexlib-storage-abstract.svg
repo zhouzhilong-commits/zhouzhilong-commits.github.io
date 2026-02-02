@@ -17,37 +17,37 @@
   <rect class="storage" x="40" y="95" width="920" height="380"/>
   <text class="h" x="70" y="130">Storage</text>
 
-  <rect class="method" x="70" y="155" width="400" height="80"/>
+  <rect class="method" x="70" y="155" width="400" height="90.0"/>
   <text class="h" x="90" y="180">CreateInputStorage()</text>
   <text class="t" x="90" y="205">创建输入存储</text>
   <text class="t" x="90" y="225">用于读取</text>
 
-  <rect class="method" x="490" y="155" width="400" height="80"/>
+  <rect class="method" x="490" y="155" width="400" height="90.0"/>
   <text class="h" x="510" y="180">CreateOutputStorage()</text>
   <text class="t" x="510" y="205">创建输出存储</text>
   <text class="t" x="510" y="225">用于写入</text>
 
-  <rect class="method" x="70" y="255" width="400" height="80"/>
+  <rect class="method" x="70" y="255" width="400" height="90.0"/>
   <text class="h" x="90" y="280">CreateFileReader()</text>
   <text class="t" x="90" y="305">创建文件读取器</text>
   <text class="t" x="90" y="325">支持逻辑和物理路径</text>
 
-  <rect class="method" x="490" y="255" width="400" height="80"/>
+  <rect class="method" x="490" y="255" width="400" height="90.0"/>
   <text class="h" x="510" y="280">CreateFileWriter()</text>
   <text class="t" x="510" y="305">创建文件写入器</text>
   <text class="t" x="510" y="325">支持逻辑和物理路径</text>
 
-  <rect class="method" x="70" y="355" width="400" height="80"/>
+  <rect class="method" x="70" y="355" width="400" height="90.0"/>
   <text class="h" x="90" y="380">Sync()</text>
   <text class="t" x="90" y="405">同步存储</text>
   <text class="t" x="90" y="425">刷新数据到磁盘</text>
 
-  <rect class="box" x="490" y="355" width="400" height="80"/>
+  <rect class="box" x="490" y="355" width="400" height="90.0"/>
   <text class="h" x="510" y="380">GetStorageType()</text>
   <text class="t" x="510" y="405">获取存储类型</text>
   <text class="t" x="510" y="425">支持多种存储后端</text>
 
-  <rect class="box" x="70" y="455" width="820" height="10"/>
+  <rect class="box" x="70" y="455" width="820" height="120.0"/>
   <text class="h" x="90" y="470">Storage 的关键设计</text>
   <text class="t" x="90" y="495">1. CreateInputStorage()/CreateOutputStorage()：创建输入和输出存储，用于读取和写入</text>
   <text class="t" x="90" y="515">2. CreateFileReader()/CreateFileWriter()：创建文件读写器，支持逻辑和物理路径</text>

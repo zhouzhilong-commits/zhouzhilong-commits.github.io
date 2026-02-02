@@ -53,7 +53,7 @@
   <text class="t" x="790" y="255">性能提升明显</text>
   <text class="t" x="790" y="275">适用于连续操作</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">文件系统 IO 优化的关键策略</text>
   <text class="t" x="70" y="375">1. 批量 IO：批量读取和写入文件，减少 IO 次数，提高 IO 效率，减少系统调用</text>
   <text class="t" x="70" y="395">2. 异步 IO：异步读取和写入文件，提高并发度，减少阻塞，提高吞吐量</text>

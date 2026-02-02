@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">MemSegment 工作流程：从 Build 到 Dump 的完整过程</text>
   <text class="muted" x="40" y="66">MemSegment 接收文档，构建索引，达到阈值后转储到磁盘。</text>
 
-  <rect class="step" x="40" y="95" width="170" height="100"/>
+  <rect class="step" x="40" y="95" width="170" height="120.0"/>
   <text class="h" x="70" y="130">1. Build</text>
   <text class="t" x="70" y="155">接收文档批次</text>
   <text class="t" x="70" y="175">写入内存索引</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 210 145 L 250 145"/>
 
-  <rect class="step" x="260" y="95" width="170" height="100"/>
+  <rect class="step" x="260" y="95" width="170" height="120.0"/>
   <text class="h" x="290" y="130">2. NeedDump</text>
   <text class="t" x="290" y="155">检查阈值</text>
   <text class="t" x="290" y="175">内存/文档数</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 430 145 L 470 145"/>
 
-  <rect class="step" x="480" y="95" width="200" height="100"/>
+  <rect class="step" x="480" y="95" width="200" height="120.0"/>
   <text class="h" x="510" y="130">3. CreateSegmentDumpItems</text>
   <text class="t" x="510" y="155">创建转储任务</text>
   <text class="t" x="510" y="175">准备磁盘写入</text>
@@ -41,7 +41,7 @@
 
   <path class="arrow" d="M 680 145 L 720 145"/>
 
-  <rect class="step" x="730" y="95" width="170" height="100"/>
+  <rect class="step" x="730" y="95" width="170" height="120.0"/>
   <text class="h" x="760" y="130">4. Seal</text>
   <text class="t" x="760" y="155">封存 Segment</text>
   <text class="t" x="760" y="175">标记只读</text>

@@ -17,27 +17,27 @@
   <rect class="docinfo" x="40" y="95" width="920" height="320"/>
   <text class="h" x="70" y="130">DocInfo</text>
 
-  <rect class="field" x="70" y="155" width="200" height="80"/>
+  <rect class="field" x="70" y="155" width="200" height="90.0"/>
   <text class="h" x="90" y="180">timestamp</text>
   <text class="t" x="90" y="205">int64_t</text>
   <text class="t" x="90" y="225">时间戳，记录数据的时间位置</text>
 
-  <rect class="field" x="290" y="155" width="280" height="80"/>
+  <rect class="field" x="290" y="155" width="280" height="90.0"/>
   <text class="h" x="310" y="180">concurrentIdx</text>
   <text class="t" x="310" y="205">uint32_t</text>
   <text class="t" x="310" y="225">并发索引，处理时间戳相同的情况</text>
 
-  <rect class="field" x="590" y="155" width="200" height="80"/>
+  <rect class="field" x="590" y="155" width="200" height="90.0"/>
   <text class="h" x="610" y="180">hashId</text>
   <text class="t" x="610" y="205">uint16_t</text>
   <text class="t" x="610" y="225">Hash ID，用于分片</text>
 
-  <rect class="field" x="810" y="155" width="130" height="80"/>
+  <rect class="field" x="810" y="155" width="130" height="90.0"/>
   <text class="h" x="830" y="180">sourceIdx</text>
   <text class="t" x="830" y="205">uint8_t</text>
   <text class="t" x="830" y="225">数据源索引</text>
 
-  <rect class="box" x="70" y="255" width="870" height="150"/>
+  <rect class="box" x="70" y="255" width="870" height="170.0"/>
   <text class="h" x="90" y="280">DocInfo 的关键方法</text>
   <text class="t" x="90" y="305">- GetProgressOffset()：返回 Progress::Offset（timestamp, concurrentIdx）</text>
   <text class="t" x="90" y="325">- DebugString()：返回调试字符串，用于日志和调试</text>

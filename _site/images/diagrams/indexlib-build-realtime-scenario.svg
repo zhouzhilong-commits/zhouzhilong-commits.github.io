@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000 590.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,40 +17,40 @@
   <text class="title" x="40" y="42">实时写入场景：从 Build 到 Commit 的完整流程</text>
   <text class="muted" x="40" y="66">实时写入场景展示了从接收文档到提交版本的完整流程。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="110.0"/>
   <text class="h" x="70" y="125">1. Build</text>
   <text class="t" x="70" y="150">接收文档批次</text>
   <text class="t" x="70" y="170">写入 MemSegment</text>
   <text class="t" x="70" y="185">持续构建</text>
 
   <path class="arrow" d="M 220 145 L 260 145"/>
-  <text class="t" x="230" y="140">触发</text>
+  <text class="t" x="230" y="150.0">触发</text>
 
-  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <rect class="step" x="280" y="95" width="180" height="110.0"/>
   <text class="h" x="310" y="125">2. Flush</text>
   <text class="t" x="310" y="150">转储 MemSegment</text>
   <text class="t" x="310" y="170">创建 DiskSegment</text>
   <text class="t" x="310" y="185">异步执行</text>
 
   <path class="arrow" d="M 460 145 L 500 145"/>
-  <text class="t" x="470" y="140">准备</text>
+  <text class="t" x="470" y="150.0">准备</text>
 
-  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <rect class="step" x="520" y="95" width="180" height="110.0"/>
   <text class="h" x="550" y="125">3. Seal</text>
   <text class="t" x="550" y="150">封存 Segment</text>
   <text class="t" x="550" y="170">标记为只读</text>
   <text class="t" x="550" y="185">准备合并</text>
 
   <path class="arrow" d="M 700 145 L 740 145"/>
-  <text class="t" x="710" y="140">提交</text>
+  <text class="t" x="710" y="150.0">提交</text>
 
-  <rect class="step" x="760" y="95" width="200" height="100"/>
+  <rect class="step" x="760" y="95" width="200" height="110.0"/>
   <text class="h" x="790" y="125">4. Commit</text>
   <text class="t" x="790" y="150">提交新版本</text>
   <text class="t" x="790" y="170">更新 Version</text>
   <text class="t" x="790" y="185">持久化</text>
 
-  <rect class="box" x="40" y="215" width="920" height="310"/>
+  <rect class="box" x="40" y="215" width="920" height="345.0"/>
   <text class="h" x="70" y="250">实时写入场景的关键特点</text>
   <text class="t" x="70" y="275">1. Build 阶段：持续接收文档批次，将文档写入 MemSegment，持续构建索引，支持实时写入</text>
   <text class="t" x="70" y="295">2. Flush 阶段：当 MemSegment 达到一定大小或触发条件时，异步转储 MemSegment 到 DiskSegment，不阻塞写入</text>

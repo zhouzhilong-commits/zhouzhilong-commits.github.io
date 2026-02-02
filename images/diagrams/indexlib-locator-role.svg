@@ -23,35 +23,35 @@
   <text class="t" x="70" y="235">sourceIdx: 0</text>
   <text class="t" x="70" y="255">multiProgress: [...]</text>
 
-  <rect class="role" x="340" y="95" width="280" height="120"/>
+  <rect class="role" x="340" y="95" width="280" height="140.0"/>
   <text class="h" x="370" y="130">1. 增量更新</text>
   <text class="t" x="370" y="155">通过 IsFasterThan()</text>
   <text class="t" x="370" y="175">判断哪些数据已处理</text>
   <text class="t" x="370" y="195">避免重复处理</text>
   <text class="t" x="370" y="215">实现增量更新</text>
 
-  <rect class="role" x="640" y="95" width="320" height="120"/>
+  <rect class="role" x="640" y="95" width="320" height="140.0"/>
   <text class="h" x="670" y="130">2. 数据一致性</text>
   <text class="t" x="670" y="155">保证数据不重复</text>
   <text class="t" x="670" y="175">不丢失</text>
   <text class="t" x="670" y="195">支持多数据源场景</text>
   <text class="t" x="670" y="215">保证数据一致性</text>
 
-  <rect class="role" x="340" y="235" width="280" height="120"/>
+  <rect class="role" x="340" y="235" width="280" height="140.0"/>
   <text class="h" x="370" y="270">3. 进度追踪</text>
   <text class="t" x="370" y="295">记录每个 HashId</text>
   <text class="t" x="370" y="315">的处理进度</text>
   <text class="t" x="370" y="335">支持分片处理</text>
   <text class="t" x="370" y="355">追踪处理进度</text>
 
-  <rect class="role" x="640" y="235" width="320" height="120"/>
+  <rect class="role" x="640" y="235" width="320" height="140.0"/>
   <text class="h" x="670" y="270">4. 并发控制</text>
   <text class="t" x="670" y="295">通过 concurrentIdx</text>
   <text class="t" x="670" y="315">处理时间戳相同的情况</text>
   <text class="t" x="670" y="335">支持并发处理</text>
   <text class="t" x="670" y="355">保证顺序性</text>
 
-  <rect class="box" x="40" y="375" width="920" height="80"/>
+  <rect class="box" x="40" y="375" width="920" height="115.0"/>
   <text class="h" x="70" y="410">Locator 的关键作用</text>
   <text class="t" x="70" y="435">1. 增量更新：通过 IsFasterThan() 判断哪些数据已处理，避免重复处理，实现增量更新</text>
   <text class="t" x="70" y="455">2. 数据一致性：保证数据不重复、不丢失，支持多数据源场景，保证数据一致性</text>

@@ -13,14 +13,14 @@
 
   <text class="title" x="40" y="42">自定义索引类型：支持扩展新的索引类型</text>
   <text class="muted" x="40" y="66">IndexLib 支持扩展新的索引类型，通过实现 IIndexConfig 接口。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">IIndexConfig</text>
-  <text class="t" x="70" y="140">实现 IIndexConfig 接口，定义索引配置</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">实现 IIndexConfig 接口，定义索引配置</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">TabletReader/Writer</text>
-  <text class="t" x="70" y="210">实现对应的 TabletReader 和 TabletWriter</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">实现对应的 TabletReader 和 TabletWriter</text>
+  <rect class="item" x="40" y="235" width="920" height="110.0"/>
   <text class="h" x="70" y="260">索引构建</text>
-  <text class="t" x="70" y="280">实现索引构建逻辑，支持自定义索引结构</text>
+  <text class="t" x="70" y="285.0">实现索引构建逻辑，支持自定义索引结构</text>
   <text class="muted" x="40" y="325">理解 自定义索引类型，是掌握 IndexLib 机制的关键</text>
 </svg>

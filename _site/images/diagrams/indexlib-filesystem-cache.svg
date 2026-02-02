@@ -53,7 +53,7 @@
   <text class="t" x="790" y="255">性能优化</text>
   <text class="t" x="790" y="275">提高利用率</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">文件系统缓存的关键机制</text>
   <text class="t" x="70" y="375">1. 文件缓存：缓存文件内容，减少磁盘读取，提高读取性能，使用 LRU 策略管理缓存</text>
   <text class="t" x="70" y="395">2. 元数据缓存：缓存文件元数据，减少元数据查询，提高查询性能，快速访问文件信息</text>

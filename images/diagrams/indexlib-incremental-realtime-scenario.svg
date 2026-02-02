@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">实时写入场景中的增量更新：通过 Locator 判断数据是否已处理</text>
   <text class="muted" x="40" y="66">在实时写入场景中，实时接收数据流，通过 Locator 判断哪些数据已处理，只处理新数据，实现实时增量更新。</text>
 
-  <rect class="data" x="40" y="95" width="200" height="120"/>
+  <rect class="data" x="40" y="95" width="200" height="140.0"/>
   <text class="h" x="70" y="130">数据流</text>
   <text class="t" x="70" y="155">实时接收数据</text>
   <text class="t" x="70" y="175">timestamp: 150</text>
@@ -28,7 +28,7 @@
 
   <path class="arrow" d="M 240 155 L 280 155"/>
 
-  <rect class="locator" x="300" y="95" width="200" height="120"/>
+  <rect class="locator" x="300" y="95" width="200" height="140.0"/>
   <text class="h" x="330" y="130">检查 Locator</text>
   <text class="t" x="330" y="155">IsFasterThan()</text>
   <text class="t" x="330" y="175">当前 Locator:</text>
@@ -37,7 +37,7 @@
 
   <path class="arrow" d="M 500 155 L 540 155"/>
 
-  <rect class="process" x="560" y="95" width="200" height="120"/>
+  <rect class="process" x="560" y="95" width="200" height="140.0"/>
   <text class="h" x="590" y="130">处理新数据</text>
   <text class="t" x="590" y="155">只处理 timestamp</text>
   <text class="t" x="590" y="175">&gt; 100 的数据</text>
@@ -58,7 +58,7 @@
   <text class="t" x="850" y="315">更新 Version</text>
   <text class="t" x="850" y="335">的 Locator</text>
 
-  <rect class="box" x="40" y="375" width="900" height="100"/>
+  <rect class="box" x="40" y="375" width="900" height="160.0"/>
   <text class="h" x="70" y="410">实时写入场景中的增量更新流程</text>
   <text class="t" x="70" y="435">1. 实时接收数据：实时接收数据流，获取数据的 timestamp 等信息</text>
   <text class="t" x="70" y="455">2. 检查 Locator：通过 IsFasterThan() 判断数据是否已处理，如果已处理则跳过</text>

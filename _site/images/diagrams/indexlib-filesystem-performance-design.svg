@@ -53,7 +53,7 @@
   <text class="t" x="790" y="255">提高响应速度</text>
   <text class="t" x="790" y="275">提高用户体验</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">文件系统性能优化设计的关键要点</text>
   <text class="t" x="70" y="375">1. 缓存机制：通过文件缓存、元数据缓存、预取缓存等机制提高文件访问性能，使用 LRU 策略管理缓存，提高命中率</text>
   <text class="t" x="70" y="395">2. 预取机制：通过预取文件数据减少读取延迟，提高读取性能，预测访问模式，提前加载数据，提高命中率</text>

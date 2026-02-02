@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">批量更新场景中的增量更新：批量处理数据，避免重复处理</text>
   <text class="muted" x="40" y="66">在批量更新场景中，批量处理数据，通过 Locator 避免重复处理，提高处理效率，支持大规模数据更新。</text>
 
-  <rect class="data" x="40" y="95" width="200" height="120"/>
+  <rect class="data" x="40" y="95" width="200" height="140.0"/>
   <text class="h" x="70" y="130">数据源</text>
   <text class="t" x="70" y="155">批量读取数据</text>
   <text class="t" x="70" y="175">timestamp: 50-300</text>
@@ -28,7 +28,7 @@
 
   <path class="arrow" d="M 240 155 L 280 155"/>
 
-  <rect class="locator" x="300" y="95" width="200" height="120"/>
+  <rect class="locator" x="300" y="95" width="200" height="140.0"/>
   <text class="h" x="330" y="130">检查 Locator</text>
   <text class="t" x="330" y="155">IsFasterThan()</text>
   <text class="t" x="330" y="175">当前 Locator:</text>
@@ -59,11 +59,11 @@
 
   <path class="arrow" d="M 850 355 L 850 385"/>
 
-  <rect class="process" x="820" y="395" width="120" height="60"/>
+  <rect class="process" x="820" y="395" width="120" height="80.0"/>
   <text class="h" x="850" y="430">批量 Commit</text>
   <text class="t" x="850" y="455">更新 Version</text>
 
-  <rect class="box" x="40" y="375" width="760" height="100"/>
+  <rect class="box" x="40" y="375" width="760" height="160.0"/>
   <text class="h" x="70" y="410">批量更新场景中的增量更新流程</text>
   <text class="t" x="70" y="435">1. 读取数据源：从数据源批量读取数据，获取数据的 timestamp 等信息</text>
   <text class="t" x="70" y="455">2. 检查 Locator：通过 IsFasterThan() 判断哪些数据已处理，过滤已处理的数据</text>

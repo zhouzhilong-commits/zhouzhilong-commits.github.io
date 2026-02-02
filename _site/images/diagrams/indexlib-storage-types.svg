@@ -53,7 +53,7 @@
   <text class="t" x="790" y="255">适用于复杂场景</text>
   <text class="t" x="790" y="275">灵活适应需求</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">存储类型的关键特点</text>
   <text class="t" x="70" y="375">1. 本地存储：基于本地文件系统，适用于单机场景，性能最高，延迟最低</text>
   <text class="t" x="70" y="395">2. 分布式存储：基于分布式文件系统（HDFS、OSS 等），适用于分布式场景，支持大规模存储，高可用</text>

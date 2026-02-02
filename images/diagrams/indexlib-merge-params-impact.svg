@@ -13,17 +13,17 @@
 
   <text class="title" x="40" y="42">合并参数的影响：maxDocCount、afterMergeMaxDocCount 等参数的作用</text>
   <text class="muted" x="40" y="66">合并参数对合并行为有重要影响，包括 maxDocCount、afterMergeMaxDocCount、afterMergeMaxSegmentCount、skipSingleMergedSegment 等。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">maxDocCount</text>
-  <text class="t" x="70" y="140">控制哪些 Segment 参与合并，较大的值会包含更多 Segment</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">控制哪些 Segment 参与合并，较大的值会包含更多 Segment</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">afterMergeMaxDocCount</text>
-  <text class="t" x="70" y="210">控制合并后 Segment 的大小，较大的值会产生更大的 Segment</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">控制合并后 Segment 的大小，较大的值会产生更大的 Segment</text>
+  <rect class="item" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">afterMergeMaxSegmentCount</text>
-  <text class="t" x="70" y="280">控制合并后 Segment 的数量，较小的值会产生更少的 Segment</text>
-  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">控制合并后 Segment 的数量，较小的值会产生更少的 Segment</text>
+  <rect class="item" x="40" y="305" width="920" height="110.0"/>
   <text class="h" x="70" y="330">skipSingleMergedSegment</text>
-  <text class="t" x="70" y="350">控制是否跳过单个已合并的 Segment，避免重复合并</text>
+  <text class="t" x="70" y="355.0">控制是否跳过单个已合并的 Segment，避免重复合并</text>
   <text class="muted" x="40" y="395">理解 合并参数的影响，是掌握 Segment 合并机制的关键</text>
 </svg>

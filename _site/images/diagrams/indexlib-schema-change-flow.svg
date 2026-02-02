@@ -44,7 +44,7 @@
   <text class="t" x="850" y="155">更新 SchemaId</text>
   <text class="t" x="850" y="175">和 SchemaVersionRoadMap</text>
 
-  <rect class="box" x="40" y="215" width="900" height="250"/>
+  <rect class="box" x="40" y="215" width="900" height="285.0"/>
   <text class="h" x="70" y="250">Schema 变更流程的关键步骤</text>
   <text class="t" x="70" y="275">1. 检查兼容性：检查新 Schema 与旧 Schema 的兼容性，保证数据一致性，支持向前兼容和向后兼容</text>
   <text class="t" x="70" y="295">2. Seal 当前 Segment：Seal 当前构建中的 Segment，标记为只读，不再接收新文档</text>

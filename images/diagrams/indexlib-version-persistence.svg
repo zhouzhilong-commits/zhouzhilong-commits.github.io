@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">Version 持久化：通过 Fence 机制保证原子性</text>
   <text class="muted" x="40" y="66">Version 的持久化通过 Fence 机制保证原子性，要么全部成功，要么全部失败，保证版本提交的一致性。</text>
 
-  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <rect class="step" x="40" y="95" width="200" height="120.0"/>
   <text class="h" x="70" y="130">1. 创建 Fence 目录</text>
   <text class="t" x="70" y="155">创建临时目录</text>
   <text class="t" x="70" y="175">fence_xxx/</text>
@@ -27,7 +27,7 @@
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="fence" x="300" y="95" width="200" height="100"/>
+  <rect class="fence" x="300" y="95" width="200" height="120.0"/>
   <text class="h" x="330" y="130">2. 写入 Version</text>
   <text class="t" x="330" y="155">写入 Fence 目录</text>
   <text class="t" x="330" y="175">version.0 文件</text>
@@ -35,7 +35,7 @@
 
   <path class="arrow" d="M 500 145 L 540 145"/>
 
-  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <rect class="step" x="560" y="95" width="200" height="120.0"/>
   <text class="h" x="590" y="130">3. 原子切换</text>
   <text class="t" x="590" y="155">重命名目录</text>
   <text class="t" x="590" y="175">fence_xxx → version.0</text>
@@ -43,13 +43,13 @@
 
   <path class="arrow" d="M 760 145 L 800 145"/>
 
-  <rect class="version" x="820" y="95" width="120" height="100"/>
+  <rect class="version" x="820" y="95" width="120" height="120.0"/>
   <text class="h" x="850" y="130">4. 正式版本</text>
   <text class="t" x="850" y="155">version.0/</text>
   <text class="t" x="850" y="175">可以查询</text>
   <text class="t" x="850" y="195">支持 Reopen</text>
 
-  <rect class="box" x="40" y="215" width="900" height="250"/>
+  <rect class="box" x="40" y="215" width="900" height="285.0"/>
   <text class="h" x="70" y="250">Version 持久化的关键步骤</text>
   <text class="t" x="70" y="275">1. 创建 Fence 目录：在提交前创建临时目录（Fence），用于写入 Version</text>
   <text class="t" x="70" y="295">2. 写入 Version：将 Version 写入 Fence 目录，包含 Segment 列表、Locator、SchemaId 等信息</text>

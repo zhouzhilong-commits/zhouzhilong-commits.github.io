@@ -17,17 +17,17 @@
   <rect class="interface" x="40" y="95" width="920" height="320"/>
   <text class="h" x="70" y="130">IIndexReader</text>
 
-  <rect class="method" x="70" y="155" width="400" height="80"/>
+  <rect class="method" x="70" y="155" width="400" height="90.0"/>
   <text class="h" x="90" y="180">Open()</text>
   <text class="t" x="90" y="205">初始化 IndexReader</text>
   <text class="t" x="90" y="225">加载索引数据</text>
 
-  <rect class="method" x="490" y="155" width="400" height="80"/>
+  <rect class="method" x="490" y="155" width="400" height="90.0"/>
   <text class="h" x="510" y="180">Search()</text>
   <text class="t" x="510" y="205">根据查询条件查询索引</text>
   <text class="t" x="510" y="225">返回查询结果</text>
 
-  <rect class="method" x="70" y="255" width="400" height="80"/>
+  <rect class="method" x="70" y="255" width="400" height="90.0"/>
   <text class="h" x="90" y="280">GetStatistics()</text>
   <text class="t" x="90" y="305">获取索引统计信息</text>
   <text class="t" x="90" y="325">文档数、term 数等</text>

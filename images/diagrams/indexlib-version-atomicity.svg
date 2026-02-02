@@ -14,7 +14,7 @@
   <text class="title" x="40" y="42">版本管理的原子性：通过 Fence 机制保证版本提交的原子性</text>
   <text class="muted" x="40" y="66">版本管理的原子性通过 Fence 机制保证，要么全部成功，要么全部失败，保证版本提交的一致性。</text>
 
-  <rect class="fence" x="40" y="95" width="280" height="200"/>
+  <rect class="fence" x="40" y="95" width="280" height="240.0"/>
   <text class="h" x="70" y="130">Fence 机制</text>
   <text class="t" x="70" y="155">1. 创建 Fence 目录</text>
   <text class="t" x="70" y="175">创建临时目录</text>
@@ -26,7 +26,7 @@
   <text class="t" x="70" y="295">重命名目录</text>
   <text class="t" x="70" y="315">fence_xxx → version.0</text>
 
-  <rect class="atomic" x="340" y="95" width="620" height="200"/>
+  <rect class="atomic" x="340" y="95" width="620" height="220.0"/>
   <text class="h" x="370" y="130">原子性保证</text>
   <text class="t" x="370" y="155">要么全部成功：</text>
   <text class="t" x="390" y="175">- Version 写入成功</text>
@@ -37,7 +37,7 @@
   <text class="t" x="390" y="275">- 不影响已有版本</text>
   <text class="t" x="390" y="295">- 可以重试</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">版本管理原子性的关键设计</text>
   <text class="t" x="70" y="375">1. Fence 机制：通过 Fence 目录保证版本提交的原子性，要么全部成功，要么全部失败</text>
   <text class="t" x="70" y="395">2. 原子切换：原子性地将 Fence 目录切换为正式版本目录，保证版本提交的原子性</text>

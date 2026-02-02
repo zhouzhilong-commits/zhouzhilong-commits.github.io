@@ -24,7 +24,7 @@
 
   <path class="arrow" d="M 200 145 L 240 145"/>
 
-  <rect class="step" x="260" y="95" width="200" height="100"/>
+  <rect class="step" x="260" y="95" width="200" height="120.0"/>
   <text class="h" x="290" y="130">2. 获取 IndexReader</text>
   <text class="t" x="290" y="155">MultiFieldIndexReader</text>
   <text class="t" x="290" y="175">DeletionMapReader</text>
@@ -63,7 +63,7 @@
   <text class="h" x="590" y="270">7. 返回结果</text>
   <text class="t" x="590" y="295">JSON 格式</text>
 
-  <rect class="box" x="740" y="235" width="180" height="220"/>
+  <rect class="box" x="740" y="235" width="180" height="240.0"/>
   <text class="h" x="770" y="270">Search 的关键点</text>
   <text class="t" x="770" y="295">1. 解析查询：将 JSON 查询解析为内部查询对象</text>
   <text class="t" x="770" y="315">2. 获取 IndexReader：获取 MultiFieldIndexReader、DeletionMapReader 等</text>

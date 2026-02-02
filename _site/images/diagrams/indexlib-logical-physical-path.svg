@@ -55,7 +55,7 @@
   <text class="t" x="670" y="255">不包含版本信息</text>
   <text class="t" x="670" y="275">支持透明访问</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">逻辑路径与物理路径的关键设计</text>
   <text class="t" x="70" y="375">1. 物理路径：文件在磁盘上的实际路径，包含版本和 Segment 信息，如 /data/index/version.0/segment_1/index/title.idx</text>
   <text class="t" x="70" y="395">2. Mount 操作：通过 MountVersion()、MountDir()、MountFile() 等操作将物理路径映射到逻辑路径，支持版本管理和 Segment 管理</text>

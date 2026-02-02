@@ -13,20 +13,20 @@
 
   <text class="title" x="40" y="42">NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件</text>
   <text class="muted" x="40" y="66">NormalTable 的架构包括 NormalTabletReader、NormalTabletWriter、MultiFieldIndexReader、AttributeReader、PrimaryKeyReader 等组件。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">NormalTabletReader</text>
-  <text class="t" x="70" y="140">标准表查询器，支持全文检索和属性查询</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">标准表查询器，支持全文检索和属性查询</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">NormalTabletWriter</text>
-  <text class="t" x="70" y="210">标准表写入器，支持文档构建和索引构建</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">标准表写入器，支持文档构建和索引构建</text>
+  <rect class="item" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">MultiFieldIndexReader</text>
-  <text class="t" x="70" y="280">多字段倒排索引 Reader</text>
-  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">多字段倒排索引 Reader</text>
+  <rect class="item" x="40" y="305" width="920" height="70"/>
   <text class="h" x="70" y="330">AttributeReader</text>
-  <text class="t" x="70" y="350">正排索引 Reader</text>
-  <rect class="item" x="40" y="375" width="920" height="60"/>
+  <text class="t" x="70" y="355">正排索引 Reader</text>
+  <rect class="item" x="40" y="375" width="920" height="110.0"/>
   <text class="h" x="70" y="400">PrimaryKeyReader</text>
-  <text class="t" x="70" y="420">主键索引 Reader</text>
+  <text class="t" x="70" y="425.0">主键索引 Reader</text>
   <text class="muted" x="40" y="465">理解 NormalTable 的架构，是掌握 IndexLib 机制的关键</text>
 </svg>

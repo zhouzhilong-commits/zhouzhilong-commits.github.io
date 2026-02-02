@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">TabletWriter 与 Segment 交互：从 Open 到 Build 的完整流程</text>
   <text class="muted" x="40" y="66">TabletWriter 管理 MemSegment 的创建、构建、转储，与 TabletData 协同工作。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="120.0"/>
   <text class="h" x="70" y="130">1. Open</text>
   <text class="t" x="70" y="155">初始化 TabletData</text>
   <text class="t" x="70" y="175">创建 MemSegment</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="step" x="270" y="95" width="180" height="100"/>
+  <rect class="step" x="270" y="95" width="180" height="120.0"/>
   <text class="h" x="300" y="130">2. Build</text>
   <text class="t" x="300" y="155">接收文档批次</text>
   <text class="t" x="300" y="175">写入 MemSegment</text>
@@ -45,7 +45,7 @@
   <text class="t" x="760" y="155">创建转储器</text>
   <text class="t" x="760" y="175">准备转储任务</text>
 
-  <rect class="box" x="40" y="215" width="920" height="310"/>
+  <rect class="box" x="40" y="215" width="920" height="320.0"/>
   <text class="h" x="70" y="250">详细交互流程</text>
   <text class="t" x="70" y="275">1. Open：TabletWriter::Open() 初始化 TabletData，通过 ITabletFactory 创建 MemSegment，</text>
   <text class="t" x="90" y="295">计算 baseDocId（前面所有 Segment 的 docCount 之和），设置 _normalBuildingSegment 和 _buildingSegmentBaseDocId</text>

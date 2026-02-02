@@ -18,7 +18,7 @@
   <text class="title" x="40" y="42">Locator 比较：判断数据是否已处理的逻辑</text>
   <text class="muted" x="40" y="66">通过 IsFasterThan() 比较两个 Locator，判断数据是否已处理，避免重复处理。</text>
 
-  <rect class="locator" x="40" y="95" width="400" height="150"/>
+  <rect class="locator" x="40" y="95" width="400" height="160.0"/>
   <text class="h" x="70" y="130">Locator A</text>
   <text class="t" x="70" y="155">timestamp: 100</text>
   <text class="t" x="70" y="175">hashId: 0, 1</text>
@@ -29,7 +29,7 @@
   <path class="arrow" d="M 440 170 L 500 170"/>
   <text class="muted" x="470" y="165" text-anchor="middle">IsFasterThan()</text>
 
-  <rect class="locator" x="510" y="95" width="400" height="150"/>
+  <rect class="locator" x="510" y="95" width="400" height="160.0"/>
   <text class="h" x="540" y="130">Locator B</text>
   <text class="t" x="540" y="155">timestamp: 200</text>
   <text class="t" x="540" y="175">hashId: 0, 1, 2</text>
@@ -37,7 +37,7 @@
   <text class="t" x="540" y="215">的数据</text>
   <text class="t" x="540" y="235">包含 3 个分片</text>
 
-  <rect class="result" x="40" y="265" width="870" height="200"/>
+  <rect class="result" x="40" y="265" width="870" height="210.0"/>
   <text class="h" x="70" y="300">比较结果：LCR_FULLY_FASTER</text>
   <text class="t" x="70" y="325">B 比 A 快（FULLY_FASTER），说明：</text>
   <text class="t" x="90" y="350">- B 的 timestamp (200) > A 的 timestamp (100)</text>

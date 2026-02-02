@@ -38,7 +38,7 @@
   <text class="t" x="520" y="305">- 文档已排序</text>
   <text class="t" x="520" y="325">- DocId 已重新分配</text>
 
-  <rect class="box" x="70" y="370" width="870" height="60"/>
+  <rect class="box" x="70" y="370" width="870" height="100.0"/>
   <text class="h" x="100" y="400">SegmentMergePlan 的关键字段</text>
   <text class="t" x="100" y="425">- _srcSegments: 源 Segment 列表，包含要合并的 Segment ID</text>
   <text class="t" x="100" y="450">- _targetSegment: 目标 Segment ID，合并后的 Segment ID</text>

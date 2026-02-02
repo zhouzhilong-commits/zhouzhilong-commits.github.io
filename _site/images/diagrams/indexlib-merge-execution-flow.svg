@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 610">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -13,23 +13,23 @@
 
   <text class="title" x="40" y="42">合并执行流程：从创建合并计划到提交新版本</text>
   <text class="muted" x="40" y="66">合并执行流程包括检查合并条件、创建合并计划、提交合并任务、执行合并操作、创建新版本、提交新版本等步骤。</text>
-  <rect class="step" x="40" y="95" width="920" height="60"/>
+  <rect class="step" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">1. 检查合并条件</text>
-  <text class="t" x="70" y="140">判断是否需要合并（Segment 数量、大小等）</text>
-  <rect class="step" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">判断是否需要合并（Segment 数量、大小等）</text>
+  <rect class="step" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">2. 创建合并计划</text>
-  <text class="t" x="70" y="210">调用 MergeStrategy 创建合并计划</text>
-  <rect class="step" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">调用 MergeStrategy 创建合并计划</text>
+  <rect class="step" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">3. 提交合并任务</text>
-  <text class="t" x="70" y="280">将合并任务提交到 MergeController</text>
-  <rect class="step" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">将合并任务提交到 MergeController</text>
+  <rect class="step" x="40" y="305" width="920" height="70"/>
   <text class="h" x="70" y="330">4. 执行合并操作</text>
-  <text class="t" x="70" y="350">执行 IndexMergeOperation，合并 Segment</text>
-  <rect class="step" x="40" y="375" width="920" height="60"/>
+  <text class="t" x="70" y="355">执行 IndexMergeOperation，合并 Segment</text>
+  <rect class="step" x="40" y="375" width="920" height="70"/>
   <text class="h" x="70" y="400">5. 创建新版本</text>
-  <text class="t" x="70" y="420">合并完成后创建新版本</text>
-  <rect class="step" x="40" y="445" width="920" height="60"/>
-  <text class="h" x="70" y="470">6. 提交新版本</text>
-  <text class="t" x="70" y="490">提交新版本，更新 TabletData</text>
-  <text class="muted" x="40" y="535">理解 合并执行流程，是掌握 Segment 合并机制的关键</text>
+  <text class="t" x="70" y="425">合并完成后创建新版本</text>
+  <rect class="step" x="40" y="455" width="920" height="110.0"/>
+  <text class="h" x="70" y="480">6. 提交新版本</text>
+  <text class="t" x="70" y="505.0">提交新版本，更新 TabletData</text>
+  <text class="muted" x="40" y="545">理解 合并执行流程，是掌握 Segment 合并机制的关键</text>
 </svg>

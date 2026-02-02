@@ -22,31 +22,31 @@
   <text class="h" x="70" y="130">Tablet（索引表）</text>
   <text class="t" x="70" y="155">TabletData 管理多个 Segment</text>
 
-  <rect class="segment" x="70" y="180" width="200" height="100"/>
+  <rect class="segment" x="70" y="180" width="200" height="115.0"/>
   <text class="h" x="90" y="210">Segment 1</text>
   <text class="t" x="90" y="235">MemSegment</text>
   <text class="t" x="90" y="255">ST_BUILDING</text>
   <text class="t" x="90" y="275">docCount: 1000</text>
 
-  <rect class="segment" x="290" y="180" width="200" height="100"/>
+  <rect class="segment" x="290" y="180" width="200" height="115.0"/>
   <text class="h" x="310" y="210">Segment 2</text>
   <text class="t" x="310" y="235">DiskSegment</text>
   <text class="t" x="310" y="255">ST_BUILT</text>
   <text class="t" x="310" y="275">docCount: 2000</text>
 
-  <rect class="segment" x="510" y="180" width="200" height="100"/>
+  <rect class="segment" x="510" y="180" width="200" height="115.0"/>
   <text class="h" x="530" y="210">Segment 3</text>
   <text class="t" x="530" y="235">DiskSegment</text>
   <text class="t" x="530" y="255">ST_BUILT</text>
   <text class="t" x="530" y="275">docCount: 1500</text>
 
-  <rect class="segment" x="730" y="180" width="200" height="100"/>
+  <rect class="segment" x="730" y="180" width="200" height="115.0"/>
   <text class="h" x="750" y="210">Segment 4</text>
   <text class="t" x="750" y="235">DiskSegment</text>
   <text class="t" x="750" y="255">ST_BUILT</text>
   <text class="t" x="750" y="275">docCount: 3000</text>
 
-  <rect class="box" x="70" y="300" width="860" height="100"/>
+  <rect class="box" x="70" y="300" width="860" height="120.0"/>
   <text class="h" x="100" y="335">组织特点</text>
   <text class="t" x="100" y="360">- Segment 列表有序：按照 SegmentId 排序，保证查询时的顺序</text>
   <text class="t" x="100" y="380">- 多种 Segment 类型：MemSegment（构建中）、DiskSegment（已构建）</text>

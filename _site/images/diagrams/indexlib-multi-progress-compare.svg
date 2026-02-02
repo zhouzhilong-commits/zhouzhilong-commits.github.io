@@ -13,14 +13,14 @@
 
   <text class="title" x="40" y="42">多进度比较：比较多个 Progress 的进度</text>
   <text class="muted" x="40" y="66">多进度比较包括比较不同 hashId 范围的进度，判断整体进度。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">Progress 比较</text>
-  <text class="t" x="70" y="140">比较不同 hashId 范围的 Progress，判断各自的进度</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">比较不同 hashId 范围的 Progress，判断各自的进度</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">整体进度</text>
-  <text class="t" x="70" y="210">根据所有 Progress 判断整体进度</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">根据所有 Progress 判断整体进度</text>
+  <rect class="item" x="40" y="235" width="920" height="110.0"/>
   <text class="h" x="70" y="260">部分进度</text>
-  <text class="t" x="70" y="280">支持部分 Progress 的进度判断</text>
+  <text class="t" x="70" y="285.0">支持部分 Progress 的进度判断</text>
   <text class="muted" x="40" y="325">理解 多进度比较，是掌握 Locator 机制的关键</text>
 </svg>

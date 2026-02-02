@@ -13,17 +13,17 @@
 
   <text class="title" x="40" y="42">NormalTable 的查询：全文检索、属性查询、主键查询等</text>
   <text class="muted" x="40" y="66">NormalTable 支持全文检索、属性查询、主键查询、复合查询等多种查询方式。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">全文检索</text>
-  <text class="t" x="70" y="140">通过倒排索引进行全文检索</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">通过倒排索引进行全文检索</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">属性查询</text>
-  <text class="t" x="70" y="210">通过正排索引进行属性查询</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">通过正排索引进行属性查询</text>
+  <rect class="item" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">主键查询</text>
-  <text class="t" x="70" y="280">通过主键索引进行主键查询</text>
-  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">通过主键索引进行主键查询</text>
+  <rect class="item" x="40" y="305" width="920" height="110.0"/>
   <text class="h" x="70" y="330">复合查询</text>
-  <text class="t" x="70" y="350">支持多种查询方式的组合</text>
+  <text class="t" x="70" y="355.0">支持多种查询方式的组合</text>
   <text class="muted" x="40" y="395">理解 NormalTable 的查询，是掌握 IndexLib 机制的关键</text>
 </svg>

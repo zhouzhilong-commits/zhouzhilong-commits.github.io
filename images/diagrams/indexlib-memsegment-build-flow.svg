@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">MemSegment 构建流程：从 Open 到 Build 的完整过程</text>
   <text class="muted" x="40" y="66">MemSegment 在内存中构建索引，支持实时写入和查询。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="120.0"/>
   <text class="h" x="70" y="130">1. Open</text>
   <text class="t" x="70" y="155">初始化构建资源</text>
   <text class="t" x="70" y="175">创建 Indexer</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="step" x="270" y="95" width="180" height="100"/>
+  <rect class="step" x="270" y="95" width="180" height="120.0"/>
   <text class="h" x="300" y="130">2. Build</text>
   <text class="t" x="300" y="155">接收文档批次</text>
   <text class="t" x="300" y="175">写入各个 Indexer</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 450 145 L 490 145"/>
 
-  <rect class="step" x="500" y="95" width="180" height="100"/>
+  <rect class="step" x="500" y="95" width="180" height="120.0"/>
   <text class="h" x="530" y="130">3. NeedDump</text>
   <text class="t" x="530" y="155">检查转储条件</text>
   <text class="t" x="530" y="175">内存/文档数阈值</text>
@@ -41,7 +41,7 @@
 
   <path class="arrow" d="M 680 145 L 720 145"/>
 
-  <rect class="step" x="730" y="95" width="230" height="100"/>
+  <rect class="step" x="730" y="95" width="230" height="120.0"/>
   <text class="h" x="760" y="130">4. CreateDumpParams</text>
   <text class="t" x="760" y="155">创建转储参数</text>
   <text class="t" x="760" y="175">计算内存成本</text>

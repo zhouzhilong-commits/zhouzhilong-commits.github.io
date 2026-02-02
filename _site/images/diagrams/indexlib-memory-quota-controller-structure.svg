@@ -17,32 +17,32 @@
   <rect class="controller" x="40" y="95" width="920" height="320"/>
   <text class="h" x="70" y="130">MemoryQuotaController</text>
 
-  <rect class="field" x="70" y="155" width="200" height="80"/>
+  <rect class="field" x="70" y="155" width="200" height="90.0"/>
   <text class="h" x="90" y="180">_name</text>
   <text class="t" x="90" y="205">std::string</text>
   <text class="t" x="90" y="225">控制器名称</text>
 
-  <rect class="field" x="290" y="155" width="200" height="80"/>
+  <rect class="field" x="290" y="155" width="200" height="90.0"/>
   <text class="h" x="310" y="180">_rootQuota</text>
   <text class="t" x="310" y="205">int64_t</text>
   <text class="t" x="310" y="225">根配额（根控制器）</text>
 
-  <rect class="field" x="510" y="155" width="200" height="80"/>
+  <rect class="field" x="510" y="155" width="200" height="90.0"/>
   <text class="h" x="530" y="180">_localFreeQuota</text>
   <text class="t" x="530" y="205">atomic&lt;int64_t&gt;</text>
   <text class="t" x="530" y="225">本地可用配额</text>
 
-  <rect class="field" x="730" y="155" width="200" height="80"/>
+  <rect class="field" x="730" y="155" width="200" height="90.0"/>
   <text class="h" x="750" y="180">_reservedParentQuota</text>
   <text class="t" x="750" y="205">atomic&lt;int64_t&gt;</text>
   <text class="t" x="750" y="225">从父控制器预留的配额</text>
 
-  <rect class="field" x="70" y="255" width="200" height="80"/>
+  <rect class="field" x="70" y="255" width="200" height="90.0"/>
   <text class="h" x="90" y="280">_parentController</text>
   <text class="t" x="90" y="305">shared_ptr&lt;MemoryQuotaController&gt;</text>
   <text class="t" x="90" y="325">父控制器</text>
 
-  <rect class="box" x="290" y="255" width="640" height="150"/>
+  <rect class="box" x="290" y="255" width="640" height="170.0"/>
   <text class="h" x="310" y="280">关键方法</text>
   <text class="t" x="310" y="305">- Allocate()：分配内存配额，会阻塞直到有可用配额</text>
   <text class="t" x="310" y="325">- TryAllocate()：尝试分配内存配额，不阻塞，立即返回结果</text>

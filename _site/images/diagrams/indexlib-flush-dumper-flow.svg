@@ -45,7 +45,7 @@
   <text class="t" x="850" y="155">创建完成</text>
   <text class="t" x="850" y="175">ST_BUILT</text>
 
-  <rect class="box" x="40" y="215" width="900" height="250"/>
+  <rect class="box" x="40" y="215" width="900" height="285.0"/>
   <text class="h" x="70" y="250">转储流程的详细步骤</text>
   <text class="t" x="70" y="275">1. 创建 Dumper：TabletWriter::CreateSegmentDumper() 创建 SegmentDumper，</text>
   <text class="t" x="90" y="295">传入 MemSegment、转储内存扩展大小等参数</text>

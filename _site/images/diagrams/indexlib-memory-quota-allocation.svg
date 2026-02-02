@@ -54,7 +54,7 @@
   <text class="t" x="750" y="235">实际使用配额</text>
   <text class="t" x="750" y="255">支持配额释放</text>
 
-  <rect class="box" x="40" y="315" width="920" height="150"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">内存配额分配的关键机制</text>
   <text class="t" x="70" y="375">1. 根控制器分配：根控制器有固定的总配额，分配给子控制器</text>
   <text class="t" x="70" y="395">2. 子控制器分配：子控制器从父控制器分配配额，支持配额预留和释放</text>

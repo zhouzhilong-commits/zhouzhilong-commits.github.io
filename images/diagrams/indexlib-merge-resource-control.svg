@@ -13,17 +13,17 @@
 
   <text class="title" x="40" y="42">合并的资源控制：CPU、内存、IO 资源的控制</text>
   <text class="muted" x="40" y="66">合并时的资源控制包括 CPU 控制、内存控制、IO 控制、并发控制等。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">CPU 控制</text>
-  <text class="t" x="70" y="140">限制合并时的 CPU 使用率，避免影响查询性能</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">限制合并时的 CPU 使用率，避免影响查询性能</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">内存控制</text>
-  <text class="t" x="70" y="210">限制合并时的内存使用，避免内存溢出</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">限制合并时的内存使用，避免内存溢出</text>
+  <rect class="item" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">IO 控制</text>
-  <text class="t" x="70" y="280">限制合并时的 IO 带宽，避免影响查询 IO</text>
-  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">限制合并时的 IO 带宽，避免影响查询 IO</text>
+  <rect class="item" x="40" y="305" width="920" height="110.0"/>
   <text class="h" x="70" y="330">并发控制</text>
-  <text class="t" x="70" y="350">控制同时进行的合并任务数量</text>
+  <text class="t" x="70" y="355.0">控制同时进行的合并任务数量</text>
   <text class="muted" x="40" y="395">理解 合并的资源控制，是掌握 Segment 合并机制的关键</text>
 </svg>

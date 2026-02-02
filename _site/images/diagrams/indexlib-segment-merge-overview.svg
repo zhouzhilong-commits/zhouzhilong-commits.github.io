@@ -56,7 +56,7 @@
   <text class="t" x="790" y="255">提交新版本</text>
   <text class="t" x="790" y="275">更新索引</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">Segment 合并的关键组件</text>
   <text class="t" x="70" y="375">1. MergeStrategy：合并策略，决定哪些 Segment 参与合并，支持多种合并策略（Optimize、Realtime、ShardBased 等）</text>
   <text class="t" x="70" y="395">2. MergePlan：合并计划，包含合并的 Segment 列表和目标 Segment 信息，支持多组 Segment 合并</text>

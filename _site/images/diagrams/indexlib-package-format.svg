@@ -48,7 +48,7 @@
   <text class="t" x="530" y="335">支持压缩</text>
   <text class="t" x="530" y="355">支持索引</text>
 
-  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <rect class="box" x="40" y="395" width="920" height="115.0"/>
   <text class="h" x="70" y="430">Package 格式的关键特点</text>
   <text class="t" x="70" y="455">1. 文件打包：将多个小文件打包成一个大文件，减少文件系统的小文件数量</text>
   <text class="t" x="70" y="475">2. 提高 IO 效率：批量 IO 操作，减少 IO 次数，提高 IO 效率</text>

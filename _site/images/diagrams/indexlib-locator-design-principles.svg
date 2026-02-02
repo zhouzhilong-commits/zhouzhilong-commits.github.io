@@ -13,14 +13,14 @@
 
   <text class="title" x="40" y="42">Locator 的设计原则：简单、高效、可靠的设计原则</text>
   <text class="muted" x="40" y="66">Locator 的设计原则包括简单性、高效性、可靠性等。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">简单性</text>
-  <text class="t" x="70" y="140">设计简单，易于理解和使用</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">设计简单，易于理解和使用</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">高效性</text>
-  <text class="t" x="70" y="210">性能高效，比较和序列化速度快</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">性能高效，比较和序列化速度快</text>
+  <rect class="item" x="40" y="235" width="920" height="110.0"/>
   <text class="h" x="70" y="260">可靠性</text>
-  <text class="t" x="70" y="280">可靠稳定，保证数据一致性</text>
+  <text class="t" x="70" y="285.0">可靠稳定，保证数据一致性</text>
   <text class="muted" x="40" y="325">理解 Locator 的设计原则，是掌握 Locator 机制的关键</text>
 </svg>

@@ -24,35 +24,35 @@
   <rect class="tablet" x="40" y="95" width="920" height="360"/>
   <text class="h" x="70" y="130">ITablet（索引表）</text>
 
-  <rect class="schema" x="70" y="150" width="200" height="120"/>
+  <rect class="schema" x="70" y="150" width="200" height="135.0"/>
   <text class="h" x="90" y="180">Schema</text>
   <text class="t" x="90" y="205">- 字段定义</text>
   <text class="t" x="90" y="225">- 索引类型</text>
   <text class="t" x="90" y="245">- 索引配置</text>
   <text class="t" x="90" y="265">GetTabletSchema()</text>
 
-  <rect class="tabletdata" x="290" y="150" width="240" height="120"/>
+  <rect class="tabletdata" x="290" y="150" width="240" height="135.0"/>
   <text class="h" x="310" y="180">TabletData</text>
   <text class="t" x="310" y="205">- Segments 列表</text>
   <text class="t" x="310" y="225">- ResourceMap</text>
   <text class="t" x="310" y="245">- 文档统计</text>
   <text class="t" x="310" y="265">内部管理</text>
 
-  <rect class="version" x="550" y="150" width="200" height="120"/>
+  <rect class="version" x="550" y="150" width="200" height="135.0"/>
   <text class="h" x="570" y="180">Version</text>
   <text class="t" x="570" y="205">- VersionId</text>
   <text class="t" x="570" y="225">- Segment 列表</text>
   <text class="t" x="570" y="245">- Locator</text>
   <text class="t" x="570" y="265">Commit() 管理</text>
 
-  <rect class="options" x="770" y="150" width="170" height="120"/>
+  <rect class="options" x="770" y="150" width="170" height="135.0"/>
   <text class="h" x="790" y="180">Options</text>
   <text class="t" x="790" y="205">- 构建配置</text>
   <text class="t" x="790" y="225">- 查询配置</text>
   <text class="t" x="790" y="245">- 内存配置</text>
   <text class="t" x="790" y="265">GetTabletOptions()</text>
 
-  <rect class="box" x="70" y="290" width="870" height="150"/>
+  <rect class="box" x="70" y="290" width="870" height="160.0"/>
   <text class="h" x="100" y="325">核心接口</text>
   <text class="t" x="100" y="350">Open() - 打开索引，加载 Schema、Options，初始化 TabletData</text>
   <text class="t" x="100" y="370">Build() - 构建索引，将文档写入 MemSegment</text>

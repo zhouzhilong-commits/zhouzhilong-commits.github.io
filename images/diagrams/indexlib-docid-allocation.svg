@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">文档 DocId 分配：全局 DocId 的计算和分配</text>
   <text class="muted" x="40" y="66">TabletWriter 在构建时为文档分配 DocId，通过 baseDocId + localDocId 计算全局 DocId。</text>
 
-  <rect class="doc" x="40" y="95" width="280" height="120"/>
+  <rect class="doc" x="40" y="95" width="280" height="140.0"/>
   <text class="h" x="70" y="130">文档批次</text>
   <text class="t" x="70" y="155">Document 1</text>
   <text class="t" x="70" y="175">Document 2</text>
@@ -28,7 +28,7 @@
 
   <path class="arrow" d="M 320 155 L 360 155"/>
 
-  <rect class="base" x="370" y="95" width="280" height="120"/>
+  <rect class="base" x="370" y="95" width="280" height="140.0"/>
   <text class="h" x="400" y="130">BaseDocId</text>
   <text class="t" x="400" y="155">_buildingSegmentBaseDocId</text>
   <text class="t" x="400" y="175">= 前面所有 Segment</text>

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -52,7 +52,7 @@
 
   <path class="arrow" d="M 320 275 L 400 275" stroke-dasharray="5,5"/>
 
-  <rect class="version" x="410" y="295" width="280" height="120"/>
+  <rect class="version" x="410" y="295" width="280" height="140.0"/>
   <text class="h" x="440" y="330">Version</text>
   <text class="t" x="440" y="355">版本管理</text>
   <text class="t" x="440" y="375">- VersionId：版本号</text>
@@ -67,7 +67,7 @@
   <text class="t" x="70" y="375">- Search：JSON 查询</text>
   <text class="t" x="70" y="395">- GetIndexReader：获取索引 Reader</text>
 
-  <rect class="box" x="40" y="435" width="920" height="90"/>
+  <rect class="box" x="40" y="435" width="920" height="100"/>
   <text class="h" x="70" y="470">组件交互流程</text>
   <text class="t" x="70" y="495">1. ITablet 管理 TabletData，TabletData 包含多个 Segment 和 Version</text>
   <text class="t" x="70" y="515">2. TabletReader 通过 TabletData 获取 Segment，然后查询各个 Segment 的 Indexer</text>

@@ -18,7 +18,7 @@
   <text class="title" x="40" y="42">查询流程概览：从 JSON 查询到结果返回的完整过程</text>
   <text class="muted" x="40" y="66">查询流程包括解析查询、获取 IndexReader、遍历 Segment、并行查询、合并结果、返回结果等步骤。</text>
 
-  <rect class="step" x="40" y="95" width="140" height="100"/>
+  <rect class="step" x="40" y="95" width="140" height="120.0"/>
   <text class="h" x="70" y="130">1. 解析查询</text>
   <text class="t" x="70" y="155">JSON → 查询对象</text>
   <text class="t" x="70" y="175">提取查询类型</text>
@@ -26,7 +26,7 @@
 
   <path class="arrow" d="M 180 145 L 220 145"/>
 
-  <rect class="step" x="240" y="95" width="160" height="100"/>
+  <rect class="step" x="240" y="95" width="160" height="120.0"/>
   <text class="h" x="270" y="130">2. 获取 IndexReader</text>
   <text class="t" x="270" y="155">根据索引类型</text>
   <text class="t" x="270" y="175">和名称获取</text>
@@ -58,7 +58,7 @@
   <text class="h" x="910" y="270">6. 返回结果</text>
   <text class="t" x="910" y="295">JSON 格式</text>
 
-  <rect class="box" x="40" y="355" width="920" height="120"/>
+  <rect class="box" x="40" y="355" width="920" height="180.0"/>
   <text class="h" x="70" y="390">查询流程的关键特点</text>
   <text class="t" x="70" y="415">1. 解析查询：将 JSON 格式的查询解析为内部查询对象，提取查询类型和条件</text>
   <text class="t" x="70" y="435">2. 获取 IndexReader：根据索引类型和名称获取 IndexReader，支持缓存机制</text>

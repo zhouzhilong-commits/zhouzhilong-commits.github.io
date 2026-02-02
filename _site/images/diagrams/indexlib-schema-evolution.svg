@@ -31,7 +31,7 @@
 
   <path class="arrow" d="M 320 195 L 360 195"/>
 
-  <rect class="schema" x="380" y="95" width="200" height="100"/>
+  <rect class="schema" x="380" y="95" width="200" height="120.0"/>
   <text class="h" x="410" y="130">Schema 变更</text>
   <text class="t" x="410" y="155">Schema 1 → Schema 2</text>
   <text class="t" x="410" y="175">添加新字段</text>
@@ -49,7 +49,7 @@
   <text class="t" x="670" y="255">SchemaVersionRoadMap: [1, 2]</text>
   <text class="t" x="670" y="275">支持 Schema 演进</text>
 
-  <rect class="box" x="40" y="315" width="920" height="150"/>
+  <rect class="box" x="40" y="315" width="920" height="185.0"/>
   <text class="h" x="70" y="350">Schema 演进的关键机制</text>
   <text class="t" x="70" y="375">1. Segment SchemaId：每个 Segment 记录自己的 SchemaId，支持不同 Segment 使用不同的 Schema</text>
   <text class="t" x="70" y="395">2. Schema 版本映射：Version 维护 SchemaVersionRoadMap，记录 Schema 版本映射关系</text>

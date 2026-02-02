@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">Commit 流程：从版本准备到持久化的完整过程</text>
   <text class="muted" x="40" y="66">Commit 阶段提交新版本，更新 Version，持久化到磁盘，包括检查提交条件、准备版本信息、创建 Fence、持久化 Version 等步骤。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="120.0"/>
   <text class="h" x="70" y="130">1. 检查提交条件</text>
   <text class="t" x="70" y="155">NeedCommit()</text>
   <text class="t" x="70" y="175">有新的 Segment</text>
@@ -27,7 +27,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <rect class="step" x="280" y="95" width="180" height="120.0"/>
   <text class="h" x="310" y="130">2. 准备版本信息</text>
   <text class="t" x="310" y="155">收集 Segment 列表</text>
   <text class="t" x="310" y="175">准备 Locator</text>
@@ -54,7 +54,7 @@
   <text class="t" x="790" y="295">更新 Version</text>
   <text class="t" x="790" y="315">支持查询</text>
 
-  <rect class="box" x="40" y="355" width="920" height="170"/>
+  <rect class="box" x="40" y="355" width="920" height="205.0"/>
   <text class="h" x="70" y="390">Commit 流程的关键步骤</text>
   <text class="t" x="70" y="415">1. 检查提交条件：判断是否需要提交（有新的 Segment、有数据变更等）</text>
   <text class="t" x="70" y="435">2. 准备版本信息：收集所有已构建的 Segment，准备 Locator，更新 VersionId</text>

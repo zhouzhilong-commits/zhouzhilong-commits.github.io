@@ -26,7 +26,7 @@
   <text class="t" x="70" y="175">文档列表</text>
 
   <path class="arrow" d="M 220 145 L 260 145"/>
-  <text class="t" x="230" y="140">Build</text>
+  <text class="t" x="230" y="155.0">Build</text>
 
   <rect class="mem" x="280" y="95" width="180" height="100"/>
   <text class="h" x="310" y="130">MemSegment</text>
@@ -34,7 +34,7 @@
   <text class="t" x="310" y="175">ST_BUILDING</text>
 
   <path class="arrow" d="M 460 145 L 500 145"/>
-  <text class="t" x="470" y="140">Flush</text>
+  <text class="t" x="470" y="155.0">Flush</text>
 
   <rect class="disk" x="520" y="95" width="180" height="100"/>
   <text class="h" x="550" y="130">DiskSegment</text>
@@ -42,9 +42,9 @@
   <text class="t" x="550" y="175">ST_BUILT</text>
 
   <path class="arrow" d="M 700 145 L 740 145"/>
-  <text class="t" x="710" y="140">Seal</text>
+  <text class="t" x="710" y="155.0">Seal</text>
 
-  <rect class="disk" x="760" y="95" width="180" height="100"/>
+  <rect class="disk" x="760" y="95" width="180" height="140.0"/>
   <text class="h" x="790" y="130">Sealed Segment</text>
   <text class="t" x="790" y="155">只读 Segment</text>
   <text class="t" x="790" y="175">准备合并</text>
@@ -52,7 +52,7 @@
   <path class="arrow" d="M 790 195 L 790 225"/>
   <text class="t" x="750" y="215">Commit</text>
 
-  <rect class="version" x="40" y="235" width="900" height="180"/>
+  <rect class="version" x="40" y="235" width="900" height="215.0"/>
   <text class="h" x="70" y="270">版本信息</text>
   <text class="t" x="70" y="295">Version：包含 Segment 列表、Locator、VersionId 等</text>
   <text class="t" x="70" y="315">持久化到磁盘，通过 Fence 保证原子性</text>

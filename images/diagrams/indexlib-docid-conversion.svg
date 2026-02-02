@@ -43,7 +43,7 @@
   <text class="t" x="750" y="155">localDocId = 2500 - 1000</text>
   <text class="t" x="750" y="175">= 1500</text>
 
-  <rect class="box" x="40" y="215" width="900" height="290"/>
+  <rect class="box" x="40" y="215" width="900" height="325.0"/>
   <text class="h" x="70" y="250">转换代码逻辑（伪代码）</text>
   <text class="t" x="70" y="275">// 全局 DocId 转局部 DocId</text>
   <text class="t" x="70" y="295">for (auto&amp; seg : segments) {</text>

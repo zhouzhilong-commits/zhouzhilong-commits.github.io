@@ -45,7 +45,7 @@
   <text class="t" x="670" y="255">每个 Segment 记录自己的 SchemaId</text>
   <text class="t" x="670" y="275">支持 Schema 演进</text>
 
-  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <rect class="box" x="40" y="315" width="920" height="145.0"/>
   <text class="h" x="70" y="350">版本管理与增量更新的关键设计</text>
   <text class="t" x="70" y="375">1. Version 记录索引版本信息，包括 Segment 列表、Locator、SchemaId 等，支持版本演进和 Schema 演进</text>
   <text class="t" x="70" y="395">2. Locator 记录数据处理位置，通过 IsFasterThan() 判断哪些数据已处理，实现增量更新</text>

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .dump{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
       .parallel{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 560" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000 570.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -45,7 +45,7 @@
   <text class="t" x="670" y="235">T4: 转储进行中...</text>
   <text class="t" x="670" y="255">T5: 转储完成</text>
 
-  <rect class="box" x="40" y="295" width="920" height="180"/>
+  <rect class="box" x="40" y="295" width="920" height="245.0"/>
   <text class="h" x="70" y="330">DumpControl 控制机制</text>
   <text class="t" x="70" y="355">- _finishCount：完成的任务数（原子变量）</text>
   <text class="t" x="70" y="375">- _totalCount：总任务数</text>
@@ -55,5 +55,5 @@
   <text class="t" x="70" y="455">- Iterate()：迭代执行转储任务</text>
   <text class="t" x="70" y="475">- ExitTask()：退出转储任务</text>
 
-  <text class="muted" x="40" y="510">优势：不阻塞写入，提高吞吐量，支持并发转储控制</text>
+  <text class="muted" x="40" y="520">优势：不阻塞写入，提高吞吐量，支持并发转储控制</text>
 </svg>

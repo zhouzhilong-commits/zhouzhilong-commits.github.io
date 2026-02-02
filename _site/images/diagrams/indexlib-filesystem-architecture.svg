@@ -55,14 +55,14 @@
   <path class="arrow" d="M 660 195 L 700 195"/>
   <text class="t" x="670" y="190">创建</text>
 
-  <rect class="reader" x="720" y="95" width="120" height="130"/>
+  <rect class="reader" x="720" y="95" width="120" height="140.0"/>
   <text class="h" x="750" y="130">FileReader</text>
   <text class="t" x="750" y="155">文件读取器</text>
   <text class="t" x="750" y="175">- Read()</text>
   <text class="t" x="750" y="195">- Prefetch()</text>
   <text class="t" x="750" y="215">- ReadAsync()</text>
 
-  <rect class="writer" x="720" y="245" width="120" height="130"/>
+  <rect class="writer" x="720" y="245" width="120" height="140.0"/>
   <text class="h" x="750" y="280">FileWriter</text>
   <text class="t" x="750" y="305">文件写入器</text>
   <text class="t" x="750" y="325">- Write()</text>
@@ -72,14 +72,14 @@
   <path class="arrow" d="M 410 375 L 410 405"/>
   <text class="t" x="400" y="395">使用</text>
 
-  <rect class="storage" x="380" y="415" width="280" height="100"/>
+  <rect class="storage" x="380" y="415" width="280" height="140.0"/>
   <text class="h" x="410" y="450">Storage</text>
   <text class="t" x="410" y="475">存储抽象</text>
   <text class="t" x="410" y="495">- CreateInputStorage()</text>
   <text class="t" x="410" y="515">- CreateOutputStorage()</text>
   <text class="t" x="410" y="535">底层存储操作</text>
 
-  <rect class="box" x="40" y="395" width="320" height="120"/>
+  <rect class="box" x="40" y="395" width="320" height="155.0"/>
   <text class="h" x="70" y="430">文件系统抽象架构的关键设计</text>
   <text class="t" x="70" y="455">1. IFileSystem 管理文件系统，提供版本挂载和路径映射功能</text>
   <text class="t" x="70" y="475">2. IDirectory 管理目录和文件，提供逻辑路径管理功能</text>

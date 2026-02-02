@@ -44,29 +44,29 @@
   <text class="t" x="730" y="155">倒排索引、正排索引</text>
   <text class="t" x="730" y="175">摘要等</text>
 
-  <rect class="indexer" x="40" y="215" width="200" height="80"/>
+  <rect class="indexer" x="40" y="215" width="200" height="90.0"/>
   <text class="h" x="70" y="245">倒排索引</text>
-  <text class="t" x="70" y="265">写入 term</text>
+  <text class="t" x="70" y="270.0">写入 term</text>
   <text class="t" x="70" y="285">构建倒排列表</text>
 
-  <rect class="indexer" x="260" y="215" width="200" height="80"/>
+  <rect class="indexer" x="260" y="215" width="200" height="90.0"/>
   <text class="h" x="290" y="245">正排索引</text>
-  <text class="t" x="290" y="265">写入文档属性</text>
+  <text class="t" x="290" y="270.0">写入文档属性</text>
   <text class="t" x="290" y="285">构建属性索引</text>
 
-  <rect class="indexer" x="480" y="215" width="200" height="80"/>
+  <rect class="indexer" x="480" y="215" width="200" height="90.0"/>
   <text class="h" x="510" y="245">摘要索引</text>
-  <text class="t" x="510" y="265">更新摘要信息</text>
+  <text class="t" x="510" y="270.0">更新摘要信息</text>
   <text class="t" x="510" y="285">构建摘要数据</text>
 
-  <rect class="indexer" x="700" y="215" width="240" height="80"/>
+  <rect class="indexer" x="700" y="215" width="240" height="90.0"/>
   <text class="h" x="730" y="245">其他索引</text>
-  <text class="t" x="730" y="265">主键索引、位图索引等</text>
+  <text class="t" x="730" y="270.0">主键索引、位图索引等</text>
   <text class="t" x="730" y="285">根据 Schema 配置</text>
 
   <path class="arrow" d="M 70 295 L 70 325"/>
 
-  <rect class="step" x="40" y="315" width="900" height="150"/>
+  <rect class="step" x="40" y="315" width="900" height="185.0"/>
   <text class="h" x="70" y="350">5. 更新 SegmentInfo</text>
   <text class="t" x="70" y="375">更新 docCount：文档数量增加</text>
   <text class="t" x="70" y="395">更新 Locator：记录数据处理位置</text>

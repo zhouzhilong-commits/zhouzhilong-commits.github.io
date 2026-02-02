@@ -53,7 +53,7 @@
   <text class="t" x="790" y="255">兼容性优先</text>
   <text class="t" x="790" y="275">通用性好</text>
 
-  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <rect class="box" x="40" y="315" width="920" height="195.0"/>
   <text class="h" x="70" y="350">压缩格式的关键特点</text>
   <text class="t" x="70" y="375">1. LZ4：快速压缩算法，压缩速度快，解压速度快，压缩率中等，适用于实时场景，性能优先</text>
   <text class="t" x="70" y="395">2. Zstd：高效压缩算法，压缩率高，压缩速度中等，解压速度快，适用于存储优化，压缩率优先</text>

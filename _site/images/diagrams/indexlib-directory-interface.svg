@@ -17,41 +17,41 @@
   <rect class="interface" x="40" y="95" width="920" height="420"/>
   <text class="h" x="70" y="130">IDirectory</text>
 
-  <rect class="method" x="70" y="155" width="400" height="80"/>
+  <rect class="method" x="70" y="155" width="400" height="90.0"/>
   <text class="h" x="90" y="180">CreateFileWriter()</text>
   <text class="t" x="90" y="205">创建文件写入器</text>
   <text class="t" x="90" y="225">支持逻辑路径</text>
 
-  <rect class="method" x="490" y="155" width="400" height="80"/>
+  <rect class="method" x="490" y="155" width="400" height="90.0"/>
   <text class="h" x="510" y="180">CreateFileReader()</text>
   <text class="t" x="510" y="205">创建文件读取器</text>
   <text class="t" x="510" y="225">支持逻辑路径</text>
 
-  <rect class="method" x="70" y="255" width="400" height="80"/>
+  <rect class="method" x="70" y="255" width="400" height="90.0"/>
   <text class="h" x="90" y="280">MakeDirectory()</text>
   <text class="t" x="90" y="305">创建目录</text>
   <text class="t" x="90" y="325">支持递归创建</text>
 
-  <rect class="method" x="490" y="255" width="400" height="80"/>
+  <rect class="method" x="490" y="255" width="400" height="90.0"/>
   <text class="h" x="510" y="280">GetDirectory()</text>
   <text class="t" x="510" y="305">获取目录</text>
   <text class="t" x="510" y="325">支持逻辑路径</text>
 
-  <rect class="method" x="70" y="355" width="400" height="80"/>
+  <rect class="method" x="70" y="355" width="400" height="90.0"/>
   <text class="h" x="90" y="380">RemoveFile()</text>
   <text class="t" x="90" y="405">删除文件</text>
   <text class="t" x="90" y="425">支持逻辑路径</text>
 
-  <rect class="method" x="490" y="355" width="400" height="80"/>
+  <rect class="method" x="490" y="355" width="400" height="90.0"/>
   <text class="h" x="510" y="380">RemoveDirectory()</text>
   <text class="t" x="510" y="405">删除目录</text>
   <text class="t" x="510" y="425">支持递归删除</text>
 
-  <rect class="method" x="70" y="455" width="400" height="50"/>
+  <rect class="method" x="70" y="455" width="400" height="70.0"/>
   <text class="h" x="90" y="480">ListDir()</text>
   <text class="t" x="90" y="505">列出目录内容</text>
 
-  <rect class="box" x="490" y="455" width="400" height="50"/>
+  <rect class="box" x="490" y="455" width="400" height="70.0"/>
   <text class="h" x="510" y="480">GetFileLength()</text>
   <text class="t" x="510" y="505">获取文件长度</text>
 

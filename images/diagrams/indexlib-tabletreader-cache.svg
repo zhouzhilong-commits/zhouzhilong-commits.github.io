@@ -44,7 +44,7 @@
   <text class="t" x="470" y="315">- 与 TabletReader 绑定</text>
   <text class="t" x="470" y="335">- TabletData 更新时重建</text>
 
-  <rect class="box" x="40" y="385" width="900" height="80"/>
+  <rect class="box" x="40" y="385" width="900" height="100.0"/>
   <text class="h" x="70" y="420">缓存机制的优势</text>
   <text class="t" x="70" y="445">1. 性能优化：避免重复创建 IndexReader，减少对象创建开销</text>
   <text class="t" x="70" y="465">2. 内存效率：复用 IndexReader 对象，减少内存分配和释放</text>

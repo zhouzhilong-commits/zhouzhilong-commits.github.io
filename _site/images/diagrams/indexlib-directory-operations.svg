@@ -17,34 +17,34 @@
   <text class="title" x="40" y="42">目录操作流程：从创建目录到文件操作的完整流程</text>
   <text class="muted" x="40" y="66">目录操作包括获取目录、创建文件、写入文件、读取文件等步骤。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="110.0"/>
   <text class="h" x="70" y="125">1. 获取目录</text>
   <text class="t" x="70" y="150">GetDirectory()</text>
   <text class="t" x="70" y="170">获取目录对象</text>
   <text class="t" x="70" y="185">支持逻辑路径</text>
 
   <path class="arrow" d="M 220 145 L 260 145"/>
-  <text class="t" x="230" y="140">下一步</text>
+  <text class="t" x="230" y="150.0">下一步</text>
 
-  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <rect class="step" x="280" y="95" width="180" height="110.0"/>
   <text class="h" x="310" y="125">2. 创建文件</text>
   <text class="t" x="310" y="150">CreateFileWriter()</text>
   <text class="t" x="310" y="170">创建文件写入器</text>
   <text class="t" x="310" y="185">支持逻辑路径</text>
 
   <path class="arrow" d="M 460 145 L 500 145"/>
-  <text class="t" x="470" y="140">下一步</text>
+  <text class="t" x="470" y="150.0">下一步</text>
 
-  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <rect class="step" x="520" y="95" width="180" height="110.0"/>
   <text class="h" x="550" y="125">3. 写入文件</text>
   <text class="t" x="550" y="150">FileWriter::Write()</text>
   <text class="t" x="550" y="170">写入文件数据</text>
   <text class="t" x="550" y="185">支持批量写入</text>
 
   <path class="arrow" d="M 700 145 L 740 145"/>
-  <text class="t" x="710" y="140">下一步</text>
+  <text class="t" x="710" y="150.0">下一步</text>
 
-  <rect class="step" x="760" y="95" width="200" height="100"/>
+  <rect class="step" x="760" y="95" width="200" height="145.0"/>
   <text class="h" x="790" y="125">4. 读取文件</text>
   <text class="t" x="790" y="150">CreateFileReader()</text>
   <text class="t" x="790" y="170">创建文件读取器</text>
@@ -53,13 +53,13 @@
   <path class="arrow" d="M 860 195 L 860 235"/>
   <text class="t" x="850" y="220">下一步</text>
 
-  <rect class="step" x="760" y="255" width="200" height="100"/>
+  <rect class="step" x="760" y="255" width="200" height="110.0"/>
   <text class="h" x="790" y="285">5. 读取数据</text>
   <text class="t" x="790" y="310">FileReader::Read()</text>
   <text class="t" x="790" y="330">读取文件数据</text>
   <text class="t" x="790" y="345">支持异步读取</text>
 
-  <rect class="box" x="40" y="375" width="920" height="100"/>
+  <rect class="box" x="40" y="375" width="920" height="160.0"/>
   <text class="h" x="70" y="410">目录操作流程的关键步骤</text>
   <text class="t" x="70" y="435">1. 获取目录：通过 GetDirectory() 获取目录对象，支持逻辑路径，返回 IDirectory 对象</text>
   <text class="t" x="70" y="455">2. 创建文件：通过 CreateFileWriter() 创建文件写入器，支持逻辑路径，返回 FileWriter 对象</text>

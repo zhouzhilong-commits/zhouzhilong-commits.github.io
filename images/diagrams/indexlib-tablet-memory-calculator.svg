@@ -13,17 +13,17 @@
 
   <text class="title" x="40" y="42">TabletMemoryCalculator 的方法：计算各种内存使用量</text>
   <text class="muted" x="40" y="66">TabletMemoryCalculator 提供多种方法计算 Tablet 的内存使用量，包括总内存、各组件内存等。</text>
-  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <rect class="item" x="40" y="95" width="920" height="70.0"/>
   <text class="h" x="70" y="120">GetTotalMemory()</text>
-  <text class="t" x="70" y="140">计算 Tablet 的总内存使用量</text>
-  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="t" x="70" y="145.0">计算 Tablet 的总内存使用量</text>
+  <rect class="item" x="40" y="165" width="920" height="70.0"/>
   <text class="h" x="70" y="190">GetSegmentMemory()</text>
-  <text class="t" x="70" y="210">计算 Segment 的内存使用量</text>
-  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="t" x="70" y="215.0">计算 Segment 的内存使用量</text>
+  <rect class="item" x="40" y="235" width="920" height="70.0"/>
   <text class="h" x="70" y="260">GetIndexMemory()</text>
-  <text class="t" x="70" y="280">计算索引的内存使用量</text>
-  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="t" x="70" y="285.0">计算索引的内存使用量</text>
+  <rect class="item" x="40" y="305" width="920" height="110.0"/>
   <text class="h" x="70" y="330">GetAttributeMemory()</text>
-  <text class="t" x="70" y="350">计算属性的内存使用量</text>
+  <text class="t" x="70" y="355.0">计算属性的内存使用量</text>
   <text class="muted" x="40" y="395">理解 TabletMemoryCalculator 的方法，是掌握 IndexLib 机制的关键</text>
 </svg>

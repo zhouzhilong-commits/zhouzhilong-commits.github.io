@@ -19,33 +19,33 @@
   <text class="title" x="40" y="42">多 Segment 并行查询：提高查询性能</text>
   <text class="muted" x="40" y="66">查询时遍历多个 Segment，可以并行查询以提高性能，最后合并各 Segment 的查询结果。</text>
 
-  <rect class="query" x="40" y="95" width="920" height="80"/>
+  <rect class="query" x="40" y="95" width="920" height="100.0"/>
   <text class="h" x="70" y="130">查询请求</text>
   <text class="t" x="70" y="155">1. TabletData->CreateSlice(ST_BUILT) 获取所有已构建的 Segment</text>
   <text class="t" x="70" y="175">2. 对每个 Segment 的 Indexer 进行查询（如果支持并行）</text>
 
-  <rect class="segment" x="40" y="195" width="200" height="120"/>
+  <rect class="segment" x="40" y="195" width="200" height="135.0"/>
   <text class="h" x="70" y="225">Segment 1</text>
   <text class="t" x="70" y="250">并行查询</text>
   <text class="t" x="70" y="270">Indexer->Search()</text>
   <text class="t" x="70" y="290">结果：Result1</text>
   <text class="t" x="70" y="310">docCount: 1000</text>
 
-  <rect class="segment" x="260" y="195" width="200" height="120"/>
+  <rect class="segment" x="260" y="195" width="200" height="135.0"/>
   <text class="h" x="290" y="225">Segment 2</text>
   <text class="t" x="290" y="250">并行查询</text>
   <text class="t" x="290" y="270">Indexer->Search()</text>
   <text class="t" x="290" y="290">结果：Result2</text>
   <text class="t" x="290" y="310">docCount: 2000</text>
 
-  <rect class="segment" x="480" y="195" width="200" height="120"/>
+  <rect class="segment" x="480" y="195" width="200" height="135.0"/>
   <text class="h" x="510" y="225">Segment 3</text>
   <text class="t" x="510" y="250">并行查询</text>
   <text class="t" x="510" y="270">Indexer->Search()</text>
   <text class="t" x="510" y="290">结果：Result3</text>
   <text class="t" x="510" y="310">docCount: 1500</text>
 
-  <rect class="segment" x="700" y="195" width="200" height="120"/>
+  <rect class="segment" x="700" y="195" width="200" height="135.0"/>
   <text class="h" x="730" y="225">Segment 4</text>
   <text class="t" x="730" y="250">并行查询</text>
   <text class="t" x="730" y="270">Indexer->Search()</text>
@@ -57,7 +57,7 @@
   <path class="arrow" d="M 580 315 L 580 345"/>
   <path class="arrow" d="M 800 315 L 800 345"/>
 
-  <rect class="result" x="40" y="335" width="920" height="120"/>
+  <rect class="result" x="40" y="335" width="920" height="155.0"/>
   <text class="h" x="70" y="370">合并结果</text>
   <text class="t" x="70" y="395">1. 去重：根据 DocId 去重</text>
   <text class="t" x="70" y="415">2. 排序：按相关性分数排序</text>
