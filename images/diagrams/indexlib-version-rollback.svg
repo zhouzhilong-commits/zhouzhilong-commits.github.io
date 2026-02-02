@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 545">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .current{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .target{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+      .step{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 545" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">版本回滚：回滚到历史版本</text>
+  <text class="muted" x="40" y="66">版本回滚支持回滚到历史版本，包括选择目标版本、验证版本、加载版本、更新 TabletData 等步骤。</text>
+
+  <rect class="current" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">当前版本</text>
+  <text class="t" x="70" y="155">Version 3</text>
+  <text class="t" x="70" y="175">Segments: [4, 5]</text>
+  <text class="t" x="70" y="195">Locator: timestamp=300</text>
+  <text class="t" x="70" y="215">有问题，需要回滚</text>
+
+  <path class="arrow" d="M 240 155 L 280 155"/>
+
+  <rect class="step" x="300" y="95" width="200" height="120"/>
+  <text class="h" x="330" y="130">1. 选择目标版本</text>
+  <text class="t" x="330" y="155">选择要回滚到的</text>
+  <text class="t" x="330" y="175">目标版本</text>
+  <text class="t" x="330" y="195">Version 2</text>
+
+  <path class="arrow" d="M 500 155 L 540 155"/>
+
+  <rect class="step" x="560" y="95" width="200" height="120"/>
+  <text class="h" x="590" y="130">2. 验证版本</text>
+  <text class="t" x="590" y="155">验证目标版本的</text>
+  <text class="t" x="590" y="175">有效性</text>
+  <text class="t" x="590" y="195">Segment 是否存在</text>
+
+  <path class="arrow" d="M 760 155 L 800 155"/>
+
+  <rect class="target" x="820" y="95" width="120" height="120"/>
+  <text class="h" x="850" y="130">3. 加载版本</text>
+  <text class="t" x="850" y="155">加载目标版本</text>
+  <text class="t" x="850" y="175">的 Version 和 Segment</text>
+
+  <path class="arrow" d="M 850 215 L 850 245"/>
+
+  <rect class="step" x="820" y="255" width="120" height="100"/>
+  <text class="h" x="850" y="290">4. 更新 TabletData</text>
+  <text class="t" x="850" y="315">恢复到目标版本</text>
+
+  <rect class="box" x="40" y="375" width="900" height="50"/>
+  <text class="h" x="70" y="410">版本回滚的关键步骤</text>
+  <text class="t" x="70" y="435">1. 选择目标版本：选择要回滚到的目标版本（通常是上一个稳定版本）</text>
+  <text class="t" x="70" y="455">2. 验证版本：验证目标版本的有效性，检查 Segment 是否存在、Schema 是否兼容等</text>
+  <text class="t" x="70" y="475">3. 加载版本：加载目标版本的 Version 和 Segment，初始化 TabletData</text>
+  <text class="t" x="70" y="495">4. 更新 TabletData：更新 TabletData，恢复到目标版本，支持查询</text>
+
+  <text class="muted" x="40" y="440">版本回滚支持回滚到历史版本，保证系统的可靠性</text>
+</svg>

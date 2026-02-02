@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .optimization{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">文件系统性能优化设计：缓存、预取、批量 IO 等优化策略</text>
+  <text class="muted" x="40" y="66">文件系统性能优化通过缓存机制、预取机制、批量操作、异步操作等策略提高文件系统性能。</text>
+
+  <rect class="optimization" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">缓存机制</text>
+  <text class="t" x="70" y="155">文件缓存</text>
+  <text class="t" x="70" y="175">元数据缓存</text>
+  <text class="t" x="70" y="195">预取缓存</text>
+  <text class="t" x="70" y="215">LRU 策略</text>
+  <text class="t" x="70" y="235">提高访问性能</text>
+  <text class="t" x="70" y="255">减少磁盘读取</text>
+  <text class="t" x="70" y="275">提高命中率</text>
+
+  <rect class="optimization" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">预取机制</text>
+  <text class="t" x="310" y="155">预取文件数据</text>
+  <text class="t" x="310" y="175">减少读取延迟</text>
+  <text class="t" x="310" y="195">提高读取性能</text>
+  <text class="t" x="310" y="215">预测访问模式</text>
+  <text class="t" x="310" y="235">提前加载数据</text>
+  <text class="t" x="310" y="255">提高命中率</text>
+  <text class="t" x="310" y="275">减少等待时间</text>
+
+  <rect class="optimization" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">批量操作</text>
+  <text class="t" x="550" y="155">批量读取</text>
+  <text class="t" x="550" y="175">批量写入</text>
+  <text class="t" x="550" y="195">减少 IO 次数</text>
+  <text class="t" x="550" y="215">提高 IO 效率</text>
+  <text class="t" x="550" y="235">减少系统调用</text>
+  <text class="t" x="550" y="255">提高吞吐量</text>
+  <text class="t" x="550" y="275">降低延迟</text>
+
+  <rect class="optimization" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">异步操作</text>
+  <text class="t" x="790" y="155">异步读取</text>
+  <text class="t" x="790" y="175">异步写入</text>
+  <text class="t" x="790" y="195">提高并发度</text>
+  <text class="t" x="790" y="215">减少阻塞</text>
+  <text class="t" x="790" y="235">提高吞吐量</text>
+  <text class="t" x="790" y="255">提高响应速度</text>
+  <text class="t" x="790" y="275">提高用户体验</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">文件系统性能优化设计的关键要点</text>
+  <text class="t" x="70" y="375">1. 缓存机制：通过文件缓存、元数据缓存、预取缓存等机制提高文件访问性能，使用 LRU 策略管理缓存，提高命中率</text>
+  <text class="t" x="70" y="395">2. 预取机制：通过预取文件数据减少读取延迟，提高读取性能，预测访问模式，提前加载数据，提高命中率</text>
+  <text class="t" x="70" y="415">3. 批量操作：通过批量读取和写入文件减少 IO 次数，提高 IO 效率，减少系统调用，提高吞吐量，降低延迟</text>
+  <text class="t" x="70" y="435">4. 异步操作：通过异步读取和写入文件提高并发度，减少阻塞，提高吞吐量，提高响应速度，提高用户体验</text>
+  <text class="t" x="70" y="455">关键设计：文件系统性能优化通过缓存机制、预取机制、批量操作、异步操作等策略，全面提高文件系统性能</text>
+  <text class="t" x="70" y="475">关键设计：文件系统性能优化需要根据实际场景选择合适的优化策略，平衡性能、资源消耗、复杂度等因素</text>
+
+  <text class="muted" x="40" y="490">理解文件系统性能优化设计，是优化文件系统性能的关键</text>
+</svg>

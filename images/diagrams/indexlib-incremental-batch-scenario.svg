@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .data{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .locator{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .process{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">批量更新场景中的增量更新：批量处理数据，避免重复处理</text>
+  <text class="muted" x="40" y="66">在批量更新场景中，批量处理数据，通过 Locator 避免重复处理，提高处理效率，支持大规模数据更新。</text>
+
+  <rect class="data" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">数据源</text>
+  <text class="t" x="70" y="155">批量读取数据</text>
+  <text class="t" x="70" y="175">timestamp: 50-300</text>
+  <text class="t" x="70" y="195">大量数据</text>
+  <text class="t" x="70" y="215">需要处理</text>
+
+  <path class="arrow" d="M 240 155 L 280 155"/>
+
+  <rect class="locator" x="300" y="95" width="200" height="120"/>
+  <text class="h" x="330" y="130">检查 Locator</text>
+  <text class="t" x="330" y="155">IsFasterThan()</text>
+  <text class="t" x="330" y="175">当前 Locator:</text>
+  <text class="t" x="330" y="195">timestamp=100</text>
+  <text class="t" x="330" y="215">判断哪些已处理</text>
+
+  <path class="arrow" d="M 500 155 L 540 155"/>
+
+  <rect class="process" x="560" y="95" width="200" height="120"/>
+  <text class="h" x="590" y="130">过滤已处理数据</text>
+  <text class="t" x="590" y="155">过滤 timestamp</text>
+  <text class="t" x="590" y="175">&lt;= 100 的数据</text>
+  <text class="t" x="590" y="195">只保留新数据</text>
+
+  <path class="arrow" d="M 760 155 L 800 155"/>
+
+  <rect class="process" x="820" y="95" width="120" height="120"/>
+  <text class="h" x="850" y="130">处理新数据</text>
+  <text class="t" x="850" y="155">只处理未处理</text>
+  <text class="t" x="850" y="175">的数据</text>
+  <text class="t" x="850" y="195">timestamp: 101-300</text>
+
+  <path class="arrow" d="M 850 215 L 850 245"/>
+
+  <rect class="locator" x="820" y="255" width="120" height="100"/>
+  <text class="h" x="850" y="290">更新 Locator</text>
+  <text class="t" x="850" y="315">timestamp: 300</text>
+
+  <path class="arrow" d="M 850 355 L 850 385"/>
+
+  <rect class="process" x="820" y="395" width="120" height="60"/>
+  <text class="h" x="850" y="430">批量 Commit</text>
+  <text class="t" x="850" y="455">更新 Version</text>
+
+  <rect class="box" x="40" y="375" width="760" height="100"/>
+  <text class="h" x="70" y="410">批量更新场景中的增量更新流程</text>
+  <text class="t" x="70" y="435">1. 读取数据源：从数据源批量读取数据，获取数据的 timestamp 等信息</text>
+  <text class="t" x="70" y="455">2. 检查 Locator：通过 IsFasterThan() 判断哪些数据已处理，过滤已处理的数据</text>
+  <text class="t" x="70" y="475">3. 处理新数据：只处理未处理的数据，避免重复处理，提高处理效率</text>
+  <text class="t" x="70" y="495">4. 更新 Locator：处理完成后更新 Locator，记录最新的数据处理位置</text>
+  <text class="t" x="70" y="515">5. 批量 Commit：批量处理完成后 Commit，更新 Version 的 Locator，持久化到磁盘</text>
+
+  <text class="muted" x="40" y="470">批量更新场景中的增量更新通过 Locator 实现，提高处理效率，支持大规模数据更新</text>
+</svg>

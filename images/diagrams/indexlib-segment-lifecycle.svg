@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .building{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .dumping{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .built{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 420" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Segment 状态转换：从 MemSegment 到 DiskSegment 的完整流程</text>
+  <text class="muted" x="40" y="66">Segment 从内存构建开始，经过转储，最终成为可查询的磁盘段。</text>
+
+  <rect class="building" x="40" y="95" width="250" height="150"/>
+  <text class="h" x="70" y="130">ST_BUILDING</text>
+  <text class="t" x="70" y="155">MemSegment 构建中</text>
+  <text class="t" x="70" y="175">- 在内存中构建</text>
+  <text class="t" x="70" y="195">- 接收实时写入</text>
+  <text class="t" x="70" y="215">- 支持查询</text>
+  <text class="t" x="70" y="235">- 可转储到磁盘</text>
+
+  <path class="arrow" d="M 290 170 L 370 170"/>
+  <text class="muted" x="320" y="165" text-anchor="middle">NeedDump()</text>
+
+  <rect class="dumping" x="380" y="95" width="250" height="150"/>
+  <text class="h" x="410" y="130">ST_DUMPING</text>
+  <text class="t" x="410" y="155">MemSegment 转储中</text>
+  <text class="t" x="410" y="175">- 正在转储到磁盘</text>
+  <text class="t" x="410" y="195">- 创建 SegmentDumpItem</text>
+  <text class="t" x="410" y="215">- 异步转储</text>
+  <text class="t" x="410" y="235">- 转储完成后变为 DiskSegment</text>
+
+  <path class="arrow" d="M 630 170 L 710 170"/>
+  <text class="muted" x="670" y="165" text-anchor="middle">EndDump()</text>
+
+  <rect class="built" x="720" y="95" width="250" height="150"/>
+  <text class="h" x="750" y="130">ST_BUILT</text>
+  <text class="t" x="750" y="155">DiskSegment 已构建</text>
+  <text class="t" x="750" y="175">- 存储在磁盘上</text>
+  <text class="t" x="750" y="195">- 支持按需加载</text>
+  <text class="t" x="750" y="215">- 可以查询</text>
+  <text class="t" x="750" y="235">- 可以合并</text>
+
+  <rect class="box" x="40" y="270" width="930" height="100"/>
+  <text class="h" x="70" y="305">状态转换说明</text>
+  <text class="t" x="70" y="330">1. ST_BUILDING：MemSegment 在内存中构建，接收文档写入，当达到阈值（如内存大小、文档数量）时触发转储</text>
+  <text class="t" x="70" y="350">2. ST_DUMPING：MemSegment 正在转储到磁盘，转储是异步的，不阻塞写入（如果有新的 MemSegment）</text>
+  <text class="t" x="70" y="370">3. ST_BUILT：DiskSegment 已构建完成，存储在磁盘上，支持懒加载和查询，可以参与合并</text>
+</svg>

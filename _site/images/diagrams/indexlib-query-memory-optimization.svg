@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .memory{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">查询内存优化：内存池、缓存控制等</text>
+  <text class="muted" x="40" y="66">查询内存优化通过内存池、缓存控制等策略，优化内存使用，提高查询性能。</text>
+
+  <rect class="memory" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">内存池</text>
+  <text class="t" x="70" y="155">内存池管理</text>
+  <text class="t" x="70" y="175">减少内存分配</text>
+  <text class="t" x="70" y="195">提高内存利用率</text>
+  <text class="t" x="70" y="215">减少内存碎片</text>
+  <text class="t" x="70" y="235">提高性能</text>
+  <text class="t" x="70" y="255">降低延迟</text>
+
+  <rect class="memory" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">缓存控制</text>
+  <text class="t" x="310" y="155">控制缓存大小</text>
+  <text class="t" x="310" y="175">LRU 策略</text>
+  <text class="t" x="310" y="195">提高命中率</text>
+  <text class="t" x="310" y="215">优化内存使用</text>
+  <text class="t" x="310" y="235">提高性能</text>
+  <text class="t" x="310" y="255">降低延迟</text>
+
+  <rect class="memory" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">内存回收</text>
+  <text class="t" x="550" y="155">及时释放内存</text>
+  <text class="t" x="550" y="175">减少内存占用</text>
+  <text class="t" x="550" y="195">提高内存利用率</text>
+  <text class="t" x="550" y="215">优化资源使用</text>
+  <text class="t" x="550" y="235">提高性能</text>
+  <text class="t" x="550" y="255">降低延迟</text>
+
+  <rect class="memory" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">内存监控</text>
+  <text class="t" x="790" y="155">监控内存使用</text>
+  <text class="t" x="790" y="175">及时发现异常</text>
+  <text class="t" x="790" y="195">优化内存配置</text>
+  <text class="t" x="790" y="215">提高性能</text>
+  <text class="t" x="790" y="235">保证稳定性</text>
+  <text class="t" x="790" y="255">降低延迟</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">查询内存优化的关键策略</text>
+  <text class="t" x="70" y="375">1. 内存池：通过内存池管理，减少内存分配，提高内存利用率，减少内存碎片，提高性能，降低延迟</text>
+  <text class="t" x="70" y="395">2. 缓存控制：通过控制缓存大小，使用 LRU 策略，提高命中率，优化内存使用，提高性能，降低延迟</text>
+  <text class="t" x="70" y="415">3. 内存回收：通过及时释放内存，减少内存占用，提高内存利用率，优化资源使用，提高性能，降低延迟</text>
+  <text class="t" x="70" y="435">关键设计：查询内存优化通过内存池、缓存控制、内存回收、内存监控等策略，全面优化内存使用和查询性能</text>
+  <text class="t" x="70" y="455">关键设计：查询内存优化需要合理配置内存策略，平衡内存使用和查询性能</text>
+
+  <text class="muted" x="40" y="490">理解查询内存优化，是优化查询性能和内存使用的关键</text>
+</svg>

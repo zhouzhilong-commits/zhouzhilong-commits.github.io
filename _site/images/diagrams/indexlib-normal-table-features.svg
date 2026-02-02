@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">NormalTable 的特点：支持全文检索、倒排索引、正排索引等</text>
+  <text class="muted" x="40" y="66">NormalTable 支持全文检索、倒排索引、正排索引、主键索引、多字段查询、复杂查询等功能。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">全文检索</text>
+  <text class="t" x="70" y="140">支持倒排索引，实现全文检索</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">正排索引</text>
+  <text class="t" x="70" y="210">支持正排索引，实现属性查询</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">主键索引</text>
+  <text class="t" x="70" y="280">支持主键索引，实现主键查询</text>
+  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="h" x="70" y="330">多字段查询</text>
+  <text class="t" x="70" y="350">支持多字段联合查询</text>
+  <rect class="item" x="40" y="375" width="920" height="60"/>
+  <text class="h" x="70" y="400">复杂查询</text>
+  <text class="t" x="70" y="420">支持范围查询、排序、聚合等复杂查询</text>
+  <text class="muted" x="40" y="465">理解 NormalTable 的特点，是掌握 IndexLib 机制的关键</text>
+</svg>

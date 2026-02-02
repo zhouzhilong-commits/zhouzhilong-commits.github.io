@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .build{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .flush{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .seal{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .commit{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">索引构建完整流程：从 Build 到 Commit 的各个阶段</text>
+  <text class="muted" x="40" y="66">索引构建包括 Build、Flush、Seal、Commit 四个核心阶段，每个阶段都有特定的职责和实现机制。</text>
+
+  <rect class="build" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">1. Build</text>
+  <text class="t" x="70" y="155">接收文档批次</text>
+  <text class="t" x="70" y="175">构建索引到内存</text>
+  <text class="t" x="70" y="195">写入 MemSegment</text>
+  <text class="t" x="70" y="215">分配 DocId</text>
+
+  <path class="arrow" d="M 240 155 L 280 155"/>
+
+  <rect class="flush" x="300" y="95" width="200" height="120"/>
+  <text class="h" x="330" y="130">2. Flush</text>
+  <text class="t" x="330" y="155">检查转储条件</text>
+  <text class="t" x="330" y="175">创建 SegmentDumper</text>
+  <text class="t" x="330" y="195">异步转储到磁盘</text>
+  <text class="t" x="330" y="215">创建 DiskSegment</text>
+
+  <path class="arrow" d="M 500 155 L 540 155"/>
+
+  <rect class="seal" x="560" y="95" width="200" height="120"/>
+  <text class="h" x="590" y="130">3. Seal</text>
+  <text class="t" x="590" y="155">封存 Segment</text>
+  <text class="t" x="590" y="175">标记为只读</text>
+  <text class="t" x="590" y="195">不再接收新文档</text>
+  <text class="t" x="590" y="215">准备合并</text>
+
+  <path class="arrow" d="M 760 155 L 800 155"/>
+
+  <rect class="commit" x="820" y="95" width="140" height="120"/>
+  <text class="h" x="850" y="130">4. Commit</text>
+  <text class="t" x="850" y="155">准备版本信息</text>
+  <text class="t" x="850" y="175">创建 Fence</text>
+  <text class="t" x="850" y="195">持久化 Version</text>
+  <text class="t" x="850" y="215">更新 TabletData</text>
+
+  <rect class="box" x="40" y="235" width="920" height="240"/>
+  <text class="h" x="70" y="270">各阶段的关键特点</text>
+  <text class="t" x="70" y="295">Build：持续构建，接收文档并写入 MemSegment，支持实时写入</text>
+  <text class="t" x="70" y="315">Flush：触发转储，将 MemSegment 转为 DiskSegment，异步执行不阻塞写入</text>
+  <text class="t" x="70" y="335">Seal：封存 Segment，标记为只读，不再接收新文档，准备合并</text>
+  <text class="t" x="70" y="355">Commit：提交版本，更新 Version，持久化到磁盘，通过 Fence 保证原子性</text>
+  <text class="t" x="70" y="375">关键设计：各阶段职责清晰，支持异步和并发，保证数据一致性和原子性</text>
+  <text class="t" x="70" y="395">关键设计：通过内存控制机制，避免内存溢出，支持大规模数据构建</text>
+  <text class="t" x="70" y="415">关键设计：通过 Fence 机制保证版本提交的原子性，支持错误恢复</text>
+  <text class="t" x="70" y="435">关键设计：支持实时写入和批量构建两种场景，灵活适应不同需求</text>
+  <text class="t" x="70" y="455">关键设计：通过异步转储机制，提高构建吞吐量，不阻塞写入</text>
+
+  <text class="muted" x="40" y="490">理解索引构建流程是掌握 IndexLib 索引机制的关键</text>
+</svg>

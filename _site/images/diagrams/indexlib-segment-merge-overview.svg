@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .strategy{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .plan{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .operation{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">Segment 合并策略概览：从合并策略到合并执行的完整流程</text>
+  <text class="muted" x="40" y="66">Segment 合并通过 MergeStrategy 决定合并策略，通过 MergePlan 创建合并计划，通过 IndexMergeOperation 执行合并，最终提交新版本。</text>
+
+  <rect class="strategy" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">MergeStrategy</text>
+  <text class="t" x="70" y="155">合并策略</text>
+  <text class="t" x="70" y="175">- OptimizeMergeStrategy</text>
+  <text class="t" x="70" y="195">- RealtimeMergeStrategy</text>
+  <text class="t" x="70" y="215">- ShardBasedMergeStrategy</text>
+  <text class="t" x="70" y="235">决定哪些 Segment</text>
+  <text class="t" x="70" y="255">参与合并</text>
+  <text class="t" x="70" y="275">创建合并计划</text>
+
+  <rect class="plan" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">MergePlan</text>
+  <text class="t" x="310" y="155">合并计划</text>
+  <text class="t" x="310" y="175">- SegmentMergePlan 列表</text>
+  <text class="t" x="310" y="195">- 目标版本</text>
+  <text class="t" x="310" y="215">包含合并的</text>
+  <text class="t" x="310" y="235">Segment 列表</text>
+  <text class="t" x="310" y="255">和目标 Segment</text>
+  <text class="t" x="310" y="275">信息</text>
+
+  <rect class="operation" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">IndexMergeOperation</text>
+  <text class="t" x="550" y="155">合并操作</text>
+  <text class="t" x="550" y="175">- 读取源 Segment</text>
+  <text class="t" x="550" y="195">- 合并索引</text>
+  <text class="t" x="550" y="215">- 合并文档</text>
+  <text class="t" x="550" y="235">- 写入目标 Segment</text>
+  <text class="t" x="550" y="255">执行实际的</text>
+  <text class="t" x="550" y="275">合并工作</text>
+
+  <rect class="version" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">新版本</text>
+  <text class="t" x="790" y="155">合并后的版本</text>
+  <text class="t" x="790" y="175">- 包含合并后的</text>
+  <text class="t" x="790" y="195">Segment</text>
+  <text class="t" x="790" y="215">- 更新 TabletData</text>
+  <text class="t" x="790" y="235">- 支持查询</text>
+  <text class="t" x="790" y="255">提交新版本</text>
+  <text class="t" x="790" y="275">更新索引</text>
+
+  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <text class="h" x="70" y="350">Segment 合并的关键组件</text>
+  <text class="t" x="70" y="375">1. MergeStrategy：合并策略，决定哪些 Segment 参与合并，支持多种合并策略（Optimize、Realtime、ShardBased 等）</text>
+  <text class="t" x="70" y="395">2. MergePlan：合并计划，包含合并的 Segment 列表和目标 Segment 信息，支持多组 Segment 合并</text>
+  <text class="t" x="70" y="415">3. IndexMergeOperation：合并操作，执行实际的合并工作，包括读取源 Segment、合并索引、写入目标 Segment 等</text>
+
+  <text class="muted" x="40" y="440">理解 Segment 合并策略，是掌握 IndexLib 索引优化机制的关键</text>
+</svg>

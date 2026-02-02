@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .error{fill:#ffebee;stroke:#c62828;stroke-width:2;rx:12}
+      .handle{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">构建流程的错误处理：重试、回滚等</text>
+  <text class="muted" x="40" y="66">构建流程通过错误处理机制保证系统稳定性和数据一致性。</text>
+
+  <rect class="error" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">错误类型</text>
+  <text class="t" x="70" y="155">- 内存不足</text>
+  <text class="t" x="70" y="175">- 转储失败</text>
+  <text class="t" x="70" y="195">- 版本提交失败</text>
+  <text class="t" x="70" y="215">- 数据损坏</text>
+  <text class="t" x="70" y="235">- 系统异常</text>
+  <text class="t" x="70" y="255">- 网络错误</text>
+  <text class="t" x="70" y="275">- 其他错误</text>
+
+  <rect class="handle" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">错误处理</text>
+  <text class="t" x="310" y="155">- 重试机制</text>
+  <text class="t" x="310" y="175">- 回滚机制</text>
+  <text class="t" x="310" y="195">- 错误恢复</text>
+  <text class="t" x="310" y="215">- 错误日志</text>
+  <text class="t" x="310" y="235">- 错误监控</text>
+  <text class="t" x="310" y="255">- 错误告警</text>
+  <text class="t" x="310" y="275">- 错误报告</text>
+
+  <rect class="box" x="520" y="95" width="440" height="200"/>
+  <text class="h" x="550" y="130">错误处理策略</text>
+  <text class="t" x="550" y="155">1. 重试：对于临时错误，自动重试，提高成功率</text>
+  <text class="t" x="550" y="175">2. 回滚：对于严重错误，回滚到上一个稳定版本</text>
+  <text class="t" x="550" y="195">3. 恢复：对于可恢复错误，自动恢复，保证系统稳定</text>
+  <text class="t" x="550" y="215">4. 监控：记录错误日志，监控错误率，及时告警</text>
+  <text class="t" x="550" y="235">5. 报告：生成错误报告，帮助定位和解决问题</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">构建流程错误处理的关键设计</text>
+  <text class="t" x="70" y="375">1. 错误分类：将错误分为临时错误、严重错误、可恢复错误等，采用不同的处理策略</text>
+  <text class="t" x="70" y="395">2. 重试机制：对于临时错误，自动重试，设置重试次数和重试间隔，提高成功率</text>
+  <text class="t" x="70" y="415">3. 回滚机制：对于严重错误，回滚到上一个稳定版本，保证数据一致性和系统稳定性</text>
+  <text class="t" x="70" y="435">关键设计：构建流程错误处理通过错误分类、重试机制、回滚机制等策略，保证系统稳定性和数据一致性</text>
+  <text class="t" x="70" y="455">关键设计：构建流程错误处理需要合理配置重试策略和回滚策略，平衡系统稳定性和性能</text>
+
+  <text class="muted" x="40" y="490">理解构建流程错误处理，是保证系统稳定性的关键</text>
+</svg>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 530" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Schema 变更流程：从 Schema 变更到版本提交</text>
+  <text class="muted" x="40" y="66">Schema 变更的流程包括检查兼容性、Seal 当前 Segment、创建新 Segment、提交版本等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 检查兼容性</text>
+  <text class="t" x="70" y="155">检查新 Schema 与</text>
+  <text class="t" x="70" y="175">旧 Schema 的兼容性</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. Seal 当前 Segment</text>
+  <text class="t" x="330" y="155">Seal 当前构建中的</text>
+  <text class="t" x="330" y="175">Segment</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 创建新 Segment</text>
+  <text class="t" x="590" y="155">使用新 Schema</text>
+  <text class="t" x="590" y="175">创建新的 Segment</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="version" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. 提交版本</text>
+  <text class="t" x="850" y="155">更新 SchemaId</text>
+  <text class="t" x="850" y="175">和 SchemaVersionRoadMap</text>
+
+  <rect class="box" x="40" y="215" width="900" height="250"/>
+  <text class="h" x="70" y="250">Schema 变更流程的关键步骤</text>
+  <text class="t" x="70" y="275">1. 检查兼容性：检查新 Schema 与旧 Schema 的兼容性，保证数据一致性，支持向前兼容和向后兼容</text>
+  <text class="t" x="70" y="295">2. Seal 当前 Segment：Seal 当前构建中的 Segment，标记为只读，不再接收新文档</text>
+  <text class="t" x="70" y="315">3. 创建新 Segment：使用新 Schema 创建新的 Segment，新 Segment 使用新的 SchemaId</text>
+  <text class="t" x="70" y="335">4. 提交版本：Commit 时更新 SchemaId 和 SchemaVersionRoadMap，记录 Schema 版本映射关系</text>
+  <text class="t" x="70" y="355">5. 支持查询：新 Segment 和旧 Segment 可以同时存在，支持查询，保证数据一致性</text>
+  <text class="t" x="70" y="375">关键设计：Schema 变更支持在线变更，不需要停止服务，保证系统的可用性</text>
+  <text class="t" x="70" y="395">关键设计：Schema 变更支持向前兼容和向后兼容，保证数据一致性，支持渐进式 Schema 变更</text>
+  <text class="t" x="70" y="415">关键设计：Schema 变更通过 SchemaVersionRoadMap 记录 Schema 版本映射，支持 Schema 版本查询和转换</text>
+  <text class="t" x="70" y="435">关键设计：Schema 变更支持字段添加、字段删除、字段类型修改等操作，保证数据一致性</text>
+  <text class="t" x="70" y="455">关键设计：Schema 变更支持多版本 Schema 共存，新 Segment 使用新 Schema，旧 Segment 使用旧 Schema</text>
+
+  <text class="muted" x="40" y="480">Schema 变更支持在线变更，保证系统的可用性和数据一致性</text>
+</svg>

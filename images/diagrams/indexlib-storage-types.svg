@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .type{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">存储类型：本地存储、分布式存储等</text>
+  <text class="muted" x="40" y="66">IndexLib 支持多种存储类型，包括本地存储、分布式存储、内存存储、混合存储等。</text>
+
+  <rect class="type" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">本地存储</text>
+  <text class="t" x="70" y="155">基于本地文件系统</text>
+  <text class="t" x="70" y="175">- 本地磁盘</text>
+  <text class="t" x="70" y="195">- 本地 SSD</text>
+  <text class="t" x="70" y="215">- 高性能</text>
+  <text class="t" x="70" y="235">- 低延迟</text>
+  <text class="t" x="70" y="255">适用于单机场景</text>
+  <text class="t" x="70" y="275">性能最高</text>
+
+  <rect class="type" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">分布式存储</text>
+  <text class="t" x="310" y="155">基于分布式文件系统</text>
+  <text class="t" x="310" y="175">- HDFS</text>
+  <text class="t" x="310" y="195">- OSS</text>
+  <text class="t" x="310" y="215">- 高可用</text>
+  <text class="t" x="310" y="235">- 可扩展</text>
+  <text class="t" x="310" y="255">适用于分布式场景</text>
+  <text class="t" x="310" y="275">支持大规模存储</text>
+
+  <rect class="type" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">内存存储</text>
+  <text class="t" x="550" y="155">基于内存</text>
+  <text class="t" x="550" y="175">- 内存文件系统</text>
+  <text class="t" x="550" y="195">- 极高性能</text>
+  <text class="t" x="550" y="215">- 零延迟</text>
+  <text class="t" x="550" y="235">- 临时存储</text>
+  <text class="t" x="550" y="255">适用于临时数据</text>
+  <text class="t" x="550" y="275">性能最高</text>
+
+  <rect class="type" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">混合存储</text>
+  <text class="t" x="790" y="155">支持多种存储后端</text>
+  <text class="t" x="790" y="175">- 本地 + 分布式</text>
+  <text class="t" x="790" y="195">- 内存 + 磁盘</text>
+  <text class="t" x="790" y="215">- 灵活配置</text>
+  <text class="t" x="790" y="235">- 性能优化</text>
+  <text class="t" x="790" y="255">适用于复杂场景</text>
+  <text class="t" x="790" y="275">灵活适应需求</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">存储类型的关键特点</text>
+  <text class="t" x="70" y="375">1. 本地存储：基于本地文件系统，适用于单机场景，性能最高，延迟最低</text>
+  <text class="t" x="70" y="395">2. 分布式存储：基于分布式文件系统（HDFS、OSS 等），适用于分布式场景，支持大规模存储，高可用</text>
+  <text class="t" x="70" y="415">3. 内存存储：基于内存，适用于临时数据，性能最高，零延迟，但数据不持久化</text>
+  <text class="t" x="70" y="435">4. 混合存储：支持多种存储后端，灵活配置，性能优化，适用于复杂场景</text>
+  <text class="t" x="70" y="455">关键设计：不同的存储类型适用于不同的场景，需要根据实际需求选择合适的存储类型</text>
+  <text class="t" x="70" y="475">关键设计：存储类型支持统一接口，通过 Storage 抽象屏蔽底层存储差异，提供灵活的文件管理能力</text>
+
+  <text class="muted" x="40" y="490">理解存储类型，是选择合适的存储后端的关键</text>
+</svg>

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 530" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">InvertedIndexReader：倒排索引查询的实现</text>
+  <text class="muted" x="40" y="66">InvertedIndexReader 是倒排索引的查询接口，支持 term 查询、范围查询等，返回 DocId 列表和相关性分数。</text>
+
+  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <text class="h" x="70" y="130">1. 解析查询</text>
+  <text class="t" x="70" y="155">解析 term 查询</text>
+  <text class="t" x="70" y="175">范围查询等</text>
+
+  <path class="arrow" d="M 200 145 L 240 145"/>
+
+  <rect class="step" x="260" y="95" width="160" height="100"/>
+  <text class="h" x="290" y="130">2. 查找 term</text>
+  <text class="t" x="290" y="155">在倒排索引中</text>
+  <text class="t" x="290" y="175">查找 term</text>
+
+  <path class="arrow" d="M 420 145 L 460 145"/>
+
+  <rect class="step" x="480" y="95" width="180" height="100"/>
+  <text class="h" x="510" y="130">3. 获取倒排列表</text>
+  <text class="t" x="510" y="155">获取 term 对应的</text>
+  <text class="t" x="510" y="175">倒排列表</text>
+  <text class="t" x="510" y="195">（DocId 列表）</text>
+
+  <path class="arrow" d="M 660 145 L 700 145"/>
+
+  <rect class="step" x="720" y="95" width="200" height="100"/>
+  <text class="h" x="750" y="130">4. 过滤删除文档</text>
+  <text class="t" x="750" y="155">通过 DeletionMap</text>
+  <text class="t" x="750" y="175">过滤已删除文档</text>
+
+  <path class="arrow" d="M 750 195 L 750 225"/>
+
+  <rect class="step" x="40" y="235" width="200" height="100"/>
+  <text class="h" x="70" y="270">5. 计算相关性</text>
+  <text class="t" x="70" y="295">计算文档的</text>
+  <text class="t" x="70" y="315">相关性分数</text>
+
+  <path class="arrow" d="M 240 285 L 280 285"/>
+
+  <rect class="result" x="300" y="235" width="200" height="100"/>
+  <text class="h" x="330" y="270">6. 排序返回</text>
+  <text class="t" x="330" y="295">按相关性分数</text>
+  <text class="t" x="330" y="315">排序，返回结果</text>
+
+  <rect class="box" x="520" y="235" width="400" height="220"/>
+  <text class="h" x="550" y="270">倒排索引查询的关键点</text>
+  <text class="t" x="550" y="295">1. 查找 term：在倒排索引中快速查找 term，支持前缀匹配、模糊匹配等</text>
+  <text class="t" x="550" y="315">2. 获取倒排列表：获取 term 对应的倒排列表，包含 DocId 和位置信息</text>
+  <text class="t" x="550" y="335">3. 过滤删除文档：通过 DeletionMap 过滤已删除文档，保证查询结果的正确性</text>
+  <text class="t" x="550" y="355">4. 计算相关性：根据 TF-IDF、BM25 等算法计算文档的相关性分数</text>
+  <text class="t" x="550" y="375">5. 排序返回：按相关性分数排序，返回最相关的文档</text>
+  <text class="t" x="550" y="395">6. 支持复杂查询：支持 AND、OR、NOT 等逻辑查询，支持短语查询、范围查询等</text>
+  <text class="t" x="550" y="415">关键设计：倒排索引查询是全文检索的核心，需要高效的查找和排序算法</text>
+  <text class="t" x="550" y="435">关键设计：支持多字段查询，可以同时查询多个字段的倒排索引</text>
+
+  <text class="muted" x="40" y="480">InvertedIndexReader 是全文检索的核心，提供高效的倒排索引查询能力</text>
+</svg>

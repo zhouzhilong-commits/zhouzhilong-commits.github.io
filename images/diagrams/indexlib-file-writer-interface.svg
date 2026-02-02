@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 605">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .writer{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .method{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">FileWriter 接口：提供文件写入功能</text>
+  <text class="muted" x="40" y="66">FileWriter 提供文件写入功能，包括打开文件、写入文件数据、预留文件空间、截断文件等。</text>
+
+  <rect class="writer" x="40" y="95" width="920" height="380"/>
+  <text class="h" x="70" y="130">FileWriter</text>
+
+  <rect class="method" x="70" y="155" width="400" height="80"/>
+  <text class="h" x="90" y="180">Open()</text>
+  <text class="t" x="90" y="205">打开文件</text>
+  <text class="t" x="90" y="225">准备写入</text>
+
+  <rect class="method" x="490" y="155" width="400" height="80"/>
+  <text class="h" x="510" y="180">Close()</text>
+  <text class="t" x="510" y="205">关闭文件</text>
+  <text class="t" x="510" y="225">刷新数据到磁盘</text>
+
+  <rect class="method" x="70" y="255" width="400" height="80"/>
+  <text class="h" x="90" y="280">Write()</text>
+  <text class="t" x="90" y="305">写入文件数据</text>
+  <text class="t" x="90" y="325">支持批量写入</text>
+
+  <rect class="method" x="490" y="255" width="400" height="80"/>
+  <text class="h" x="510" y="280">ReserveFile()</text>
+  <text class="t" x="510" y="305">预留文件空间</text>
+  <text class="t" x="510" y="325">用于地址访问模式</text>
+
+  <rect class="method" x="70" y="355" width="400" height="80"/>
+  <text class="h" x="90" y="380">Truncate()</text>
+  <text class="t" x="90" y="405">截断文件</text>
+  <text class="t" x="90" y="425">调整文件大小</text>
+
+  <rect class="box" x="490" y="355" width="400" height="80"/>
+  <text class="h" x="510" y="380">GetLength()</text>
+  <text class="t" x="510" y="405">获取文件长度</text>
+  <text class="t" x="510" y="425">支持逻辑和物理路径</text>
+
+  <rect class="box" x="70" y="455" width="820" height="10"/>
+  <text class="h" x="90" y="470">FileWriter 的关键设计</text>
+  <text class="t" x="90" y="495">1. Open()/Close()：打开和关闭文件，准备写入和刷新数据到磁盘</text>
+  <text class="t" x="90" y="515">2. Write()：写入文件数据，支持批量写入，提高写入效率</text>
+  <text class="t" x="90" y="535">3. ReserveFile()：预留文件空间，用于地址访问模式，支持随机访问</text>
+  <text class="t" x="90" y="555">4. Truncate()：截断文件，调整文件大小，支持文件调整</text>
+
+  <text class="muted" x="40" y="490">FileWriter 是文件写入的核心，提供高效的文件写入功能</text>
+</svg>

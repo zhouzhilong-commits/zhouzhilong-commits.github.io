@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">内存分配优化：批量分配、内存池等优化策略</text>
+  <text class="muted" x="40" y="66">内存分配优化包括批量分配、内存池、预分配等优化策略。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">批量分配</text>
+  <text class="t" x="70" y="140">批量分配内存，减少分配次数，提高效率</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">内存池</text>
+  <text class="t" x="70" y="210">使用内存池管理内存，减少内存碎片</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">预分配</text>
+  <text class="t" x="70" y="280">预先分配内存，避免频繁分配影响性能</text>
+  <text class="muted" x="40" y="325">理解 内存分配优化，是掌握 IndexLib 机制的关键</text>
+</svg>

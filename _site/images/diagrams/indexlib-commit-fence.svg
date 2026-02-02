@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .fence{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+      .atomic{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 530" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Fence 机制：保证版本提交的原子性</text>
+  <text class="muted" x="40" y="66">Fence 机制通过创建临时目录、写入 Version、原子切换等步骤，保证版本提交的原子性。</text>
+
+  <rect class="fence" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">1. 创建 Fence 目录</text>
+  <text class="t" x="70" y="155">创建临时目录</text>
+  <text class="t" x="70" y="175">fence_xxx/</text>
+  <text class="t" x="70" y="195">保证原子性</text>
+  <text class="t" x="70" y="215">准备写入 Version</text>
+
+  <path class="arrow" d="M 240 155 L 280 155"/>
+
+  <rect class="version" x="300" y="95" width="200" height="120"/>
+  <text class="h" x="330" y="130">2. 写入 Version</text>
+  <text class="t" x="330" y="155">写入 Version 文件</text>
+  <text class="t" x="330" y="175">fence_xxx/version.0</text>
+  <text class="t" x="330" y="195">包含 Segment 列表</text>
+  <text class="t" x="330" y="215">包含 Locator 等</text>
+
+  <path class="arrow" d="M 500 155 L 540 155"/>
+
+  <rect class="atomic" x="560" y="95" width="200" height="120"/>
+  <text class="h" x="590" y="130">3. 原子切换</text>
+  <text class="t" x="590" y="155">原子性重命名</text>
+  <text class="t" x="590" y="175">fence_xxx → version.0</text>
+  <text class="t" x="590" y="195">保证原子性</text>
+  <text class="t" x="590" y="215">要么全部成功</text>
+
+  <path class="arrow" d="M 760 155 L 800 155"/>
+
+  <rect class="version" x="820" y="95" width="120" height="120"/>
+  <text class="h" x="850" y="130">4. 正式版本</text>
+  <text class="t" x="850" y="155">version.0/</text>
+  <text class="t" x="850" y="175">可以查询</text>
+  <text class="t" x="850" y="195">支持 Reopen</text>
+  <text class="t" x="850" y="215">版本提交完成</text>
+
+  <rect class="box" x="40" y="235" width="900" height="230"/>
+  <text class="h" x="70" y="270">Fence 机制的关键设计</text>
+  <text class="t" x="70" y="295">1. 创建 Fence 目录：在提交前创建临时目录（Fence），用于写入 Version</text>
+  <text class="t" x="70" y="315">2. 写入 Version：将 Version 写入 Fence 目录，包含 Segment 列表、Locator 等信息</text>
+  <text class="t" x="70" y="335">3. 原子切换：原子性地将 Fence 目录重命名为正式版本目录，保证原子性</text>
+  <text class="t" x="70" y="355">4. 保证原子性：要么全部成功（Version 写入成功，目录切换成功），要么全部失败（回滚）</text>
+  <text class="t" x="70" y="375">5. 错误恢复：如果提交失败，可以清理 Fence 目录，不影响已有版本</text>
+  <text class="t" x="70" y="395">6. 支持并发：Fence 机制支持并发提交，通过目录命名保证唯一性</text>
+  <text class="t" x="70" y="415">关键设计：Fence 机制是版本提交的核心，保证版本提交的原子性和一致性</text>
+  <text class="t" x="70" y="435">关键设计：通过原子切换机制，保证版本提交要么全部成功，要么全部失败</text>
+  <text class="t" x="70" y="455">关键设计：Fence 机制支持错误恢复，保证系统的可靠性</text>
+
+  <text class="muted" x="40" y="480">Fence 机制是版本提交的关键，保证版本提交的原子性和一致性</text>
+</svg>

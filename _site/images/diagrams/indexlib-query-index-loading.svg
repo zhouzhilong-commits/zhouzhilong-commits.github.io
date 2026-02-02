@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .loading{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">索引加载优化：按需加载、懒加载等</text>
+  <text class="muted" x="40" y="66">索引加载优化通过按需加载、懒加载等策略，减少内存使用，提高查询性能。</text>
+
+  <rect class="loading" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">按需加载</text>
+  <text class="t" x="70" y="155">根据查询需求</text>
+  <text class="t" x="70" y="175">加载索引数据</text>
+  <text class="t" x="70" y="195">减少内存使用</text>
+  <text class="t" x="70" y="215">提高加载速度</text>
+  <text class="t" x="70" y="235">降低内存占用</text>
+  <text class="t" x="70" y="255">优化资源使用</text>
+
+  <rect class="loading" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">懒加载</text>
+  <text class="t" x="310" y="155">延迟加载索引</text>
+  <text class="t" x="310" y="175">首次访问时加载</text>
+  <text class="t" x="310" y="195">减少启动时间</text>
+  <text class="t" x="310" y="215">提高启动速度</text>
+  <text class="t" x="310" y="235">降低内存占用</text>
+  <text class="t" x="310" y="255">优化资源使用</text>
+
+  <rect class="loading" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">预加载</text>
+  <text class="t" x="550" y="155">预测查询需求</text>
+  <text class="t" x="550" y="175">提前加载索引</text>
+  <text class="t" x="550" y="195">减少查询延迟</text>
+  <text class="t" x="550" y="215">提高查询性能</text>
+  <text class="t" x="550" y="235">优化用户体验</text>
+  <text class="t" x="550" y="255">平衡内存使用</text>
+
+  <rect class="loading" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">缓存管理</text>
+  <text class="t" x="790" y="155">管理索引缓存</text>
+  <text class="t" x="790" y="175">LRU 策略</text>
+  <text class="t" x="790" y="195">控制内存使用</text>
+  <text class="t" x="790" y="215">提高命中率</text>
+  <text class="t" x="790" y="235">优化性能</text>
+  <text class="t" x="790" y="255">降低延迟</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">索引加载优化的关键策略</text>
+  <text class="t" x="70" y="375">1. 按需加载：根据查询需求加载索引数据，减少内存使用，提高加载速度，降低内存占用，优化资源使用</text>
+  <text class="t" x="70" y="395">2. 懒加载：延迟加载索引，首次访问时加载，减少启动时间，提高启动速度，降低内存占用，优化资源使用</text>
+  <text class="t" x="70" y="415">3. 预加载：预测查询需求，提前加载索引，减少查询延迟，提高查询性能，优化用户体验，平衡内存使用</text>
+  <text class="t" x="70" y="435">关键设计：索引加载优化通过按需加载、懒加载、预加载、缓存管理等策略，全面优化索引加载和内存使用</text>
+  <text class="t" x="70" y="455">关键设计：索引加载优化需要合理配置加载策略，平衡内存使用和查询性能</text>
+
+  <text class="muted" x="40" y="490">理解索引加载优化，是优化查询性能和内存使用的关键</text>
+</svg>

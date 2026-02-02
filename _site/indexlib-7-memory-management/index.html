@@ -1,0 +1,1298 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>IndexLib（7）：内存管理与资源控制 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="IndexLib（7）：内存管理与资源控制">
+
+
+  <link rel="canonical" href="http://localhost:4000/indexlib-7-memory-management/">
+  <meta property="og:url" content="http://localhost:4000/indexlib-7-memory-management/">
+
+
+
+  <meta property="og:description" content="在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-07-07T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">IndexLib 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-1-architecture-overview/" class=""><span class="nav__sub-title">IndexLib（1）：架构概览与核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-2-tablet-segment/" class=""><span class="nav__sub-title">IndexLib（2）：Tablet 与 Segment：索引的组织方式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-3-build-flow/" class=""><span class="nav__sub-title">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-4-query-flow/" class=""><span class="nav__sub-title">IndexLib（4）：查询流程：TabletReader 与 IndexReader</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-5-version-management/" class=""><span class="nav__sub-title">IndexLib（5）：版本管理与增量更新</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-6-segment-merge/" class=""><span class="nav__sub-title">IndexLib（6）：Segment 合并策略</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-7-memory-management/" class="active"><span class="nav__sub-title">IndexLib（7）：内存管理与资源控制</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-8-index-types/" class=""><span class="nav__sub-title">IndexLib（8）：索引类型：Normal、KKV、KV</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-9-locator-consistency/" class=""><span class="nav__sub-title">IndexLib（9）：Locator 与数据一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-10-filesystem-storage/" class=""><span class="nav__sub-title">IndexLib（10）：文件系统抽象与存储格式</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="IndexLib（7）：内存管理与资源控制">
+    <meta itemprop="description" content="在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。">
+    <meta itemprop="datePublished" content="July 07, 2025">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">IndexLib（7）：内存管理与资源控制
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  3 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-07T00:00:00+08:00">July 07, 2025</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。</p>
+
+<p><img src="/images/diagrams/indexlib-memory-management-overview.svg" alt="内存管理与资源控制概览：从内存配额到内存回收的完整机制" /></p>
+
+<h2 id="1-内存管理概览">1. 内存管理概览</h2>
+
+<h3 id="11-内存管理的核心概念">1.1 内存管理的核心概念</h3>
+
+<p>IndexLib 的内存管理包括以下核心概念：</p>
+
+<ol>
+  <li><strong>MemoryQuotaController</strong>：内存配额控制器，管理内存配额和分配</li>
+  <li><strong>TabletMemoryCalculator</strong>：Tablet 内存计算器，计算 Tablet 的内存使用</li>
+  <li><strong>IIndexMemoryReclaimer</strong>：索引内存回收器，回收不再使用的内存</li>
+  <li><strong>BuildResourceCalculator</strong>：构建资源计算器，计算构建时的资源使用</li>
+</ol>
+
+<p>让我们先通过图来理解内存管理的整体架构：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-architecture.svg" alt="内存管理架构：MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 的关系" /></p>
+
+<h3 id="12-内存管理的作用">1.2 内存管理的作用</h3>
+
+<p>内存管理在 IndexLib 中起到关键作用：</p>
+
+<ul>
+  <li><strong>内存配额控制</strong>：通过 MemoryQuotaController 控制内存使用，避免内存溢出</li>
+  <li><strong>内存使用统计</strong>：通过 TabletMemoryCalculator 统计内存使用，监控内存状态</li>
+  <li><strong>内存回收</strong>：通过 IIndexMemoryReclaimer 回收不再使用的内存，释放内存空间</li>
+  <li><strong>资源优化</strong>：通过 BuildResourceCalculator 优化构建资源使用，提高构建效率</li>
+</ul>
+
+<h2 id="2-memoryquotacontroller内存配额控制器">2. MemoryQuotaController：内存配额控制器</h2>
+
+<h3 id="21-memoryquotacontroller-的结构">2.1 MemoryQuotaController 的结构</h3>
+
+<p><code class="language-plaintext highlighter-rouge">MemoryQuotaController</code> 是内存配额控制器，定义在 <code class="language-plaintext highlighter-rouge">base/MemoryQuotaController.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// base/MemoryQuotaController.h</span>
+<span class="k">class</span> <span class="nc">MemoryQuotaController</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 构造函数：创建根配额控制器</span>
+    <span class="n">MemoryQuotaController</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">,</span> <span class="kt">int64_t</span> <span class="n">totalQuota</span><span class="p">);</span>
+    
+    <span class="c1">// 构造函数：创建子配额控制器</span>
+    <span class="n">MemoryQuotaController</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">,</span> 
+                         <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MemoryQuotaController</span><span class="o">&gt;</span> <span class="n">parentController</span><span class="p">);</span>
+    
+    <span class="c1">// 分配内存配额</span>
+    <span class="kt">void</span> <span class="n">Allocate</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">quota</span><span class="p">);</span>
+    <span class="n">Status</span> <span class="n">TryAllocate</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">quota</span><span class="p">);</span>  <span class="c1">// 尝试分配，不阻塞</span>
+    
+    <span class="c1">// 预留内存配额</span>
+    <span class="n">Status</span> <span class="n">Reserve</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">quota</span><span class="p">);</span>
+    
+    <span class="c1">// 释放内存配额</span>
+    <span class="kt">void</span> <span class="n">Free</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">quota</span><span class="p">);</span>
+    
+    <span class="c1">// 获取内存配额信息</span>
+    <span class="kt">int64_t</span> <span class="n">GetAllocatedQuota</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>  <span class="c1">// 已分配配额</span>
+    <span class="kt">int64_t</span> <span class="n">GetFreeQuota</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>       <span class="c1">// 可用配额</span>
+    <span class="kt">int64_t</span> <span class="n">GetTotalQuota</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>      <span class="c1">// 总配额</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_name</span><span class="p">;</span>                                    <span class="c1">// 控制器名称</span>
+    <span class="k">const</span> <span class="kt">int64_t</span> <span class="n">_rootQuota</span><span class="p">;</span>                            <span class="c1">// 根配额（根控制器）</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int64_t</span><span class="o">&gt;</span> <span class="n">_localFreeQuota</span><span class="p">;</span>                <span class="c1">// 本地可用配额</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int64_t</span><span class="o">&gt;</span> <span class="n">_reservedParentQuota</span><span class="p">;</span>           <span class="c1">// 从父控制器预留的配额</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MemoryQuotaController</span><span class="o">&gt;</span> <span class="n">_parentController</span><span class="p">;</span>  <span class="c1">// 父控制器</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>MemoryQuotaController 的关键字段</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-quota-controller-structure.svg" alt="MemoryQuotaController 的结构：包含配额信息和父控制器" /></p>
+
+<ul>
+  <li><strong>rootQuota</strong>：根配额，根控制器的总配额</li>
+  <li><strong>localFreeQuota</strong>：本地可用配额，当前控制器可用的配额</li>
+  <li><strong>reservedParentQuota</strong>：从父控制器预留的配额</li>
+  <li><strong>parentController</strong>：父控制器，支持层级配额管理</li>
+</ul>
+
+<h3 id="22-内存配额分配">2.2 内存配额分配</h3>
+
+<p>内存配额的分配机制：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-quota-allocation.svg" alt="内存配额分配：从父控制器到子控制器的配额分配" /></p>
+
+<p><strong>内存配额分配流程图</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[请求分配内存] --&gt; B[检查本地配额]
+    B --&gt; C{本地配额足够?}
+    C --&gt;|是| D[从本地分配]
+    C --&gt;|否| E[向父控制器请求]
+    E --&gt; F{父控制器有配额?}
+    F --&gt;|是| G[从父控制器分配]
+    F --&gt;|否| H[等待或拒绝]
+    D --&gt; I[更新本地配额]
+    G --&gt; I
+    I --&gt; J[分配完成]
+    H --&gt; K[分配失败]
+    style C fill:#e3f2fd
+    style E fill:#fff3e0
+    style I fill:#f3e5f5
+    style J fill:#e8f5e9
+</code></pre>
+
+<p><strong>分配机制</strong>：</p>
+<ol>
+  <li><strong>根控制器分配</strong>：根控制器有固定的总配额</li>
+  <li><strong>子控制器分配</strong>：子控制器从父控制器分配配额</li>
+  <li><strong>配额预留</strong>：通过 Reserve() 预留配额，保证后续分配</li>
+  <li><strong>配额释放</strong>：通过 Free() 释放配额，返回给父控制器</li>
+</ol>
+
+<h3 id="23-层级配额管理">2.3 层级配额管理</h3>
+
+<p>MemoryQuotaController 支持层级配额管理：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-quota-hierarchy.svg" alt="层级配额管理：从根控制器到子控制器的层级结构" /></p>
+
+<p><strong>层级结构</strong>：</p>
+<ul>
+  <li><strong>根控制器</strong>：管理总配额，分配给子控制器</li>
+  <li><strong>分区控制器</strong>：管理分区的配额，分配给 Tablet 控制器</li>
+  <li><strong>Tablet 控制器</strong>：管理 Tablet 的配额，分配给各个组件</li>
+  <li><strong>组件控制器</strong>：管理组件的配额，如构建配额、查询配额等</li>
+</ul>
+
+<h3 id="24-配额分配策略">2.4 配额分配策略</h3>
+
+<p>配额分配的策略：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-quota-strategy.svg" alt="配额分配策略：按需分配、预留分配等策略" /></p>
+
+<p><strong>分配策略</strong>：</p>
+<ul>
+  <li><strong>按需分配</strong>：根据实际需求分配配额，灵活适应不同场景</li>
+  <li><strong>预留分配</strong>：通过 Reserve() 预留配额，保证关键操作的配额</li>
+  <li><strong>阻塞分配</strong>：Allocate() 会阻塞直到有可用配额</li>
+  <li><strong>非阻塞分配</strong>：TryAllocate() 不阻塞，立即返回结果</li>
+</ul>
+
+<h2 id="3-tabletmemorycalculatortablet-内存计算器">3. TabletMemoryCalculator：Tablet 内存计算器</h2>
+
+<h3 id="31-tabletmemorycalculator-的结构">3.1 TabletMemoryCalculator 的结构</h3>
+
+<p><code class="language-plaintext highlighter-rouge">TabletMemoryCalculator</code> 是 Tablet 内存计算器，定义在 <code class="language-plaintext highlighter-rouge">framework/TabletMemoryCalculator.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletMemoryCalculator.h</span>
+<span class="k">class</span> <span class="nc">TabletMemoryCalculator</span> <span class="k">final</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">TabletMemoryCalculator</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletWriter</span><span class="o">&gt;&amp;</span> <span class="n">tabletWriter</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletReaderContainer</span><span class="o">&gt;&amp;</span> <span class="n">tabletReaderContainer</span><span class="p">);</span>
+    
+    <span class="c1">// 获取各种内存使用量</span>
+    <span class="kt">size_t</span> <span class="n">GetRtBuiltSegmentsMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>      <span class="c1">// 实时已构建 Segment 内存</span>
+    <span class="kt">size_t</span> <span class="n">GetRtIndexMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>              <span class="c1">// 实时索引内存</span>
+    <span class="kt">size_t</span> <span class="n">GetIncIndexMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>             <span class="c1">// 增量索引内存</span>
+    <span class="kt">size_t</span> <span class="n">GetBuildingSegmentMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>      <span class="c1">// 构建中 Segment 内存</span>
+    <span class="kt">size_t</span> <span class="n">GetDumpingSegmentMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>       <span class="c1">// 转储中 Segment 内存</span>
+    <span class="kt">size_t</span> <span class="n">GetBuildingSegmentDumpExpandMemsize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>  <span class="c1">// 转储扩展内存</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletWriter</span><span class="o">&gt;</span> <span class="n">_tabletWriter</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletReaderContainer</span><span class="o">&gt;</span> <span class="n">_tabletReaderContainer</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>TabletMemoryCalculator 的关键方法</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-tablet-memory-calculator.svg" alt="TabletMemoryCalculator 的方法：计算各种内存使用量" /></p>
+
+<ul>
+  <li><strong>GetRtBuiltSegmentsMemsize()</strong>：计算实时已构建 Segment 的内存使用</li>
+  <li><strong>GetRtIndexMemsize()</strong>：计算实时索引的内存使用</li>
+  <li><strong>GetIncIndexMemsize()</strong>：计算增量索引的内存使用</li>
+  <li><strong>GetBuildingSegmentMemsize()</strong>：计算构建中 Segment 的内存使用</li>
+  <li><strong>GetDumpingSegmentMemsize()</strong>：计算转储中 Segment 的内存使用</li>
+</ul>
+
+<h3 id="32-内存使用统计">3.2 内存使用统计</h3>
+
+<p>内存使用统计的流程：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-usage-statistics.svg" alt="内存使用统计：从 Tablet 组件到内存使用量的统计流程" /></p>
+
+<p><strong>统计流程</strong>：</p>
+<ol>
+  <li><strong>收集组件信息</strong>：从 TabletWriter 和 TabletReaderContainer 收集组件信息</li>
+  <li><strong>计算各组件内存</strong>：计算各个组件的内存使用量</li>
+  <li><strong>汇总内存使用</strong>：汇总所有组件的内存使用量</li>
+  <li><strong>返回统计结果</strong>：返回详细的内存使用统计结果</li>
+</ol>
+
+<h2 id="4-iindexmemoryreclaimer索引内存回收器">4. IIndexMemoryReclaimer：索引内存回收器</h2>
+
+<h3 id="41-iindexmemoryreclaimer-接口">4.1 IIndexMemoryReclaimer 接口</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IIndexMemoryReclaimer</code> 是索引内存回收器的接口，定义在 <code class="language-plaintext highlighter-rouge">framework/mem_reclaimer/IIndexMemoryReclaimer.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/mem_reclaimer/IIndexMemoryReclaimer.h</span>
+<span class="k">class</span> <span class="nc">IIndexMemoryReclaimer</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 回收内存：将内存加入回收队列</span>
+    <span class="k">virtual</span> <span class="kt">int64_t</span> <span class="n">Retire</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">addr</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">deAllocator</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 取消回收：从回收队列中移除</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">DropRetireItem</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">itemId</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 尝试回收：尝试回收一些内存</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">TryReclaim</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 强制回收：强制回收所有可回收的内存</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Reclaim</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>IIndexMemoryReclaimer 的关键方法</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-index-memory-reclaimer-interface.svg" alt="IIndexMemoryReclaimer 接口：提供内存回收的抽象" /></p>
+
+<ul>
+  <li><strong>Retire()</strong>：将内存加入回收队列，延迟回收</li>
+  <li><strong>DropRetireItem()</strong>：取消回收，从回收队列中移除</li>
+  <li><strong>TryReclaim()</strong>：尝试回收一些内存，不阻塞</li>
+  <li><strong>Reclaim()</strong>：强制回收所有可回收的内存</li>
+</ul>
+
+<h3 id="42-内存回收机制">4.2 内存回收机制</h3>
+
+<p>内存回收的机制：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-reclaim-mechanism.svg" alt="内存回收机制：从 Retire 到 Reclaim 的回收流程" /></p>
+
+<p><strong>内存回收流程图</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[内存不再使用] --&gt; B[Retire 加入回收队列]
+    B --&gt; C[延迟回收]
+    C --&gt; D{内存是否紧张?}
+    D --&gt;|否| E[继续延迟]
+    D --&gt;|是| F[TryReclaim 尝试回收]
+    E --&gt; D
+    F --&gt; G{回收成功?}
+    G --&gt;|是| H[释放内存]
+    G --&gt;|否| I[Reclaim 强制回收]
+    I --&gt; H
+    H --&gt; J[回收完成]
+    style C fill:#e3f2fd
+    style F fill:#fff3e0
+    style I fill:#f3e5f5
+    style H fill:#e8f5e9
+</code></pre>
+
+<p><strong>回收机制</strong>：</p>
+<ol>
+  <li><strong>Retire</strong>：将不再使用的内存加入回收队列，延迟回收</li>
+  <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存分配和释放</li>
+  <li><strong>TryReclaim</strong>：在合适的时机尝试回收一些内存</li>
+  <li><strong>Reclaim</strong>：在内存紧张时强制回收所有可回收的内存</li>
+</ol>
+
+<h3 id="43-内存回收策略">4.3 内存回收策略</h3>
+
+<p>内存回收的策略：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-reclaim-strategy.svg" alt="内存回收策略：延迟回收、按需回收等策略" /></p>
+
+<p><strong>回收策略</strong>：</p>
+<ul>
+  <li><strong>延迟回收</strong>：通过 Retire() 延迟回收，避免频繁的内存操作</li>
+  <li><strong>按需回收</strong>：在内存紧张时通过 TryReclaim() 按需回收</li>
+  <li><strong>强制回收</strong>：在内存严重不足时通过 Reclaim() 强制回收</li>
+  <li><strong>取消回收</strong>：通过 DropRetireItem() 取消不需要的回收</li>
+</ul>
+
+<h2 id="5-buildresourcecalculator构建资源计算器">5. BuildResourceCalculator：构建资源计算器</h2>
+
+<h3 id="51-buildresourcecalculator-的结构">5.1 BuildResourceCalculator 的结构</h3>
+
+<p><code class="language-plaintext highlighter-rouge">BuildResourceCalculator</code> 是构建资源计算器，定义在 <code class="language-plaintext highlighter-rouge">util/memory_control/BuildResourceCalculator.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// util/memory_control/BuildResourceCalculator.h</span>
+<span class="k">class</span> <span class="nc">BuildResourceCalculator</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 获取当前总内存使用</span>
+    <span class="k">static</span> <span class="kt">int64_t</span> <span class="n">GetCurrentTotalMemoryUse</span><span class="p">(</span><span class="k">const</span> <span class="n">BuildResourceMetricsPtr</span><span class="o">&amp;</span> <span class="n">metrics</span><span class="p">);</span>
+    
+    <span class="c1">// 估算转储临时内存使用</span>
+    <span class="k">static</span> <span class="kt">int64_t</span> <span class="n">EstimateDumpTempMemoryUse</span><span class="p">(</span><span class="k">const</span> <span class="n">BuildResourceMetricsPtr</span><span class="o">&amp;</span> <span class="n">metrics</span><span class="p">,</span> 
+                                             <span class="kt">int</span> <span class="n">dumpThreadCount</span><span class="p">);</span>
+    
+    <span class="c1">// 估算转储扩展内存使用</span>
+    <span class="k">static</span> <span class="kt">int64_t</span> <span class="n">EstimateDumpExpandMemoryUse</span><span class="p">(</span><span class="k">const</span> <span class="n">BuildResourceMetricsPtr</span><span class="o">&amp;</span> <span class="n">metrics</span><span class="p">);</span>
+    
+    <span class="c1">// 估算转储文件大小</span>
+    <span class="k">static</span> <span class="kt">int64_t</span> <span class="n">EstimateDumpFileSize</span><span class="p">(</span><span class="k">const</span> <span class="n">BuildResourceMetricsPtr</span><span class="o">&amp;</span> <span class="n">metrics</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>BuildResourceCalculator 的关键方法</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-build-resource-calculator.svg" alt="BuildResourceCalculator 的方法：计算构建资源使用" /></p>
+
+<ul>
+  <li><strong>GetCurrentTotalMemoryUse()</strong>：获取当前总内存使用</li>
+  <li><strong>EstimateDumpTempMemoryUse()</strong>：估算转储临时内存使用</li>
+  <li><strong>EstimateDumpExpandMemoryUse()</strong>：估算转储扩展内存使用</li>
+  <li><strong>EstimateDumpFileSize()</strong>：估算转储文件大小</li>
+</ul>
+
+<h3 id="52-构建资源估算">5.2 构建资源估算</h3>
+
+<p>构建资源估算的流程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-resource-estimation.svg" alt="构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程" /></p>
+
+<p><strong>估算流程</strong>：</p>
+<ol>
+  <li><strong>收集指标</strong>：从 BuildResourceMetrics 收集构建指标</li>
+  <li><strong>计算内存使用</strong>：根据指标计算内存使用量</li>
+  <li><strong>估算转储资源</strong>：估算转储时的临时内存和文件大小</li>
+  <li><strong>返回估算结果</strong>：返回详细的资源使用估算结果</li>
+</ol>
+
+<h2 id="6-内存分配策略">6. 内存分配策略</h2>
+
+<h3 id="61-内存分配策略">6.1 内存分配策略</h3>
+
+<p>内存分配的策略：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-allocation-strategy.svg" alt="内存分配策略：按需分配、预留分配等策略" /></p>
+
+<p><strong>分配策略</strong>：</p>
+<ul>
+  <li><strong>按需分配</strong>：根据实际需求分配内存，灵活适应不同场景</li>
+  <li><strong>预留分配</strong>：通过 Reserve() 预留内存，保证关键操作的内存</li>
+  <li><strong>阻塞分配</strong>：Allocate() 会阻塞直到有可用内存</li>
+  <li><strong>非阻塞分配</strong>：TryAllocate() 不阻塞，立即返回结果</li>
+</ul>
+
+<h3 id="62-内存分配优化">6.2 内存分配优化</h3>
+
+<p>内存分配的优化：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-allocation-optimization.svg" alt="内存分配优化：批量分配、内存池等优化策略" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>批量分配</strong>：批量分配内存，减少分配次数</li>
+  <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+  <li><strong>对齐分配</strong>：内存对齐分配，提高访问效率</li>
+  <li><strong>预分配</strong>：预分配常用大小的内存，减少分配延迟</li>
+</ul>
+
+<h2 id="7-内存回收机制">7. 内存回收机制</h2>
+
+<h3 id="71-内存回收时机">7.1 内存回收时机</h3>
+
+<p>内存回收的时机：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-reclaim-timing.svg" alt="内存回收时机：延迟回收、按需回收等时机" /></p>
+
+<p><strong>回收时机</strong>：</p>
+<ul>
+  <li><strong>延迟回收</strong>：通过 Retire() 延迟回收，在合适的时机回收</li>
+  <li><strong>按需回收</strong>：在内存紧张时通过 TryReclaim() 按需回收</li>
+  <li><strong>强制回收</strong>：在内存严重不足时通过 Reclaim() 强制回收</li>
+  <li><strong>定期回收</strong>：定期触发回收，保持内存使用在合理范围</li>
+</ul>
+
+<h3 id="72-内存回收优化">7.2 内存回收优化</h3>
+
+<p>内存回收的优化：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-reclaim-optimization.svg" alt="内存回收优化：批量回收、延迟回收等优化策略" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>批量回收</strong>：批量回收内存，减少回收次数</li>
+  <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存操作</li>
+  <li><strong>智能回收</strong>：根据内存使用情况智能决定回收时机</li>
+  <li><strong>并发回收</strong>：支持并发回收，提高回收效率</li>
+</ul>
+
+<h2 id="8-内存优化策略">8. 内存优化策略</h2>
+
+<h3 id="81-内存使用优化">8.1 内存使用优化</h3>
+
+<p>内存使用的优化：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-usage-optimization.svg" alt="内存使用优化：内存池、缓存控制等优化策略" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+  <li><strong>缓存控制</strong>：控制缓存大小，避免内存溢出</li>
+  <li><strong>内存压缩</strong>：压缩内存数据，减少内存使用</li>
+  <li><strong>懒加载</strong>：按需加载数据，减少内存占用</li>
+</ul>
+
+<h3 id="82-内存监控与告警">8.2 内存监控与告警</h3>
+
+<p>内存监控与告警：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-monitoring.svg" alt="内存监控与告警：实时监控内存使用，及时告警" /></p>
+
+<p><strong>监控与告警</strong>：</p>
+<ul>
+  <li><strong>实时监控</strong>：实时监控内存使用情况</li>
+  <li><strong>阈值告警</strong>：当内存使用超过阈值时告警</li>
+  <li><strong>统计分析</strong>：统计分析内存使用趋势</li>
+  <li><strong>优化建议</strong>：根据监控数据提供优化建议</li>
+</ul>
+
+<h2 id="9-内存管理的关键设计">9. 内存管理的关键设计</h2>
+
+<h3 id="91-层级配额管理">9.1 层级配额管理</h3>
+
+<p>层级配额管理的设计：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-quota-hierarchy-design.svg" alt="层级配额管理：从根控制器到子控制器的层级结构" /></p>
+
+<p><strong>设计要点</strong>：</p>
+<ul>
+  <li><strong>层级结构</strong>：支持多层级配额管理，灵活分配配额</li>
+  <li><strong>配额继承</strong>：子控制器从父控制器继承配额</li>
+  <li><strong>配额隔离</strong>：不同层级的配额相互隔离，避免相互影响</li>
+  <li><strong>配额共享</strong>：支持配额共享，提高配额利用率</li>
+</ul>
+
+<h3 id="92-内存回收设计">9.2 内存回收设计</h3>
+
+<p>内存回收的设计：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-reclaim-design.svg" alt="内存回收设计：延迟回收、按需回收等设计" /></p>
+
+<p><strong>设计要点</strong>：</p>
+<ul>
+  <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存操作</li>
+  <li><strong>按需回收</strong>：在内存紧张时按需回收，保证系统稳定性</li>
+  <li><strong>并发安全</strong>：内存回收支持并发，保证线程安全</li>
+  <li><strong>资源释放</strong>：及时释放不再使用的资源，避免内存泄漏</li>
+</ul>
+
+<h3 id="93-性能优化设计">9.3 性能优化设计</h3>
+
+<p>性能优化的设计：</p>
+
+<p><img src="/images/diagrams/indexlib-memory-performance-design.svg" alt="性能优化设计：内存池、批量操作等优化策略" /></p>
+
+<p><strong>设计要点</strong>：</p>
+<ul>
+  <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+  <li><strong>批量操作</strong>：批量分配和回收内存，减少操作次数</li>
+  <li><strong>缓存优化</strong>：优化缓存策略，提高内存利用率</li>
+  <li><strong>资源控制</strong>：控制资源使用，避免资源浪费</li>
+</ul>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>内存管理与资源控制是 IndexLib 的核心功能，通过 MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 等组件实现。通过本文的深入解析，我们了解到：</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li><strong>MemoryQuotaController</strong>：内存配额控制器，管理内存配额和分配，支持层级配额管理</li>
+  <li><strong>TabletMemoryCalculator</strong>：Tablet 内存计算器，计算 Tablet 的内存使用，监控内存状态</li>
+  <li><strong>IIndexMemoryReclaimer</strong>：索引内存回收器，回收不再使用的内存，释放内存空间</li>
+  <li><strong>BuildResourceCalculator</strong>：构建资源计算器，计算构建时的资源使用，优化构建效率</li>
+  <li><strong>内存分配策略</strong>：按需分配、预留分配等策略，灵活适应不同场景</li>
+  <li><strong>内存回收机制</strong>：延迟回收、按需回收等机制，保证系统稳定性</li>
+  <li><strong>内存优化策略</strong>：内存池、缓存控制等优化策略，提高内存利用率</li>
+</ul>
+
+<p>理解内存管理与资源控制，是掌握 IndexLib 资源管理机制的关键。在下一篇文章中，我们将深入介绍索引类型的实现细节。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

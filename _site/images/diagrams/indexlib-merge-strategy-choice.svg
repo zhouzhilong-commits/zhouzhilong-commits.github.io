@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">合并策略的选择：根据场景选择不同的合并策略</text>
+  <text class="muted" x="40" y="66">不同场景下需要选择不同的合并策略，包括 OptimizeMergeStrategy、RealtimeMergeStrategy、ShardBasedMergeStrategy 等。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">OptimizeMergeStrategy</text>
+  <text class="t" x="70" y="140">适用于全量合并，合并所有符合条件的 Segment</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">RealtimeMergeStrategy</text>
+  <text class="t" x="70" y="210">适用于实时合并，实时合并小 Segment</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">ShardBasedMergeStrategy</text>
+  <text class="t" x="70" y="280">适用于分片场景，按分片合并 Segment</text>
+  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="h" x="70" y="330">KeyValueOptimizeMergeStrategy</text>
+  <text class="t" x="70" y="350">适用于 KV 表，针对 KV 表的优化合并</text>
+  <text class="muted" x="40" y="395">理解 合并策略的选择，是掌握 Segment 合并机制的关键</text>
+</svg>

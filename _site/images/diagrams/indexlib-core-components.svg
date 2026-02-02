@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .tablet{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .tabletdata{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .segment{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+      .reader{fill:#fce4ec;stroke:#c2185b;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">IndexLib 核心组件关系：Tablet、Segment、Version、IndexReader 的交互</text>
+  <text class="muted" x="40" y="66">各组件职责清晰，通过接口交互，支持灵活的扩展和高性能操作。</text>
+
+  <rect class="tablet" x="40" y="95" width="280" height="180"/>
+  <text class="h" x="70" y="130">ITablet</text>
+  <text class="t" x="70" y="155">索引表核心接口</text>
+  <text class="t" x="70" y="175">- Open：打开索引</text>
+  <text class="t" x="70" y="195">- Build：构建索引</text>
+  <text class="t" x="70" y="215">- Flush：刷新到磁盘</text>
+  <text class="t" x="70" y="235">- Seal：封存 Segment</text>
+  <text class="t" x="70" y="255">- Commit：提交版本</text>
+
+  <path class="arrow" d="M 320 185 L 400 185"/>
+
+  <rect class="tabletdata" x="410" y="95" width="280" height="180"/>
+  <text class="h" x="440" y="130">TabletData</text>
+  <text class="t" x="440" y="155">管理索引数据</text>
+  <text class="t" x="440" y="175">- Segments：Segment 列表</text>
+  <text class="t" x="440" y="195">- Version：磁盘版本</text>
+  <text class="t" x="440" y="215">- ResourceMap：共享资源</text>
+  <text class="t" x="440" y="235">- CreateSlice：按状态筛选</text>
+
+  <path class="arrow" d="M 690 185 L 770 185"/>
+
+  <rect class="segment" x="780" y="95" width="180" height="180"/>
+  <text class="h" x="810" y="130">Segment</text>
+  <text class="t" x="810" y="155">索引基本单元</text>
+  <text class="t" x="810" y="175">- MemSegment</text>
+  <text class="t" x="810" y="195">- DiskSegment</text>
+  <text class="t" x="810" y="215">- GetIndexer</text>
+  <text class="t" x="810" y="235">- AddIndexer</text>
+
+  <path class="arrow" d="M 320 275 L 400 275" stroke-dasharray="5,5"/>
+
+  <rect class="version" x="410" y="295" width="280" height="120"/>
+  <text class="h" x="440" y="330">Version</text>
+  <text class="t" x="440" y="355">版本管理</text>
+  <text class="t" x="440" y="375">- VersionId：版本号</text>
+  <text class="t" x="440" y="395">- Segments：Segment 列表</text>
+  <text class="t" x="440" y="415">- Locator：位置信息</text>
+
+  <path class="arrow" d="M 40 275 L 120 275" stroke-dasharray="5,5"/>
+
+  <rect class="reader" x="40" y="295" width="280" height="120"/>
+  <text class="h" x="70" y="330">TabletReader</text>
+  <text class="t" x="70" y="355">查询接口</text>
+  <text class="t" x="70" y="375">- Search：JSON 查询</text>
+  <text class="t" x="70" y="395">- GetIndexReader：获取索引 Reader</text>
+
+  <rect class="box" x="40" y="435" width="920" height="90"/>
+  <text class="h" x="70" y="470">组件交互流程</text>
+  <text class="t" x="70" y="495">1. ITablet 管理 TabletData，TabletData 包含多个 Segment 和 Version</text>
+  <text class="t" x="70" y="515">2. TabletReader 通过 TabletData 获取 Segment，然后查询各个 Segment 的 Indexer</text>
+</svg>

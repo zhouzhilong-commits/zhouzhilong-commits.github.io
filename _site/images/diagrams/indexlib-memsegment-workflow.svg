@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 450">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">MemSegment 工作流程：从 Build 到 Dump 的完整过程</text>
+  <text class="muted" x="40" y="66">MemSegment 接收文档，构建索引，达到阈值后转储到磁盘。</text>
+
+  <rect class="step" x="40" y="95" width="170" height="100"/>
+  <text class="h" x="70" y="130">1. Build</text>
+  <text class="t" x="70" y="155">接收文档批次</text>
+  <text class="t" x="70" y="175">写入内存索引</text>
+  <text class="t" x="70" y="195">实时构建</text>
+
+  <path class="arrow" d="M 210 145 L 250 145"/>
+
+  <rect class="step" x="260" y="95" width="170" height="100"/>
+  <text class="h" x="290" y="130">2. NeedDump</text>
+  <text class="t" x="290" y="155">检查阈值</text>
+  <text class="t" x="290" y="175">内存/文档数</text>
+  <text class="t" x="290" y="195">触发转储</text>
+
+  <path class="arrow" d="M 430 145 L 470 145"/>
+
+  <rect class="step" x="480" y="95" width="200" height="100"/>
+  <text class="h" x="510" y="130">3. CreateSegmentDumpItems</text>
+  <text class="t" x="510" y="155">创建转储任务</text>
+  <text class="t" x="510" y="175">准备磁盘写入</text>
+  <text class="t" x="510" y="195">异步转储</text>
+
+  <path class="arrow" d="M 680 145 L 720 145"/>
+
+  <rect class="step" x="730" y="95" width="170" height="100"/>
+  <text class="h" x="760" y="130">4. Seal</text>
+  <text class="t" x="760" y="155">封存 Segment</text>
+  <text class="t" x="760" y="175">标记只读</text>
+  <text class="t" x="760" y="195">完成转储</text>
+
+  <rect class="box" x="40" y="220" width="860" height="200"/>
+  <text class="h" x="70" y="255">详细流程说明</text>
+  <text class="t" x="70" y="280">1. Build：调用 Build(document::IDocumentBatch* batch)，将文档写入内存中的索引结构（倒排索引、正排索引等）</text>
+  <text class="t" x="70" y="300">2. NeedDump：定期检查 NeedDump()，判断是否达到转储条件（内存使用超过阈值、文档数量达到上限等）</text>
+  <text class="t" x="70" y="320">3. CreateSegmentDumpItems：创建转储任务列表，每个任务负责将一部分索引数据写入磁盘，转储是异步的，不阻塞新的写入</text>
+  <text class="t" x="70" y="340">4. Seal：转储完成后调用 Seal()，标记 Segment 为只读，不再接收新文档，此时 MemSegment 已转换为 DiskSegment</text>
+  <text class="t" x="70" y="360">5. 新 MemSegment：如果有新的写入，会创建新的 MemSegment 继续接收文档，实现持续写入</text>
+  <text class="t" x="70" y="380">关键点：转储是异步的，MemSegment 在转储过程中仍然可以接收查询请求（读 MemSegment），保证实时性</text>
+</svg>

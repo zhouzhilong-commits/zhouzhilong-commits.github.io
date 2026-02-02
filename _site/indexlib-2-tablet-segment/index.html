@@ -1,0 +1,1464 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>IndexLib（2）：Tablet 与 Segment：索引的组织方式 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="IndexLib（2）：Tablet 与 Segment：索引的组织方式">
+
+
+  <link rel="canonical" href="http://localhost:4000/indexlib-2-tablet-segment/">
+  <meta property="og:url" content="http://localhost:4000/indexlib-2-tablet-segment/">
+
+
+
+  <meta property="og:description" content="在上一篇文章中，我们介绍了 IndexLib 的整体架构和核心概念。本文将继续深入，详细解析 Tablet 和 Segment 的组织方式，这是理解 IndexLib 索引机制的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-07-02T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">IndexLib 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-1-architecture-overview/" class=""><span class="nav__sub-title">IndexLib（1）：架构概览与核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-2-tablet-segment/" class="active"><span class="nav__sub-title">IndexLib（2）：Tablet 与 Segment：索引的组织方式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-3-build-flow/" class=""><span class="nav__sub-title">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-4-query-flow/" class=""><span class="nav__sub-title">IndexLib（4）：查询流程：TabletReader 与 IndexReader</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-5-version-management/" class=""><span class="nav__sub-title">IndexLib（5）：版本管理与增量更新</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-6-segment-merge/" class=""><span class="nav__sub-title">IndexLib（6）：Segment 合并策略</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-7-memory-management/" class=""><span class="nav__sub-title">IndexLib（7）：内存管理与资源控制</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-8-index-types/" class=""><span class="nav__sub-title">IndexLib（8）：索引类型：Normal、KKV、KV</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-9-locator-consistency/" class=""><span class="nav__sub-title">IndexLib（9）：Locator 与数据一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-10-filesystem-storage/" class=""><span class="nav__sub-title">IndexLib（10）：文件系统抽象与存储格式</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="IndexLib（2）：Tablet 与 Segment：索引的组织方式">
+    <meta itemprop="description" content="在上一篇文章中，我们介绍了 IndexLib 的整体架构和核心概念。本文将继续深入，详细解析 Tablet 和 Segment 的组织方式，这是理解 IndexLib 索引机制的关键。">
+    <meta itemprop="datePublished" content="July 02, 2025">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">IndexLib（2）：Tablet 与 Segment：索引的组织方式
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  8 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-02T00:00:00+08:00">July 02, 2025</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>在上一篇文章中，我们介绍了 IndexLib 的整体架构和核心概念。本文将继续深入，详细解析 Tablet 和 Segment 的组织方式，这是理解 IndexLib 索引机制的关键。</p>
+
+<p><img src="/images/diagrams/indexlib-tablet-segment-organization.svg" alt="Tablet 与 Segment 的组织关系：一个 Tablet 包含多个 Segment" /></p>
+
+<h2 id="1-tablet-与-segment-的关系">1. Tablet 与 Segment 的关系</h2>
+
+<h3 id="11-整体组织架构">1.1 整体组织架构</h3>
+
+<p>Tablet 是索引表的完整抽象，而 Segment 是索引的基本存储单元。一个 Tablet 包含多个 Segment，这些 Segment 按照时间顺序组织，共同构成完整的索引。</p>
+
+<p>通过阅读源码，我们可以看到 Tablet 和 Segment 的关系定义在 <code class="language-plaintext highlighter-rouge">framework/TabletData.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletData.h</span>
+<span class="k">class</span> <span class="nc">TabletData</span> <span class="o">:</span> <span class="k">private</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">Version</span> <span class="n">_onDiskVersion</span><span class="p">;</span>                               <span class="c1">// 磁盘版本</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Segment</span><span class="o">&gt;&gt;</span> <span class="n">_segments</span><span class="p">;</span>     <span class="c1">// Segment 列表（有序）</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ResourceMap</span><span class="o">&gt;</span> <span class="n">_resourceMap</span><span class="p">;</span>           <span class="c1">// 共享资源</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>关键设计</strong>：</p>
+<ul>
+  <li><strong>有序列表</strong>：<code class="language-plaintext highlighter-rouge">_segments</code> 是一个有序的 Segment 列表，按照 SegmentId 排序</li>
+  <li><strong>版本管理</strong>：<code class="language-plaintext highlighter-rouge">_onDiskVersion</code> 记录哪些 Segment 已持久化</li>
+  <li><strong>共享资源</strong>：多个 Segment 共享 <code class="language-plaintext highlighter-rouge">ResourceMap</code>（内存池、缓存等）</li>
+</ul>
+
+<h3 id="12-segment-的-id-分配机制">1.2 Segment 的 ID 分配机制</h3>
+
+<p>Segment 的 ID 分配有特殊的规则，定义在 <code class="language-plaintext highlighter-rouge">framework/Segment.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Segment.h</span>
+<span class="k">class</span> <span class="nc">Segment</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// Segment ID 的掩码定义</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="n">segmentid_t</span> <span class="n">RT_SEGMENT_ID_MASK</span> <span class="o">=</span> <span class="p">(</span><span class="n">segmentid_t</span><span class="p">)</span><span class="mh">0x1</span> <span class="o">&lt;&lt;</span> <span class="mi">30</span><span class="p">;</span>      <span class="c1">// 实时 Segment</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="n">segmentid_t</span> <span class="n">MERGED_SEGMENT_ID_MASK</span> <span class="o">=</span> <span class="p">(</span><span class="n">segmentid_t</span><span class="p">)</span><span class="mh">0x0</span><span class="p">;</span>         <span class="c1">// 合并 Segment</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="n">segmentid_t</span> <span class="n">PUBLIC_SEGMENT_ID_MASK</span> <span class="o">=</span> <span class="p">(</span><span class="n">segmentid_t</span><span class="p">)</span><span class="mh">0x1</span> <span class="o">&lt;&lt;</span> <span class="mi">29</span><span class="p">;</span>   <span class="c1">// 公共 Segment</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="n">segmentid_t</span> <span class="n">PRIVATE_SEGMENT_ID_MASK</span> <span class="o">=</span> <span class="p">(</span><span class="n">segmentid_t</span><span class="p">)</span><span class="mh">0x1</span> <span class="o">&lt;&lt;</span> <span class="mi">30</span><span class="p">;</span> <span class="c1">// 私有 Segment</span>
+
+    <span class="c1">// 判断 Segment 类型</span>
+    <span class="k">static</span> <span class="kt">bool</span> <span class="n">IsRtSegmentId</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segId</span><span class="p">)</span> <span class="p">{</span> 
+        <span class="k">return</span> <span class="p">(</span><span class="n">segId</span> <span class="o">&amp;</span> <span class="n">RT_SEGMENT_ID_MASK</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> 
+    <span class="p">}</span>
+    
+    <span class="k">static</span> <span class="kt">bool</span> <span class="n">IsMergedSegmentId</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segId</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">segId</span> <span class="o">!=</span> <span class="n">INVALID_SEGMENTID</span> <span class="o">&amp;&amp;</span> 
+               <span class="p">(</span><span class="n">segId</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">PUBLIC_SEGMENT_ID_MASK</span> <span class="o">|</span> <span class="n">PRIVATE_SEGMENT_ID_MASK</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Segment ID 的分类</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-id-allocation.svg" alt="Segment ID 分类：实时 Segment、合并 Segment 的 ID 分配规则" /></p>
+
+<ul>
+  <li><strong>实时 Segment（RT Segment）</strong>：ID 的第 30 位为 1，用于实时写入</li>
+  <li><strong>合并 Segment（Merged Segment）</strong>：ID 的第 29、30 位都为 0，用于合并后的 Segment</li>
+  <li><strong>公共/私有 Segment</strong>：通过第 29 位区分</li>
+</ul>
+
+<h2 id="2-segment-的元数据segmentmeta-与-segmentinfo">2. Segment 的元数据：SegmentMeta 与 SegmentInfo</h2>
+
+<h3 id="21-segmentmetasegment-的元数据">2.1 SegmentMeta：Segment 的元数据</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SegmentMeta</code> 记录 Segment 的元数据信息，定义在 <code class="language-plaintext highlighter-rouge">framework/SegmentMeta.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/SegmentMeta.h</span>
+<span class="k">struct</span> <span class="nc">SegmentMeta</span> <span class="p">{</span>
+    <span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">;</span>                                    <span class="c1">// Segment ID</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">indexlib</span><span class="o">::</span><span class="n">file_system</span><span class="o">::</span><span class="n">Directory</span><span class="o">&gt;</span> <span class="n">segmentDir</span><span class="p">;</span>  <span class="c1">// Segment 目录</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">SegmentInfo</span><span class="o">&gt;</span> <span class="n">segmentInfo</span><span class="p">;</span>                  <span class="c1">// Segment 信息</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">indexlib</span><span class="o">::</span><span class="n">framework</span><span class="o">::</span><span class="n">SegmentMetrics</span><span class="o">&gt;</span> <span class="n">segmentMetrics</span><span class="p">;</span>  <span class="c1">// Segment 指标</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;</span> <span class="n">schema</span><span class="p">;</span>            <span class="c1">// Schema</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">lifecycle</span><span class="p">;</span>                                     <span class="c1">// 生命周期标签</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>SegmentMeta 的组成</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-meta-structure.svg" alt="SegmentMeta 的组成：包含 SegmentId、Directory、SegmentInfo 等" /></p>
+
+<ul>
+  <li><strong>segmentId</strong>：Segment 的唯一标识</li>
+  <li><strong>segmentDir</strong>：Segment 的目录，用于文件操作</li>
+  <li><strong>segmentInfo</strong>：Segment 的详细信息（文档数、Locator 等）</li>
+  <li><strong>schema</strong>：Segment 使用的 Schema（支持 Schema 演进）</li>
+  <li><strong>lifecycle</strong>：生命周期标签，用于数据管理</li>
+</ul>
+
+<h3 id="22-segmentinfosegment-的详细信息">2.2 SegmentInfo：Segment 的详细信息</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SegmentInfo</code> 记录 Segment 的详细信息，定义在 <code class="language-plaintext highlighter-rouge">framework/SegmentInfo.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/SegmentInfo.h</span>
+<span class="k">class</span> <span class="nc">SegmentInfo</span> <span class="o">:</span> <span class="k">public</span> <span class="n">autil</span><span class="o">::</span><span class="n">legacy</span><span class="o">::</span><span class="n">Jsonizable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 基本信息</span>
+    <span class="k">volatile</span> <span class="kt">uint64_t</span> <span class="n">docCount</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>              <span class="c1">// 文档数量</span>
+    <span class="kt">int64_t</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">INVALID_TIMESTAMP</span><span class="p">;</span>      <span class="c1">// 时间戳</span>
+    <span class="n">schemaid_t</span> <span class="n">schemaId</span> <span class="o">=</span> <span class="n">DEFAULT_SCHEMAID</span><span class="p">;</span>     <span class="c1">// Schema ID</span>
+    
+    <span class="c1">// Locator 信息</span>
+    <span class="n">Locator</span> <span class="n">GetLocator</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="n">SetLocator</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">locator</span><span class="p">);</span>
+    
+    <span class="c1">// 分片信息</span>
+    <span class="kt">uint32_t</span> <span class="n">shardId</span> <span class="o">=</span> <span class="n">INVALID_SHARDING_ID</span><span class="p">;</span>      <span class="c1">// 分片 ID</span>
+    <span class="kt">uint32_t</span> <span class="n">shardCount</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>                    <span class="c1">// 分片数量</span>
+    
+    <span class="c1">// 其他信息</span>
+    <span class="kt">bool</span> <span class="n">mergedSegment</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>                 <span class="c1">// 是否合并 Segment</span>
+    <span class="kt">uint32_t</span> <span class="n">maxTTL</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>                        <span class="c1">// 最大 TTL</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">descriptions</span><span class="p">;</span>  <span class="c1">// 描述信息</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>SegmentInfo 的关键字段</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-info-fields.svg" alt="SegmentInfo 的关键字段：docCount、Locator、shardId 等" /></p>
+
+<ul>
+  <li><strong>docCount</strong>：Segment 中的文档数量，用于 DocId 映射</li>
+  <li><strong>Locator</strong>：数据位置信息，用于增量更新</li>
+  <li><strong>shardId/shardCount</strong>：分片信息，支持分片存储</li>
+  <li><strong>mergedSegment</strong>：标识是否为合并 Segment</li>
+</ul>
+
+<h2 id="3-docid-映射机制">3. DocId 映射机制</h2>
+
+<h3 id="31-全局-docid-与局部-docid">3.1 全局 DocId 与局部 DocId</h3>
+
+<p>IndexLib 使用两级 DocId 机制：</p>
+<ul>
+  <li><strong>全局 DocId</strong>：在整个 Tablet 范围内唯一的文档 ID</li>
+  <li><strong>局部 DocId</strong>：在单个 Segment 内的文档 ID（从 0 开始）</li>
+</ul>
+
+<p><strong>DocId 映射关系</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-docid-mapping.svg" alt="DocId 映射：全局 DocId 与局部 DocId 的转换关系" /></p>
+
+<p>从代码中可以看到，<code class="language-plaintext highlighter-rouge">TabletData</code> 提供了获取 Segment 及其基础 DocId 的方法：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletData.h</span>
+<span class="k">class</span> <span class="nc">TabletData</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 获取 Segment 及其基础 DocId</span>
+    <span class="c1">// 返回：(Segment 指针, 基础 DocId)</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">SegmentPtr</span><span class="p">,</span> <span class="n">docid64_t</span><span class="o">&gt;</span> <span class="n">GetSegmentWithBaseDocid</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>DocId 计算逻辑</strong>（通过代码分析）：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 伪代码：计算全局 DocId</span>
+<span class="n">docid64_t</span> <span class="n">globalDocId</span> <span class="o">=</span> <span class="n">baseDocId</span> <span class="o">+</span> <span class="n">localDocId</span><span class="p">;</span>
+
+<span class="c1">// 其中：</span>
+<span class="c1">// - baseDocId：前面所有 Segment 的文档数之和</span>
+<span class="c1">// - localDocId：当前 Segment 内的局部 DocId</span>
+</code></pre></div></div>
+
+<h3 id="32-basedocid-的计算">3.2 BaseDocId 的计算</h3>
+
+<p>BaseDocId 是 Segment 的全局 DocId 起始值，等于前面所有 Segment 的文档数之和：</p>
+
+<p><img src="/images/diagrams/indexlib-basedocid-calculation.svg" alt="BaseDocId 计算：前面所有 Segment 的文档数之和" /></p>
+
+<p><strong>计算示例</strong>：</p>
+<ul>
+  <li>Segment 1：docCount=1000，baseDocId=0</li>
+  <li>Segment 2：docCount=2000，baseDocId=1000</li>
+  <li>Segment 3：docCount=1500，baseDocId=3000</li>
+</ul>
+
+<p><strong>代码实现逻辑</strong>（通过阅读源码理解）：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// TabletData 内部维护 Segment 列表</span>
+<span class="c1">// 计算 baseDocId 时，遍历前面的 Segment，累加 docCount</span>
+<span class="n">docid64_t</span> <span class="n">baseDocId</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">seg</span> <span class="o">:</span> <span class="n">_segments</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">seg</span><span class="o">-&gt;</span><span class="n">GetSegmentId</span><span class="p">()</span> <span class="o">==</span> <span class="n">segmentId</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">baseDocId</span> <span class="o">+=</span> <span class="n">seg</span><span class="o">-&gt;</span><span class="n">GetDocCount</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-tabletdata-的-segment-管理">4. TabletData 的 Segment 管理</h2>
+
+<h3 id="41-segment-的添加与移除">4.1 Segment 的添加与移除</h3>
+
+<p>TabletData 通过 <code class="language-plaintext highlighter-rouge">Init()</code> 方法初始化 Segment 列表：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletData.h</span>
+<span class="k">class</span> <span class="nc">TabletData</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 初始化：设置版本和 Segment 列表</span>
+    <span class="n">Status</span> <span class="n">Init</span><span class="p">(</span><span class="n">Version</span> <span class="n">onDiskVersion</span><span class="p">,</span> 
+                <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">SegmentPtr</span><span class="o">&gt;</span> <span class="n">segments</span><span class="p">,</span>
+                <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ResourceMap</span><span class="o">&gt;&amp;</span> <span class="n">resourceMap</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Segment 列表的维护</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletdata-segment-management.svg" alt="TabletData Segment 列表维护：添加、移除、更新" /></p>
+
+<ul>
+  <li><strong>初始化</strong>：通过 <code class="language-plaintext highlighter-rouge">Init()</code> 设置初始 Segment 列表</li>
+  <li><strong>添加</strong>：新 Segment 通过 <code class="language-plaintext highlighter-rouge">TabletWriter</code> 创建后添加到列表</li>
+  <li><strong>移除</strong>：合并后，旧 Segment 从列表中移除</li>
+  <li><strong>更新</strong>：<code class="language-plaintext highlighter-rouge">Reopen()</code> 时更新 Segment 列表</li>
+</ul>
+
+<h3 id="42-slice-机制按状态筛选-segment">4.2 Slice 机制：按状态筛选 Segment</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Slice</code> 是 TabletData 提供的 Segment 视图机制，可以按状态筛选 Segment：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletData.h</span>
+<span class="k">class</span> <span class="nc">TabletData</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">class</span> <span class="nc">Slice</span> <span class="p">{</span>
+        <span class="c1">// 提供迭代器，可以遍历筛选后的 Segment</span>
+        <span class="k">auto</span> <span class="n">begin</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_cBegin</span><span class="p">;</span> <span class="p">}</span>
+        <span class="k">auto</span> <span class="n">end</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_cEnd</span><span class="p">;</span> <span class="p">}</span>
+        <span class="k">auto</span> <span class="n">rbegin</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_cRbegin</span><span class="p">;</span> <span class="p">}</span>
+        <span class="k">auto</span> <span class="n">rend</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_cRend</span><span class="p">;</span> <span class="p">}</span>
+    <span class="p">};</span>
+    
+    <span class="c1">// 创建 Slice：按状态筛选</span>
+    <span class="n">Slice</span> <span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span> <span class="n">segmentStatus</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Slice 的使用场景</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletdata-slice-usage.svg" alt="TabletData Slice 使用场景：查询、写入、合并时的 Segment 筛选" /></p>
+
+<ol>
+  <li><strong>查询时</strong>：<code class="language-plaintext highlighter-rouge">CreateSlice(ST_BUILT)</code> 获取所有已构建的 Segment</li>
+  <li><strong>写入时</strong>：<code class="language-plaintext highlighter-rouge">CreateSlice(ST_BUILDING)</code> 获取构建中的 Segment</li>
+  <li><strong>合并时</strong>：<code class="language-plaintext highlighter-rouge">CreateSlice(ST_BUILT)</code> 获取需要合并的 Segment</li>
+</ol>
+
+<h2 id="5-memsegment-的实现细节">5. MemSegment 的实现细节</h2>
+
+<h3 id="51-normalmemsegment-的构建流程">5.1 NormalMemSegment 的构建流程</h3>
+
+<p>通过阅读 <code class="language-plaintext highlighter-rouge">table/normal_table/NormalMemSegment.h</code>，我们可以看到 NormalMemSegment 的实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalMemSegment.h</span>
+<span class="k">class</span> <span class="nc">NormalMemSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">plain</span><span class="o">::</span><span class="n">PlainMemSegment</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">NormalMemSegment</span><span class="p">(</span><span class="k">const</span> <span class="n">config</span><span class="o">::</span><span class="n">TabletOptions</span><span class="o">*</span> <span class="n">options</span><span class="p">,</span> 
+                    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">,</span>
+                    <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">);</span>
+    
+<span class="nl">protected:</span>
+    <span class="c1">// 创建转储参数</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">framework</span><span class="o">::</span><span class="n">DumpParams</span><span class="o">&gt;&gt;</span> <span class="n">CreateDumpParams</span><span class="p">()</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 计算转储内存成本</span>
+    <span class="kt">void</span> <span class="n">CalcMemCostInCreateDumpParams</span><span class="p">()</span> <span class="k">override</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>MemSegment 的构建流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-memsegment-build-flow.svg" alt="MemSegment 构建流程：从 Open 到 Build 的完整过程" /></p>
+
+<ol>
+  <li><strong>Open</strong>：初始化构建资源，创建 Indexer</li>
+  <li><strong>Build</strong>：接收文档批次，写入各个 Indexer</li>
+  <li><strong>NeedDump</strong>：检查是否达到转储条件</li>
+  <li><strong>CreateDumpParams</strong>：创建转储参数，计算内存成本</li>
+</ol>
+
+<h3 id="52-memsegment-的内存管理">5.2 MemSegment 的内存管理</h3>
+
+<p>MemSegment 在内存中构建索引，需要严格控制内存使用。关键代码（<code class="language-plaintext highlighter-rouge">table/plain/PlainMemSegment.h</code>）：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">PlainMemSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">MemSegment</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 估算内存使用</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">EstimateMemUsed</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 评估当前内存使用</span>
+    <span class="kt">size_t</span> <span class="n">EvaluateCurrentMemUsed</span><span class="p">()</span> <span class="k">override</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>内存管理机制</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-memsegment-memory-management.svg" alt="MemSegment 内存管理：估算、评估、控制内存使用" /></p>
+
+<ul>
+  <li><strong>估算</strong>：<code class="language-plaintext highlighter-rouge">EstimateMemUsed()</code> 估算构建所需内存</li>
+  <li><strong>评估</strong>：<code class="language-plaintext highlighter-rouge">EvaluateCurrentMemUsed()</code> 评估当前实际内存使用</li>
+  <li><strong>控制</strong>：通过 <code class="language-plaintext highlighter-rouge">MemoryQuotaController</code> 控制内存上限</li>
+  <li><strong>转储</strong>：达到阈值时触发转储，释放内存</li>
+</ul>
+
+<h2 id="6-disksegment-的实现细节">6. DiskSegment 的实现细节</h2>
+
+<h3 id="61-normaldisksegment-的加载流程">6.1 NormalDiskSegment 的加载流程</h3>
+
+<p>通过阅读 <code class="language-plaintext highlighter-rouge">table/normal_table/NormalDiskSegment.h</code>，我们可以看到 NormalDiskSegment 的实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalDiskSegment.h</span>
+<span class="k">class</span> <span class="nc">NormalDiskSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">plain</span><span class="o">::</span><span class="n">PlainDiskSegment</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">NormalDiskSegment</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">,</span>
+                     <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">,</span> 
+                     <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">BuildResource</span><span class="o">&amp;</span> <span class="n">buildResource</span><span class="p">);</span>
+    
+    <span class="c1">// 估算内存使用</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">EstimateMemUsed</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+
+<span class="nl">private:</span>
+    <span class="c1">// 打开 Indexer</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">plain</span><span class="o">::</span><span class="n">DiskIndexerItem</span><span class="o">&gt;&gt;</span>
+    <span class="n">OpenIndexer</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">IIndexConfig</span><span class="o">&gt;&amp;</span> <span class="n">indexConfig</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>DiskSegment 的加载流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-disksegment-load-flow.svg" alt="DiskSegment 加载流程：从 Open 到 GetIndexer 的完整过程" /></p>
+
+<ol>
+  <li><strong>Open</strong>：打开 Segment 目录，读取 SegmentInfo</li>
+  <li><strong>OpenIndexer</strong>：按需打开各个 Indexer（NORMAL 模式立即打开，LAZY 模式按需打开）</li>
+  <li><strong>GetIndexer</strong>：查询时获取 Indexer，LAZY 模式下此时才加载</li>
+  <li><strong>Reopen</strong>：Schema 变更时重新打开</li>
+</ol>
+
+<h3 id="62-disksegment-的按需加载">6.2 DiskSegment 的按需加载</h3>
+
+<p>DiskSegment 支持按需加载，通过 <code class="language-plaintext highlighter-rouge">GetIndexer()</code> 方法实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Segment.h</span>
+<span class="k">class</span> <span class="nc">Segment</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 获取 Indexer（LAZY 模式下按需加载）</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">indexlibv2</span><span class="o">::</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexer</span><span class="o">&gt;&gt;</span> 
+        <span class="n">GetIndexer</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexName</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">Status</span><span class="o">::</span><span class="n">NotFound</span><span class="p">(),</span> <span class="nb">nullptr</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>按需加载的优势</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-disksegment-lazy-loading.svg" alt="DiskSegment 按需加载：减少内存占用，提高启动速度" /></p>
+
+<ul>
+  <li><strong>减少内存占用</strong>：只加载查询需要的索引</li>
+  <li><strong>提高启动速度</strong>：不需要等待所有索引加载完成</li>
+  <li><strong>灵活查询</strong>：支持部分索引查询场景</li>
+</ul>
+
+<h2 id="7-tabletwriter-与-segment-的交互">7. TabletWriter 与 Segment 的交互</h2>
+
+<h3 id="71-tabletwriter-的构建流程">7.1 TabletWriter 的构建流程</h3>
+
+<p>通过阅读 <code class="language-plaintext highlighter-rouge">table/normal_table/NormalTabletWriter.h</code>，我们可以看到 TabletWriter 的实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalTabletWriter.h</span>
+<span class="k">class</span> <span class="nc">NormalTabletWriter</span> <span class="o">:</span> <span class="k">public</span> <span class="n">table</span><span class="o">::</span><span class="n">CommonTabletWriter</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 打开：初始化 TabletData 和构建资源</span>
+    <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">framework</span><span class="o">::</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span> 
+                <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">BuildResource</span><span class="o">&amp;</span> <span class="n">buildResource</span><span class="p">,</span>
+                <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">OpenOptions</span><span class="o">&amp;</span> <span class="n">openOptions</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 构建：接收文档批次并写入</span>
+    <span class="n">Status</span> <span class="n">Build</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">&gt;&amp;</span> <span class="n">batch</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 创建 SegmentDumper：准备转储</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">framework</span><span class="o">::</span><span class="n">SegmentDumper</span><span class="o">&gt;</span> <span class="n">CreateSegmentDumper</span><span class="p">()</span> <span class="k">override</span><span class="p">;</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">NormalMemSegment</span><span class="o">&gt;</span> <span class="n">_normalBuildingSegment</span><span class="p">;</span>  <span class="c1">// 当前构建中的 Segment</span>
+    <span class="n">docid_t</span> <span class="n">_buildingSegmentBaseDocId</span><span class="p">;</span>                         <span class="c1">// 构建 Segment 的基础 DocId</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>TabletWriter 与 Segment 的交互流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletwriter-segment-interaction.svg" alt="TabletWriter 与 Segment 交互：从 Open 到 Build 的完整流程" /></p>
+
+<ol>
+  <li><strong>Open</strong>：初始化 TabletData，创建或获取 MemSegment</li>
+  <li><strong>Build</strong>：将文档写入 <code class="language-plaintext highlighter-rouge">_normalBuildingSegment</code></li>
+  <li><strong>NeedDump</strong>：检查 MemSegment 是否需要转储</li>
+  <li><strong>CreateSegmentDumper</strong>：创建转储器，准备转储</li>
+  <li><strong>Dump</strong>：将 MemSegment 转储为 DiskSegment</li>
+  <li><strong>Reopen</strong>：更新 TabletData，添加新的 DiskSegment</li>
+</ol>
+
+<h3 id="72-文档的-docid-分配">7.2 文档的 DocId 分配</h3>
+
+<p>TabletWriter 在构建时需要为文档分配 DocId。关键代码：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalTabletWriter.h</span>
+<span class="k">class</span> <span class="nc">NormalTabletWriter</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="c1">// 分发 DocId：为文档分配 DocId</span>
+    <span class="kt">void</span> <span class="n">DispatchDocIds</span><span class="p">(</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">*</span> <span class="n">batch</span><span class="p">);</span>
+    
+    <span class="n">docid_t</span> <span class="n">_buildingSegmentBaseDocId</span><span class="p">;</span>  <span class="c1">// 当前构建 Segment 的基础 DocId</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>DocId 分配机制</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-docid-allocation.svg" alt="文档 DocId 分配：全局 DocId 的计算和分配" /></p>
+
+<ul>
+  <li><strong>BaseDocId</strong>：当前 MemSegment 的全局 DocId 起始值</li>
+  <li><strong>LocalDocId</strong>：在 MemSegment 内的局部 DocId（从 0 开始递增）</li>
+  <li><strong>GlobalDocId</strong>：<code class="language-plaintext highlighter-rouge">baseDocId + localDocId</code></li>
+</ul>
+
+<h2 id="8-segment-的转储机制">8. Segment 的转储机制</h2>
+
+<h3 id="81-segmentdumper转储器">8.1 SegmentDumper：转储器</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SegmentDumper</code> 负责将 MemSegment 转储到磁盘，定义在 <code class="language-plaintext highlighter-rouge">framework/SegmentDumper.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/SegmentDumper.h</span>
+<span class="k">class</span> <span class="nc">SegmentDumper</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SegmentDumpable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">SegmentDumper</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">tabletName</span><span class="p">,</span> 
+                  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MemSegment</span><span class="o">&gt;&amp;</span> <span class="n">segment</span><span class="p">,</span>
+                  <span class="kt">int64_t</span> <span class="n">dumpExpandMemSize</span><span class="p">,</span>
+                  <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">kmonitor</span><span class="o">::</span><span class="n">MetricsReporter</span><span class="o">&gt;</span> <span class="n">metricsReporter</span><span class="p">)</span>
+        <span class="o">:</span> <span class="n">_tabletName</span><span class="p">(</span><span class="n">tabletName</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">_dumpingSegment</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">_dumpExpandMemSize</span><span class="p">(</span><span class="n">dumpExpandMemSize</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// 设置 Segment 状态为 DUMPING</span>
+        <span class="n">_dumpingSegment</span><span class="o">-&gt;</span><span class="n">SetSegmentStatus</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_DUMPING</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 执行转储</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Dump</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取转储的 SegmentMeta</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">SegmentMeta</span><span class="o">&gt;</span> <span class="n">GetDumpedSegmentMeta</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>转储流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-dump-flow.svg" alt="Segment 转储流程：从 MemSegment 到 DiskSegment 的完整过程" /></p>
+
+<ol>
+  <li><strong>创建 Dumper</strong>：<code class="language-plaintext highlighter-rouge">CreateSegmentDumper()</code> 创建转储器</li>
+  <li><strong>设置状态</strong>：将 MemSegment 状态设置为 <code class="language-plaintext highlighter-rouge">ST_DUMPING</code></li>
+  <li><strong>执行转储</strong>：调用 <code class="language-plaintext highlighter-rouge">Dump()</code> 将内存数据写入磁盘</li>
+  <li><strong>创建 DiskSegment</strong>：转储完成后创建 DiskSegment</li>
+  <li><strong>更新状态</strong>：MemSegment 状态变为 <code class="language-plaintext highlighter-rouge">ST_BUILT</code>（实际已被 DiskSegment 替代）</li>
+</ol>
+
+<h3 id="82-转储的异步机制">8.2 转储的异步机制</h3>
+
+<p>转储是异步的，不会阻塞新的写入。关键设计：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/SegmentDumper.h</span>
+<span class="k">class</span> <span class="nc">DumpControl</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 控制转储任务的执行</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="p">,</span> <span class="kt">uint32_t</span><span class="o">&gt;</span> <span class="n">StartTask</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="p">,</span> <span class="kt">uint32_t</span><span class="o">&gt;</span> <span class="n">Iterate</span><span class="p">(</span><span class="n">Status</span><span class="o">&amp;</span> <span class="n">taskStatus</span><span class="p">);</span>
+    <span class="kt">uint32_t</span> <span class="n">ExitTask</span><span class="p">(</span><span class="k">const</span> <span class="kt">bool</span> <span class="n">isCoordinator</span><span class="p">);</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="o">&gt;</span> <span class="n">_finishCount</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 完成的任务数</span>
+    <span class="kt">uint32_t</span> <span class="n">_totalCount</span><span class="p">;</span>                     <span class="c1">// 总任务数</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">_dumpMutex</span><span class="p">;</span>                    <span class="c1">// 转储互斥锁</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">condition_variable</span> <span class="n">_dumpCv</span><span class="p">;</span>          <span class="c1">// 转储条件变量</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>异步转储的优势</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-async-dump.svg" alt="异步转储机制：不阻塞写入，提高吞吐量" /></p>
+
+<ul>
+  <li><strong>不阻塞写入</strong>：转储过程中可以创建新的 MemSegment 继续接收写入</li>
+  <li><strong>提高吞吐量</strong>：写入和转储可以并行进行</li>
+  <li><strong>资源控制</strong>：通过 <code class="language-plaintext highlighter-rouge">DumpControl</code> 控制转储任务的并发度</li>
+</ul>
+
+<h2 id="9-segment-的查询机制">9. Segment 的查询机制</h2>
+
+<h3 id="91-多-segment-并行查询">9.1 多 Segment 并行查询</h3>
+
+<p>查询时需要遍历多个 Segment，可以并行查询以提高性能：</p>
+
+<p><img src="/images/diagrams/indexlib-multi-segment-query.svg" alt="多 Segment 并行查询：提高查询性能" /></p>
+
+<p><strong>查询流程</strong>：</p>
+<ol>
+  <li><strong>获取 Segment 列表</strong>：<code class="language-plaintext highlighter-rouge">TabletData-&gt;CreateSlice(ST_BUILT)</code> 获取所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对每个 Segment 的 Indexer 进行查询（如果支持并行）</li>
+  <li><strong>合并结果</strong>：将各 Segment 的查询结果合并（去重、排序等）</li>
+</ol>
+
+<h3 id="92-docid-转换">9.2 DocId 转换</h3>
+
+<p>查询时需要将全局 DocId 转换为局部 DocId：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 伪代码：全局 DocId 转局部 DocId</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">seg</span> <span class="o">:</span> <span class="n">segments</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">docid64_t</span> <span class="n">baseDocId</span> <span class="o">=</span> <span class="n">GetBaseDocId</span><span class="p">(</span><span class="n">seg</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">globalDocId</span> <span class="o">&gt;=</span> <span class="n">baseDocId</span> <span class="o">&amp;&amp;</span> <span class="n">globalDocId</span> <span class="o">&lt;</span> <span class="n">baseDocId</span> <span class="o">+</span> <span class="n">seg</span><span class="o">-&gt;</span><span class="n">GetDocCount</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">docid_t</span> <span class="n">localDocId</span> <span class="o">=</span> <span class="n">globalDocId</span> <span class="o">-</span> <span class="n">baseDocId</span><span class="p">;</span>
+        <span class="c1">// 在 Segment 内查询</span>
+        <span class="k">return</span> <span class="n">seg</span><span class="o">-&gt;</span><span class="n">GetIndexer</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">localDocId</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>DocId 转换流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-docid-conversion.svg" alt="DocId 转换：全局 DocId 到局部 DocId 的转换过程" /></p>
+
+<ol>
+  <li><strong>定位 Segment</strong>：根据全局 DocId 找到对应的 Segment</li>
+  <li><strong>计算 BaseDocId</strong>：计算该 Segment 的基础 DocId</li>
+  <li><strong>转换为局部 DocId</strong>：<code class="language-plaintext highlighter-rouge">localDocId = globalDocId - baseDocId</code></li>
+  <li><strong>Segment 内查询</strong>：使用局部 DocId 在 Segment 内查询</li>
+</ol>
+
+<h2 id="10-segment-的生命周期管理">10. Segment 的生命周期管理</h2>
+
+<h3 id="101-segment-的创建">10.1 Segment 的创建</h3>
+
+<p>Segment 的创建通过 <code class="language-plaintext highlighter-rouge">ITabletFactory</code> 实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/ITabletFactory.h</span>
+<span class="k">class</span> <span class="nc">ITabletFactory</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 创建 MemSegment</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">MemSegment</span><span class="o">&gt;</span> <span class="n">CreateMemSegment</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 创建 DiskSegment</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">DiskSegment</span><span class="o">&gt;</span> <span class="n">CreateDiskSegment</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">BuildResource</span><span class="o">&amp;</span> <span class="n">buildResource</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Segment 创建流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-creation.svg" alt="Segment 创建流程：从 Factory 到 TabletData 的完整过程" /></p>
+
+<ol>
+  <li><strong>创建 SegmentMeta</strong>：设置 SegmentId、Directory、Schema 等</li>
+  <li><strong>调用 Factory</strong>：通过 <code class="language-plaintext highlighter-rouge">ITabletFactory</code> 创建 Segment</li>
+  <li><strong>初始化 Segment</strong>：调用 <code class="language-plaintext highlighter-rouge">Open()</code> 初始化</li>
+  <li><strong>添加到 TabletData</strong>：将 Segment 添加到 TabletData 的 Segment 列表</li>
+</ol>
+
+<h3 id="102-segment-的销毁">10.2 Segment 的销毁</h3>
+
+<p>Segment 的销毁通过智能指针自动管理：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Segment 使用 shared_ptr 管理</span>
+<span class="k">using</span> <span class="n">SegmentPtr</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Segment</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="c1">// 当 Segment 不再被引用时，自动析构</span>
+<span class="c1">// 析构时会：</span>
+<span class="c1">// 1. 释放内存资源（MemSegment）</span>
+<span class="c1">// 2. 关闭文件句柄（DiskSegment）</span>
+<span class="c1">// 3. 清理 Indexer</span>
+</code></pre></div></div>
+
+<p><strong>Segment 销毁时机</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-destruction.svg" alt="Segment 销毁时机：合并后、版本清理时自动销毁" /></p>
+
+<ul>
+  <li><strong>合并后</strong>：合并后的旧 Segment 不再被引用，自动销毁</li>
+  <li><strong>版本清理</strong>：清理旧版本时，旧 Segment 被销毁</li>
+  <li><strong>资源回收</strong>：通过 <code class="language-plaintext highlighter-rouge">ReclaimSegmentResource()</code> 主动回收资源</li>
+</ul>
+
+<h2 id="11-实际应用场景">11. 实际应用场景</h2>
+
+<h3 id="111-实时写入场景">11.1 实时写入场景</h3>
+
+<p>在实时写入场景中，Tablet 和 Segment 的组织方式：</p>
+
+<p><img src="/images/diagrams/indexlib-realtime-write-scenario.svg" alt="实时写入场景：MemSegment 接收写入，定期转储为 DiskSegment" /></p>
+
+<ol>
+  <li><strong>持续写入</strong>：文档持续写入 MemSegment</li>
+  <li><strong>定期转储</strong>：MemSegment 达到阈值后转储为 DiskSegment</li>
+  <li><strong>新 Segment</strong>：创建新的 MemSegment 继续接收写入</li>
+  <li><strong>版本提交</strong>：定期 Commit，更新 Version</li>
+</ol>
+
+<h3 id="112-查询场景">11.2 查询场景</h3>
+
+<p>在查询场景中，需要遍历多个 Segment：</p>
+
+<p><img src="/images/diagrams/indexlib-query-scenario.svg" alt="查询场景：遍历多个 Segment，合并查询结果" /></p>
+
+<ol>
+  <li><strong>获取 Segment 列表</strong>：从 TabletData 获取所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对多个 Segment 进行并行查询</li>
+  <li><strong>结果合并</strong>：合并各 Segment 的查询结果</li>
+  <li><strong>DocId 转换</strong>：将局部 DocId 转换为全局 DocId</li>
+</ol>
+
+<h2 id="12-小结">12. 小结</h2>
+
+<p>Tablet 和 Segment 的组织方式是 IndexLib 索引机制的核心。通过本文的深入解析，我们了解到：</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li><strong>Tablet 管理多个 Segment</strong>：通过 TabletData 管理有序的 Segment 列表</li>
+  <li><strong>Segment ID 分配</strong>：通过掩码区分不同类型的 Segment（实时、合并等）</li>
+  <li><strong>DocId 映射</strong>：使用两级 DocId 机制（全局 DocId = baseDocId + localDocId）</li>
+  <li><strong>SegmentMeta 和 SegmentInfo</strong>：记录 Segment 的元数据和详细信息</li>
+  <li><strong>MemSegment 和 DiskSegment</strong>：内存段用于实时写入，磁盘段用于持久化存储</li>
+  <li><strong>转储机制</strong>：MemSegment 转储为 DiskSegment 是异步的，不阻塞写入</li>
+  <li><strong>查询机制</strong>：查询时遍历多个 Segment，可以并行查询提高性能</li>
+  <li><strong>生命周期管理</strong>：通过智能指针自动管理 Segment 的生命周期</li>
+</ul>
+
+<p>理解 Tablet 和 Segment 的组织方式，是掌握 IndexLib 索引构建和查询机制的基础。在下一篇文章中，我们将深入介绍索引构建的完整流程。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

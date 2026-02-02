@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">MemSegment 构建流程：从 Open 到 Build 的完整过程</text>
+  <text class="muted" x="40" y="66">MemSegment 在内存中构建索引，支持实时写入和查询。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. Open</text>
+  <text class="t" x="70" y="155">初始化构建资源</text>
+  <text class="t" x="70" y="175">创建 Indexer</text>
+  <text class="t" x="70" y="195">准备接收文档</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="270" y="95" width="180" height="100"/>
+  <text class="h" x="300" y="130">2. Build</text>
+  <text class="t" x="300" y="155">接收文档批次</text>
+  <text class="t" x="300" y="175">写入各个 Indexer</text>
+  <text class="t" x="300" y="195">更新 docCount</text>
+
+  <path class="arrow" d="M 450 145 L 490 145"/>
+
+  <rect class="step" x="500" y="95" width="180" height="100"/>
+  <text class="h" x="530" y="130">3. NeedDump</text>
+  <text class="t" x="530" y="155">检查转储条件</text>
+  <text class="t" x="530" y="175">内存/文档数阈值</text>
+  <text class="t" x="530" y="195">触发转储</text>
+
+  <path class="arrow" d="M 680 145 L 720 145"/>
+
+  <rect class="step" x="730" y="95" width="230" height="100"/>
+  <text class="h" x="760" y="130">4. CreateDumpParams</text>
+  <text class="t" x="760" y="155">创建转储参数</text>
+  <text class="t" x="760" y="175">计算内存成本</text>
+  <text class="t" x="760" y="195">准备转储任务</text>
+
+  <rect class="box" x="40" y="215" width="920" height="260"/>
+  <text class="h" x="70" y="250">详细流程说明</text>
+  <text class="t" x="70" y="275">1. Open：调用 Open(BuildResource, SegmentMetrics)，初始化构建资源（内存池、Indexer Factory 等），根据 Schema 创建各个 Indexer（倒排索引、正排索引、摘要等）</text>
+  <text class="t" x="70" y="295">2. Build：调用 Build(IDocumentBatch*)，遍历文档批次，为每个文档分配局部 DocId，将文档写入各个 Indexer，更新 SegmentInfo 的 docCount 和 Locator</text>
+  <text class="t" x="70" y="315">3. NeedDump：定期检查 NeedDump()，判断是否达到转储条件（内存使用超过阈值、文档数量达到上限、时间间隔等），返回 true 时触发转储</text>
+  <text class="t" x="70" y="335">4. CreateDumpParams：创建转储参数，计算转储所需的内存成本（DumpExpandMemSize），准备转储任务列表（SegmentDumpItem），每个任务负责转储一部分索引数据</text>
+  <text class="t" x="70" y="355">5. CreateSegmentDumpItems：创建 SegmentDumpItem 列表，每个 Item 包含转储任务的信息（索引类型、转储参数等），转储是异步的，不阻塞新的写入</text>
+  <text class="t" x="70" y="375">6. Seal：转储完成后调用 Seal()，标记 Segment 为只读，不再接收新文档，此时 MemSegment 已转换为 DiskSegment</text>
+  <text class="t" x="70" y="395">7. EndDump：转储结束，清理资源，更新内存使用统计，MemSegment 可以被销毁或回收</text>
+  <text class="t" x="70" y="415">关键点：Build 是同步的，但转储是异步的，保证写入的低延迟</text>
+  <text class="t" x="70" y="435">关键点：MemSegment 在转储过程中仍然可以接收查询请求（读 MemSegment），保证实时性</text>
+  <text class="t" x="70" y="455">关键点：内存管理通过 MemoryQuotaController 严格控制，避免内存溢出</text>
+</svg>

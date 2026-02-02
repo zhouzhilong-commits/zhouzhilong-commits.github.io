@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .optimization{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">转储性能优化：异步转储、并发转储等</text>
+  <text class="muted" x="40" y="66">转储性能优化通过异步转储、并发转储等策略提高转储性能。</text>
+
+  <rect class="optimization" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">异步转储</text>
+  <text class="t" x="70" y="155">不阻塞写入</text>
+  <text class="t" x="70" y="175">并行执行</text>
+  <text class="t" x="70" y="195">提高吞吐量</text>
+  <text class="t" x="70" y="215">提高效率</text>
+  <text class="t" x="70" y="235">资源控制</text>
+  <text class="t" x="70" y="255">并发控制</text>
+  <text class="t" x="70" y="275">优化性能</text>
+
+  <rect class="optimization" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">并发转储</text>
+  <text class="t" x="310" y="155">多任务转储</text>
+  <text class="t" x="310" y="175">并行转储</text>
+  <text class="t" x="310" y="195">提高吞吐量</text>
+  <text class="t" x="310" y="215">提高效率</text>
+  <text class="t" x="310" y="235">资源控制</text>
+  <text class="t" x="310" y="255">并发控制</text>
+  <text class="t" x="310" y="275">优化性能</text>
+
+  <rect class="optimization" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">压缩优化</text>
+  <text class="t" x="550" y="155">数据压缩</text>
+  <text class="t" x="550" y="175">减少存储空间</text>
+  <text class="t" x="550" y="195">提高 IO 效率</text>
+  <text class="t" x="550" y="215">减少 IO 次数</text>
+  <text class="t" x="550" y="235">优化性能</text>
+  <text class="t" x="550" y="255">降低延迟</text>
+  <text class="t" x="550" y="275">提高效率</text>
+
+  <rect class="optimization" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">IO 优化</text>
+  <text class="t" x="790" y="155">批量 IO</text>
+  <text class="t" x="790" y="175">异步 IO</text>
+  <text class="t" x="790" y="195">预取机制</text>
+  <text class="t" x="790" y="215">IO 合并</text>
+  <text class="t" x="790" y="235">提高 IO 效率</text>
+  <text class="t" x="790" y="255">降低 IO 延迟</text>
+  <text class="t" x="790" y="275">优化性能</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">转储性能优化的关键策略</text>
+  <text class="t" x="70" y="375">1. 异步转储：通过异步转储机制，转储过程不阻塞写入，写入线程和转储线程并行执行，提高系统吞吐量</text>
+  <text class="t" x="70" y="395">2. 并发转储：通过并发转储机制，多个转储任务可以并行执行，提高转储吞吐量，通过资源控制和并发控制优化性能</text>
+  <text class="t" x="70" y="415">3. 压缩优化：通过数据压缩，减少存储空间，提高 IO 效率，减少 IO 次数，优化性能，降低延迟</text>
+  <text class="t" x="70" y="435">关键设计：转储性能优化通过异步转储、并发转储、压缩优化、IO 优化等策略，全面提高转储性能</text>
+  <text class="t" x="70" y="455">关键设计：转储性能优化需要根据实际场景选择合适的优化策略，平衡性能、资源消耗、复杂度等因素</text>
+
+  <text class="muted" x="40" y="490">理解转储性能优化，是提高转储性能的关键</text>
+</svg>

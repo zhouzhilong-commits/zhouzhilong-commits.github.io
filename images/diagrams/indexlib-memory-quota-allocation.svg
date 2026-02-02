@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .root{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .child{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .allocation{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">内存配额分配：从父控制器到子控制器的配额分配</text>
+  <text class="muted" x="40" y="66">内存配额分配从根控制器开始，通过层级结构分配给子控制器，支持配额预留和释放。</text>
+
+  <rect class="root" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">根控制器</text>
+  <text class="t" x="70" y="155">总配额：1000MB</text>
+  <text class="t" x="70" y="175">已分配：300MB</text>
+  <text class="t" x="70" y="195">可用：700MB</text>
+  <text class="t" x="70" y="215">管理总配额</text>
+  <text class="t" x="70" y="235">分配给子控制器</text>
+  <text class="t" x="70" y="255">支持配额预留</text>
+  <text class="t" x="70" y="275">支持配额释放</text>
+
+  <path class="arrow" d="M 320 195 L 360 195"/>
+  <text class="t" x="330" y="190">分配</text>
+
+  <rect class="child" x="380" y="95" width="280" height="200"/>
+  <text class="h" x="410" y="130">子控制器</text>
+  <text class="t" x="410" y="155">从父控制器分配</text>
+  <text class="t" x="410" y="175">已分配：200MB</text>
+  <text class="t" x="410" y="195">可用：100MB</text>
+  <text class="t" x="410" y="215">从父控制器</text>
+  <text class="t" x="410" y="235">继承配额</text>
+  <text class="t" x="410" y="255">支持配额预留</text>
+  <text class="t" x="410" y="275">支持配额释放</text>
+
+  <path class="arrow" d="M 660 195 L 700 195"/>
+  <text class="t" x="670" y="190">分配</text>
+
+  <rect class="allocation" x="720" y="95" width="240" height="200"/>
+  <text class="h" x="750" y="130">组件分配</text>
+  <text class="t" x="750" y="155">从子控制器分配</text>
+  <text class="t" x="750" y="175">构建配额：50MB</text>
+  <text class="t" x="750" y="195">查询配额：50MB</text>
+  <text class="t" x="750" y="215">缓存配额：100MB</text>
+  <text class="t" x="750" y="235">实际使用配额</text>
+  <text class="t" x="750" y="255">支持配额释放</text>
+
+  <rect class="box" x="40" y="315" width="920" height="150"/>
+  <text class="h" x="70" y="350">内存配额分配的关键机制</text>
+  <text class="t" x="70" y="375">1. 根控制器分配：根控制器有固定的总配额，分配给子控制器</text>
+  <text class="t" x="70" y="395">2. 子控制器分配：子控制器从父控制器分配配额，支持配额预留和释放</text>
+  <text class="t" x="70" y="415">3. 配额预留：通过 Reserve() 预留配额，保证后续分配，避免配额不足</text>
+  <text class="t" x="70" y="435">4. 配额释放：通过 Free() 释放配额，返回给父控制器，提高配额利用率</text>
+  <text class="t" x="70" y="455">关键设计：配额分配支持层级结构，灵活分配配额，提高配额利用率</text>
+  <text class="t" x="70" y="475">关键设计：配额分配支持预留和释放，保证关键操作的配额，避免配额不足</text>
+
+  <text class="muted" x="40" y="490">内存配额分配是内存管理的核心，支持层级配额管理和灵活分配</text>
+</svg>

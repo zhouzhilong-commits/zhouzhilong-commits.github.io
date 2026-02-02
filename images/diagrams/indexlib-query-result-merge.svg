@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .result{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .merge{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 520" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">结果合并：去重、排序、分页等处理</text>
+  <text class="muted" x="40" y="66">查询结果需要合并，包括去重、排序、聚合统计、分页等处理，保证查询结果的正确性和一致性。</text>
+
+  <rect class="result" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">Result1</text>
+  <text class="t" x="70" y="155">Segment 1</text>
+  <text class="t" x="70" y="175">DocId: 100, 200</text>
+  <text class="t" x="70" y="195">Score: 0.8, 0.6</text>
+
+  <rect class="result" x="240" y="95" width="180" height="100"/>
+  <text class="h" x="270" y="130">Result2</text>
+  <text class="t" x="270" y="155">Segment 2</text>
+  <text class="t" x="270" y="175">DocId: 200, 300</text>
+  <text class="t" x="270" y="195">Score: 0.7, 0.5</text>
+
+  <rect class="result" x="440" y="95" width="180" height="100"/>
+  <text class="h" x="470" y="130">Result3</text>
+  <text class="t" x="470" y="155">Segment 3</text>
+  <text class="t" x="470" y="175">DocId: 300, 400</text>
+  <text class="t" x="470" y="195">Score: 0.9, 0.4</text>
+
+  <path class="arrow" d="M 70 195 L 70 225"/>
+  <path class="arrow" d="M 270 195 L 270 225"/>
+  <path class="arrow" d="M 470 195 L 470 225"/>
+
+  <rect class="merge" x="40" y="235" width="580" height="220"/>
+  <text class="h" x="70" y="270">合并结果</text>
+  <text class="t" x="70" y="295">1. 去重：根据 DocId 去重，DocId 200 和 300 出现多次，只保留一次</text>
+  <text class="t" x="70" y="315">2. 排序：按相关性分数排序，Score 高的排在前面</text>
+  <text class="t" x="70" y="335">3. 聚合统计：计算总数、平均值等统计信息</text>
+  <text class="t" x="70" y="355">4. 分页处理：返回指定页的结果，支持 offset 和 limit</text>
+  <text class="t" x="70" y="375">5. DocId 转换：将局部 DocId 转换为全局 DocId，保证 DocId 的正确性</text>
+  <text class="t" x="70" y="395">合并后的结果：</text>
+  <text class="t" x="90" y="415">DocId: 300 (Score: 0.9), 100 (Score: 0.8), 200 (Score: 0.7), 400 (Score: 0.6), ...</text>
+  <text class="t" x="70" y="435">关键设计：结果合并需要保证去重、排序的正确性，支持分页和统计</text>
+
+  <text class="muted" x="40" y="470">结果合并是查询流程的关键步骤，需要保证结果的正确性和一致性</text>
+</svg>

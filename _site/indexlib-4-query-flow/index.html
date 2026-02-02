@@ -1,0 +1,1376 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>IndexLib（4）：查询流程：TabletReader 与 IndexReader - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="IndexLib（4）：查询流程：TabletReader 与 IndexReader">
+
+
+  <link rel="canonical" href="http://localhost:4000/indexlib-4-query-flow/">
+  <meta property="og:url" content="http://localhost:4000/indexlib-4-query-flow/">
+
+
+
+  <meta property="og:description" content="在上一篇文章中，我们深入了解了索引构建的完整流程。本文将继续深入，详细解析查询流程的实现，这是理解 IndexLib 如何从索引中查询数据的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-07-04T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">IndexLib 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-1-architecture-overview/" class=""><span class="nav__sub-title">IndexLib（1）：架构概览与核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-2-tablet-segment/" class=""><span class="nav__sub-title">IndexLib（2）：Tablet 与 Segment：索引的组织方式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-3-build-flow/" class=""><span class="nav__sub-title">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-4-query-flow/" class="active"><span class="nav__sub-title">IndexLib（4）：查询流程：TabletReader 与 IndexReader</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-5-version-management/" class=""><span class="nav__sub-title">IndexLib（5）：版本管理与增量更新</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-6-segment-merge/" class=""><span class="nav__sub-title">IndexLib（6）：Segment 合并策略</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-7-memory-management/" class=""><span class="nav__sub-title">IndexLib（7）：内存管理与资源控制</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-8-index-types/" class=""><span class="nav__sub-title">IndexLib（8）：索引类型：Normal、KKV、KV</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-9-locator-consistency/" class=""><span class="nav__sub-title">IndexLib（9）：Locator 与数据一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-10-filesystem-storage/" class=""><span class="nav__sub-title">IndexLib（10）：文件系统抽象与存储格式</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="IndexLib（4）：查询流程：TabletReader 与 IndexReader">
+    <meta itemprop="description" content="在上一篇文章中，我们深入了解了索引构建的完整流程。本文将继续深入，详细解析查询流程的实现，这是理解 IndexLib 如何从索引中查询数据的关键。">
+    <meta itemprop="datePublished" content="July 04, 2025">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">IndexLib（4）：查询流程：TabletReader 与 IndexReader
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-04T00:00:00+08:00">July 04, 2025</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>在上一篇文章中，我们深入了解了索引构建的完整流程。本文将继续深入，详细解析查询流程的实现，这是理解 IndexLib 如何从索引中查询数据的关键。</p>
+
+<p><img src="/images/diagrams/indexlib-query-complete-flow.svg" alt="查询流程概览：从 JSON 查询到结果返回的完整过程" /></p>
+
+<p><strong>查询流程图</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[接收 JSON 查询] --&gt; B[解析查询]
+    B --&gt; C[提取查询类型]
+    C --&gt; D[提取查询条件]
+    D --&gt; E[创建查询对象]
+    E --&gt; F[获取 TabletReader]
+    F --&gt; G[获取 IndexReader]
+    G --&gt; H[遍历 Segment]
+    H --&gt; I[并行查询各 Segment]
+    I --&gt; J[倒排索引查询]
+    I --&gt; K[正排索引查询]
+    I --&gt; L[主键索引查询]
+    J --&gt; M[合并查询结果]
+    K --&gt; M
+    L --&gt; M
+    M --&gt; N[去重]
+    N --&gt; O[排序]
+    O --&gt; P[分页]
+    P --&gt; Q[序列化为 JSON]
+    Q --&gt; R[返回结果]
+    style B fill:#e3f2fd
+    style I fill:#fff3e0
+    style M fill:#f3e5f5
+    style Q fill:#e8f5e9
+</code></pre>
+
+<h2 id="1-查询流程概览">1. 查询流程概览</h2>
+
+<h3 id="11-整体流程">1.1 整体流程</h3>
+
+<p>IndexLib 的查询流程包括以下核心步骤：</p>
+
+<ol>
+  <li><strong>解析查询</strong>：将 JSON 格式的查询解析为内部查询对象</li>
+  <li><strong>获取 IndexReader</strong>：根据索引类型和名称获取或创建 IndexReader</li>
+  <li><strong>遍历 Segment</strong>：遍历所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对多个 Segment 进行并行查询</li>
+  <li><strong>合并结果</strong>：将各 Segment 的查询结果合并（去重、排序等）</li>
+  <li><strong>返回结果</strong>：序列化为 JSON 格式返回</li>
+</ol>
+
+<p>让我们先通过图来理解整个流程：</p>
+
+<p><img src="/images/diagrams/indexlib-query-flow-overview.svg" alt="查询流程概览：TabletReader 与 IndexReader 的交互" /></p>
+
+<p><strong>组件交互序列图</strong>：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant TabletReader
+    participant IndexReader
+    participant Segment1
+    participant Segment2
+    participant Segment3
+    
+    Client-&gt;&gt;TabletReader: JSON 查询
+    TabletReader-&gt;&gt;TabletReader: 解析查询
+    TabletReader-&gt;&gt;IndexReader: 获取 IndexReader
+    IndexReader-&gt;&gt;Segment1: 并行查询
+    IndexReader-&gt;&gt;Segment2: 并行查询
+    IndexReader-&gt;&gt;Segment3: 并行查询
+    Segment1--&gt;&gt;IndexReader: 查询结果1
+    Segment2--&gt;&gt;IndexReader: 查询结果2
+    Segment3--&gt;&gt;IndexReader: 查询结果3
+    IndexReader-&gt;&gt;IndexReader: 合并结果
+    IndexReader--&gt;&gt;TabletReader: 合并后的结果
+    TabletReader-&gt;&gt;TabletReader: 序列化为 JSON
+    TabletReader--&gt;&gt;Client: 返回 JSON 结果
+</code></pre>
+
+<h3 id="12-核心接口">1.2 核心接口</h3>
+
+<p>查询的核心接口定义在 <code class="language-plaintext highlighter-rouge">framework/ITabletReader.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/ITabletReader.h</span>
+<span class="k">class</span> <span class="nc">ITabletReader</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 搜索：JSON 格式的查询</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Search</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">jsonQuery</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">result</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取索引 Reader：根据索引类型和名称获取</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;</span> <span class="n">GetIndexReader</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexType</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexName</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取 Schema</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;</span> <span class="n">GetSchema</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>关键设计</strong>：</p>
+<ul>
+  <li><strong>Search</strong>：提供 JSON 格式的查询接口，方便使用</li>
+  <li><strong>GetIndexReader</strong>：根据索引类型和名称获取 IndexReader，支持缓存</li>
+  <li><strong>GetSchema</strong>：获取 Schema，用于查询验证和字段解析</li>
+</ul>
+
+<h2 id="2-tabletreader查询入口">2. TabletReader：查询入口</h2>
+
+<h3 id="21-tabletreader-的实现">2.1 TabletReader 的实现</h3>
+
+<p><code class="language-plaintext highlighter-rouge">TabletReader</code> 是查询的入口，定义在 <code class="language-plaintext highlighter-rouge">framework/TabletReader.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletReader.h</span>
+<span class="k">class</span> <span class="nc">TabletReader</span> <span class="o">:</span> <span class="k">public</span> <span class="n">ITabletReader</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">TabletReader</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">);</span>
+    
+    <span class="c1">// 打开：初始化 TabletData 和读取资源</span>
+    <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span> 
+                <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">ReadResource</span><span class="o">&amp;</span> <span class="n">readResource</span><span class="p">);</span>
+    
+    <span class="c1">// 搜索：JSON 格式的查询</span>
+    <span class="n">Status</span> <span class="n">Search</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">jsonQuery</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">result</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 获取索引 Reader：根据索引类型和名称获取（带缓存）</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;</span> <span class="n">GetIndexReader</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexType</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexName</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span><span class="p">;</span>
+
+<span class="nl">protected:</span>
+    <span class="c1">// 子类实现：具体的打开逻辑</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">DoOpen</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span> 
+                          <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">ReadResource</span><span class="o">&amp;</span> <span class="n">readResource</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="nl">protected:</span>
+    <span class="k">using</span> <span class="n">IndexReaderMapKey</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">;</span>  <span class="c1">// (indexType, indexName)</span>
+    
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;</span> <span class="n">_schema</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">IndexReaderMapKey</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;&gt;</span> <span class="n">_indexReaderMap</span><span class="p">;</span>  <span class="c1">// 索引 Reader 缓存</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">IIndexMemoryReclaimer</span><span class="o">&gt;</span> <span class="n">_indexMemoryReclaimer</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>TabletReader 的关键组件</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletreader-structure.svg" alt="TabletReader 的结构：包含 Schema、IndexReaderMap、TabletData 等" /></p>
+
+<ul>
+  <li><strong>Schema</strong>：索引的 Schema 定义，用于查询验证和字段解析</li>
+  <li><strong>IndexReaderMap</strong>：IndexReader 的缓存，避免重复创建</li>
+  <li><strong>TabletData</strong>：索引数据，包含所有 Segment</li>
+  <li><strong>ReadResource</strong>：读取资源（内存配额、缓存等）</li>
+</ul>
+
+<h3 id="22-tabletreaderopen">2.2 TabletReader::Open()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Open()</code> 方法初始化 TabletReader，准备查询：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletreader-open.svg" alt="TabletReader::Open() 流程：初始化 TabletData 和读取资源" /></p>
+
+<p><strong>Open 流程</strong>：</p>
+<ol>
+  <li><strong>设置 TabletData</strong>：保存 TabletData 的引用</li>
+  <li><strong>设置 ReadResource</strong>：保存读取资源（内存配额、缓存等）</li>
+  <li><strong>调用 DoOpen()</strong>：子类实现具体的打开逻辑</li>
+  <li><strong>初始化 IndexReader</strong>：根据需要初始化 IndexReader</li>
+</ol>
+
+<h3 id="23-tabletreadersearch">2.3 TabletReader::Search()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Search()</code> 方法是查询的入口，将 JSON 查询转换为结果：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletreader-search.svg" alt="TabletReader::Search() 流程：从 JSON 查询到结果返回" /></p>
+
+<p><strong>Search 流程</strong>：</p>
+<ol>
+  <li><strong>解析查询</strong>：将 JSON 查询解析为内部查询对象</li>
+  <li><strong>获取 IndexReader</strong>：根据索引类型和名称获取 IndexReader</li>
+  <li><strong>遍历 Segment</strong>：通过 <code class="language-plaintext highlighter-rouge">TabletData-&gt;CreateSlice(ST_BUILT)</code> 获取所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对多个 Segment 进行并行查询</li>
+  <li><strong>合并结果</strong>：将各 Segment 的查询结果合并（去重、排序等）</li>
+  <li><strong>返回结果</strong>：序列化为 JSON 格式返回</li>
+</ol>
+
+<h3 id="24-indexreader-缓存机制">2.4 IndexReader 缓存机制</h3>
+
+<p><code class="language-plaintext highlighter-rouge">TabletReader</code> 维护 IndexReader 的缓存，避免重复创建：</p>
+
+<p><img src="/images/diagrams/indexlib-tabletreader-cache.svg" alt="TabletReader IndexReader 缓存：避免重复创建" /></p>
+
+<p><strong>缓存机制</strong>：</p>
+<ul>
+  <li><strong>缓存 Key</strong>：<code class="language-plaintext highlighter-rouge">(indexType, indexName)</code> 对</li>
+  <li><strong>缓存 Value</strong>：<code class="language-plaintext highlighter-rouge">IIndexReader</code> 指针</li>
+  <li><strong>优势</strong>：避免重复创建 IndexReader，提高查询性能</li>
+</ul>
+
+<p><strong>缓存实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletReader.h</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;</span> <span class="n">TabletReader</span><span class="o">::</span><span class="n">GetIndexReader</span><span class="p">(</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexType</span><span class="p">,</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexName</span><span class="p">)</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="n">IndexReaderMapKey</span> <span class="n">key</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">indexType</span><span class="p">,</span> <span class="n">indexName</span><span class="p">);</span>
+    <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">_indexReaderMap</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">!=</span> <span class="n">_indexReaderMap</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>  <span class="c1">// 返回缓存的 IndexReader</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 创建新的 IndexReader（子类实现）</span>
+    <span class="k">auto</span> <span class="n">reader</span> <span class="o">=</span> <span class="n">DoGetIndexReader</span><span class="p">(</span><span class="n">indexType</span><span class="p">,</span> <span class="n">indexName</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">reader</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_indexReaderMap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">reader</span><span class="p">;</span>  <span class="c1">// 缓存</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">reader</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="3-indexreader索引查询接口">3. IndexReader：索引查询接口</h2>
+
+<h3 id="31-iindexreader-接口">3.1 IIndexReader 接口</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IIndexReader</code> 是索引查询的抽象接口，定义在 <code class="language-plaintext highlighter-rouge">index/IIndexReader.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// index/IIndexReader.h</span>
+<span class="k">class</span> <span class="nc">IIndexReader</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="o">~</span><span class="n">IIndexReader</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+    
+    <span class="c1">// 打开：初始化 IndexReader</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">IIndexConfig</span><span class="o">&gt;&amp;</span> <span class="n">indexConfig</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="n">IndexReaderParameter</span><span class="o">&amp;</span> <span class="n">indexReaderParam</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 查询：根据查询条件查询索引</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Search</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Query</span><span class="o">&gt;&amp;</span> <span class="n">query</span><span class="p">,</span>
+                         <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">QueryResult</span><span class="o">&gt;&amp;</span> <span class="n">result</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取索引统计信息</span>
+    <span class="k">virtual</span> <span class="n">IndexStatistics</span> <span class="n">GetStatistics</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>IIndexReader 的关键方法</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-indexreader-interface.svg" alt="IIndexReader 接口：提供索引查询的抽象" /></p>
+
+<ul>
+  <li><strong>Open</strong>：初始化 IndexReader，加载索引数据</li>
+  <li><strong>Search</strong>：根据查询条件查询索引，返回查询结果</li>
+  <li><strong>GetStatistics</strong>：获取索引统计信息（文档数、term 数等）</li>
+</ul>
+
+<h3 id="32-不同类型的-indexreader">3.2 不同类型的 IndexReader</h3>
+
+<p>IndexLib 支持多种类型的 IndexReader：</p>
+
+<p><img src="/images/diagrams/indexlib-indexreader-types.svg" alt="不同类型的 IndexReader：倒排索引、正排索引、主键索引等" /></p>
+
+<p><strong>IndexReader 类型</strong>：</p>
+<ul>
+  <li><strong>InvertedIndexReader</strong>：倒排索引 Reader，用于全文检索</li>
+  <li><strong>AttributeReader</strong>：正排索引 Reader，用于属性查询</li>
+  <li><strong>PrimaryKeyIndexReader</strong>：主键索引 Reader，用于主键查询</li>
+  <li><strong>SummaryReader</strong>：摘要 Reader，用于获取文档摘要</li>
+  <li><strong>DeletionMapReader</strong>：删除映射 Reader，用于过滤已删除文档</li>
+</ul>
+
+<h3 id="33-invertedindexreader倒排索引查询">3.3 InvertedIndexReader：倒排索引查询</h3>
+
+<p><code class="language-plaintext highlighter-rouge">InvertedIndexReader</code> 是倒排索引的查询接口：</p>
+
+<p><img src="/images/diagrams/indexlib-inverted-indexreader.svg" alt="InvertedIndexReader：倒排索引查询的实现" /></p>
+
+<p><strong>倒排索引查询流程</strong>：</p>
+<ol>
+  <li><strong>解析查询</strong>：解析 term 查询、范围查询等</li>
+  <li><strong>查找 term</strong>：在倒排索引中查找 term</li>
+  <li><strong>获取倒排列表</strong>：获取 term 对应的倒排列表（DocId 列表）</li>
+  <li><strong>过滤删除文档</strong>：通过 DeletionMap 过滤已删除文档</li>
+  <li><strong>返回结果</strong>：返回 DocId 列表和相关性分数</li>
+</ol>
+
+<h3 id="34-attributereader正排索引查询">3.4 AttributeReader：正排索引查询</h3>
+
+<p><code class="language-plaintext highlighter-rouge">AttributeReader</code> 是正排索引的查询接口：</p>
+
+<p><img src="/images/diagrams/indexlib-attribute-reader.svg" alt="AttributeReader：正排索引查询的实现" /></p>
+
+<p><strong>正排索引查询流程</strong>：</p>
+<ol>
+  <li><strong>定位 DocId</strong>：根据全局 DocId 定位到对应的 Segment</li>
+  <li><strong>转换为局部 DocId</strong>：将全局 DocId 转换为局部 DocId</li>
+  <li><strong>读取属性值</strong>：从正排索引中读取属性值</li>
+  <li><strong>返回结果</strong>：返回属性值</li>
+</ol>
+
+<h2 id="4-查询流程详解">4. 查询流程详解</h2>
+
+<h3 id="41-查询解析">4.1 查询解析</h3>
+
+<p>查询解析将 JSON 格式的查询转换为内部查询对象：</p>
+
+<p><img src="/images/diagrams/indexlib-query-parsing.svg" alt="查询解析：从 JSON 到内部查询对象" /></p>
+
+<p><strong>查询解析流程</strong>：</p>
+<ol>
+  <li><strong>解析 JSON</strong>：解析 JSON 格式的查询字符串</li>
+  <li><strong>提取查询类型</strong>：提取查询类型（term 查询、范围查询等）</li>
+  <li><strong>提取查询条件</strong>：提取查询条件（term、范围等）</li>
+  <li><strong>创建查询对象</strong>：创建内部查询对象</li>
+</ol>
+
+<h3 id="42-多-segment-并行查询">4.2 多 Segment 并行查询</h3>
+
+<p>查询时需要遍历多个 Segment，可以并行查询以提高性能：</p>
+
+<p><img src="/images/diagrams/indexlib-multi-segment-query.svg" alt="多 Segment 并行查询：提高查询性能" /></p>
+
+<p><strong>并行查询流程</strong>：</p>
+<ol>
+  <li><strong>获取 Segment 列表</strong>：<code class="language-plaintext highlighter-rouge">TabletData-&gt;CreateSlice(ST_BUILT)</code> 获取所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对每个 Segment 的 Indexer 进行查询（如果支持并行）</li>
+  <li><strong>合并结果</strong>：将各 Segment 的查询结果合并（去重、排序等）</li>
+</ol>
+
+<h3 id="43-docid-转换">4.3 DocId 转换</h3>
+
+<p>查询时需要将全局 DocId 转换为局部 DocId：</p>
+
+<p><img src="/images/diagrams/indexlib-docid-conversion.svg" alt="DocId 转换：全局 DocId 到局部 DocId 的转换过程" /></p>
+
+<p><strong>DocId 转换流程</strong>：</p>
+<ol>
+  <li><strong>定位 Segment</strong>：根据全局 DocId 找到对应的 Segment</li>
+  <li><strong>计算 BaseDocId</strong>：计算该 Segment 的基础 DocId</li>
+  <li><strong>转换为局部 DocId</strong>：<code class="language-plaintext highlighter-rouge">localDocId = globalDocId - baseDocId</code></li>
+  <li><strong>Segment 内查询</strong>：使用局部 DocId 在 Segment 内查询</li>
+</ol>
+
+<h3 id="44-结果合并">4.4 结果合并</h3>
+
+<p>查询结果需要合并，包括去重、排序等：</p>
+
+<p><img src="/images/diagrams/indexlib-query-result-merge.svg" alt="结果合并：去重、排序、分页等处理" /></p>
+
+<p><strong>结果合并流程</strong>：</p>
+<ol>
+  <li><strong>去重</strong>：根据 DocId 去重，避免重复文档</li>
+  <li><strong>排序</strong>：按相关性分数排序，返回最相关的文档</li>
+  <li><strong>聚合统计</strong>：计算总数、平均值等统计信息</li>
+  <li><strong>分页处理</strong>：返回指定页的结果</li>
+</ol>
+
+<h2 id="5-normaltabletreader标准表查询实现">5. NormalTabletReader：标准表查询实现</h2>
+
+<h3 id="51-normaltabletreader-的实现">5.1 NormalTabletReader 的实现</h3>
+
+<p><code class="language-plaintext highlighter-rouge">NormalTabletReader</code> 是标准表的查询实现，定义在 <code class="language-plaintext highlighter-rouge">table/normal_table/NormalTabletReader.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalTabletReader.h</span>
+<span class="k">class</span> <span class="nc">NormalTabletReader</span> <span class="o">:</span> <span class="k">public</span> <span class="n">framework</span><span class="o">::</span><span class="n">TabletReader</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">NormalTabletReader</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">NormalTabletMetrics</span><span class="o">&gt;&amp;</span> <span class="n">normalTabletMetrics</span><span class="p">);</span>
+    
+    <span class="c1">// 打开：初始化 TabletData 和读取资源</span>
+    <span class="n">Status</span> <span class="n">DoOpen</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">framework</span><span class="o">::</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">ReadResource</span><span class="o">&amp;</span> <span class="n">readResource</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 搜索：JSON 格式的查询</span>
+    <span class="n">Status</span> <span class="n">Search</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">jsonQuery</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">result</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span><span class="p">;</span>
+    
+    <span class="c1">// 获取各种 IndexReader</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">indexlib</span><span class="o">::</span><span class="n">index</span><span class="o">::</span><span class="n">InvertedIndexReader</span><span class="o">&gt;</span> <span class="n">GetMultiFieldIndexReader</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">DeletionMapIndexReader</span><span class="o">&gt;&amp;</span> <span class="n">GetDeletionMapReader</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">indexlib</span><span class="o">::</span><span class="n">index</span><span class="o">::</span><span class="n">PrimaryKeyIndexReader</span><span class="o">&gt;&amp;</span> <span class="n">GetPrimaryKeyReader</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">SummaryReader</span><span class="o">&gt;</span> <span class="n">GetSummaryReader</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">AttributeReader</span><span class="o">&gt;</span> <span class="n">GetAttributeReader</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">attrName</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>NormalTabletReader 的关键组件</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-normal-tabletreader-structure.svg" alt="NormalTabletReader 的结构：包含各种 IndexReader" /></p>
+
+<ul>
+  <li><strong>MultiFieldIndexReader</strong>：多字段倒排索引 Reader</li>
+  <li><strong>DeletionMapReader</strong>：删除映射 Reader</li>
+  <li><strong>PrimaryKeyReader</strong>：主键索引 Reader</li>
+  <li><strong>SummaryReader</strong>：摘要 Reader</li>
+  <li><strong>AttributeReader</strong>：属性 Reader</li>
+</ul>
+
+<h3 id="52-normaltabletreaderdoopen">5.2 NormalTabletReader::DoOpen()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">DoOpen()</code> 方法初始化 NormalTabletReader：</p>
+
+<p><img src="/images/diagrams/indexlib-normal-tabletreader-open.svg" alt="NormalTabletReader::DoOpen() 流程：初始化各种 IndexReader" /></p>
+
+<p><strong>DoOpen 流程</strong>：</p>
+<ol>
+  <li><strong>初始化 TabletData</strong>：保存 TabletData 的引用</li>
+  <li><strong>创建 MultiFieldIndexReader</strong>：创建多字段倒排索引 Reader</li>
+  <li><strong>创建 DeletionMapReader</strong>：创建删除映射 Reader</li>
+  <li><strong>创建 PrimaryKeyReader</strong>：创建主键索引 Reader</li>
+  <li><strong>创建 SummaryReader</strong>：创建摘要 Reader</li>
+  <li><strong>创建 AttributeReader</strong>：根据需要创建属性 Reader</li>
+</ol>
+
+<h3 id="53-normaltabletreadersearch">5.3 NormalTabletReader::Search()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Search()</code> 方法实现标准表的查询：</p>
+
+<p><img src="/images/diagrams/indexlib-normal-tabletreader-search.svg" alt="NormalTabletReader::Search() 流程：标准表查询的实现" /></p>
+
+<p><strong>Search 流程</strong>：</p>
+<ol>
+  <li><strong>解析查询</strong>：将 JSON 查询解析为内部查询对象</li>
+  <li><strong>获取 IndexReader</strong>：获取 MultiFieldIndexReader、DeletionMapReader 等</li>
+  <li><strong>遍历 Segment</strong>：遍历所有已构建的 Segment</li>
+  <li><strong>并行查询</strong>：对多个 Segment 进行并行查询</li>
+  <li><strong>过滤删除文档</strong>：通过 DeletionMapReader 过滤已删除文档</li>
+  <li><strong>合并结果</strong>：合并各 Segment 的查询结果</li>
+  <li><strong>返回结果</strong>：序列化为 JSON 格式返回</li>
+</ol>
+
+<h2 id="6-查询优化">6. 查询优化</h2>
+
+<h3 id="61-查询剪枝">6.1 查询剪枝</h3>
+
+<p>查询剪枝可以减少不必要的查询：</p>
+
+<p><img src="/images/diagrams/indexlib-query-pruning.svg" alt="查询剪枝：减少不必要的查询" /></p>
+
+<p><strong>查询剪枝策略</strong>：</p>
+<ul>
+  <li><strong>Locator 剪枝</strong>：通过 Locator 判断哪些 Segment 可能包含查询结果</li>
+  <li><strong>范围剪枝</strong>：通过范围查询剪枝，减少查询范围</li>
+  <li><strong>索引剪枝</strong>：通过索引统计信息剪枝，跳过不相关的索引</li>
+</ul>
+
+<h3 id="62-查询缓存">6.2 查询缓存</h3>
+
+<p>查询缓存可以提高查询性能：</p>
+
+<p><img src="/images/diagrams/indexlib-query-cache.svg" alt="查询缓存：缓存查询结果，提高查询性能" /></p>
+
+<p><strong>查询缓存机制</strong>：</p>
+<ul>
+  <li><strong>结果缓存</strong>：缓存查询结果，避免重复查询</li>
+  <li><strong>索引缓存</strong>：缓存索引数据，减少 IO 操作</li>
+  <li><strong>统计缓存</strong>：缓存统计信息，减少计算开销</li>
+</ul>
+
+<h3 id="63-并行查询优化">6.3 并行查询优化</h3>
+
+<p>并行查询可以提高查询性能：</p>
+
+<p><img src="/images/diagrams/indexlib-query-parallel-optimization.svg" alt="并行查询优化：提高查询并发度" /></p>
+
+<p><strong>并行查询优化</strong>：</p>
+<ul>
+  <li><strong>Segment 并行</strong>：多个 Segment 可以并行查询</li>
+  <li><strong>索引并行</strong>：多个索引可以并行查询</li>
+  <li><strong>结果并行合并</strong>：查询结果可以并行合并</li>
+</ul>
+
+<h2 id="7-查询性能优化">7. 查询性能优化</h2>
+
+<h3 id="71-索引加载优化">7.1 索引加载优化</h3>
+
+<p>索引加载优化可以减少查询延迟：</p>
+
+<p><img src="/images/diagrams/indexlib-query-index-loading.svg" alt="索引加载优化：按需加载、懒加载等" /></p>
+
+<p><strong>索引加载优化</strong>：</p>
+<ul>
+  <li><strong>按需加载</strong>：只加载查询需要的索引</li>
+  <li><strong>懒加载</strong>：在查询时才加载索引数据</li>
+  <li><strong>预加载</strong>：预加载常用索引，减少查询延迟</li>
+</ul>
+
+<h3 id="72-内存优化">7.2 内存优化</h3>
+
+<p>内存优化可以减少内存使用：</p>
+
+<p><img src="/images/diagrams/indexlib-query-memory-optimization.svg" alt="查询内存优化：内存池、缓存控制等" /></p>
+
+<p><strong>内存优化策略</strong>：</p>
+<ul>
+  <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+  <li><strong>缓存控制</strong>：控制缓存大小，避免内存溢出</li>
+  <li><strong>内存回收</strong>：及时回收不再使用的内存</li>
+</ul>
+
+<h3 id="73-io-优化">7.3 IO 优化</h3>
+
+<p>IO 优化可以减少 IO 操作：</p>
+
+<p><img src="/images/diagrams/indexlib-query-io-optimization.svg" alt="查询 IO 优化：批量读取、预读等" /></p>
+
+<p><strong>IO 优化策略</strong>：</p>
+<ul>
+  <li><strong>批量读取</strong>：批量读取索引数据，减少 IO 次数</li>
+  <li><strong>预读</strong>：预读可能需要的索引数据</li>
+  <li><strong>IO 合并</strong>：合并多个 IO 操作，减少 IO 开销</li>
+</ul>
+
+<h2 id="8-查询场景示例">8. 查询场景示例</h2>
+
+<h3 id="81-全文检索场景">8.1 全文检索场景</h3>
+
+<p>在全文检索场景中，查询流程：</p>
+
+<p><img src="/images/diagrams/indexlib-query-fulltext-scenario.svg" alt="全文检索场景：从 term 查询到结果返回" /></p>
+
+<p><strong>全文检索流程</strong>：</p>
+<ol>
+  <li><strong>解析查询</strong>：解析 term 查询</li>
+  <li><strong>获取 InvertedIndexReader</strong>：获取倒排索引 Reader</li>
+  <li><strong>查找 term</strong>：在倒排索引中查找 term</li>
+  <li><strong>获取倒排列表</strong>：获取 term 对应的倒排列表</li>
+  <li><strong>过滤删除文档</strong>：通过 DeletionMap 过滤已删除文档</li>
+  <li><strong>计算相关性</strong>：计算文档的相关性分数</li>
+  <li><strong>排序返回</strong>：按相关性分数排序，返回结果</li>
+</ol>
+
+<h3 id="82-属性查询场景">8.2 属性查询场景</h3>
+
+<p>在属性查询场景中，查询流程：</p>
+
+<p><img src="/images/diagrams/indexlib-query-attribute-scenario.svg" alt="属性查询场景：从属性查询到结果返回" /></p>
+
+<p><strong>属性查询流程</strong>：</p>
+<ol>
+  <li><strong>解析查询</strong>：解析属性查询条件</li>
+  <li><strong>获取 AttributeReader</strong>：获取属性 Reader</li>
+  <li><strong>遍历 Segment</strong>：遍历所有已构建的 Segment</li>
+  <li><strong>查询属性</strong>：在 Segment 内查询属性值</li>
+  <li><strong>过滤匹配</strong>：过滤匹配查询条件的文档</li>
+  <li><strong>返回结果</strong>：返回匹配的文档列表</li>
+</ol>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>查询流程是 IndexLib 的核心功能，包括 TabletReader 和 IndexReader 两个层次。通过本文的深入解析，我们了解到：</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li><strong>TabletReader</strong>：查询入口，提供 JSON 格式的查询接口，管理 IndexReader 缓存</li>
+  <li><strong>IndexReader</strong>：索引查询接口，提供不同类型的索引查询能力</li>
+  <li><strong>查询流程</strong>：包括解析查询、获取 IndexReader、遍历 Segment、并行查询、合并结果等步骤</li>
+  <li><strong>多 Segment 并行查询</strong>：支持多个 Segment 并行查询，提高查询性能</li>
+  <li><strong>结果合并</strong>：包括去重、排序、分页等处理，保证查询结果的正确性</li>
+  <li><strong>查询优化</strong>：通过查询剪枝、查询缓存、并行查询等机制，提高查询性能</li>
+</ul>
+
+<p>理解查询流程，是掌握 IndexLib 查询机制的关键。在下一篇文章中，我们将深入介绍版本管理和增量更新的实现细节。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

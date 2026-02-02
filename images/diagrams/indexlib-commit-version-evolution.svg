@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .version{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">版本演进：从 V1 到 V2 的版本变化</text>
+  <text class="muted" x="40" y="66">版本演进展示了从 V1 到 V2 的版本变化，包括 Segment 的添加、删除、更新等。</text>
+
+  <rect class="version" x="40" y="95" width="200" height="280"/>
+  <text class="h" x="70" y="130">Version 1</text>
+  <text class="t" x="70" y="155">Segment 0</text>
+  <text class="t" x="70" y="175">Segment 1</text>
+  <text class="t" x="70" y="195">Segment 2</text>
+  <text class="t" x="70" y="215">Locator: L1</text>
+  <text class="t" x="70" y="235">初始版本</text>
+  <text class="t" x="70" y="255">包含 3 个 Segment</text>
+  <text class="t" x="70" y="275">可以查询</text>
+  <text class="t" x="70" y="295">可以更新</text>
+  <text class="t" x="70" y="315">准备提交</text>
+  <text class="t" x="70" y="335">新版本</text>
+  <text class="t" x="70" y="355">版本演进</text>
+
+  <path class="arrow" d="M 240 235 L 280 235"/>
+  <text class="t" x="250" y="230">Commit</text>
+
+  <rect class="version" x="300" y="95" width="200" height="280"/>
+  <text class="h" x="330" y="130">Version 2</text>
+  <text class="t" x="330" y="155">Segment 0 (保留)</text>
+  <text class="t" x="330" y="175">Segment 1 (保留)</text>
+  <text class="t" x="330" y="195">Segment 2 (删除)</text>
+  <text class="t" x="330" y="215">Segment 3 (新增)</text>
+  <text class="t" x="330" y="235">Locator: L2</text>
+  <text class="t" x="330" y="255">新版本</text>
+  <text class="t" x="330" y="275">包含 3 个 Segment</text>
+  <text class="t" x="330" y="295">可以查询</text>
+  <text class="t" x="330" y="315">可以更新</text>
+  <text class="t" x="330" y="335">准备提交</text>
+  <text class="t" x="330" y="355">版本演进</text>
+
+  <path class="arrow" d="M 500 235 L 540 235"/>
+  <text class="t" x="510" y="230">继续</text>
+
+  <rect class="box" x="560" y="95" width="400" height="280"/>
+  <text class="h" x="590" y="130">版本演进的关键变化</text>
+  <text class="t" x="590" y="155">1. Segment 保留：Segment 0 和 Segment 1 保留，继续使用</text>
+  <text class="t" x="590" y="175">2. Segment 删除：Segment 2 被删除，不再使用</text>
+  <text class="t" x="590" y="195">3. Segment 新增：Segment 3 新增，包含新数据</text>
+  <text class="t" x="590" y="215">4. Locator 更新：Locator 从 L1 更新到 L2，反映数据进度</text>
+  <text class="t" x="590" y="235">5. 版本号递增：版本号从 1 递增到 2，标识版本变化</text>
+  <text class="t" x="590" y="255">关键设计：版本演进通过 Segment 的保留、删除、新增等操作，实现索引的增量更新</text>
+  <text class="t" x="590" y="275">关键设计：版本演进通过 Locator 的更新，反映数据进度，保证数据一致性</text>
+  <text class="t" x="590" y="295">关键设计：版本演进通过版本号的递增，标识版本变化，支持版本管理和回滚</text>
+  <text class="t" x="590" y="315">关键设计：版本演进需要保证原子性，版本提交要么全部成功，要么全部失败，保证数据一致性</text>
+  <text class="t" x="590" y="335">关键设计：版本演进需要保证一致性，新版本包含所有旧版本的数据，加上新增的数据，保证数据完整性</text>
+  <text class="t" x="590" y="355">关键设计：版本演进需要保证性能，版本切换应该快速，不影响查询性能</text>
+
+  <rect class="box" x="40" y="395" width="920" height="130"/>
+  <text class="h" x="70" y="430">版本演进的关键设计</text>
+  <text class="t" x="70" y="455">1. Segment 管理：版本演进通过 Segment 的保留、删除、新增等操作，实现索引的增量更新，保证数据完整性和一致性</text>
+  <text class="t" x="70" y="475">2. Locator 更新：版本演进通过 Locator 的更新，反映数据进度，保证数据一致性和增量更新的正确性</text>
+  <text class="t" x="70" y="495">3. 原子性和一致性：版本演进需要保证原子性和一致性，版本提交要么全部成功，要么全部失败，新版本包含所有旧版本的数据</text>
+  <text class="t" x="70" y="515">4. 性能优化：版本演进需要保证性能，版本切换应该快速，不影响查询性能，支持版本管理和回滚</text>
+
+  <text class="muted" x="40" y="550">理解版本演进，是掌握版本管理和增量更新的关键</text>
+</svg>

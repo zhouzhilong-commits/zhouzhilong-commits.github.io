@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .physical{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .mount{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .logical{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">逻辑路径与物理路径：从物理路径到逻辑路径的映射</text>
+  <text class="muted" x="40" y="66">文件系统抽象通过 Mount 操作将物理路径映射到逻辑路径，支持版本管理和 Segment 管理。</text>
+
+  <rect class="physical" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">物理路径</text>
+  <text class="t" x="70" y="155">/data/index/version.0/</text>
+  <text class="t" x="70" y="175">segment_1/</text>
+  <text class="t" x="70" y="195">index/</text>
+  <text class="t" x="70" y="215">title.idx</text>
+  <text class="t" x="70" y="235">文件在磁盘上的</text>
+  <text class="t" x="70" y="255">实际路径</text>
+  <text class="t" x="70" y="275">包含版本和 Segment 信息</text>
+
+  <path class="arrow" d="M 320 195 L 360 195"/>
+  <text class="t" x="330" y="190">Mount</text>
+
+  <rect class="mount" x="380" y="95" width="200" height="200"/>
+  <text class="h" x="410" y="130">Mount 操作</text>
+  <text class="t" x="410" y="155">MountVersion()</text>
+  <text class="t" x="410" y="175">MountDir()</text>
+  <text class="t" x="410" y="195">MountFile()</text>
+  <text class="t" x="410" y="215">将物理路径</text>
+  <text class="t" x="410" y="235">映射到逻辑路径</text>
+  <text class="t" x="410" y="255">支持版本管理</text>
+  <text class="t" x="410" y="275">支持 Segment 管理</text>
+
+  <path class="arrow" d="M 580 195 L 620 195"/>
+  <text class="t" x="590" y="190">映射</text>
+
+  <rect class="logical" x="640" y="95" width="320" height="200"/>
+  <text class="h" x="670" y="130">逻辑路径</text>
+  <text class="t" x="670" y="155">/segment_1/</text>
+  <text class="t" x="670" y="175">index/</text>
+  <text class="t" x="670" y="195">title.idx</text>
+  <text class="t" x="670" y="215">文件在逻辑文件</text>
+  <text class="t" x="670" y="235">系统中的路径</text>
+  <text class="t" x="670" y="255">不包含版本信息</text>
+  <text class="t" x="670" y="275">支持透明访问</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">逻辑路径与物理路径的关键设计</text>
+  <text class="t" x="70" y="375">1. 物理路径：文件在磁盘上的实际路径，包含版本和 Segment 信息，如 /data/index/version.0/segment_1/index/title.idx</text>
+  <text class="t" x="70" y="395">2. Mount 操作：通过 MountVersion()、MountDir()、MountFile() 等操作将物理路径映射到逻辑路径，支持版本管理和 Segment 管理</text>
+  <text class="t" x="70" y="415">3. 逻辑路径：文件在逻辑文件系统中的路径，不包含版本信息，如 /segment_1/index/title.idx，支持透明访问</text>
+  <text class="t" x="70" y="435">关键设计：逻辑路径与物理路径的映射支持版本管理，不同版本的文件可以映射到相同的逻辑路径，支持版本切换</text>
+  <text class="t" x="70" y="455">关键设计：逻辑路径与物理路径的映射支持 Segment 管理，不同 Segment 的文件可以映射到不同的逻辑路径，支持 Segment 查询</text>
+  <text class="t" x="70" y="475">关键设计：逻辑路径与物理路径的映射支持透明访问，通过逻辑路径访问文件，不需要关心物理路径的细节</text>
+
+  <text class="muted" x="40" y="490">理解逻辑路径与物理路径的映射，是掌握文件系统抽象的关键</text>
+</svg>

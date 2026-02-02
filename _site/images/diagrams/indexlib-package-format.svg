@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .files{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .package{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Package 格式：将多个文件打包成一个文件</text>
+  <text class="muted" x="40" y="66">Package 格式将多个小文件打包成一个大文件，减少文件系统的小文件数量，提高 IO 效率。</text>
+
+  <rect class="files" x="40" y="95" width="400" height="280"/>
+  <text class="h" x="70" y="130">多个小文件</text>
+  <text class="t" x="70" y="155">file1.idx (10KB)</text>
+  <text class="t" x="70" y="175">file2.idx (15KB)</text>
+  <text class="t" x="70" y="195">file3.idx (20KB)</text>
+  <text class="t" x="70" y="215">file4.idx (12KB)</text>
+  <text class="t" x="70" y="235">file5.idx (18KB)</text>
+  <text class="t" x="70" y="255">... (100+ 文件)</text>
+  <text class="t" x="70" y="275">文件数量多</text>
+  <text class="t" x="70" y="295">IO 效率低</text>
+  <text class="t" x="70" y="315">存储空间浪费</text>
+  <text class="t" x="70" y="355">管理复杂</text>
+
+  <path class="arrow" d="M 440 235 L 480 235"/>
+  <text class="t" x="450" y="230">打包</text>
+
+  <rect class="package" x="500" y="95" width="460" height="280"/>
+  <text class="h" x="530" y="130">Package 文件</text>
+  <text class="t" x="530" y="155">package.pkg (500KB)</text>
+  <text class="t" x="530" y="175">包含：</text>
+  <text class="t" x="530" y="195">- 文件索引</text>
+  <text class="t" x="530" y="215">- 文件数据</text>
+  <text class="t" x="530" y="235">- 压缩数据</text>
+  <text class="t" x="530" y="255">文件数量少</text>
+  <text class="t" x="530" y="275">IO 效率高</text>
+  <text class="t" x="530" y="295">存储空间优化</text>
+  <text class="t" x="530" y="315">管理简单</text>
+  <text class="t" x="530" y="335">支持压缩</text>
+  <text class="t" x="530" y="355">支持索引</text>
+
+  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <text class="h" x="70" y="430">Package 格式的关键特点</text>
+  <text class="t" x="70" y="455">1. 文件打包：将多个小文件打包成一个大文件，减少文件系统的小文件数量</text>
+  <text class="t" x="70" y="475">2. 提高 IO 效率：批量 IO 操作，减少 IO 次数，提高 IO 效率</text>
+
+  <text class="muted" x="40" y="490">Package 格式是存储优化的关键，提高 IO 效率和存储空间利用率</text>
+</svg>

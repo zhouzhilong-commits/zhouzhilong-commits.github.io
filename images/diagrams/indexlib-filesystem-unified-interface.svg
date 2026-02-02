@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .interface{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .backend{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">统一接口设计：通过统一接口屏蔽底层存储差异</text>
+  <text class="muted" x="40" y="66">文件系统抽象通过 IFileSystem、IDirectory 等统一接口，屏蔽底层存储差异，支持多种存储后端。</text>
+
+  <rect class="interface" x="40" y="95" width="400" height="280"/>
+  <text class="h" x="70" y="130">统一接口层</text>
+  <text class="t" x="70" y="155">IFileSystem</text>
+  <text class="t" x="70" y="175">- Init()</text>
+  <text class="t" x="70" y="195">- MountVersion()</text>
+  <text class="t" x="70" y="215">- CreateFileReader()</text>
+  <text class="t" x="70" y="235">- CreateFileWriter()</text>
+  <text class="t" x="70" y="255">IDirectory</text>
+  <text class="t" x="70" y="275">- MakeDirectory()</text>
+  <text class="t" x="70" y="295">- GetDirectory()</text>
+  <text class="t" x="70" y="315">- CreateFileReader()</text>
+  <text class="t" x="70" y="335">- CreateFileWriter()</text>
+  <text class="t" x="70" y="355">统一接口</text>
+  <text class="t" x="70" y="375">屏蔽差异</text>
+
+  <path class="arrow" d="M 440 235 L 480 235"/>
+  <text class="t" x="450" y="230">抽象</text>
+
+  <rect class="backend" x="500" y="95" width="460" height="280"/>
+  <text class="h" x="530" y="130">存储后端层</text>
+  <text class="t" x="530" y="155">本地文件系统</text>
+  <text class="t" x="530" y="175">- 本地磁盘</text>
+  <text class="t" x="530" y="195">- 本地 SSD</text>
+  <text class="t" x="530" y="215">分布式文件系统</text>
+  <text class="t" x="530" y="235">- HDFS</text>
+  <text class="t" x="530" y="255">- OSS</text>
+  <text class="t" x="530" y="275">内存文件系统</text>
+  <text class="t" x="530" y="295">- 内存存储</text>
+  <text class="t" x="530" y="315">混合文件系统</text>
+  <text class="t" x="530" y="335">- 多种后端</text>
+  <text class="t" x="530" y="355">灵活配置</text>
+  <text class="t" x="530" y="375">性能优化</text>
+
+  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <text class="h" x="70" y="430">统一接口设计的关键要点</text>
+  <text class="t" x="70" y="455">1. 接口抽象：通过 IFileSystem、IDirectory 等接口抽象屏蔽底层存储差异，提供统一的文件系统接口</text>
+  <text class="t" x="70" y="475">2. 多后端支持：支持多种存储后端（本地、分布式、内存等），通过统一接口访问，无需关心底层实现</text>
+  <text class="t" x="70" y="495">3. 透明访问：通过逻辑路径实现透明访问，用户无需关心物理路径和存储后端的细节</text>
+  <text class="t" x="70" y="515">4. 灵活扩展：支持自定义存储后端，通过实现统一接口即可集成新的存储后端</text>
+
+  <text class="muted" x="40" y="490">统一接口设计是文件系统抽象的核心，提供灵活的文件管理能力</text>
+</svg>

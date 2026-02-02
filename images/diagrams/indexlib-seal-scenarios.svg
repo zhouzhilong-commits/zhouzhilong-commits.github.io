@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .scenario{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">Seal 使用场景：合并前、版本提交前等</text>
+  <text class="muted" x="40" y="66">Seal 通常在合并前、版本提交前、Schema 变更前等场景使用，保证 Segment 内容不再变化。</text>
+
+  <rect class="scenario" x="40" y="95" width="280" height="120"/>
+  <text class="h" x="70" y="130">场景 1：合并前</text>
+  <text class="t" x="70" y="155">合并前需要封存所有待合并的 Segment</text>
+  <text class="t" x="70" y="175">保证 Segment 内容不再变化</text>
+  <text class="t" x="70" y="195">为合并做准备</text>
+  <text class="t" x="70" y="215">保证合并的一致性</text>
+
+  <rect class="scenario" x="340" y="95" width="280" height="120"/>
+  <text class="h" x="370" y="130">场景 2：版本提交前</text>
+  <text class="t" x="370" y="155">版本提交前需要封存所有 Segment</text>
+  <text class="t" x="370" y="175">保证版本内容不再变化</text>
+  <text class="t" x="370" y="195">为版本提交做准备</text>
+  <text class="t" x="370" y="215">保证版本的一致性</text>
+
+  <rect class="scenario" x="640" y="95" width="320" height="120"/>
+  <text class="h" x="670" y="130">场景 3：Schema 变更前</text>
+  <text class="t" x="670" y="155">Schema 变更前需要封存当前 Segment</text>
+  <text class="t" x="670" y="175">保证 Segment 内容不再变化</text>
+  <text class="t" x="670" y="195">为 Schema 变更做准备</text>
+  <text class="t" x="670" y="215">保证 Schema 变更的一致性</text>
+
+  <rect class="box" x="40" y="235" width="920" height="180"/>
+  <text class="h" x="70" y="270">Seal 的关键作用</text>
+  <text class="t" x="70" y="295">1. 保证数据一致性：Seal 后 Segment 内容不再变化，保证数据一致性</text>
+  <text class="t" x="70" y="315">2. 准备合并：Seal 后 Segment 可以参与合并，提高查询性能</text>
+  <text class="t" x="70" y="335">3. 保证版本一致性：Seal 后 Segment 可以参与版本提交，保证版本一致性</text>
+  <text class="t" x="70" y="355">4. 支持 Schema 演进：Seal 后 Segment 可以支持 Schema 变更，保证 Schema 演进的一致性</text>
+  <text class="t" x="70" y="375">5. 提高查询性能：Seal 后 Segment 可以参与查询，提高查询性能</text>
+  <text class="t" x="70" y="395">关键设计：Seal 是索引构建流程中的重要阶段，保证数据一致性和查询性能</text>
+  <text class="t" x="70" y="415">关键设计：Seal 后 Segment 可以参与合并和查询，提高系统性能</text>
+
+  <text class="muted" x="40" y="430">理解 Seal 的使用场景和作用，是掌握索引构建流程的关键</text>
+</svg>

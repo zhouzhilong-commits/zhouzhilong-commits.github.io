@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .version{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .locator{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .segment{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">版本管理架构：Version、Locator、Segment 的关系</text>
+  <text class="muted" x="40" y="66">版本管理通过 Version 管理 Segment 列表和 Locator，通过 Locator 实现增量更新，三者协同工作保证数据一致性。</text>
+
+  <rect class="version" x="40" y="95" width="280" height="280"/>
+  <text class="h" x="70" y="130">Version</text>
+  <text class="t" x="70" y="155">版本信息</text>
+  <text class="t" x="70" y="175">VersionId: 1</text>
+  <text class="t" x="70" y="195">Segments: [1, 2, 3]</text>
+  <text class="t" x="70" y="215">Locator: {...}</text>
+  <text class="t" x="70" y="235">Timestamp: 100</text>
+  <text class="t" x="70" y="255">SchemaId: 1</text>
+  <text class="t" x="70" y="275">版本控制</text>
+  <text class="t" x="70" y="295">Schema 演进</text>
+  <text class="t" x="70" y="315">版本回滚</text>
+  <text class="t" x="70" y="335">版本清理</text>
+  <text class="t" x="70" y="355">持久化到磁盘</text>
+
+  <path class="arrow" d="M 320 235 L 360 235"/>
+  <text class="t" x="330" y="230">包含</text>
+
+  <rect class="locator" x="380" y="95" width="280" height="280"/>
+  <text class="h" x="410" y="130">Locator</text>
+  <text class="t" x="410" y="155">位置信息</text>
+  <text class="t" x="410" y="175">timestamp: 100</text>
+  <text class="t" x="410" y="195">concurrentIdx: 0</text>
+  <text class="t" x="410" y="215">hashId: 0</text>
+  <text class="t" x="410" y="235">sourceIdx: 0</text>
+  <text class="t" x="410" y="255">multiProgress: [...]</text>
+  <text class="t" x="410" y="275">增量更新</text>
+  <text class="t" x="410" y="295">数据一致性</text>
+  <text class="t" x="410" y="315">进度追踪</text>
+  <text class="t" x="410" y="335">并发控制</text>
+  <text class="t" x="410" y="355">IsFasterThan()</text>
+
+  <path class="arrow" d="M 660 235 L 700 235"/>
+  <text class="t" x="670" y="230">引用</text>
+
+  <rect class="segment" x="720" y="95" width="240" height="280"/>
+  <text class="h" x="750" y="130">Segment</text>
+  <text class="t" x="750" y="155">索引数据</text>
+  <text class="t" x="750" y="175">Segment 1</text>
+  <text class="t" x="750" y="195">SchemaId: 1</text>
+  <text class="t" x="750" y="215">Segment 2</text>
+  <text class="t" x="750" y="235">SchemaId: 1</text>
+  <text class="t" x="750" y="255">Segment 3</text>
+  <text class="t" x="750" y="275">SchemaId: 2</text>
+  <text class="t" x="750" y="295">每个 Segment</text>
+  <text class="t" x="750" y="315">记录自己的</text>
+  <text class="t" x="750" y="335">SchemaId</text>
+  <text class="t" x="750" y="355">支持 Schema 演进</text>
+
+  <rect class="box" x="40" y="395" width="920" height="80"/>
+  <text class="h" x="70" y="430">版本管理架构的关键设计</text>
+  <text class="t" x="70" y="455">1. Version 管理 Segment 列表和 Locator，记录版本信息和数据处理位置</text>
+  <text class="t" x="70" y="475">2. Locator 记录数据处理位置，通过 IsFasterThan() 判断哪些数据已处理，实现增量更新</text>
+
+  <text class="muted" x="40" y="490">理解版本管理架构，是掌握版本管理和增量更新的基础</text>
+</svg>

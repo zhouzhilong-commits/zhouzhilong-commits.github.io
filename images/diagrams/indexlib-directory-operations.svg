@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">目录操作流程：从创建目录到文件操作的完整流程</text>
+  <text class="muted" x="40" y="66">目录操作包括获取目录、创建文件、写入文件、读取文件等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="125">1. 获取目录</text>
+  <text class="t" x="70" y="150">GetDirectory()</text>
+  <text class="t" x="70" y="170">获取目录对象</text>
+  <text class="t" x="70" y="185">支持逻辑路径</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+  <text class="t" x="230" y="140">下一步</text>
+
+  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="125">2. 创建文件</text>
+  <text class="t" x="310" y="150">CreateFileWriter()</text>
+  <text class="t" x="310" y="170">创建文件写入器</text>
+  <text class="t" x="310" y="185">支持逻辑路径</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+  <text class="t" x="470" y="140">下一步</text>
+
+  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="125">3. 写入文件</text>
+  <text class="t" x="550" y="150">FileWriter::Write()</text>
+  <text class="t" x="550" y="170">写入文件数据</text>
+  <text class="t" x="550" y="185">支持批量写入</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+  <text class="t" x="710" y="140">下一步</text>
+
+  <rect class="step" x="760" y="95" width="200" height="100"/>
+  <text class="h" x="790" y="125">4. 读取文件</text>
+  <text class="t" x="790" y="150">CreateFileReader()</text>
+  <text class="t" x="790" y="170">创建文件读取器</text>
+  <text class="t" x="790" y="185">支持逻辑路径</text>
+
+  <path class="arrow" d="M 860 195 L 860 235"/>
+  <text class="t" x="850" y="220">下一步</text>
+
+  <rect class="step" x="760" y="255" width="200" height="100"/>
+  <text class="h" x="790" y="285">5. 读取数据</text>
+  <text class="t" x="790" y="310">FileReader::Read()</text>
+  <text class="t" x="790" y="330">读取文件数据</text>
+  <text class="t" x="790" y="345">支持异步读取</text>
+
+  <rect class="box" x="40" y="375" width="920" height="100"/>
+  <text class="h" x="70" y="410">目录操作流程的关键步骤</text>
+  <text class="t" x="70" y="435">1. 获取目录：通过 GetDirectory() 获取目录对象，支持逻辑路径，返回 IDirectory 对象</text>
+  <text class="t" x="70" y="455">2. 创建文件：通过 CreateFileWriter() 创建文件写入器，支持逻辑路径，返回 FileWriter 对象</text>
+  <text class="t" x="70" y="475">3. 写入文件：通过 FileWriter::Write() 写入文件数据，支持批量写入，提高写入效率</text>
+  <text class="t" x="70" y="495">4. 读取文件：通过 CreateFileReader() 创建文件读取器，支持逻辑路径，返回 FileReader 对象</text>
+  <text class="t" x="70" y="515">5. 读取数据：通过 FileReader::Read() 读取文件数据，支持异步读取，提高读取性能</text>
+
+  <text class="muted" x="40" y="490">理解目录操作流程，是掌握文件系统抽象的关键</text>
+</svg>

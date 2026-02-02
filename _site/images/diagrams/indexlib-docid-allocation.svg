@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .doc{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .base{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .global{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">文档 DocId 分配：全局 DocId 的计算和分配</text>
+  <text class="muted" x="40" y="66">TabletWriter 在构建时为文档分配 DocId，通过 baseDocId + localDocId 计算全局 DocId。</text>
+
+  <rect class="doc" x="40" y="95" width="280" height="120"/>
+  <text class="h" x="70" y="130">文档批次</text>
+  <text class="t" x="70" y="155">Document 1</text>
+  <text class="t" x="70" y="175">Document 2</text>
+  <text class="t" x="70" y="195">Document 3</text>
+  <text class="t" x="70" y="215">...</text>
+
+  <path class="arrow" d="M 320 155 L 360 155"/>
+
+  <rect class="base" x="370" y="95" width="280" height="120"/>
+  <text class="h" x="400" y="130">BaseDocId</text>
+  <text class="t" x="400" y="155">_buildingSegmentBaseDocId</text>
+  <text class="t" x="400" y="175">= 前面所有 Segment</text>
+  <text class="t" x="400" y="195">的 docCount 之和</text>
+  <text class="t" x="400" y="215">示例：3000</text>
+
+  <path class="arrow" d="M 650 155 L 690 155"/>
+
+  <rect class="global" x="700" y="95" width="260" height="120"/>
+  <text class="h" x="730" y="130">全局 DocId</text>
+  <text class="t" x="730" y="155">Doc 1: 3000 + 0 = 3000</text>
+  <text class="t" x="730" y="175">Doc 2: 3000 + 1 = 3001</text>
+  <text class="t" x="730" y="195">Doc 3: 3000 + 2 = 3002</text>
+
+  <rect class="box" x="40" y="235" width="920" height="240"/>
+  <text class="h" x="70" y="270">DocId 分配机制</text>
+  <text class="t" x="70" y="295">1. 计算 BaseDocId：TabletWriter::Open() 时，计算当前 MemSegment 的 baseDocId = 前面所有 Segment 的 docCount 之和</text>
+  <text class="t" x="70" y="315">2. 分配局部 DocId：TabletWriter::DispatchDocIds() 为文档分配局部 DocId（从 0 开始递增），每个文档在 MemSegment 内有唯一的局部 DocId</text>
+  <text class="t" x="70" y="335">3. 计算全局 DocId：全局 DocId = baseDocId + localDocId，保证在整个 Tablet 范围内唯一</text>
+  <text class="t" x="70" y="355">4. 写入 Indexer：将文档及其全局 DocId 写入各个 Indexer（倒排索引、正排索引等），Indexer 内部使用局部 DocId</text>
+  <text class="t" x="70" y="375">5. 更新 docCount：构建完成后，更新 SegmentInfo 的 docCount，用于下次计算 baseDocId</text>
+  <text class="t" x="70" y="395">关键代码：NormalTabletWriter::DispatchDocIds() 为文档分配 DocId，NormalTabletWriter::_buildingSegmentBaseDocId 记录当前 MemSegment 的 baseDocId</text>
+  <text class="t" x="70" y="415">关键设计：DocId 分配是顺序的，保证全局 DocId 的连续性和唯一性</text>
+  <text class="t" x="70" y="435">关键设计：支持并行构建时，需要保证 DocId 分配的正确性，避免冲突</text>
+  <text class="t" x="70" y="455">关键设计：DocId 的分配是原子的，保证并发构建时的正确性</text>
+</svg>

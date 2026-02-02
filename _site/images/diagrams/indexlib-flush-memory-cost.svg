@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .memory{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .control{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">转储内存成本：DumpExpandMemSize 的控制机制</text>
+  <text class="muted" x="40" y="66">转储需要额外的内存空间，通过 DumpExpandMemSize 控制转储的内存成本。</text>
+
+  <rect class="memory" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">内存估算</text>
+  <text class="t" x="70" y="155">EstimateDumpMemUsed()</text>
+  <text class="t" x="70" y="175">估算转储所需内存</text>
+  <text class="t" x="70" y="195">包括：</text>
+  <text class="t" x="70" y="215">- MemSegment 大小</text>
+  <text class="t" x="70" y="235">- 临时缓冲区</text>
+  <text class="t" x="70" y="255">- 压缩缓冲区</text>
+  <text class="t" x="70" y="275">- DumpExpandMemSize</text>
+
+  <path class="arrow" d="M 320 195 L 360 195"/>
+  <text class="t" x="330" y="190">检查</text>
+
+  <rect class="control" x="380" y="95" width="280" height="200"/>
+  <text class="h" x="410" y="130">内存配额检查</text>
+  <text class="t" x="410" y="155">检查内存配额</text>
+  <text class="t" x="410" y="175">是否有足够内存</text>
+  <text class="t" x="410" y="195">- 检查可用配额</text>
+  <text class="t" x="410" y="215">- 预留转储内存</text>
+  <text class="t" x="410" y="235">- 控制转储并发</text>
+  <text class="t" x="410" y="255">- 避免内存不足</text>
+  <text class="t" x="410" y="275">- 保证系统稳定</text>
+
+  <path class="arrow" d="M 660 195 L 700 195"/>
+  <text class="t" x="670" y="190">执行</text>
+
+  <rect class="box" x="720" y="95" width="240" height="200"/>
+  <text class="h" x="750" y="130">转储执行</text>
+  <text class="t" x="750" y="155">执行转储任务</text>
+  <text class="t" x="750" y="175">使用预留内存</text>
+  <text class="t" x="750" y="195">控制并发度</text>
+  <text class="t" x="750" y="215">释放内存</text>
+  <text class="t" x="750" y="235">转储完成</text>
+  <text class="t" x="750" y="255">创建 DiskSegment</text>
+  <text class="t" x="750" y="275">提高性能</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">转储内存成本控制的关键设计</text>
+  <text class="t" x="70" y="375">1. 内存估算：通过 EstimateDumpMemUsed() 估算转储所需内存，包括 MemSegment 大小、临时缓冲区、压缩缓冲区、DumpExpandMemSize 等</text>
+  <text class="t" x="70" y="395">2. 内存配额检查：检查是否有足够的内存配额，预留转储内存，控制转储任务的并发度，避免内存不足导致转储失败</text>
+  <text class="t" x="70" y="415">3. 转储执行：使用预留的内存执行转储任务，控制转储任务的并发度，转储完成后释放内存，创建 DiskSegment</text>
+  <text class="t" x="70" y="435">关键设计：转储内存成本控制通过内存估算、内存配额检查、转储执行等机制，保证转储过程的内存使用合理，避免内存不足导致系统性能下降</text>
+  <text class="t" x="70" y="455">关键设计：DumpExpandMemSize 用于控制转储所需的内存扩展大小，需要根据实际场景合理配置，平衡内存使用和转储性能</text>
+
+  <text class="muted" x="40" y="490">理解转储内存成本控制，是优化索引构建内存使用的关键</text>
+</svg>

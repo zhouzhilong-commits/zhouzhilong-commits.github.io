@@ -1,0 +1,1338 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>IndexLib（6）：Segment 合并策略 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="IndexLib（6）：Segment 合并策略">
+
+
+  <link rel="canonical" href="http://localhost:4000/indexlib-6-segment-merge/">
+  <meta property="og:url" content="http://localhost:4000/indexlib-6-segment-merge/">
+
+
+
+  <meta property="og:description" content="在上一篇文章中，我们深入了解了版本管理和增量更新的机制。本文将继续深入，详细解析 Segment 合并策略的实现，这是理解 IndexLib 如何优化索引结构和提高查询性能的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-07-06T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">IndexLib 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-1-architecture-overview/" class=""><span class="nav__sub-title">IndexLib（1）：架构概览与核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-2-tablet-segment/" class=""><span class="nav__sub-title">IndexLib（2）：Tablet 与 Segment：索引的组织方式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-3-build-flow/" class=""><span class="nav__sub-title">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-4-query-flow/" class=""><span class="nav__sub-title">IndexLib（4）：查询流程：TabletReader 与 IndexReader</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-5-version-management/" class=""><span class="nav__sub-title">IndexLib（5）：版本管理与增量更新</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-6-segment-merge/" class="active"><span class="nav__sub-title">IndexLib（6）：Segment 合并策略</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-7-memory-management/" class=""><span class="nav__sub-title">IndexLib（7）：内存管理与资源控制</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-8-index-types/" class=""><span class="nav__sub-title">IndexLib（8）：索引类型：Normal、KKV、KV</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-9-locator-consistency/" class=""><span class="nav__sub-title">IndexLib（9）：Locator 与数据一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-10-filesystem-storage/" class=""><span class="nav__sub-title">IndexLib（10）：文件系统抽象与存储格式</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="IndexLib（6）：Segment 合并策略">
+    <meta itemprop="description" content="在上一篇文章中，我们深入了解了版本管理和增量更新的机制。本文将继续深入，详细解析 Segment 合并策略的实现，这是理解 IndexLib 如何优化索引结构和提高查询性能的关键。">
+    <meta itemprop="datePublished" content="July 06, 2025">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">IndexLib（6）：Segment 合并策略
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  4 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-06T00:00:00+08:00">July 06, 2025</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>在上一篇文章中，我们深入了解了版本管理和增量更新的机制。本文将继续深入，详细解析 Segment 合并策略的实现，这是理解 IndexLib 如何优化索引结构和提高查询性能的关键。</p>
+
+<p><img src="/images/diagrams/indexlib-segment-merge-overview.svg" alt="Segment 合并策略概览：从合并策略到合并执行的完整流程" /></p>
+
+<h2 id="1-segment-合并概览">1. Segment 合并概览</h2>
+
+<h3 id="11-合并的目的">1.1 合并的目的</h3>
+
+<p>Segment 合并的主要目的包括：</p>
+
+<ol>
+  <li><strong>减少 Segment 数量</strong>：合并多个小 Segment 为一个大 Segment，减少查询时需要遍历的 Segment 数量</li>
+  <li><strong>优化查询性能</strong>：减少 Segment 数量可以降低查询延迟，提高查询吞吐量</li>
+  <li><strong>释放存储空间</strong>：合并可以删除重复数据，释放存储空间</li>
+  <li><strong>优化索引结构</strong>：合并可以优化索引结构，提高索引效率</li>
+</ol>
+
+<p>让我们先通过图来理解 Segment 合并的整体流程：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-merge-flow.svg" alt="Segment 合并流程：从合并策略到合并执行的完整过程" /></p>
+
+<p><strong>Segment 合并流程图</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[开始合并] --&gt; B[获取当前版本]
+    B --&gt; C[选择合并策略]
+    C --&gt; D{MergeStrategy}
+    D --&gt;|OptimizeMergeStrategy| E[选择需要合并的 Segment]
+    D --&gt;|其他策略| F[其他合并策略]
+    E --&gt; G[创建 MergePlan]
+    F --&gt; G
+    G --&gt; H[验证 MergePlan]
+    H --&gt; I{验证通过?}
+    I --&gt;|否| J[调整策略]
+    J --&gt; C
+    I --&gt;|是| K[执行合并]
+    K --&gt; L[创建 IndexMergeOperation]
+    L --&gt; M[读取源 Segment]
+    M --&gt; N[合并索引数据]
+    N --&gt; O[写入目标 Segment]
+    O --&gt; P[创建新版本]
+    P --&gt; Q[提交新版本]
+    Q --&gt; R[清理旧 Segment]
+    R --&gt; S[完成合并]
+    style C fill:#e3f2fd
+    style K fill:#fff3e0
+    style P fill:#f3e5f5
+    style Q fill:#e8f5e9
+</code></pre>
+
+<h3 id="12-合并的核心组件">1.2 合并的核心组件</h3>
+
+<p>Segment 合并包括以下核心组件：</p>
+
+<ul>
+  <li><strong>MergeStrategy</strong>：合并策略，决定哪些 Segment 参与合并</li>
+  <li><strong>MergePlan</strong>：合并计划，包含合并的 Segment 列表和目标 Segment 信息</li>
+  <li><strong>IndexMergeOperation</strong>：合并操作，执行实际的合并工作</li>
+  <li><strong>VersionMerger</strong>：版本合并器，管理合并流程和版本更新</li>
+</ul>
+
+<h2 id="2-mergestrategy合并策略">2. MergeStrategy：合并策略</h2>
+
+<h3 id="21-mergestrategy-接口">2.1 MergeStrategy 接口</h3>
+
+<p><code class="language-plaintext highlighter-rouge">MergeStrategy</code> 是合并策略的抽象接口，定义在 <code class="language-plaintext highlighter-rouge">table/index_task/merger/MergeStrategy.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/index_task/merger/MergeStrategy.h</span>
+<span class="k">class</span> <span class="nc">MergeStrategy</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="o">~</span><span class="n">MergeStrategy</span><span class="p">()</span> <span class="p">{}</span>
+    
+    <span class="c1">// 获取策略名称</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">GetName</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 创建合并计划：根据 Context 创建合并计划</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MergePlan</span><span class="o">&gt;&gt;</span>
+    <span class="n">CreateMergePlan</span><span class="p">(</span><span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">IndexTaskContext</span><span class="o">*</span> <span class="n">context</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>MergeStrategy 的关键方法</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-strategy-interface.svg" alt="MergeStrategy 接口：提供合并策略的抽象" /></p>
+
+<ul>
+  <li><strong>GetName()</strong>：获取策略名称，用于标识不同的合并策略</li>
+  <li><strong>CreateMergePlan()</strong>：根据 IndexTaskContext 创建合并计划，决定哪些 Segment 参与合并</li>
+</ul>
+
+<h3 id="22-合并策略类型">2.2 合并策略类型</h3>
+
+<p>IndexLib 支持多种合并策略：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-strategy-types.svg" alt="合并策略类型：Optimize、Realtime、ShardBased 等" /></p>
+
+<p><strong>合并策略类型</strong>：</p>
+<ul>
+  <li><strong>OptimizeMergeStrategy</strong>：优化合并策略，合并所有符合条件的 Segment</li>
+  <li><strong>RealtimeMergeStrategy</strong>：实时合并策略，实时合并小 Segment</li>
+  <li><strong>ShardBasedMergeStrategy</strong>：分片合并策略，按分片合并 Segment</li>
+  <li><strong>KeyValueOptimizeMergeStrategy</strong>：KV 优化合并策略，针对 KV 表的优化合并</li>
+</ul>
+
+<h3 id="23-optimizemergestrategy优化合并策略">2.3 OptimizeMergeStrategy：优化合并策略</h3>
+
+<p><code class="language-plaintext highlighter-rouge">OptimizeMergeStrategy</code> 是优化合并策略的实现，定义在 <code class="language-plaintext highlighter-rouge">table/index_task/merger/OptimizeMergeStrategy.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/index_task/merger/OptimizeMergeStrategy.h</span>
+<span class="k">class</span> <span class="nc">OptimizeMergeStrategy</span> <span class="o">:</span> <span class="k">public</span> <span class="n">MergeStrategy</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">GetName</span><span class="p">()</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span> 
+        <span class="k">return</span> <span class="n">MergeStrategyDefine</span><span class="o">::</span><span class="n">OPTIMIZE_MERGE_STRATEGY_NAME</span><span class="p">;</span> 
+    <span class="p">}</span>
+    
+    <span class="c1">// 创建合并计划</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MergePlan</span><span class="o">&gt;&gt;</span>
+    <span class="n">CreateMergePlan</span><span class="p">(</span><span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">IndexTaskContext</span><span class="o">*</span> <span class="n">context</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+
+<span class="nl">private:</span>
+    <span class="c1">// 合并参数</span>
+    <span class="k">struct</span> <span class="nc">OptimizeMergeParams</span> <span class="p">{</span>
+        <span class="kt">uint32_t</span> <span class="n">maxDocCount</span><span class="p">;</span>                    <span class="c1">// 参与合并的 Segment 的最大文档数</span>
+        <span class="kt">uint64_t</span> <span class="n">afterMergeMaxDocCount</span><span class="p">;</span>         <span class="c1">// 合并后的最小文档数</span>
+        <span class="kt">uint32_t</span> <span class="n">afterMergeMaxSegmentCount</span><span class="p">;</span>     <span class="c1">// 合并后的最大 Segment 数</span>
+        <span class="kt">bool</span> <span class="n">skipSingleMergedSegment</span><span class="p">;</span>           <span class="c1">// 是否跳过单个已合并的 Segment</span>
+    <span class="p">};</span>
+    
+    <span class="n">OptimizeMergeParams</span> <span class="n">_params</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>OptimizeMergeStrategy 的关键参数</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-optimize-merge-params.svg" alt="OptimizeMergeStrategy 参数：控制合并行为的关键参数" /></p>
+
+<ul>
+  <li><strong>maxDocCount</strong>：参与合并的 Segment 的最大文档数，只有小于等于该值的 Segment 才会参与合并</li>
+  <li><strong>afterMergeMaxDocCount</strong>：合并后的最小文档数，控制合并后 Segment 的大小</li>
+  <li><strong>afterMergeMaxSegmentCount</strong>：合并后的最大 Segment 数，控制合并后 Segment 的数量</li>
+  <li><strong>skipSingleMergedSegment</strong>：是否跳过单个已合并的 Segment，避免重复合并</li>
+</ul>
+
+<h3 id="24-合并策略的选择逻辑">2.4 合并策略的选择逻辑</h3>
+
+<p>合并策略的选择逻辑：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-strategy-selection.svg" alt="合并策略的选择逻辑：根据 Segment 特征选择合并策略" /></p>
+
+<p><strong>选择逻辑</strong>：</p>
+<ol>
+  <li><strong>收集源 Segment</strong>：从 TabletData 中收集符合条件的 Segment</li>
+  <li><strong>过滤 Segment</strong>：根据 <code class="language-plaintext highlighter-rouge">maxDocCount</code> 过滤 Segment，只保留符合条件的 Segment</li>
+  <li><strong>分组 Segment</strong>：根据 <code class="language-plaintext highlighter-rouge">afterMergeMaxDocCount</code> 和 <code class="language-plaintext highlighter-rouge">afterMergeMaxSegmentCount</code> 分组 Segment</li>
+  <li><strong>创建合并计划</strong>：为每组 Segment 创建合并计划</li>
+</ol>
+
+<h2 id="3-mergeplan合并计划">3. MergePlan：合并计划</h2>
+
+<h3 id="31-mergeplan-的结构">3.1 MergePlan 的结构</h3>
+
+<p><code class="language-plaintext highlighter-rouge">MergePlan</code> 是合并计划，定义在 <code class="language-plaintext highlighter-rouge">table/index_task/merger/MergePlan.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/index_task/merger/MergePlan.h</span>
+<span class="k">class</span> <span class="nc">MergePlan</span> <span class="o">:</span> <span class="k">public</span> <span class="n">framework</span><span class="o">::</span><span class="n">IndexTaskResource</span><span class="p">,</span> 
+                  <span class="k">public</span> <span class="n">autil</span><span class="o">::</span><span class="n">legacy</span><span class="o">::</span><span class="n">Jsonizable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 添加合并计划</span>
+    <span class="kt">void</span> <span class="n">AddMergePlan</span><span class="p">(</span><span class="k">const</span> <span class="n">SegmentMergePlan</span><span class="o">&amp;</span> <span class="n">segmentMergePlan</span><span class="p">);</span>
+    
+    <span class="c1">// 获取合并计划</span>
+    <span class="k">const</span> <span class="n">SegmentMergePlan</span><span class="o">&amp;</span> <span class="n">GetSegmentMergePlan</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">index</span><span class="p">);</span>
+    
+    <span class="c1">// 获取目标版本</span>
+    <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">Version</span><span class="o">&amp;</span> <span class="n">GetTargetVersion</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="n">SetTargetVersion</span><span class="p">(</span><span class="n">framework</span><span class="o">::</span><span class="n">Version</span> <span class="n">targetVersion</span><span class="p">);</span>
+    
+    <span class="c1">// 创建新版本</span>
+    <span class="k">static</span> <span class="n">framework</span><span class="o">::</span><span class="n">Version</span> <span class="n">CreateNewVersion</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MergePlan</span><span class="o">&gt;&amp;</span> <span class="n">mergePlan</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">framework</span><span class="o">::</span><span class="n">IndexTaskContext</span><span class="o">*</span> <span class="n">taskContext</span><span class="p">);</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">SegmentMergePlan</span><span class="o">&gt;</span> <span class="n">_mergePlan</span><span class="p">;</span>  <span class="c1">// 合并计划列表</span>
+    <span class="n">framework</span><span class="o">::</span><span class="n">Version</span> <span class="n">_targetVersion</span><span class="p">;</span>          <span class="c1">// 目标版本</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>MergePlan 的关键字段</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-plan-structure.svg" alt="MergePlan 的结构：包含 SegmentMergePlan 列表和目标版本" /></p>
+
+<ul>
+  <li><strong>SegmentMergePlan 列表</strong>：每个 SegmentMergePlan 包含一组要合并的 Segment</li>
+  <li><strong>目标版本</strong>：合并后的目标版本，包含合并后的 Segment 列表</li>
+</ul>
+
+<h3 id="32-segmentmergeplansegment-合并计划">3.2 SegmentMergePlan：Segment 合并计划</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SegmentMergePlan</code> 是单个 Segment 合并计划：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/index_task/merger/SegmentMergePlan.h</span>
+<span class="k">class</span> <span class="nc">SegmentMergePlan</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 添加源 Segment</span>
+    <span class="kt">void</span> <span class="n">AddSrcSegment</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">);</span>
+    
+    <span class="c1">// 设置目标 Segment</span>
+    <span class="kt">void</span> <span class="n">SetTargetSegment</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">);</span>
+    
+    <span class="c1">// 获取源 Segment 列表</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">segmentid_t</span><span class="o">&gt;&amp;</span> <span class="n">GetSrcSegments</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    
+    <span class="c1">// 获取目标 Segment</span>
+    <span class="n">segmentid_t</span> <span class="n">GetTargetSegment</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">segmentid_t</span><span class="o">&gt;</span> <span class="n">_srcSegments</span><span class="p">;</span>  <span class="c1">// 源 Segment 列表</span>
+    <span class="n">segmentid_t</span> <span class="n">_targetSegment</span><span class="p">;</span>            <span class="c1">// 目标 Segment</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>SegmentMergePlan 的关键字段</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-segment-merge-plan-structure.svg" alt="SegmentMergePlan 的结构：包含源 Segment 列表和目标 Segment" /></p>
+
+<ul>
+  <li><strong>源 Segment 列表</strong>：要合并的 Segment 列表</li>
+  <li><strong>目标 Segment</strong>：合并后的目标 Segment</li>
+</ul>
+
+<h3 id="33-合并计划的创建流程">3.3 合并计划的创建流程</h3>
+
+<p>合并计划的创建流程：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-plan-creation.svg" alt="合并计划的创建流程：从收集 Segment 到创建合并计划" /></p>
+
+<p><strong>创建流程</strong>：</p>
+<ol>
+  <li><strong>收集源 Segment</strong>：从 TabletData 中收集符合条件的 Segment</li>
+  <li><strong>过滤 Segment</strong>：根据合并参数过滤 Segment</li>
+  <li><strong>分组 Segment</strong>：根据合并参数分组 Segment</li>
+  <li><strong>创建 SegmentMergePlan</strong>：为每组 Segment 创建 SegmentMergePlan</li>
+  <li><strong>设置目标 Segment</strong>：为每个 SegmentMergePlan 设置目标 Segment</li>
+  <li><strong>创建 MergePlan</strong>：将所有 SegmentMergePlan 添加到 MergePlan</li>
+  <li><strong>设置目标版本</strong>：设置合并后的目标版本</li>
+</ol>
+
+<h2 id="4-合并执行流程">4. 合并执行流程</h2>
+
+<h3 id="41-versionmerger版本合并器">4.1 VersionMerger：版本合并器</h3>
+
+<p><code class="language-plaintext highlighter-rouge">VersionMerger</code> 是版本合并器，管理合并流程和版本更新，定义在 <code class="language-plaintext highlighter-rouge">framework/VersionMerger.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/VersionMerger.h</span>
+<span class="k">class</span> <span class="nc">VersionMerger</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 执行合并任务</span>
+    <span class="n">future_lite</span><span class="o">::</span><span class="n">coro</span><span class="o">::</span><span class="n">Lazy</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">versionid_t</span><span class="o">&gt;&gt;</span>
+    <span class="n">ExecuteTask</span><span class="p">(</span><span class="k">const</span> <span class="n">Version</span><span class="o">&amp;</span> <span class="n">sourceVersion</span><span class="p">,</span> 
+                <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">taskType</span><span class="p">,</span>
+                <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">taskName</span><span class="p">,</span>
+                <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;&amp;</span> <span class="n">params</span><span class="p">);</span>
+    
+    <span class="c1">// 运行合并流程</span>
+    <span class="n">future_lite</span><span class="o">::</span><span class="n">coro</span><span class="o">::</span><span class="n">Lazy</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">versionid_t</span><span class="o">&gt;&gt;</span> <span class="n">Run</span><span class="p">();</span>
+    
+    <span class="c1">// 获取合并后的版本信息</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MergedVersionInfo</span><span class="o">&gt;</span> <span class="n">GetMergedVersionInfo</span><span class="p">();</span>
+    
+    <span class="c1">// 判断是否需要提交</span>
+    <span class="kt">bool</span> <span class="n">NeedCommit</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_tabletName</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ITabletMergeController</span><span class="o">&gt;</span> <span class="n">_controller</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">IIndexTaskPlanCreator</span><span class="o">&gt;</span> <span class="n">_planCreator</span><span class="p">;</span>
+    <span class="n">Version</span> <span class="n">_currentBaseVersion</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MergedVersionInfo</span><span class="o">&gt;</span> <span class="n">_mergedVersionInfo</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>VersionMerger 的关键组件</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-version-merger-structure.svg" alt="VersionMerger 的结构：管理合并流程和版本更新" /></p>
+
+<ul>
+  <li><strong>MergeController</strong>：合并控制器，管理合并任务的执行</li>
+  <li><strong>PlanCreator</strong>：计划创建器，创建合并计划</li>
+  <li><strong>MergedVersionInfo</strong>：合并后的版本信息，包含基础版本和目标版本</li>
+</ul>
+
+<h3 id="42-合并执行流程">4.2 合并执行流程</h3>
+
+<p>合并执行的完整流程：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-execution-flow.svg" alt="合并执行流程：从创建合并计划到提交新版本" /></p>
+
+<p><strong>执行流程</strong>：</p>
+<ol>
+  <li><strong>检查合并条件</strong>：判断是否需要合并（Segment 数量、大小等）</li>
+  <li><strong>创建合并计划</strong>：调用 MergeStrategy 创建合并计划</li>
+  <li><strong>提交合并任务</strong>：将合并任务提交到 MergeController</li>
+  <li><strong>执行合并操作</strong>：执行 IndexMergeOperation，合并 Segment</li>
+  <li><strong>创建新版本</strong>：合并完成后创建新版本</li>
+  <li><strong>提交新版本</strong>：提交新版本，更新 TabletData</li>
+</ol>
+
+<h3 id="43-indexmergeoperation合并操作">4.3 IndexMergeOperation：合并操作</h3>
+
+<p><code class="language-plaintext highlighter-rouge">IndexMergeOperation</code> 是合并操作，执行实际的合并工作：</p>
+
+<p><img src="/images/diagrams/indexlib-index-merge-operation.svg" alt="IndexMergeOperation：执行实际的合并工作" /></p>
+
+<p><strong>合并操作的关键步骤</strong>：</p>
+<ol>
+  <li><strong>读取源 Segment</strong>：读取所有源 Segment 的数据</li>
+  <li><strong>合并索引</strong>：合并倒排索引、正排索引等</li>
+  <li><strong>合并文档</strong>：合并文档数据，去重、排序等</li>
+  <li><strong>写入目标 Segment</strong>：将合并后的数据写入目标 Segment</li>
+  <li><strong>更新元数据</strong>：更新 Segment 的元数据信息</li>
+</ol>
+
+<h2 id="5-合并策略详解">5. 合并策略详解</h2>
+
+<h3 id="51-optimizemergestrategy-的合并逻辑">5.1 OptimizeMergeStrategy 的合并逻辑</h3>
+
+<p>OptimizeMergeStrategy 的合并逻辑：</p>
+
+<p><img src="/images/diagrams/indexlib-optimize-merge-logic.svg" alt="OptimizeMergeStrategy 的合并逻辑：根据参数决定合并行为" /></p>
+
+<p><strong>合并逻辑</strong>：</p>
+<ol>
+  <li><strong>收集源 Segment</strong>：从 TabletData 中收集所有符合条件的 Segment</li>
+  <li><strong>过滤 Segment</strong>：根据 <code class="language-plaintext highlighter-rouge">maxDocCount</code> 过滤，只保留文档数小于等于该值的 Segment</li>
+  <li><strong>计算目标 Segment 数</strong>：根据 <code class="language-plaintext highlighter-rouge">afterMergeMaxDocCount</code> 和 <code class="language-plaintext highlighter-rouge">afterMergeMaxSegmentCount</code> 计算目标 Segment 数</li>
+  <li><strong>分组 Segment</strong>：将 Segment 分组，每组合并为一个目标 Segment</li>
+  <li><strong>创建合并计划</strong>：为每组 Segment 创建 SegmentMergePlan</li>
+</ol>
+
+<h3 id="52-合并参数的影响">5.2 合并参数的影响</h3>
+
+<p>合并参数对合并行为的影响：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-params-impact.svg" alt="合并参数的影响：maxDocCount、afterMergeMaxDocCount 等参数的作用" /></p>
+
+<p><strong>参数影响</strong>：</p>
+<ul>
+  <li><strong>maxDocCount</strong>：控制哪些 Segment 参与合并，较大的值会包含更多 Segment</li>
+  <li><strong>afterMergeMaxDocCount</strong>：控制合并后 Segment 的大小，较大的值会产生更大的 Segment</li>
+  <li><strong>afterMergeMaxSegmentCount</strong>：控制合并后 Segment 的数量，较小的值会产生更少的 Segment</li>
+  <li><strong>skipSingleMergedSegment</strong>：控制是否跳过单个已合并的 Segment，避免重复合并</li>
+</ul>
+
+<h3 id="53-合并策略的选择">5.3 合并策略的选择</h3>
+
+<p>不同场景下的合并策略选择：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-strategy-choice.svg" alt="合并策略的选择：根据场景选择不同的合并策略" /></p>
+
+<p><strong>策略选择</strong>：</p>
+<ul>
+  <li><strong>OptimizeMergeStrategy</strong>：适用于全量合并，合并所有符合条件的 Segment</li>
+  <li><strong>RealtimeMergeStrategy</strong>：适用于实时合并，实时合并小 Segment</li>
+  <li><strong>ShardBasedMergeStrategy</strong>：适用于分片场景，按分片合并 Segment</li>
+  <li><strong>KeyValueOptimizeMergeStrategy</strong>：适用于 KV 表，针对 KV 表的优化合并</li>
+</ul>
+
+<h2 id="6-合并的触发条件">6. 合并的触发条件</h2>
+
+<h3 id="61-合并触发条件">6.1 合并触发条件</h3>
+
+<p>合并的触发条件：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-trigger-conditions.svg" alt="合并触发条件：Segment 数量、大小等条件" /></p>
+
+<p><strong>触发条件</strong>：</p>
+<ul>
+  <li><strong>Segment 数量</strong>：当 Segment 数量超过阈值时触发合并</li>
+  <li><strong>Segment 大小</strong>：当小 Segment 数量过多时触发合并</li>
+  <li><strong>查询性能</strong>：当查询性能下降时触发合并</li>
+  <li><strong>存储空间</strong>：当存储空间不足时触发合并</li>
+  <li><strong>手动触发</strong>：支持手动触发合并</li>
+</ul>
+
+<h3 id="62-合并时机的选择">6.2 合并时机的选择</h3>
+
+<p>合并时机的选择：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-timing.svg" alt="合并时机的选择：在线合并、离线合并等" /></p>
+
+<p><strong>合并时机</strong>：</p>
+<ul>
+  <li><strong>在线合并</strong>：在服务运行期间进行合并，不影响服务可用性</li>
+  <li><strong>离线合并</strong>：在服务停止时进行合并，可以更彻底地优化索引</li>
+  <li><strong>定时合并</strong>：定期触发合并，保持索引结构优化</li>
+  <li><strong>按需合并</strong>：根据查询性能或存储空间按需触发合并</li>
+</ul>
+
+<h2 id="7-合并的性能优化">7. 合并的性能优化</h2>
+
+<h3 id="71-合并性能优化策略">7.1 合并性能优化策略</h3>
+
+<p>合并性能优化的策略：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-performance-optimization.svg" alt="合并性能优化：并行合并、增量合并等策略" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>并行合并</strong>：多个 Segment 可以并行合并，提高合并效率</li>
+  <li><strong>增量合并</strong>：只合并变更的 Segment，减少合并工作量</li>
+  <li><strong>合并优先级</strong>：根据 Segment 大小和重要性设置合并优先级</li>
+  <li><strong>资源控制</strong>：控制合并时的 CPU、内存、IO 资源使用</li>
+</ul>
+
+<h3 id="72-合并的资源控制">7.2 合并的资源控制</h3>
+
+<p>合并时的资源控制：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-resource-control.svg" alt="合并的资源控制：CPU、内存、IO 资源的控制" /></p>
+
+<p><strong>资源控制</strong>：</p>
+<ul>
+  <li><strong>CPU 控制</strong>：限制合并时的 CPU 使用率，避免影响查询性能</li>
+  <li><strong>内存控制</strong>：限制合并时的内存使用，避免内存溢出</li>
+  <li><strong>IO 控制</strong>：限制合并时的 IO 带宽，避免影响查询 IO</li>
+  <li><strong>并发控制</strong>：控制同时进行的合并任务数量</li>
+</ul>
+
+<h2 id="8-合并的实际应用">8. 合并的实际应用</h2>
+
+<h3 id="81-全量合并场景">8.1 全量合并场景</h3>
+
+<p>在全量合并场景中，合并的应用：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-full-scenario.svg" alt="全量合并场景：合并所有符合条件的 Segment" /></p>
+
+<p><strong>全量合并流程</strong>：</p>
+<ol>
+  <li><strong>收集所有 Segment</strong>：收集所有符合条件的 Segment</li>
+  <li><strong>创建合并计划</strong>：创建合并计划，将所有 Segment 合并为少数几个大 Segment</li>
+  <li><strong>执行合并</strong>：执行合并操作，合并所有 Segment</li>
+  <li><strong>提交新版本</strong>：提交新版本，更新 TabletData</li>
+</ol>
+
+<h3 id="82-增量合并场景">8.2 增量合并场景</h3>
+
+<p>在增量合并场景中，合并的应用：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-incremental-scenario.svg" alt="增量合并场景：只合并新增或变更的 Segment" /></p>
+
+<p><strong>增量合并流程</strong>：</p>
+<ol>
+  <li><strong>识别变更 Segment</strong>：识别新增或变更的 Segment</li>
+  <li><strong>创建合并计划</strong>：创建合并计划，只合并变更的 Segment</li>
+  <li><strong>执行合并</strong>：执行合并操作，合并变更的 Segment</li>
+  <li><strong>提交新版本</strong>：提交新版本，更新 TabletData</li>
+</ol>
+
+<h2 id="9-合并的关键设计">9. 合并的关键设计</h2>
+
+<h3 id="91-合并的原子性">9.1 合并的原子性</h3>
+
+<p>合并的原子性保证：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-atomicity.svg" alt="合并的原子性：通过 Fence 机制保证合并的原子性" /></p>
+
+<p><strong>原子性保证</strong>：</p>
+<ul>
+  <li><strong>Fence 机制</strong>：通过 Fence 目录保证合并的原子性</li>
+  <li><strong>事务性提交</strong>：合并完成后原子性地提交新版本</li>
+  <li><strong>错误恢复</strong>：如果合并失败，可以回滚，不影响已有版本</li>
+</ul>
+
+<h3 id="92-合并的一致性">9.2 合并的一致性</h3>
+
+<p>合并的一致性保证：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-consistency.svg" alt="合并的一致性：保证合并后数据的一致性" /></p>
+
+<p><strong>一致性保证</strong>：</p>
+<ul>
+  <li><strong>数据完整性</strong>：保证合并后数据的完整性，不丢失数据</li>
+  <li><strong>索引一致性</strong>：保证合并后索引的一致性，索引结构正确</li>
+  <li><strong>版本一致性</strong>：保证合并后版本的一致性，版本信息正确</li>
+</ul>
+
+<h3 id="93-合并的性能优化">9.3 合并的性能优化</h3>
+
+<p>合并的性能优化：</p>
+
+<p><img src="/images/diagrams/indexlib-merge-performance.svg" alt="合并的性能优化：并行合并、资源控制等优化策略" /></p>
+
+<p><strong>性能优化</strong>：</p>
+<ul>
+  <li><strong>并行合并</strong>：多个 Segment 可以并行合并，提高合并效率</li>
+  <li><strong>增量合并</strong>：只合并变更的 Segment，减少合并工作量</li>
+  <li><strong>资源控制</strong>：控制合并时的资源使用，避免影响查询性能</li>
+  <li><strong>合并优先级</strong>：根据 Segment 重要性设置合并优先级</li>
+</ul>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>Segment 合并策略是 IndexLib 的核心功能，通过 MergeStrategy 和 MergePlan 实现。通过本文的深入解析，我们了解到：</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li><strong>MergeStrategy</strong>：合并策略，决定哪些 Segment 参与合并，支持多种合并策略</li>
+  <li><strong>MergePlan</strong>：合并计划，包含合并的 Segment 列表和目标 Segment 信息</li>
+  <li><strong>OptimizeMergeStrategy</strong>：优化合并策略，根据参数控制合并行为</li>
+  <li><strong>合并执行流程</strong>：从创建合并计划到提交新版本的完整流程</li>
+  <li><strong>合并触发条件</strong>：根据 Segment 数量、大小等条件触发合并</li>
+  <li><strong>合并性能优化</strong>：通过并行合并、资源控制等策略优化合并性能</li>
+  <li><strong>合并的原子性和一致性</strong>：通过 Fence 机制保证合并的原子性和一致性</li>
+</ul>
+
+<p>理解 Segment 合并策略，是掌握 IndexLib 索引优化机制的关键。在下一篇文章中，我们将深入介绍内存管理与资源控制的实现细节。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

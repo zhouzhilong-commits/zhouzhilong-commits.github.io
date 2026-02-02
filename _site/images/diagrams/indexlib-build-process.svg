@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .indexer{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 1000 530" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Build 流程：从文档批次到内存索引的构建过程</text>
+  <text class="muted" x="40" y="66">Build 阶段接收文档批次，验证文档，分配 DocId，写入各个 Indexer，更新 SegmentInfo。</text>
+
+  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <text class="h" x="70" y="130">1. 接收文档批次</text>
+  <text class="t" x="70" y="155">Build(batch)</text>
+  <text class="t" x="70" y="175">IDocumentBatch</text>
+
+  <path class="arrow" d="M 200 145 L 240 145"/>
+
+  <rect class="step" x="260" y="95" width="160" height="100"/>
+  <text class="h" x="290" y="130">2. 文档验证</text>
+  <text class="t" x="290" y="155">验证格式</text>
+  <text class="t" x="290" y="175">验证 Schema</text>
+
+  <path class="arrow" d="M 420 145 L 460 145"/>
+
+  <rect class="step" x="480" y="95" width="160" height="100"/>
+  <text class="h" x="510" y="130">3. 分配 DocId</text>
+  <text class="t" x="510" y="155">DispatchDocIds()</text>
+  <text class="t" x="510" y="175">baseDocId + localDocId</text>
+
+  <path class="arrow" d="M 640 145 L 680 145"/>
+
+  <rect class="step" x="700" y="95" width="240" height="100"/>
+  <text class="h" x="730" y="130">4. 写入 Indexer</text>
+  <text class="t" x="730" y="155">倒排索引、正排索引</text>
+  <text class="t" x="730" y="175">摘要等</text>
+
+  <rect class="indexer" x="40" y="215" width="200" height="80"/>
+  <text class="h" x="70" y="245">倒排索引</text>
+  <text class="t" x="70" y="265">写入 term</text>
+  <text class="t" x="70" y="285">构建倒排列表</text>
+
+  <rect class="indexer" x="260" y="215" width="200" height="80"/>
+  <text class="h" x="290" y="245">正排索引</text>
+  <text class="t" x="290" y="265">写入文档属性</text>
+  <text class="t" x="290" y="285">构建属性索引</text>
+
+  <rect class="indexer" x="480" y="215" width="200" height="80"/>
+  <text class="h" x="510" y="245">摘要索引</text>
+  <text class="t" x="510" y="265">更新摘要信息</text>
+  <text class="t" x="510" y="285">构建摘要数据</text>
+
+  <rect class="indexer" x="700" y="215" width="240" height="80"/>
+  <text class="h" x="730" y="245">其他索引</text>
+  <text class="t" x="730" y="265">主键索引、位图索引等</text>
+  <text class="t" x="730" y="285">根据 Schema 配置</text>
+
+  <path class="arrow" d="M 70 295 L 70 325"/>
+
+  <rect class="step" x="40" y="315" width="900" height="150"/>
+  <text class="h" x="70" y="350">5. 更新 SegmentInfo</text>
+  <text class="t" x="70" y="375">更新 docCount：文档数量增加</text>
+  <text class="t" x="70" y="395">更新 Locator：记录数据处理位置</text>
+  <text class="t" x="70" y="415">更新 timestamp：记录处理时间</text>
+  <text class="t" x="70" y="435">更新内存使用统计</text>
+  <text class="t" x="70" y="455">检查是否需要转储（NeedDump）</text>
+
+  <text class="muted" x="40" y="480">Build 阶段的关键是高效地将文档转换为索引结构，并严格控制内存使用</text>
+</svg>

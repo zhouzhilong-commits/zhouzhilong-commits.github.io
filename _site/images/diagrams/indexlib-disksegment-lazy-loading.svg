@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .normal{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .lazy{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .indexer{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 1000 500" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">DiskSegment 按需加载：减少内存占用，提高启动速度</text>
+  <text class="muted" x="40" y="66">NORMAL 模式立即加载所有索引，LAZY 模式按需加载，只在查询时加载相关索引。</text>
+
+  <rect class="normal" x="40" y="95" width="440" height="320"/>
+  <text class="h" x="70" y="130">NORMAL 模式（立即加载）</text>
+  <text class="t" x="70" y="155">Open() 时立即加载所有 Indexer</text>
+
+  <rect class="indexer" x="70" y="180" width="180" height="80"/>
+  <text class="h" x="90" y="210">Indexer 1</text>
+  <text class="t" x="90" y="235">立即加载</text>
+  <text class="t" x="90" y="255">内存占用：高</text>
+
+  <rect class="indexer" x="270" y="180" width="180" height="80"/>
+  <text class="h" x="290" y="210">Indexer 2</text>
+  <text class="t" x="290" y="235">立即加载</text>
+  <text class="t" x="290" y="255">内存占用：高</text>
+
+  <rect class="indexer" x="70" y="280" width="180" height="80"/>
+  <text class="h" x="90" y="310">Indexer 3</text>
+  <text class="t" x="90" y="335">立即加载</text>
+  <text class="t" x="90" y="355">内存占用：高</text>
+
+  <rect class="indexer" x="270" y="280" width="180" height="80"/>
+  <text class="h" x="290" y="310">Indexer 4</text>
+  <text class="t" x="290" y="335">立即加载</text>
+  <text class="t" x="290" y="355">内存占用：高</text>
+
+  <text class="t" x="70" y="385">启动速度：慢（需等待所有索引加载）</text>
+  <text class="t" x="70" y="405">适用场景：在线查询，需要快速响应</text>
+
+  <rect class="lazy" x="500" y="95" width="440" height="320"/>
+  <text class="h" x="530" y="130">LAZY 模式（按需加载）</text>
+  <text class="t" x="530" y="155">Open() 时不加载，GetIndexer() 时按需加载</text>
+
+  <rect class="indexer" x="530" y="180" width="180" height="80"/>
+  <text class="h" x="550" y="210">Indexer 1</text>
+  <text class="t" x="550" y="235">按需加载</text>
+  <text class="t" x="550" y="255">内存占用：低</text>
+
+  <rect class="indexer" x="730" y="180" width="180" height="80"/>
+  <text class="h" x="750" y="210">Indexer 2</text>
+  <text class="t" x="750" y="235">未加载</text>
+  <text class="t" x="750" y="255">内存占用：0</text>
+
+  <rect class="indexer" x="530" y="280" width="180" height="80"/>
+  <text class="h" x="550" y="310">Indexer 3</text>
+  <text class="t" x="550" y="335">未加载</text>
+  <text class="t" x="550" y="355">内存占用：0</text>
+
+  <rect class="indexer" x="730" y="280" width="180" height="80"/>
+  <text class="h" x="750" y="310">Indexer 4</text>
+  <text class="t" x="750" y="335">未加载</text>
+  <text class="t" x="750" y="355">内存占用：0</text>
+
+  <text class="t" x="530" y="385">启动速度：快（不需要等待加载）</text>
+  <text class="t" x="530" y="405">适用场景：离线场景，部分索引查询</text>
+
+  <rect class="box" x="40" y="435" width="900" height="10"/>
+  <text class="muted" x="40" y="450">优势：减少内存占用，提高启动速度，支持部分索引查询场景</text>
+</svg>

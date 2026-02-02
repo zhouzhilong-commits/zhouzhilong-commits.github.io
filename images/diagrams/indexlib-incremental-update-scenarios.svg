@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .scenario{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">增量更新场景：实时写入、批量更新等</text>
+  <text class="muted" x="40" y="66">增量更新适用于实时写入、批量更新、多数据源、故障恢复等场景，通过 Locator 保证数据一致性。</text>
+
+  <rect class="scenario" x="40" y="95" width="220" height="120"/>
+  <text class="h" x="70" y="130">实时写入</text>
+  <text class="t" x="70" y="155">实时接收数据流</text>
+  <text class="t" x="70" y="175">通过 Locator 判断</text>
+  <text class="t" x="70" y="195">哪些数据已处理</text>
+  <text class="t" x="70" y="215">只处理新数据</text>
+
+  <rect class="scenario" x="280" y="95" width="220" height="120"/>
+  <text class="h" x="310" y="130">批量更新</text>
+  <text class="t" x="310" y="155">批量处理数据</text>
+  <text class="t" x="310" y="175">通过 Locator 避免</text>
+  <text class="t" x="310" y="195">重复处理</text>
+  <text class="t" x="310" y="215">提高处理效率</text>
+
+  <rect class="scenario" x="520" y="95" width="220" height="120"/>
+  <text class="h" x="550" y="130">多数据源</text>
+  <text class="t" x="550" y="155">从多个数据源</text>
+  <text class="t" x="550" y="175">读取数据</text>
+  <text class="t" x="550" y="195">通过 Locator 保证</text>
+  <text class="t" x="550" y="215">数据一致性</text>
+
+  <rect class="scenario" x="760" y="95" width="200" height="120"/>
+  <text class="h" x="790" y="130">故障恢复</text>
+  <text class="t" x="790" y="155">故障恢复时</text>
+  <text class="t" x="790" y="175">通过 Locator 判断</text>
+  <text class="t" x="790" y="195">需要重新处理</text>
+  <text class="t" x="790" y="215">的数据</text>
+
+  <rect class="box" x="40" y="235" width="920" height="230"/>
+  <text class="h" x="70" y="270">增量更新场景的关键特点</text>
+  <text class="t" x="70" y="295">1. 实时写入：实时接收数据流，通过 Locator 判断哪些数据已处理，只处理新数据，实现实时增量更新</text>
+  <text class="t" x="70" y="315">2. 批量更新：批量处理数据，通过 Locator 避免重复处理，提高处理效率，支持大规模数据更新</text>
+  <text class="t" x="70" y="335">3. 多数据源：从多个数据源读取数据，通过 Locator 保证数据一致性，支持多数据源场景</text>
+  <text class="t" x="70" y="355">4. 故障恢复：故障恢复时，通过 Locator 判断需要重新处理的数据，避免重复处理，提高恢复效率</text>
+  <text class="t" x="70" y="375">关键设计：增量更新通过 Locator 实现，支持各种场景，保证数据一致性和处理效率</text>
+  <text class="t" x="70" y="395">关键设计：Locator 支持多 HashId 的进度追踪，支持分片处理，提高处理并发度</text>
+  <text class="t" x="70" y="415">关键设计：Locator 支持多数据源，通过 sourceIdx 区分数据源，保证多数据源场景的数据一致性</text>
+  <text class="t" x="70" y="435">关键设计：增量更新支持故障恢复，通过 Locator 判断需要重新处理的数据，提高恢复效率</text>
+  <text class="t" x="70" y="455">关键设计：增量更新支持实时写入和批量更新两种模式，灵活适应不同场景</text>
+
+  <text class="muted" x="40" y="480">增量更新适用于各种场景，通过 Locator 保证数据一致性和处理效率</text>
+</svg>

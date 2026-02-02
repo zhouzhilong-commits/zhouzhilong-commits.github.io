@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .reader{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">NormalTabletReader::DoOpen() 流程：初始化各种 IndexReader</text>
+  <text class="muted" x="40" y="66">DoOpen() 方法初始化 NormalTabletReader，创建 MultiFieldIndexReader、DeletionMapReader、PrimaryKeyReader 等各种 IndexReader。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 初始化 TabletData</text>
+  <text class="t" x="70" y="155">保存 TabletData 引用</text>
+  <text class="t" x="70" y="175">包含所有 Segment</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="reader" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. 创建 MultiFieldIndexReader</text>
+  <text class="t" x="330" y="155">多字段倒排索引</text>
+  <text class="t" x="330" y="175">Reader</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="reader" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 创建 DeletionMapReader</text>
+  <text class="t" x="590" y="155">删除映射 Reader</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="reader" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. 创建 PrimaryKeyReader</text>
+  <text class="t" x="850" y="155">主键索引 Reader</text>
+
+  <rect class="reader" x="40" y="215" width="200" height="100"/>
+  <text class="h" x="70" y="250">5. 创建 SummaryReader</text>
+  <text class="t" x="70" y="275">摘要 Reader</text>
+
+  <rect class="reader" x="260" y="215" width="200" height="100"/>
+  <text class="h" x="290" y="250">6. 创建 SourceReader</text>
+  <text class="t" x="290" y="275">源数据 Reader</text>
+
+  <rect class="reader" x="480" y="215" width="200" height="100"/>
+  <text class="h" x="510" y="250">7. 创建 AttributeReader</text>
+  <text class="t" x="510" y="275">属性 Reader（按需）</text>
+
+  <rect class="box" x="700" y="215" width="240" height="220"/>
+  <text class="h" x="730" y="250">DoOpen 的关键步骤</text>
+  <text class="t" x="730" y="275">1. 初始化 TabletData：保存 TabletData 的引用</text>
+  <text class="t" x="730" y="295">2. 创建各种 IndexReader：根据需要创建各种 IndexReader</text>
+  <text class="t" x="730" y="315">3. 初始化 IndexReader：调用 IndexReader::Open() 初始化</text>
+  <text class="t" x="730" y="335">4. 缓存 IndexReader：将 IndexReader 缓存到 _indexReaderMap</text>
+  <text class="t" x="730" y="355">5. 准备查询：Open 完成后，可以开始接收查询请求</text>
+  <text class="t" x="730" y="375">关键设计：IndexReader 的创建可以延迟，在查询时才创建</text>
+  <text class="t" x="730" y="395">关键设计：支持 LAZY 模式，按需加载索引数据，减少启动时间</text>
+  <text class="t" x="730" y="415">关键设计：IndexReader 支持缓存，避免重复创建，提高查询性能</text>
+
+  <text class="muted" x="40" y="430">DoOpen 流程是 NormalTabletReader 初始化的关键，需要正确创建所有 IndexReader</text>
+</svg>

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">AttributeReader：正排索引查询的实现</text>
+  <text class="muted" x="40" y="66">AttributeReader 是正排索引的查询接口，支持根据 DocId 读取属性值，用于属性查询和结果展示。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. 定位 DocId</text>
+  <text class="t" x="70" y="155">根据全局 DocId</text>
+  <text class="t" x="70" y="175">定位到对应的</text>
+  <text class="t" x="70" y="195">Segment</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="280" y="95" width="200" height="100"/>
+  <text class="h" x="310" y="130">2. 转换为局部 DocId</text>
+  <text class="t" x="310" y="155">将全局 DocId</text>
+  <text class="t" x="310" y="175">转换为局部 DocId</text>
+  <text class="t" x="310" y="195">localDocId = globalDocId - baseDocId</text>
+
+  <path class="arrow" d="M 480 145 L 520 145"/>
+
+  <rect class="step" x="540" y="95" width="200" height="100"/>
+  <text class="h" x="570" y="130">3. 读取属性值</text>
+  <text class="t" x="570" y="155">从正排索引中</text>
+  <text class="t" x="570" y="175">读取属性值</text>
+
+  <path class="arrow" d="M 740 145 L 780 145"/>
+
+  <rect class="result" x="800" y="95" width="120" height="100"/>
+  <text class="h" x="830" y="130">4. 返回结果</text>
+  <text class="t" x="830" y="155">返回属性值</text>
+
+  <rect class="box" x="40" y="215" width="880" height="200"/>
+  <text class="h" x="70" y="250">正排索引查询的关键点</text>
+  <text class="t" x="70" y="275">1. 定位 DocId：根据全局 DocId 定位到对应的 Segment，需要遍历 Segment 列表</text>
+  <text class="t" x="70" y="295">2. 转换为局部 DocId：将全局 DocId 转换为局部 DocId，用于在 Segment 内查询</text>
+  <text class="t" x="70" y="315">3. 读取属性值：从正排索引中读取属性值，支持多种数据类型（int、string、float 等）</text>
+  <text class="t" x="70" y="335">4. 批量读取：支持批量读取多个 DocId 的属性值，提高查询效率</text>
+  <text class="t" x="70" y="355">5. 缓存机制：支持属性值缓存，减少 IO 操作，提高查询性能</text>
+  <text class="t" x="70" y="375">6. 支持压缩：正排索引支持压缩存储，减少存储空间和 IO 开销</text>
+  <text class="t" x="70" y="395">关键设计：正排索引查询是属性查询和结果展示的核心，需要高效的读取和缓存机制</text>
+  <text class="t" x="70" y="415">关键设计：支持 PackAttribute，将多个属性打包存储，减少 IO 次数</text>
+
+  <text class="muted" x="40" y="430">AttributeReader 是属性查询的核心，提供高效的正排索引查询能力</text>
+</svg>

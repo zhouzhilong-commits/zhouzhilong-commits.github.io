@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 545">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .mem{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .disk{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 545" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Flush 流程：从 MemSegment 到 DiskSegment 的转储过程</text>
+  <text class="muted" x="40" y="66">Flush 阶段将内存数据刷新到磁盘，创建 DiskSegment，包括检查转储条件、创建 SegmentDumper、异步转储等步骤。</text>
+
+  <rect class="mem" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">MemSegment</text>
+  <text class="t" x="70" y="155">内存索引</text>
+  <text class="t" x="70" y="175">ST_BUILDING</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="130">1. 检查转储条件</text>
+  <text class="t" x="310" y="155">NeedDump()</text>
+  <text class="t" x="310" y="175">内存阈值、文档数量等</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+
+  <rect class="step" x="520" y="95" width="200" height="100"/>
+  <text class="h" x="550" y="130">2. 创建 SegmentDumper</text>
+  <text class="t" x="550" y="155">CreateSegmentDumper()</text>
+  <text class="t" x="550" y="175">准备转储任务</text>
+
+  <path class="arrow" d="M 720 145 L 760 145"/>
+
+  <rect class="step" x="780" y="95" width="180" height="100"/>
+  <text class="h" x="810" y="130">3. 异步转储</text>
+  <text class="t" x="810" y="155">Dump()</text>
+  <text class="t" x="810" y="175">写入磁盘</text>
+
+  <path class="arrow" d="M 810 195 L 810 225"/>
+
+  <rect class="disk" x="780" y="235" width="180" height="100"/>
+  <text class="h" x="810" y="270">4. DiskSegment</text>
+  <text class="t" x="810" y="295">磁盘索引</text>
+  <text class="t" x="810" y="315">ST_BUILT</text>
+
+  <rect class="box" x="40" y="355" width="920" height="120"/>
+  <text class="h" x="70" y="390">Flush 流程的关键步骤</text>
+  <text class="t" x="70" y="415">1. 检查转储条件：判断是否需要转储（内存阈值、文档数量、时间阈值等）</text>
+  <text class="t" x="70" y="435">2. 创建 SegmentDumper：创建转储器，设置 MemSegment 状态为 ST_DUMPING</text>
+  <text class="t" x="70" y="455">3. 创建转储参数：计算转储所需的内存成本（DumpExpandMemSize）</text>
+  <text class="t" x="70" y="475">4. 异步转储：将内存数据写入磁盘，创建索引文件，不阻塞写入</text>
+  <text class="t" x="70" y="495">5. 创建 DiskSegment：转储完成后创建 DiskSegment，更新 TabletData 的 Segment 列表</text>
+
+  <text class="muted" x="40" y="480">Flush 阶段的关键是异步转储，不阻塞写入，提高构建吞吐量</text>
+</svg>

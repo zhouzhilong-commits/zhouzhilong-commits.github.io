@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .trigger{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 490" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Build 内存控制：估算、评估、触发转储</text>
+  <text class="muted" x="40" y="66">Build 阶段需要严格控制内存使用，通过估算、评估、触发转储等机制，避免内存溢出。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 估算内存</text>
+  <text class="t" x="70" y="155">EstimateMemUsed()</text>
+  <text class="t" x="70" y="175">估算构建所需内存</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. 评估内存</text>
+  <text class="t" x="330" y="155">EvaluateCurrentMemUsed()</text>
+  <text class="t" x="330" y="175">评估当前实际内存使用</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 检查阈值</text>
+  <text class="t" x="590" y="155">检查是否达到阈值</text>
+  <text class="t" x="590" y="175">内存阈值、文档数量等</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="trigger" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. 触发转储</text>
+  <text class="t" x="850" y="155">NeedDump()</text>
+  <text class="t" x="850" y="175">返回 true</text>
+
+  <rect class="box" x="40" y="215" width="900" height="200"/>
+  <text class="h" x="70" y="250">内存控制的关键机制</text>
+  <text class="t" x="70" y="275">1. 内存估算：构建前估算所需内存，检查内存配额是否足够</text>
+  <text class="t" x="70" y="295">2. 内存评估：构建过程中评估实际内存使用，实时监控内存状态</text>
+  <text class="t" x="70" y="315">3. 内存控制：通过 MemoryQuotaController 控制内存上限，避免内存溢出</text>
+  <text class="t" x="70" y="335">4. 触发转储：达到阈值时触发转储，释放内存，创建 DiskSegment</text>
+  <text class="t" x="70" y="355">5. 内存回收：转储完成后回收内存，可以继续构建新的文档</text>
+  <text class="t" x="70" y="375">6. 错误处理：内存不足时返回 NoMem，等待内存释放或触发转储</text>
+  <text class="t" x="70" y="395">关键设计：通过内存估算和评估机制，提前发现内存问题，避免内存溢出</text>
+  <text class="t" x="70" y="415">关键设计：通过触发转储机制，及时释放内存，保证构建的连续性</text>
+
+  <text class="muted" x="40" y="440">内存控制是构建流程的关键，需要平衡构建速度和内存使用</text>
+</svg>

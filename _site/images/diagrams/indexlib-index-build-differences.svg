@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">索引构建的差异：Normal、KV、KKV 的构建方式差异</text>
+  <text class="muted" x="40" y="66">不同索引类型的构建方式有差异，包括索引结构、构建流程等。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">NormalTable</text>
+  <text class="t" x="70" y="140">构建全文索引、正排索引、主键索引等多种索引，构建复杂</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">KVTable</text>
+  <text class="t" x="70" y="210">主要构建主键索引，构建简单快速</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">KKVTable</text>
+  <text class="t" x="70" y="280">构建主键+排序键索引，构建中等复杂度</text>
+  <text class="muted" x="40" y="325">理解 索引构建的差异，是掌握 IndexLib 机制的关键</text>
+</svg>

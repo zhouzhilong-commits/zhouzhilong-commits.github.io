@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">合并触发条件：Segment 数量、大小等条件</text>
+  <text class="muted" x="40" y="66">合并的触发条件包括 Segment 数量、Segment 大小、查询性能、存储空间、手动触发等。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">Segment 数量</text>
+  <text class="t" x="70" y="140">当 Segment 数量超过阈值时触发合并</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">Segment 大小</text>
+  <text class="t" x="70" y="210">当小 Segment 数量过多时触发合并</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">查询性能</text>
+  <text class="t" x="70" y="280">当查询性能下降时触发合并</text>
+  <rect class="item" x="40" y="305" width="920" height="60"/>
+  <text class="h" x="70" y="330">存储空间</text>
+  <text class="t" x="70" y="350">当存储空间不足时触发合并</text>
+  <rect class="item" x="40" y="375" width="920" height="60"/>
+  <text class="h" x="70" y="400">手动触发</text>
+  <text class="t" x="70" y="420">支持手动触发合并</text>
+  <text class="muted" x="40" y="465">理解 合并触发条件，是掌握 Segment 合并机制的关键</text>
+</svg>

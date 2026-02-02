@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .filesystem{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .directory{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .reader{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .writer{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制</text>
+  <text class="muted" x="40" y="66">文件系统抽象通过 IFileSystem、IDirectory、FileReader、FileWriter 等组件实现，支持多种存储格式和存储后端。</text>
+
+  <rect class="filesystem" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">IFileSystem</text>
+  <text class="t" x="70" y="155">文件系统接口</text>
+  <text class="t" x="70" y="175">- 初始化文件系统</text>
+  <text class="t" x="70" y="195">- 挂载版本</text>
+  <text class="t" x="70" y="215">- 挂载目录/文件</text>
+  <text class="t" x="70" y="235">- 创建 FileReader/Writer</text>
+  <text class="t" x="70" y="255">统一文件系统接口</text>
+  <text class="t" x="70" y="275">支持多种存储后端</text>
+
+  <rect class="directory" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">IDirectory</text>
+  <text class="t" x="310" y="155">目录接口</text>
+  <text class="t" x="310" y="175">- 创建/获取目录</text>
+  <text class="t" x="310" y="195">- 创建 FileReader/Writer</text>
+  <text class="t" x="310" y="215">- 删除文件/目录</text>
+  <text class="t" x="310" y="235">- 列出目录</text>
+  <text class="t" x="310" y="255">目录和文件操作</text>
+  <text class="t" x="310" y="275">逻辑路径管理</text>
+
+  <rect class="reader" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">FileReader</text>
+  <text class="t" x="550" y="155">文件读取器</text>
+  <text class="t" x="550" y="175">- 打开/关闭文件</text>
+  <text class="t" x="550" y="195">- 读取文件数据</text>
+  <text class="t" x="550" y="215">- 预取文件数据</text>
+  <text class="t" x="550" y="235">- 异步读取</text>
+  <text class="t" x="550" y="255">文件读取功能</text>
+  <text class="t" x="550" y="275">支持缓存和预取</text>
+
+  <rect class="writer" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">FileWriter</text>
+  <text class="t" x="790" y="155">文件写入器</text>
+  <text class="t" x="790" y="175">- 打开/关闭文件</text>
+  <text class="t" x="790" y="195">- 写入文件数据</text>
+  <text class="t" x="790" y="215">- 预留文件空间</text>
+  <text class="t" x="790" y="235">- 截断文件</text>
+  <text class="t" x="790" y="255">文件写入功能</text>
+  <text class="t" x="790" y="275">支持异步写入</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">文件系统抽象的关键组件</text>
+  <text class="t" x="70" y="375">1. IFileSystem：文件系统接口，提供文件系统的基本操作，支持版本挂载和路径映射，支持多种存储后端</text>
+  <text class="t" x="70" y="395">2. IDirectory：目录接口，提供目录和文件的操作，支持逻辑路径管理，支持版本管理和 Segment 管理</text>
+  <text class="t" x="70" y="415">3. FileReader：文件读取器，提供文件读取功能，支持同步和异步读取，支持缓存和预取</text>
+  <text class="t" x="70" y="435">4. FileWriter：文件写入器，提供文件写入功能，支持文件写入和截断，支持异步写入</text>
+  <text class="t" x="70" y="455">关键设计：文件系统抽象通过统一接口屏蔽底层存储差异，支持多种存储格式和存储后端，提供灵活的文件管理能力</text>
+
+  <text class="muted" x="40" y="480">理解文件系统抽象与存储格式，是掌握 IndexLib 存储管理机制的关键</text>
+</svg>

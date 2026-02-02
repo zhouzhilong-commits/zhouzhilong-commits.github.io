@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .version{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .locator{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .segment{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">版本管理与增量更新概览：Version 与 Locator 的协同工作</text>
+  <text class="muted" x="40" y="66">版本管理通过 Version 记录索引版本信息，通过 Locator 实现增量更新，两者协同工作保证数据一致性和增量更新能力。</text>
+
+  <rect class="version" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">Version</text>
+  <text class="t" x="70" y="155">版本信息</text>
+  <text class="t" x="70" y="175">- VersionId：版本号</text>
+  <text class="t" x="70" y="195">- Segments：Segment 列表</text>
+  <text class="t" x="70" y="215">- Locator：位置信息</text>
+  <text class="t" x="70" y="235">- Timestamp：时间戳</text>
+  <text class="t" x="70" y="255">- SchemaId：Schema ID</text>
+  <text class="t" x="70" y="275">版本控制、Schema 演进</text>
+
+  <rect class="locator" x="340" y="95" width="280" height="200"/>
+  <text class="h" x="370" y="130">Locator</text>
+  <text class="t" x="370" y="155">位置信息</text>
+  <text class="t" x="370" y="175">- timestamp：时间戳</text>
+  <text class="t" x="370" y="195">- concurrentIdx：并发索引</text>
+  <text class="t" x="370" y="215">- hashId：Hash ID</text>
+  <text class="t" x="370" y="235">- sourceIdx：数据源索引</text>
+  <text class="t" x="370" y="255">- multiProgress：多进度信息</text>
+  <text class="t" x="370" y="275">增量更新、数据一致性</text>
+
+  <rect class="segment" x="640" y="95" width="320" height="200"/>
+  <text class="h" x="670" y="130">Segment</text>
+  <text class="t" x="670" y="155">索引数据</text>
+  <text class="t" x="670" y="175">- Segment 1：SchemaId=1</text>
+  <text class="t" x="670" y="195">- Segment 2：SchemaId=1</text>
+  <text class="t" x="670" y="215">- Segment 3：SchemaId=2</text>
+  <text class="t" x="670" y="235">- Segment 4：SchemaId=2</text>
+  <text class="t" x="670" y="255">每个 Segment 记录自己的 SchemaId</text>
+  <text class="t" x="670" y="275">支持 Schema 演进</text>
+
+  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <text class="h" x="70" y="350">版本管理与增量更新的关键设计</text>
+  <text class="t" x="70" y="375">1. Version 记录索引版本信息，包括 Segment 列表、Locator、SchemaId 等，支持版本演进和 Schema 演进</text>
+  <text class="t" x="70" y="395">2. Locator 记录数据处理位置，通过 IsFasterThan() 判断哪些数据已处理，实现增量更新</text>
+  <text class="t" x="70" y="415">3. 版本演进：每次 Commit 都会创建新版本，版本号递增，支持版本回滚</text>
+
+  <text class="muted" x="40" y="440">理解 Version 和 Locator 的协同工作，是掌握版本管理和增量更新的基础</text>
+</svg>

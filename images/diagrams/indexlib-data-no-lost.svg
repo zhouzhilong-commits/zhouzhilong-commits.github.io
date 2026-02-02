@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">数据不丢失保证：通过 Locator 保证数据不丢失</text>
+  <text class="muted" x="40" y="66">通过 Locator 记录处理进度，可以保证数据不丢失。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">进度记录</text>
+  <text class="t" x="70" y="140">通过 Locator 记录处理进度，记录已处理的数据位置</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">故障恢复</text>
+  <text class="t" x="70" y="210">故障恢复时，根据 Locator 重新处理未处理的数据</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">保证完整性</text>
+  <text class="t" x="70" y="280">保证所有数据都被处理，不丢失数据</text>
+  <text class="muted" x="40" y="325">理解 数据不丢失保证，是掌握 Locator 机制的关键</text>
+</svg>

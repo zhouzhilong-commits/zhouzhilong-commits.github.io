@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .locator{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .compare{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .consistency{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .update{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">Locator 与数据一致性概览：从 Locator 结构到数据一致性保证的完整机制</text>
+  <text class="muted" x="40" y="66">Locator 通过比较逻辑判断数据是否已处理，通过更新机制记录处理位置，通过数据一致性保证机制保证数据不重复、不丢失。</text>
+
+  <rect class="locator" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">Locator 结构</text>
+  <text class="t" x="70" y="155">- 数据源标识</text>
+  <text class="t" x="70" y="175">- 多进度信息</text>
+  <text class="t" x="70" y="195">- 用户数据</text>
+  <text class="t" x="70" y="215">- DocInfo 结构</text>
+  <text class="t" x="70" y="235">记录数据处理位置</text>
+  <text class="t" x="70" y="255">支持增量更新</text>
+  <text class="t" x="70" y="275">支持多数据源</text>
+
+  <rect class="compare" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">比较逻辑</text>
+  <text class="t" x="310" y="155">- IsFasterThan()</text>
+  <text class="t" x="310" y="175">- 多进度比较</text>
+  <text class="t" x="310" y="195">- 比较结果</text>
+  <text class="t" x="310" y="215">LCR_INVALID</text>
+  <text class="t" x="310" y="235">LCR_SLOWER</text>
+  <text class="t" x="310" y="255">LCR_PARTIAL_FASTER</text>
+  <text class="t" x="310" y="275">LCR_FULLY_FASTER</text>
+
+  <rect class="update" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">更新机制</text>
+  <text class="t" x="550" y="155">- Update()</text>
+  <text class="t" x="550" y="175">- 更新时机</text>
+  <text class="t" x="550" y="195">- 只向前推进</text>
+  <text class="t" x="550" y="215">- 保证一致性</text>
+  <text class="t" x="550" y="235">记录最新位置</text>
+  <text class="t" x="550" y="255">支持序列化</text>
+  <text class="t" x="550" y="275">持久化到磁盘</text>
+
+  <rect class="consistency" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">数据一致性</text>
+  <text class="t" x="790" y="155">- 数据不重复</text>
+  <text class="t" x="790" y="175">- 数据不丢失</text>
+  <text class="t" x="790" y="195">- 多数据源一致性</text>
+  <text class="t" x="790" y="215">- 故障恢复</text>
+  <text class="t" x="790" y="235">保证数据一致性</text>
+  <text class="t" x="790" y="255">支持增量更新</text>
+  <text class="t" x="790" y="275">支持故障恢复</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">Locator 与数据一致性的关键机制</text>
+  <text class="t" x="70" y="375">1. Locator 结构：包含数据源标识、多进度信息、用户数据等关键字段，记录数据处理位置，支持增量更新和多数据源场景</text>
+  <text class="t" x="70" y="395">2. 比较逻辑：通过 IsFasterThan() 判断数据是否已处理，支持多种比较结果（LCR_INVALID、LCR_SLOWER、LCR_PARTIAL_FASTER、LCR_FULLY_FASTER）</text>
+  <text class="t" x="70" y="415">3. 更新机制：通过 Update() 更新 Locator，保证只向前推进，支持序列化和持久化，记录最新的数据处理位置</text>
+  <text class="t" x="70" y="435">4. 数据一致性保证：通过 Locator 保证数据不重复、不丢失，支持多数据源场景，支持故障恢复，保证数据一致性</text>
+  <text class="t" x="70" y="455">关键设计：Locator 是增量更新和数据一致性保证的核心，通过简单高效的设计实现可靠的数据管理</text>
+
+  <text class="muted" x="40" y="480">理解 Locator 与数据一致性，是掌握 IndexLib 数据管理机制的关键</text>
+</svg>

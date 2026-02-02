@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .merge{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .version{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .destroy{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .reclaim{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 570" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Segment 销毁时机：合并后、版本清理时自动销毁</text>
+  <text class="muted" x="40" y="66">Segment 使用 shared_ptr 管理，当不再被引用时自动析构，也可以通过 ReclaimSegmentResource() 主动回收资源。</text>
+
+  <rect class="merge" x="40" y="95" width="220" height="120"/>
+  <text class="h" x="70" y="130">合并后销毁</text>
+  <text class="t" x="70" y="155">Segment 1, 2, 3</text>
+  <text class="t" x="70" y="175">合并为 Segment 4</text>
+  <text class="t" x="70" y="195">旧 Segment 不再被引用</text>
+  <text class="t" x="70" y="215">引用计数 = 0</text>
+
+  <rect class="version" x="280" y="95" width="220" height="120"/>
+  <text class="h" x="310" y="130">版本清理</text>
+  <text class="t" x="310" y="155">清理旧版本时</text>
+  <text class="t" x="310" y="175">旧 Segment 被移除</text>
+  <text class="t" x="310" y="195">不再被引用</text>
+  <text class="t" x="310" y="215">自动析构</text>
+
+  <rect class="reclaim" x="520" y="95" width="220" height="120"/>
+  <text class="h" x="550" y="130">主动回收</text>
+  <text class="t" x="550" y="155">调用</text>
+  <text class="t" x="550" y="175">ReclaimSegmentResource()</text>
+  <text class="t" x="550" y="195">主动释放资源</text>
+  <text class="t" x="550" y="215">（内存、文件句柄等）</text>
+
+  <rect class="destroy" x="760" y="95" width="180" height="120"/>
+  <text class="h" x="790" y="130">析构过程</text>
+  <text class="t" x="790" y="155">1. 释放内存资源</text>
+  <text class="t" x="790" y="175">（MemSegment）</text>
+  <text class="t" x="790" y="195">2. 关闭文件句柄</text>
+  <text class="t" x="790" y="215">（DiskSegment）</text>
+
+  <rect class="box" x="40" y="235" width="900" height="270"/>
+  <text class="h" x="70" y="270">智能指针管理</text>
+  <text class="t" x="70" y="295">// Segment 使用 shared_ptr 管理</text>
+  <text class="t" x="70" y="315">using SegmentPtr = std::shared_ptr&lt;Segment&gt;;</text>
+  <text class="t" x="70" y="335">// 当 Segment 不再被引用时，自动析构</text>
+  <text class="t" x="70" y="355">// 析构时会：</text>
+  <text class="t" x="70" y="375">// 1. 释放内存资源（MemSegment）</text>
+  <text class="t" x="70" y="395">// 2. 关闭文件句柄（DiskSegment）</text>
+  <text class="t" x="70" y="415">// 3. 清理 Indexer</text>
+  <text class="t" x="70" y="435">// 4. 释放共享资源（ResourceMap）</text>
+  <text class="t" x="70" y="455">// 主动回收资源：</text>
+  <text class="t" x="70" y="475">tabletData->ReclaimSegmentResource(</text>
+  <text class="t" x="90" y="495">    segmentId);</text>
+
+  <text class="muted" x="40" y="520">关键点：通过智能指针自动管理生命周期，支持主动回收资源</text>
+</svg>

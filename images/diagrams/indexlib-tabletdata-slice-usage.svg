@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .query{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .write{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .merge{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">TabletData Slice 使用场景：查询、写入、合并时的 Segment 筛选</text>
+  <text class="muted" x="40" y="66">Slice 提供灵活的 Segment 筛选能力，不同场景使用不同状态的 Segment。</text>
+
+  <rect class="query" x="40" y="95" width="280" height="180"/>
+  <text class="h" x="70" y="130">查询场景</text>
+  <text class="t" x="70" y="155">CreateSlice(ST_BUILT)</text>
+  <text class="t" x="70" y="180">获取：</text>
+  <text class="t" x="90" y="205">- DiskSegment 1</text>
+  <text class="t" x="90" y="225">- DiskSegment 2</text>
+  <text class="t" x="90" y="245">- DiskSegment 3</text>
+  <text class="t" x="70" y="270">用途：只查询已持久化的 Segment，保证数据一致性</text>
+
+  <rect class="write" x="340" y="95" width="280" height="180"/>
+  <text class="h" x="370" y="130">写入场景</text>
+  <text class="t" x="370" y="155">CreateSlice(ST_BUILDING)</text>
+  <text class="t" x="370" y="180">获取：</text>
+  <text class="t" x="390" y="205">- MemSegment 1</text>
+  <text class="t" x="370" y="230">用途：获取当前构建中的 Segment，写入新文档</text>
+  <text class="t" x="370" y="250">特点：通常只有一个 MemSegment</text>
+  <text class="t" x="370" y="270">在构建中</text>
+
+  <rect class="merge" x="640" y="95" width="320" height="180"/>
+  <text class="h" x="670" y="130">合并场景</text>
+  <text class="t" x="670" y="155">CreateSlice(ST_BUILT)</text>
+  <text class="t" x="670" y="180">获取：</text>
+  <text class="t" x="690" y="205">- DiskSegment 1</text>
+  <text class="t" x="690" y="225">- DiskSegment 2</text>
+  <text class="t" x="690" y="245">- DiskSegment 3</text>
+  <text class="t" x="670" y="270">用途：获取需要合并的 Segment，创建合并计划</text>
+
+  <rect class="box" x="40" y="295" width="920" height="180"/>
+  <text class="h" x="70" y="330">Slice 机制的优势</text>
+  <text class="t" x="70" y="355">1. 封装实现：不直接暴露 _segments 内部实现，通过 Slice 提供安全的访问接口</text>
+  <text class="t" x="70" y="375">2. 灵活筛选：可以按状态（BUILDING、DUMPING、BUILT）筛选 Segment，满足不同场景需求</text>
+  <text class="t" x="70" y="395">3. 迭代器支持：提供 begin/end 迭代器，支持标准 C++ 算法（for_each、find_if 等）</text>
+  <text class="t" x="70" y="415">4. 性能优化：Slice 是轻量级的视图，不复制 Segment 列表，只是提供迭代器</text>
+  <text class="t" x="70" y="435">5. 线程安全：通过 Slice 访问 Segment，避免直接操作 _segments，提高线程安全性</text>
+  <text class="t" x="70" y="455">6. 反向迭代：支持 rbegin/rend 反向迭代，方便从后往前遍历 Segment</text>
+</svg>

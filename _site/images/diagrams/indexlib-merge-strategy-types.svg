@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .type{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">合并策略类型：Optimize、Realtime、ShardBased 等</text>
+  <text class="muted" x="40" y="66">IndexLib 支持多种合并策略，每种策略适用于不同的场景，提供不同的合并行为。</text>
+
+  <rect class="type" x="40" y="95" width="220" height="120"/>
+  <text class="h" x="70" y="130">OptimizeMergeStrategy</text>
+  <text class="t" x="70" y="155">优化合并策略</text>
+  <text class="t" x="70" y="175">合并所有符合条件的 Segment</text>
+  <text class="t" x="70" y="195">适用于全量合并</text>
+  <text class="t" x="70" y="215">支持参数控制</text>
+
+  <rect class="type" x="280" y="95" width="220" height="120"/>
+  <text class="h" x="310" y="130">RealtimeMergeStrategy</text>
+  <text class="t" x="310" y="155">实时合并策略</text>
+  <text class="t" x="310" y="175">实时合并小 Segment</text>
+  <text class="t" x="310" y="195">适用于实时场景</text>
+  <text class="t" x="310" y="215">保持索引结构优化</text>
+
+  <rect class="type" x="520" y="95" width="220" height="120"/>
+  <text class="h" x="550" y="130">ShardBasedMergeStrategy</text>
+  <text class="t" x="550" y="155">分片合并策略</text>
+  <text class="t" x="550" y="175">按分片合并 Segment</text>
+  <text class="t" x="550" y="195">适用于分片场景</text>
+  <text class="t" x="550" y="215">支持分片级合并</text>
+
+  <rect class="type" x="760" y="95" width="200" height="120"/>
+  <text class="h" x="790" y="130">KeyValueOptimizeMergeStrategy</text>
+  <text class="t" x="790" y="155">KV 优化合并策略</text>
+  <text class="t" x="790" y="175">针对 KV 表的优化合并</text>
+  <text class="t" x="790" y="195">适用于 KV 表</text>
+  <text class="t" x="790" y="215">优化 KV 索引</text>
+
+  <rect class="box" x="40" y="235" width="920" height="230"/>
+  <text class="h" x="70" y="270">合并策略类型的关键特点</text>
+  <text class="t" x="70" y="295">1. OptimizeMergeStrategy：优化合并策略，合并所有符合条件的 Segment，适用于全量合并，支持参数控制（maxDocCount、afterMergeMaxDocCount 等）</text>
+  <text class="t" x="70" y="315">2. RealtimeMergeStrategy：实时合并策略，实时合并小 Segment，适用于实时场景，保持索引结构优化</text>
+  <text class="t" x="70" y="335">3. ShardBasedMergeStrategy：分片合并策略，按分片合并 Segment，适用于分片场景，支持分片级合并</text>
+  <text class="t" x="70" y="355">4. KeyValueOptimizeMergeStrategy：KV 优化合并策略，针对 KV 表的优化合并，适用于 KV 表，优化 KV 索引</text>
+  <text class="t" x="70" y="375">关键设计：不同的合并策略适用于不同的场景，提供不同的合并行为，灵活适应不同需求</text>
+  <text class="t" x="70" y="395">关键设计：合并策略支持参数配置，通过参数控制合并行为，灵活适应不同场景</text>
+  <text class="t" x="70" y="415">关键设计：合并策略支持扩展，通过实现 MergeStrategy 接口可以自定义合并策略</text>
+  <text class="t" x="70" y="435">关键设计：合并策略的选择根据场景和需求决定，不同的策略有不同的适用场景</text>
+  <text class="t" x="70" y="455">关键设计：合并策略支持在线合并和离线合并，灵活适应不同场景的合并需求</text>
+
+  <text class="muted" x="40" y="480">不同的合并策略适用于不同的场景，提供不同的合并行为</text>
+</svg>

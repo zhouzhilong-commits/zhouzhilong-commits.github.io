@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .mem{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .sealed{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .disk{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 490" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Seal 流程：封存 Segment，标记为只读</text>
+  <text class="muted" x="40" y="66">Seal 阶段封存 Segment，标记为只读，不再接收新文档，准备合并。</text>
+
+  <rect class="mem" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="130">MemSegment</text>
+  <text class="t" x="70" y="155">ST_BUILDING</text>
+  <text class="t" x="70" y="175">接收新文档</text>
+  <text class="t" x="70" y="195">docCount: 1000</text>
+  <text class="t" x="70" y="215">状态：构建中</text>
+
+  <path class="arrow" d="M 240 155 L 280 155"/>
+
+  <rect class="sealed" x="300" y="95" width="200" height="120"/>
+  <text class="h" x="330" y="130">Seal()</text>
+  <text class="t" x="330" y="155">标记为只读</text>
+  <text class="t" x="330" y="175">不再接收新文档</text>
+  <text class="t" x="330" y="195">准备转储</text>
+
+  <path class="arrow" d="M 500 155 L 540 155"/>
+
+  <rect class="disk" x="560" y="95" width="200" height="120"/>
+  <text class="h" x="590" y="130">DiskSegment</text>
+  <text class="t" x="590" y="155">ST_BUILT</text>
+  <text class="t" x="590" y="175">只读 Segment</text>
+  <text class="t" x="590" y="195">可以参与合并</text>
+  <text class="t" x="590" y="215">状态：已构建</text>
+
+  <rect class="box" x="40" y="235" width="720" height="180"/>
+  <text class="h" x="70" y="270">Seal 流程的关键步骤</text>
+  <text class="t" x="70" y="295">1. 封存 MemSegment：调用 MemSegment::Seal() 封存当前构建中的 Segment</text>
+  <text class="t" x="70" y="315">2. 标记为只读：Segment 不再接收新文档，保证内容不再变化</text>
+  <text class="t" x="70" y="335">3. 触发转储：如果 MemSegment 有数据，触发转储，创建 DiskSegment</text>
+  <text class="t" x="70" y="355">4. 等待转储完成：等待转储完成，确保数据已持久化</text>
+  <text class="t" x="70" y="375">5. 更新状态：Segment 状态变为 ST_BUILT，可以参与查询和合并</text>
+  <text class="t" x="70" y="395">关键设计：Seal 保证 Segment 内容不再变化，为合并做准备</text>
+  <text class="t" x="70" y="415">关键设计：Seal 后 Segment 可以参与合并，提高查询性能</text>
+
+  <text class="muted" x="40" y="440">Seal 阶段的关键是封存 Segment，保证数据一致性，为合并做准备</text>
+</svg>

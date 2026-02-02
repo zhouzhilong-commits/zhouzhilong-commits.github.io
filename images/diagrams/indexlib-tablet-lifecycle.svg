@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 410">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 410" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Tablet 生命周期：从 Open 到 Commit 的完整流程</text>
+  <text class="muted" x="40" y="66">Tablet 从打开开始，经过构建、刷新、封存，最终提交版本。</text>
+
+  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <text class="h" x="70" y="130">1. Open</text>
+  <text class="t" x="70" y="155">加载 Schema</text>
+  <text class="t" x="70" y="175">初始化 TabletData</text>
+  <text class="t" x="70" y="195">加载 Version</text>
+
+  <path class="arrow" d="M 200 145 L 240 145"/>
+
+  <rect class="step" x="250" y="95" width="160" height="100"/>
+  <text class="h" x="280" y="130">2. Build</text>
+  <text class="t" x="280" y="155">接收文档</text>
+  <text class="t" x="280" y="175">写入 MemSegment</text>
+  <text class="t" x="280" y="195">实时构建</text>
+
+  <path class="arrow" d="M 410 145 L 450 145"/>
+
+  <rect class="step" x="460" y="95" width="160" height="100"/>
+  <text class="h" x="490" y="130">3. Flush</text>
+  <text class="t" x="490" y="155">刷新到磁盘</text>
+  <text class="t" x="490" y="175">创建 DiskSegment</text>
+  <text class="t" x="490" y="195">持久化数据</text>
+
+  <path class="arrow" d="M 620 145 L 660 145"/>
+
+  <rect class="step" x="670" y="95" width="160" height="100"/>
+  <text class="h" x="700" y="130">4. Seal</text>
+  <text class="t" x="700" y="155">封存 Segment</text>
+  <text class="t" x="700" y="175">标记只读</text>
+  <text class="t" x="700" y="195">准备合并</text>
+
+  <path class="arrow" d="M 830 145 L 870 145"/>
+
+  <rect class="step" x="880" y="95" width="80" height="100"/>
+  <text class="h" x="900" y="130">5. Commit</text>
+  <text class="t" x="900" y="155">提交版本</text>
+  <text class="t" x="900" y="175">更新 Version</text>
+  <text class="t" x="900" y="195">持久化</text>
+
+  <rect class="box" x="40" y="220" width="920" height="150"/>
+  <text class="h" x="70" y="255">详细说明</text>
+  <text class="t" x="70" y="280">Open：从磁盘加载已有索引或创建新索引，加载 Schema 和配置，初始化 TabletData，加载 Version</text>
+  <text class="t" x="70" y="300">Build：持续构建过程，接收文档批次，将文档写入 MemSegment，MemSegment 在内存中构建索引</text>
+  <text class="t" x="70" y="320">Flush：将 MemSegment 刷新到磁盘，创建 DiskSegment，持久化索引数据，释放内存</text>
+  <text class="t" x="70" y="340">Seal：封存 Segment，标记为只读，不再接收新文档，准备参与合并操作</text>
+  <text class="t" x="70" y="360">Commit：提交新版本，更新 Version（VersionId 递增），将 Version 持久化到磁盘，完成一次完整的构建周期</text>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .doc{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .mem{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .calc{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">DocId 分配：全局 DocId 的计算和分配</text>
+  <text class="muted" x="40" y="66">Build 阶段需要为文档分配 DocId，通过 baseDocId + localDocId 实现全局 DocId 的唯一性。</text>
+
+  <rect class="doc" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">文档批次</text>
+  <text class="t" x="70" y="155">Document 1</text>
+  <text class="t" x="70" y="175">Document 2</text>
+  <text class="t" x="70" y="195">Document 3</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="calc" x="300" y="95" width="280" height="100"/>
+  <text class="h" x="330" y="130">DispatchDocIds()</text>
+  <text class="t" x="330" y="155">baseDocId = 3000</text>
+  <text class="t" x="330" y="175">（前面所有 Segment 的 docCount 之和）</text>
+  <text class="t" x="330" y="195">localDocId = 0, 1, 2, ...</text>
+
+  <path class="arrow" d="M 580 145 L 620 145"/>
+
+  <rect class="mem" x="640" y="95" width="320" height="100"/>
+  <text class="h" x="670" y="130">MemSegment</text>
+  <text class="t" x="670" y="155">Document 1: globalDocId = 3000 + 0 = 3000</text>
+  <text class="t" x="670" y="175">Document 2: globalDocId = 3000 + 1 = 3001</text>
+  <text class="t" x="670" y="195">Document 3: globalDocId = 3000 + 2 = 3002</text>
+
+  <rect class="box" x="40" y="215" width="920" height="200"/>
+  <text class="h" x="70" y="250">DocId 分配的关键点</text>
+  <text class="t" x="70" y="275">1. BaseDocId 计算：遍历前面所有 Segment，累加 docCount</text>
+  <text class="t" x="70" y="295">2. LocalDocId 分配：在 MemSegment 内从 0 开始递增</text>
+  <text class="t" x="70" y="315">3. GlobalDocId 计算：globalDocId = baseDocId + localDocId</text>
+  <text class="t" x="70" y="335">4. 保证唯一性：通过 baseDocId 保证全局 DocId 的唯一性</text>
+  <text class="t" x="70" y="355">5. 支持并行构建：NormalTabletParallelBuilder 需要保证 DocId 分配的正确性</text>
+  <text class="t" x="70" y="375">6. 更新 baseDocId：转储后，新的 MemSegment 的 baseDocId 需要更新</text>
+  <text class="t" x="70" y="395">关键代码：NormalTabletWriter::DispatchDocIds() 负责为文档分配 DocId</text>
+
+  <text class="muted" x="40" y="430">DocId 分配的正确性是索引构建的基础，需要保证全局唯一性和连续性</text>
+</svg>

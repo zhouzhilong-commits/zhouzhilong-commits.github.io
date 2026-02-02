@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .reader{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .component{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">NormalTabletReader 的结构：包含各种 IndexReader</text>
+  <text class="muted" x="40" y="66">NormalTabletReader 是标准表的查询实现，包含 MultiFieldIndexReader、DeletionMapReader、PrimaryKeyReader 等各种 IndexReader。</text>
+
+  <rect class="reader" x="40" y="95" width="920" height="380"/>
+  <text class="h" x="70" y="130">NormalTabletReader</text>
+
+  <rect class="component" x="70" y="155" width="260" height="80"/>
+  <text class="h" x="90" y="180">MultiFieldIndexReader</text>
+  <text class="t" x="90" y="205">多字段倒排索引 Reader</text>
+  <text class="t" x="90" y="225">全文检索</text>
+
+  <rect class="component" x="350" y="155" width="260" height="80"/>
+  <text class="h" x="370" y="180">DeletionMapReader</text>
+  <text class="t" x="370" y="205">删除映射 Reader</text>
+  <text class="t" x="370" y="225">过滤已删除文档</text>
+
+  <rect class="component" x="630" y="155" width="260" height="80"/>
+  <text class="h" x="650" y="180">PrimaryKeyReader</text>
+  <text class="t" x="650" y="205">主键索引 Reader</text>
+  <text class="t" x="650" y="225">主键查询</text>
+
+  <rect class="component" x="70" y="255" width="260" height="80"/>
+  <text class="h" x="90" y="280">SummaryReader</text>
+  <text class="t" x="90" y="305">摘要 Reader</text>
+  <text class="t" x="90" y="325">获取文档摘要</text>
+
+  <rect class="component" x="350" y="255" width="260" height="80"/>
+  <text class="h" x="370" y="280">SourceReader</text>
+  <text class="t" x="370" y="305">源数据 Reader</text>
+  <text class="t" x="370" y="325">获取原始文档</text>
+
+  <rect class="component" x="630" y="255" width="260" height="80"/>
+  <text class="h" x="650" y="280">AttributeReader</text>
+  <text class="t" x="650" y="305">属性 Reader</text>
+  <text class="t" x="650" y="325">属性查询</text>
+
+  <rect class="component" x="70" y="355" width="260" height="80"/>
+  <text class="h" x="90" y="380">FieldMetaReader</text>
+  <text class="t" x="90" y="405">字段元数据 Reader</text>
+  <text class="t" x="90" y="425">字段统计信息</text>
+
+  <rect class="component" x="350" y="355" width="260" height="80"/>
+  <text class="h" x="370" y="380">PackAttributeReader</text>
+  <text class="t" x="370" y="405">打包属性 Reader</text>
+  <text class="t" x="370" y="425">批量读取属性</text>
+
+  <rect class="box" x="630" y="355" width="260" height="80"/>
+  <text class="h" x="650" y="380">其他组件</text>
+  <text class="t" x="650" y="405">NormalTabletInfo</text>
+  <text class="t" x="650" y="425">NormalTabletMetrics</text>
+
+  <text class="muted" x="40" y="490">NormalTabletReader 包含各种 IndexReader，提供完整的查询能力</text>
+</svg>

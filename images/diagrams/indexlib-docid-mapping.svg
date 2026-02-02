@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 535">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .global{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .segment{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .local{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 535" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">DocId 映射：全局 DocId 与局部 DocId 的转换关系</text>
+  <text class="muted" x="40" y="66">使用两级 DocId 机制：全局 DocId = baseDocId + localDocId。</text>
+
+  <rect class="global" x="40" y="95" width="920" height="80"/>
+  <text class="h" x="70" y="130">全局 DocId（Tablet 范围内）</text>
+  <text class="t" x="70" y="155">范围：0 到 TabletDocCount-1</text>
+  <text class="t" x="70" y="175">用于：查询结果、文档定位</text>
+
+  <path class="arrow" d="M 500 135 L 500 195"/>
+
+  <rect class="segment" x="40" y="195" width="920" height="120"/>
+  <text class="h" x="70" y="230">Segment 1: baseDocId=0, docCount=1000</text>
+  <text class="h" x="70" y="250">Segment 2: baseDocId=1000, docCount=2000</text>
+  <text class="h" x="70" y="270">Segment 3: baseDocId=3000, docCount=1500</text>
+  <text class="t" x="70" y="295">baseDocId = 前面所有 Segment 的 docCount 之和</text>
+
+  <path class="arrow" d="M 500 315 L 500 375"/>
+
+  <rect class="local" x="40" y="335" width="920" height="80"/>
+  <text class="h" x="70" y="370">局部 DocId（Segment 范围内）</text>
+  <text class="t" x="70" y="395">范围：0 到 docCount-1</text>
+  <text class="t" x="70" y="415">用于：Segment 内查询、索引访问</text>
+
+  <rect class="box" x="40" y="435" width="920" height="50"/>
+  <text class="h" x="70" y="465">转换公式：globalDocId = baseDocId + localDocId</text>
+  <text class="t" x="70" y="485">示例：全局 DocId 2500 = baseDocId(1000) + localDocId(1500)，位于 Segment 2</text>
+</svg>

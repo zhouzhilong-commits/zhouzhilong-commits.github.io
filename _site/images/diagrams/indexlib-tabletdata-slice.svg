@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .all{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .built{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .building{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">TabletData Slice 机制：按状态筛选 Segment</text>
+  <text class="muted" x="40" y="66">Slice 提供灵活的 Segment 筛选能力，避免直接暴露内部实现。</text>
+
+  <rect class="all" x="40" y="95" width="300" height="180"/>
+  <text class="h" x="70" y="130">所有 Segment</text>
+  <text class="t" x="70" y="155">CreateSlice()</text>
+  <text class="t" x="70" y="180">返回：</text>
+  <text class="t" x="90" y="205">- MemSegment (BUILDING)</text>
+  <text class="t" x="90" y="225">- MemSegment (DUMPING)</text>
+  <text class="t" x="90" y="245">- DiskSegment (BUILT)</text>
+  <text class="t" x="90" y="265">- DiskSegment (BUILT)</text>
+  <text class="t" x="70" y="290">用途：遍历所有 Segment</text>
+
+  <path class="arrow" d="M 340 185 L 400 185"/>
+
+  <rect class="built" x="410" y="95" width="280" height="180"/>
+  <text class="h" x="440" y="130">已构建 Segment</text>
+  <text class="t" x="440" y="155">CreateSlice(ST_BUILT)</text>
+  <text class="t" x="440" y="180">返回：</text>
+  <text class="t" x="460" y="205">- DiskSegment (BUILT)</text>
+  <text class="t" x="460" y="225">- DiskSegment (BUILT)</text>
+  <text class="t" x="440" y="250">用途：查询时使用</text>
+  <text class="t" x="440" y="270">只查询已持久化的 Segment</text>
+
+  <rect class="building" x="40" y="295" width="280" height="180"/>
+  <text class="h" x="70" y="330">构建中 Segment</text>
+  <text class="t" x="70" y="355">CreateSlice(ST_BUILDING)</text>
+  <text class="t" x="70" y="380">返回：</text>
+  <text class="t" x="90" y="405">- MemSegment (BUILDING)</text>
+  <text class="t" x="70" y="430">用途：写入时使用</text>
+  <text class="t" x="70" y="450">获取当前构建中的 Segment</text>
+
+  <rect class="box" x="350" y="295" width="340" height="180"/>
+  <text class="h" x="380" y="330">代码示例</text>
+  <text class="t" x="380" y="355">// 获取所有已构建的 Segment（用于查询）</text>
+  <text class="t" x="380" y="375">auto built = tabletData-></text>
+  <text class="t" x="380" y="395">  CreateSlice(ST_BUILT);</text>
+  <text class="t" x="380" y="415">// 获取构建中的 Segment（用于写入）</text>
+  <text class="t" x="380" y="435">auto building = tabletData-></text>
+  <text class="t" x="380" y="455">  CreateSlice(ST_BUILDING);</text>
+</svg>

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .tablet{fill:#e3f2fd;stroke:#1976d2;stroke-width:3;rx:12}
+      .schema{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+      .tabletdata{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:10}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:10}
+      .options{fill:#fce4ec;stroke:#c2185b;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Tablet 的结构：包含 Schema、TabletData、Version 等核心组件</text>
+  <text class="muted" x="40" y="66">Tablet 是索引表的完整抽象，管理索引的构建、查询和版本。</text>
+
+  <rect class="tablet" x="40" y="95" width="920" height="360"/>
+  <text class="h" x="70" y="130">ITablet（索引表）</text>
+
+  <rect class="schema" x="70" y="150" width="200" height="120"/>
+  <text class="h" x="90" y="180">Schema</text>
+  <text class="t" x="90" y="205">- 字段定义</text>
+  <text class="t" x="90" y="225">- 索引类型</text>
+  <text class="t" x="90" y="245">- 索引配置</text>
+  <text class="t" x="90" y="265">GetTabletSchema()</text>
+
+  <rect class="tabletdata" x="290" y="150" width="240" height="120"/>
+  <text class="h" x="310" y="180">TabletData</text>
+  <text class="t" x="310" y="205">- Segments 列表</text>
+  <text class="t" x="310" y="225">- ResourceMap</text>
+  <text class="t" x="310" y="245">- 文档统计</text>
+  <text class="t" x="310" y="265">内部管理</text>
+
+  <rect class="version" x="550" y="150" width="200" height="120"/>
+  <text class="h" x="570" y="180">Version</text>
+  <text class="t" x="570" y="205">- VersionId</text>
+  <text class="t" x="570" y="225">- Segment 列表</text>
+  <text class="t" x="570" y="245">- Locator</text>
+  <text class="t" x="570" y="265">Commit() 管理</text>
+
+  <rect class="options" x="770" y="150" width="170" height="120"/>
+  <text class="h" x="790" y="180">Options</text>
+  <text class="t" x="790" y="205">- 构建配置</text>
+  <text class="t" x="790" y="225">- 查询配置</text>
+  <text class="t" x="790" y="245">- 内存配置</text>
+  <text class="t" x="790" y="265">GetTabletOptions()</text>
+
+  <rect class="box" x="70" y="290" width="870" height="150"/>
+  <text class="h" x="100" y="325">核心接口</text>
+  <text class="t" x="100" y="350">Open() - 打开索引，加载 Schema、Options，初始化 TabletData</text>
+  <text class="t" x="100" y="370">Build() - 构建索引，将文档写入 MemSegment</text>
+  <text class="t" x="100" y="390">Flush() - 刷新到磁盘，将 MemSegment 转为 DiskSegment</text>
+  <text class="t" x="100" y="410">Seal() - 封存 Segment，标记为只读</text>
+  <text class="t" x="100" y="430">Commit() - 提交版本，更新 Version，持久化到磁盘</text>
+</svg>

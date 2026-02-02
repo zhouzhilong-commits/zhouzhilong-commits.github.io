@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .progress{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .field{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+      .vector{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">Progress 的结构：包含 from、to、offset 等字段</text>
+  <text class="muted" x="40" y="66">Progress 包含 HashId 范围（from/to）和偏移量（offset），ProgressVector 和 MultiProgress 支持多进度信息管理。</text>
+
+  <rect class="progress" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">Progress</text>
+  <text class="t" x="70" y="155">from: uint32_t</text>
+  <text class="t" x="70" y="175">HashId 范围起始</text>
+  <text class="t" x="70" y="195">to: uint32_t</text>
+  <text class="t" x="70" y="215">HashId 范围结束</text>
+  <text class="t" x="70" y="235">offset: Offset</text>
+  <text class="t" x="70" y="255">偏移量（timestamp, concurrentIdx）</text>
+  <text class="t" x="70" y="275">INVALID_OFFSET: {-1, 0}</text>
+  <text class="t" x="70" y="295">MIN_OFFSET: {0, 0}</text>
+
+  <rect class="vector" x="340" y="95" width="280" height="200"/>
+  <text class="h" x="370" y="130">ProgressVector</text>
+  <text class="t" x="370" y="155">std::vector&lt;Progress&gt;</text>
+  <text class="t" x="370" y="175">一个 hashId 范围的</text>
+  <text class="t" x="370" y="195">进度列表</text>
+  <text class="t" x="370" y="215">支持多个 Progress</text>
+  <text class="t" x="370" y="235">按顺序排列</text>
+  <text class="t" x="370" y="255">支持范围查询</text>
+  <text class="t" x="370" y="275">支持进度追踪</text>
+
+  <rect class="vector" x="640" y="95" width="320" height="200"/>
+  <text class="h" x="670" y="130">MultiProgress</text>
+  <text class="t" x="670" y="155">std::vector&lt;ProgressVector&gt;</text>
+  <text class="t" x="670" y="175">多个 hashId 范围的</text>
+  <text class="t" x="670" y="195">进度列表</text>
+  <text class="t" x="670" y="215">支持多个 ProgressVector</text>
+  <text class="t" x="670" y="235">每个 ProgressVector 对应</text>
+  <text class="t" x="670" y="255">一个 hashId 范围</text>
+  <text class="t" x="670" y="275">支持分片处理</text>
+  <text class="t" x="670" y="295">支持并行处理</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">Progress 结构的关键设计</text>
+  <text class="t" x="70" y="375">1. Progress：包含 HashId 范围（from/to）和偏移量（offset），用于记录一个 HashId 范围的进度</text>
+  <text class="t" x="70" y="395">2. ProgressVector：一个 hashId 范围的进度列表，支持多个 Progress，按顺序排列，支持范围查询和进度追踪</text>
+  <text class="t" x="70" y="415">3. MultiProgress：多个 hashId 范围的进度列表，每个 ProgressVector 对应一个 hashId 范围，支持分片处理和并行处理</text>
+  <text class="t" x="70" y="435">关键设计：Progress 结构支持分片处理，通过 HashId 范围支持并行处理，提高处理效率</text>
+  <text class="t" x="70" y="455">关键设计：Progress 结构支持多进度信息管理，通过 MultiProgress 追踪每个 hashId 范围的进度，支持增量更新</text>
+
+  <text class="muted" x="40" y="490">Progress 结构是 Locator 的核心，支持分片处理和多进度信息管理</text>
+</svg>

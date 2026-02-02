@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 580" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">IsFasterThan() 方法：比较两个 Locator 的实现逻辑</text>
+  <text class="muted" x="40" y="66">IsFasterThan() 方法通过检查数据源、比较 MultiProgress 等步骤，判断两个 Locator 的关系，返回比较结果。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 检查数据源</text>
+  <text class="t" x="70" y="155">IsSameSrc()</text>
+  <text class="t" x="70" y="175">检查两个 Locator</text>
+  <text class="t" x="70" y="195">是否来自同一数据源</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. 比较 MultiProgress</text>
+  <text class="t" x="330" y="155">遍历每个 hashId</text>
+  <text class="t" x="330" y="175">比较进度</text>
+  <text class="t" x="330" y="195">（timestamp, concurrentIdx）</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 汇总结果</text>
+  <text class="t" x="590" y="155">汇总所有 hashId</text>
+  <text class="t" x="590" y="175">的比较结果</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="result" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. 返回结果</text>
+  <text class="t" x="850" y="155">LCR_INVALID</text>
+  <text class="t" x="850" y="175">LCR_SLOWER</text>
+  <text class="t" x="850" y="195">LCR_PARTIAL_FASTER</text>
+  <text class="t" x="850" y="215">LCR_FULLY_FASTER</text>
+
+  <rect class="box" x="40" y="215" width="900" height="300"/>
+  <text class="h" x="70" y="250">IsFasterThan() 方法的关键步骤</text>
+  <text class="t" x="70" y="275">1. 检查数据源：通过 IsSameSrc() 检查两个 Locator 是否来自同一数据源，如果数据源不同，返回 LCR_INVALID</text>
+  <text class="t" x="70" y="295">2. 比较 MultiProgress：遍历每个 hashId 的进度列表，比较每个 hashId 的进度（timestamp 和 concurrentIdx）</text>
+  <text class="t" x="70" y="315">3. 汇总结果：汇总所有 hashId 的比较结果，如果所有 hashId 都更快，返回 LCR_FULLY_FASTER；如果部分 hashId 更快，返回 LCR_PARTIAL_FASTER；如果所有 hashId 都更慢，返回 LCR_SLOWER</text>
+  <text class="t" x="70" y="335">4. 返回结果：返回比较结果，用于判断数据是否已处理</text>
+  <text class="t" x="70" y="355">关键设计：IsFasterThan() 方法支持多进度比较，通过 MultiProgress 支持分片处理，提高比较效率</text>
+  <text class="t" x="70" y="375">关键设计：IsFasterThan() 方法支持并发调用，保证线程安全，支持高并发场景</text>
+  <text class="t" x="70" y="395">关键设计：IsFasterThan() 方法支持快速路径，对于常见情况使用快速路径，提高比较效率</text>
+  <text class="t" x="70" y="415">关键设计：IsFasterThan() 方法支持遗留 Locator，通过 _isLegacyLocator 标识，支持兼容性处理</text>
+  <text class="t" x="70" y="435">关键设计：IsFasterThan() 方法支持 DocInfo 比较，可以直接比较 DocInfo，判断单个文档是否已处理</text>
+  <text class="t" x="70" y="455">关键设计：IsFasterThan() 方法支持范围比较，通过 GetLocatorRange() 获取 Locator 范围，支持范围查询</text>
+  <text class="t" x="70" y="475">关键设计：IsFasterThan() 方法是增量更新的核心，通过比较结果判断数据是否已处理，避免重复处理</text>
+  <text class="t" x="70" y="495">关键设计：IsFasterThan() 方法是数据一致性保证的核心，通过比较结果保证数据不重复、不丢失</text>
+
+  <text class="muted" x="40" y="530">IsFasterThan() 方法是 Locator 比较的核心，支持多进度比较和并发调用</text>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .cache{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .hit{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">查询缓存：缓存查询结果，提高查询性能</text>
+  <text class="muted" x="40" y="66">查询缓存通过缓存查询结果，减少重复查询，提高查询性能。</text>
+
+  <rect class="cache" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">查询请求</text>
+  <text class="t" x="70" y="155">接收查询</text>
+  <text class="t" x="70" y="175">生成缓存键</text>
+  <text class="t" x="70" y="195">检查缓存</text>
+  <text class="t" x="70" y="215">判断是否命中</text>
+  <text class="t" x="70" y="235">决定是否查询</text>
+  <text class="t" x="70" y="255">减少查询开销</text>
+
+  <path class="arrow" d="M 260 195 L 300 195"/>
+  <text class="t" x="270" y="190">检查</text>
+
+  <rect class="hit" x="320" y="95" width="220" height="200"/>
+  <text class="h" x="350" y="130">缓存命中</text>
+  <text class="t" x="350" y="155">返回缓存结果</text>
+  <text class="t" x="350" y="175">无需查询</text>
+  <text class="t" x="350" y="195">快速响应</text>
+  <text class="t" x="350" y="215">提高性能</text>
+  <text class="t" x="350" y="235">降低延迟</text>
+  <text class="t" x="350" y="255">减少资源消耗</text>
+
+  <path class="arrow" d="M 540 195 L 580 195"/>
+  <text class="t" x="550" y="190">未命中</text>
+
+  <rect class="cache" x="600" y="95" width="360" height="200"/>
+  <text class="h" x="630" y="130">执行查询</text>
+  <text class="t" x="630" y="155">执行实际查询</text>
+  <text class="t" x="630" y="175">获取查询结果</text>
+  <text class="t" x="630" y="195">缓存查询结果</text>
+  <text class="t" x="630" y="215">返回结果</text>
+  <text class="t" x="630" y="235">更新缓存</text>
+  <text class="t" x="630" y="255">提高下次命中率</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">查询缓存的关键机制</text>
+  <text class="t" x="70" y="375">1. 缓存键生成：通过查询条件生成唯一的缓存键，用于标识查询结果，支持精确匹配和模糊匹配</text>
+  <text class="t" x="70" y="395">2. 缓存命中：当缓存命中时，直接返回缓存结果，无需执行实际查询，快速响应，提高性能，降低延迟</text>
+  <text class="t" x="70" y="415">3. 缓存更新：当缓存未命中时，执行实际查询，获取查询结果，缓存查询结果，更新缓存，提高下次命中率</text>
+  <text class="t" x="70" y="435">关键设计：查询缓存通过缓存键生成、缓存命中、缓存更新等机制，全面减少重复查询，提高查询性能</text>
+  <text class="t" x="70" y="455">关键设计：查询缓存需要合理配置缓存大小和过期策略，平衡内存使用和缓存命中率</text>
+
+  <text class="muted" x="40" y="490">理解查询缓存，是优化查询性能的关键</text>
+</svg>

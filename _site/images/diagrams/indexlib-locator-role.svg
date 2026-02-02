@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .locator{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .role{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">Locator 的作用：记录数据处理位置，支持增量更新</text>
+  <text class="muted" x="40" y="66">Locator 是增量更新的核心，记录数据的位置信息，通过 IsFasterThan() 判断哪些数据已处理，避免重复处理。</text>
+
+  <rect class="locator" x="40" y="95" width="280" height="360"/>
+  <text class="h" x="70" y="130">Locator</text>
+  <text class="t" x="70" y="155">位置信息</text>
+  <text class="t" x="70" y="175">timestamp: 100</text>
+  <text class="t" x="70" y="195">concurrentIdx: 0</text>
+  <text class="t" x="70" y="215">hashId: 0</text>
+  <text class="t" x="70" y="235">sourceIdx: 0</text>
+  <text class="t" x="70" y="255">multiProgress: [...]</text>
+
+  <rect class="role" x="340" y="95" width="280" height="120"/>
+  <text class="h" x="370" y="130">1. 增量更新</text>
+  <text class="t" x="370" y="155">通过 IsFasterThan()</text>
+  <text class="t" x="370" y="175">判断哪些数据已处理</text>
+  <text class="t" x="370" y="195">避免重复处理</text>
+  <text class="t" x="370" y="215">实现增量更新</text>
+
+  <rect class="role" x="640" y="95" width="320" height="120"/>
+  <text class="h" x="670" y="130">2. 数据一致性</text>
+  <text class="t" x="670" y="155">保证数据不重复</text>
+  <text class="t" x="670" y="175">不丢失</text>
+  <text class="t" x="670" y="195">支持多数据源场景</text>
+  <text class="t" x="670" y="215">保证数据一致性</text>
+
+  <rect class="role" x="340" y="235" width="280" height="120"/>
+  <text class="h" x="370" y="270">3. 进度追踪</text>
+  <text class="t" x="370" y="295">记录每个 HashId</text>
+  <text class="t" x="370" y="315">的处理进度</text>
+  <text class="t" x="370" y="335">支持分片处理</text>
+  <text class="t" x="370" y="355">追踪处理进度</text>
+
+  <rect class="role" x="640" y="235" width="320" height="120"/>
+  <text class="h" x="670" y="270">4. 并发控制</text>
+  <text class="t" x="670" y="295">通过 concurrentIdx</text>
+  <text class="t" x="670" y="315">处理时间戳相同的情况</text>
+  <text class="t" x="670" y="335">支持并发处理</text>
+  <text class="t" x="670" y="355">保证顺序性</text>
+
+  <rect class="box" x="40" y="375" width="920" height="80"/>
+  <text class="h" x="70" y="410">Locator 的关键作用</text>
+  <text class="t" x="70" y="435">1. 增量更新：通过 IsFasterThan() 判断哪些数据已处理，避免重复处理，实现增量更新</text>
+  <text class="t" x="70" y="455">2. 数据一致性：保证数据不重复、不丢失，支持多数据源场景，保证数据一致性</text>
+
+  <text class="muted" x="40" y="470">Locator 是增量更新的核心，通过位置信息实现增量更新和数据一致性保证</text>
+</svg>

@@ -243,6 +243,19 @@
       
     </li>
   
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -586,6 +599,20 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib/" class=""><span class="nav__sub-title">IndexLib</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -619,7 +646,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="15"
+    data-total-pages="17"
     data-current-page="11"
   
 >
@@ -629,8 +656,8 @@
       
       
         
-        <section class="archive__year" data-year="2021">
-          <h2 id="2021" class="archive__subtitle">2021</h2>
+        <section class="archive__year" data-year="2022">
+          <h2 id="2022" class="archive__subtitle">2022</h2>
         
       
       
@@ -646,7 +673,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-004-smart-pointers/" rel="permalink">C++ 笔记：智能指针：unique_ptr 与 shared_ptr
+        <a href="/object-storage-note-003-read-after-write-list/" rel="permalink">对象存储笔记：一致性模型：read-after-write 与 list 一致性
 </a>
       
     </h2>
@@ -656,19 +683,19 @@
 
 
   
-	  6 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-04-18T00:00:00+08:00">April 18, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-02-01T00:00:00+08:00">February 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>智能指针是 C++11 引入的自动内存管理工具，通过 RAII 机制自动管理动态分配的内存，是现代 C++ 编程的必备技能。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>对象存储里最容易踩坑的是一句话：</p>
 
 </p>
     
@@ -694,7 +721,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-003-template-metaprogramming/" rel="permalink">C++ 笔记：模板元编程基础
+        <a href="/storage-basics-1-write-amplification/" rel="permalink">存储基础（1）：写放大
 </a>
       
     </h2>
@@ -704,19 +731,21 @@
 
 
   
-	  6 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-03-25T00:00:00+08:00">March 25, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>模板元编程（Template Metaprogramming, TMP）是在编译期进行计算和类型操作的强大技术，是 C++ 最复杂也最强大的特性之一。</p>
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>本文是「存储基础系列」第 1 篇：解释<strong>写放大（Write Amplification）</strong>是什么、为什么几乎所有存储系统都绕不开它，以及工程上如何衡量与优化。</p>
+</blockquote>
 
 </p>
     
@@ -742,7 +771,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" rel="permalink">C++ 笔记：移动语义与完美转发
+        <a href="/rocksdb-note-009-block-cache/" rel="permalink">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中
 </a>
       
     </h2>
@@ -752,19 +781,19 @@
 
 
   
-	  5 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-02-20T00:00:00+08:00">February 20, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>C++11 引入的移动语义和完美转发是现代 C++ 性能优化的关键特性，它们让 C++ 在保持性能优势的同时，代码更加现代化和高效。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇笔记更“贴近工程现场”地回答 RocksDB 的一个高频问题：<strong>Block Cache 到底缓存什么？怎么估算需要多大？为什么“命中率看起来不低”但延迟还是很差？</strong></p>
 
 </p>
     
@@ -790,62 +819,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-001-raii-resource-management/" rel="permalink">C++ 笔记：RAII 与资源管理
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  4 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-01-15T00:00:00+08:00">January 15, 2021</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>RAII（Resource Acquisition Is Initialization）是 C++ 的核心设计理念之一，它通过对象的生命周期自动管理资源，是现代 C++ 编程的基础。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-        
-          </section>
-        
-        <section class="archive__year" data-year="2019">
-          <h2 id="2019" class="archive__subtitle">2019</h2>
-        
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/cs/network/http-cache-and-cdn/" rel="permalink">网络（2）：HTTP 缓存与 CDN
+        <a href="/paper-notes/distributed/chubby/" rel="permalink">Chubby：A Lock Service（论文笔记）
 </a>
       
     </h2>
@@ -862,12 +836,64 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-08-01T00:00:00+08:00">August 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇用最短路径理解两件事：</p>
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems</p>
+</blockquote>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/paper-notes/storage/bigtable/" rel="permalink">Bigtable：A Distributed Storage System for Structured Data（论文笔记）
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><blockquote>
+  <p>论文：Bigtable: A Distributed Storage System for Structured Data（Chang et al.）</p>
+</blockquote>
 
 </p>
     
@@ -947,13 +973,6 @@
         <li><a href="/page13/">13</a></li>
       
     
-      
-        
-        
-        
-        <li><a href="/page14/">14</a></li>
-      
-    
 
     
     
@@ -961,7 +980,7 @@
     
 
     
-      <li><a href="/page15/">15</a></li>
+      <li><a href="/page17/">17</a></li>
     
 
     
@@ -1011,6 +1030,88 @@
     <script src="/assets/js/main.min.js"></script>
 <script src="/assets/js/sidebar-toggle.js"></script>
 <script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
 
 
 

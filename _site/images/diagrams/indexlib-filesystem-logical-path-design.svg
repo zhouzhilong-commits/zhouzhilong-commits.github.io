@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .design{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 540" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">逻辑路径设计：通过逻辑路径管理文件和版本</text>
+  <text class="muted" x="40" y="66">逻辑路径设计通过 Mount 操作映射物理路径到逻辑路径，支持版本管理和 Segment 管理。</text>
+
+  <rect class="design" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">路径映射</text>
+  <text class="t" x="70" y="155">MountVersion()</text>
+  <text class="t" x="70" y="175">MountDir()</text>
+  <text class="t" x="70" y="195">MountFile()</text>
+  <text class="t" x="70" y="215">将物理路径</text>
+  <text class="t" x="70" y="235">映射到逻辑路径</text>
+  <text class="t" x="70" y="255">支持版本管理</text>
+  <text class="t" x="70" y="275">支持 Segment 管理</text>
+
+  <rect class="design" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">版本管理</text>
+  <text class="t" x="310" y="155">不同版本的文件</text>
+  <text class="t" x="310" y="175">可以映射到</text>
+  <text class="t" x="310" y="195">相同的逻辑路径</text>
+  <text class="t" x="310" y="215">支持版本切换</text>
+  <text class="t" x="310" y="235">支持版本回滚</text>
+  <text class="t" x="310" y="255">透明访问</text>
+  <text class="t" x="310" y="275">无需关心版本</text>
+
+  <rect class="design" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">Segment 管理</text>
+  <text class="t" x="550" y="155">不同 Segment 的文件</text>
+  <text class="t" x="550" y="175">可以映射到</text>
+  <text class="t" x="550" y="195">不同的逻辑路径</text>
+  <text class="t" x="550" y="215">支持 Segment 查询</text>
+  <text class="t" x="550" y="235">支持 Segment 合并</text>
+  <text class="t" x="550" y="255">透明访问</text>
+  <text class="t" x="550" y="275">无需关心 Segment</text>
+
+  <rect class="design" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">路径隔离</text>
+  <text class="t" x="790" y="155">不同版本和</text>
+  <text class="t" x="790" y="175">Segment 的路径</text>
+  <text class="t" x="790" y="195">相互隔离</text>
+  <text class="t" x="790" y="215">避免冲突</text>
+  <text class="t" x="790" y="235">保证一致性</text>
+  <text class="t" x="790" y="255">支持并发访问</text>
+  <text class="t" x="790" y="275">提高安全性</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">逻辑路径设计的关键要点</text>
+  <text class="t" x="70" y="375">1. 路径映射：通过 MountVersion()、MountDir()、MountFile() 等操作将物理路径映射到逻辑路径，支持版本管理和 Segment 管理</text>
+  <text class="t" x="70" y="395">2. 版本管理：不同版本的文件可以映射到相同的逻辑路径，支持版本切换和版本回滚，用户无需关心版本细节</text>
+  <text class="t" x="70" y="415">3. Segment 管理：不同 Segment 的文件可以映射到不同的逻辑路径，支持 Segment 查询和 Segment 合并，用户无需关心 Segment 细节</text>
+  <text class="t" x="70" y="435">4. 路径隔离：不同版本和 Segment 的路径相互隔离，避免冲突，保证一致性，支持并发访问，提高安全性</text>
+  <text class="t" x="70" y="455">关键设计：逻辑路径设计通过路径映射、版本管理、Segment 管理、路径隔离等机制，提供灵活的文件管理能力</text>
+  <text class="t" x="70" y="475">关键设计：逻辑路径设计支持透明访问，用户通过逻辑路径访问文件，无需关心物理路径、版本、Segment 等细节</text>
+
+  <text class="muted" x="40" y="490">理解逻辑路径设计，是掌握文件系统抽象的关键</text>
+</svg>

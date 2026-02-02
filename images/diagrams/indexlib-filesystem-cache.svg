@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .cache{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">文件系统缓存：通过缓存提高文件访问性能</text>
+  <text class="muted" x="40" y="66">文件系统缓存通过文件缓存、元数据缓存、预取缓存等机制提高文件访问性能。</text>
+
+  <rect class="cache" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">文件缓存</text>
+  <text class="t" x="70" y="155">缓存文件内容</text>
+  <text class="t" x="70" y="175">减少磁盘读取</text>
+  <text class="t" x="70" y="195">提高读取性能</text>
+  <text class="t" x="70" y="215">LRU 策略</text>
+  <text class="t" x="70" y="235">内存管理</text>
+  <text class="t" x="70" y="255">缓存命中率高</text>
+  <text class="t" x="70" y="275">性能提升明显</text>
+
+  <rect class="cache" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">元数据缓存</text>
+  <text class="t" x="310" y="155">缓存文件元数据</text>
+  <text class="t" x="310" y="175">减少元数据查询</text>
+  <text class="t" x="310" y="195">提高查询性能</text>
+  <text class="t" x="310" y="215">文件大小、时间等</text>
+  <text class="t" x="310" y="235">快速访问</text>
+  <text class="t" x="310" y="255">减少 IO 操作</text>
+  <text class="t" x="310" y="275">性能提升明显</text>
+
+  <rect class="cache" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">预取缓存</text>
+  <text class="t" x="550" y="155">预取文件数据</text>
+  <text class="t" x="550" y="175">提高读取性能</text>
+  <text class="t" x="550" y="195">减少读取延迟</text>
+  <text class="t" x="550" y="215">预测访问模式</text>
+  <text class="t" x="550" y="235">提前加载数据</text>
+  <text class="t" x="550" y="255">提高命中率</text>
+  <text class="t" x="550" y="275">性能提升明显</text>
+
+  <rect class="cache" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">LRU 缓存</text>
+  <text class="t" x="790" y="155">最近最少使用</text>
+  <text class="t" x="790" y="175">淘汰最久未使用</text>
+  <text class="t" x="790" y="195">的缓存</text>
+  <text class="t" x="790" y="215">内存管理</text>
+  <text class="t" x="790" y="235">缓存控制</text>
+  <text class="t" x="790" y="255">性能优化</text>
+  <text class="t" x="790" y="275">提高利用率</text>
+
+  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <text class="h" x="70" y="350">文件系统缓存的关键机制</text>
+  <text class="t" x="70" y="375">1. 文件缓存：缓存文件内容，减少磁盘读取，提高读取性能，使用 LRU 策略管理缓存</text>
+  <text class="t" x="70" y="395">2. 元数据缓存：缓存文件元数据，减少元数据查询，提高查询性能，快速访问文件信息</text>
+  <text class="t" x="70" y="415">3. 预取缓存：预取文件数据，提高读取性能，减少读取延迟，预测访问模式</text>
+
+  <text class="muted" x="40" y="440">文件系统缓存是性能优化的关键，通过缓存提高文件访问性能</text>
+</svg>

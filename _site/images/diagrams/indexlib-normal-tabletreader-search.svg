@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">NormalTabletReader::Search() 流程：标准表查询的实现</text>
+  <text class="muted" x="40" y="66">Search() 方法实现标准表的查询，包括解析查询、获取 IndexReader、遍历 Segment、并行查询、过滤删除文档、合并结果等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <text class="h" x="70" y="130">1. 解析查询</text>
+  <text class="t" x="70" y="155">JSON → 查询对象</text>
+
+  <path class="arrow" d="M 200 145 L 240 145"/>
+
+  <rect class="step" x="260" y="95" width="200" height="100"/>
+  <text class="h" x="290" y="130">2. 获取 IndexReader</text>
+  <text class="t" x="290" y="155">MultiFieldIndexReader</text>
+  <text class="t" x="290" y="175">DeletionMapReader</text>
+  <text class="t" x="290" y="195">等</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+
+  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="130">3. 遍历 Segment</text>
+  <text class="t" x="550" y="155">获取所有已构建</text>
+  <text class="t" x="550" y="175">的 Segment</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+
+  <rect class="step" x="760" y="95" width="160" height="100"/>
+  <text class="h" x="790" y="130">4. 并行查询</text>
+  <text class="t" x="790" y="155">对多个 Segment</text>
+  <text class="t" x="790" y="175">进行查询</text>
+
+  <path class="arrow" d="M 790 195 L 790 225"/>
+
+  <rect class="step" x="40" y="235" width="200" height="100"/>
+  <text class="h" x="70" y="270">5. 过滤删除文档</text>
+  <text class="t" x="70" y="295">通过 DeletionMapReader</text>
+  <text class="t" x="70" y="315">过滤已删除文档</text>
+
+  <path class="arrow" d="M 240 285 L 280 285"/>
+
+  <rect class="step" x="300" y="235" width="200" height="100"/>
+  <text class="h" x="330" y="270">6. 合并结果</text>
+  <text class="t" x="330" y="295">去重、排序</text>
+
+  <path class="arrow" d="M 500 285 L 540 285"/>
+
+  <rect class="result" x="560" y="235" width="160" height="100"/>
+  <text class="h" x="590" y="270">7. 返回结果</text>
+  <text class="t" x="590" y="295">JSON 格式</text>
+
+  <rect class="box" x="740" y="235" width="180" height="220"/>
+  <text class="h" x="770" y="270">Search 的关键点</text>
+  <text class="t" x="770" y="295">1. 解析查询：将 JSON 查询解析为内部查询对象</text>
+  <text class="t" x="770" y="315">2. 获取 IndexReader：获取 MultiFieldIndexReader、DeletionMapReader 等</text>
+  <text class="t" x="770" y="335">3. 遍历 Segment：遍历所有已构建的 Segment</text>
+  <text class="t" x="770" y="355">4. 并行查询：对多个 Segment 进行并行查询</text>
+  <text class="t" x="770" y="375">5. 过滤删除文档：通过 DeletionMapReader 过滤已删除文档</text>
+  <text class="t" x="770" y="395">6. 合并结果：合并各 Segment 的查询结果</text>
+  <text class="t" x="770" y="415">7. 返回结果：序列化为 JSON 格式返回</text>
+  <text class="t" x="770" y="435">关键设计：支持全文检索、属性查询、主键查询等多种查询类型</text>
+  <text class="t" x="770" y="455">关键设计：通过 DeletionMapReader 保证查询结果的正确性</text>
+
+  <text class="muted" x="40" y="450">Search 流程是标准表查询的核心，需要高效地处理各种查询类型</text>
+</svg>

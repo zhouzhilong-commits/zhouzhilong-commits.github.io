@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .normal{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .kv{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .kkv{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">索引类型对比：Normal、KV、KKV 的数据模型和查询方式</text>
+  <text class="muted" x="40" y="66">三种索引类型有不同的数据模型和查询方式，适用于不同的应用场景。</text>
+
+  <rect class="normal" x="40" y="95" width="280" height="200"/>
+  <text class="h" x="70" y="130">NormalTable</text>
+  <text class="t" x="70" y="155">数据模型：</text>
+  <text class="t" x="70" y="175">文档（Document）</text>
+  <text class="t" x="70" y="195">包含多个字段</text>
+  <text class="t" x="70" y="215">查询方式：</text>
+  <text class="t" x="70" y="235">- 全文检索（倒排索引）</text>
+  <text class="t" x="70" y="255">- 属性查询（正排索引）</text>
+  <text class="t" x="70" y="275">- 主键查询（主键索引）</text>
+  <text class="t" x="70" y="295">- 复合查询</text>
+
+  <rect class="kv" x="340" y="95" width="280" height="200"/>
+  <text class="h" x="370" y="130">KVTable</text>
+  <text class="t" x="370" y="155">数据模型：</text>
+  <text class="t" x="370" y="175">键值对（Key-Value）</text>
+  <text class="t" x="370" y="195">主键 + 值</text>
+  <text class="t" x="370" y="215">查询方式：</text>
+  <text class="t" x="370" y="235">- 主键查询</text>
+  <text class="t" x="370" y="255">- 批量主键查询</text>
+  <text class="t" x="370" y="275">- 属性查询</text>
+  <text class="t" x="370" y="295">查询简单高效</text>
+
+  <rect class="kkv" x="640" y="95" width="320" height="200"/>
+  <text class="h" x="670" y="130">KKVTable</text>
+  <text class="t" x="670" y="155">数据模型：</text>
+  <text class="t" x="670" y="175">键键值（Key-Key-Value）</text>
+  <text class="t" x="670" y="195">主键 + 排序键 + 值</text>
+  <text class="t" x="670" y="215">查询方式：</text>
+  <text class="t" x="670" y="235">- 主键查询（所有值）</text>
+  <text class="t" x="670" y="255">- 主键+排序键查询</text>
+  <text class="t" x="670" y="275">- 范围查询</text>
+  <text class="t" x="670" y="295">- 属性查询</text>
+
+  <rect class="box" x="40" y="315" width="920" height="200"/>
+  <text class="h" x="70" y="350">索引类型对比的关键差异</text>
+  <text class="t" x="70" y="375">1. 数据模型：NormalTable 使用文档模型，KVTable 使用键值对模型，KKVTable 使用键键值模型</text>
+  <text class="t" x="70" y="395">2. 查询方式：NormalTable 支持全文检索、属性查询、主键查询等多种查询方式，KVTable 主要支持主键查询，KKVTable 支持主键+排序键查询</text>
+  <text class="t" x="70" y="415">3. 索引结构：NormalTable 需要构建倒排索引、正排索引、主键索引等多种索引，KVTable 主要构建主键索引，KKVTable 构建主键和排序键索引</text>
+  <text class="t" x="70" y="435">4. 查询性能：NormalTable 全文检索性能高，KVTable 主键查询性能最高，KKVTable 主键+排序键查询性能高</text>
+  <text class="t" x="70" y="455">5. 存储空间：NormalTable 存储空间较大，KVTable 存储空间较小，KKVTable 存储空间中等</text>
+  <text class="t" x="70" y="475">6. 构建性能：NormalTable 构建时间较长，KVTable 构建时间最短，KKVTable 构建时间中等</text>
+  <text class="t" x="70" y="495">关键设计：不同的索引类型适用于不同的应用场景，需要根据实际需求选择合适的索引类型</text>
+
+  <text class="muted" x="40" y="530">理解索引类型的差异，是选择合适的索引类型的关键</text>
+</svg>

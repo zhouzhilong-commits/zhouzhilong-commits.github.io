@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .arrow{stroke:#1976d2;stroke-width:2;fill:none;marker-end:url(#arrowhead)}
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1976d2"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">IndexMergeOperation：执行实际的合并工作</text>
+  <text class="muted" x="40" y="66">IndexMergeOperation 负责执行实际的 Segment 合并工作，包括读取源 Segment、合并索引、合并文档、写入目标 Segment 等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="120"/>
+  <text class="h" x="70" y="125">1. 读取源 Segment</text>
+  <text class="t" x="70" y="150">- 读取所有源 Segment</text>
+  <text class="t" x="70" y="170">- 加载索引数据</text>
+  <text class="t" x="70" y="190">- 加载文档数据</text>
+
+  <line class="arrow" x1="240" y1="155" x2="280" y2="155"/>
+
+  <rect class="step" x="280" y="95" width="200" height="120"/>
+  <text class="h" x="310" y="125">2. 合并索引</text>
+  <text class="t" x="310" y="150">- 合并倒排索引</text>
+  <text class="t" x="310" y="170">- 合并正排索引</text>
+  <text class="t" x="310" y="190">- 合并主键索引</text>
+
+  <line class="arrow" x1="480" y1="155" x2="520" y2="155"/>
+
+  <rect class="step" x="520" y="95" width="200" height="120"/>
+  <text class="h" x="550" y="125">3. 合并文档</text>
+  <text class="t" x="550" y="150">- 文档去重</text>
+  <text class="t" x="550" y="170">- 文档排序</text>
+  <text class="t" x="550" y="190">- DocId 映射</text>
+
+  <line class="arrow" x1="720" y1="155" x2="760" y2="155"/>
+
+  <rect class="step" x="760" y="95" width="200" height="120"/>
+  <text class="h" x="790" y="125">4. 写入目标 Segment</text>
+  <text class="t" x="790" y="150">- 写入索引数据</text>
+  <text class="t" x="790" y="170">- 写入文档数据</text>
+  <text class="t" x="790" y="190">- 更新元数据</text>
+
+  <rect class="box" x="40" y="240" width="920" height="320"/>
+  <text class="h" x="70" y="275">合并操作的关键步骤</text>
+  
+  <text class="t" x="70" y="305">1. 读取源 Segment：读取所有源 Segment 的数据，包括索引数据和文档数据，支持并行读取以提高效率</text>
+  <text class="t" x="70" y="330">2. 合并索引：合并倒排索引、正排索引、主键索引等，需要处理索引结构的合并和去重</text>
+  <text class="t" x="70" y="355">3. 合并文档：合并文档数据，包括文档去重、文档排序、DocId 映射等，保证文档的唯一性和顺序</text>
+  <text class="t" x="70" y="380">4. 写入目标 Segment：将合并后的数据写入目标 Segment，包括索引数据和文档数据，更新 Segment 元数据</text>
+  <text class="t" x="70" y="405">5. 更新元数据：更新 Segment 的元数据信息，包括文档数、索引大小、创建时间等</text>
+  
+  <text class="h" x="70" y="440">合并操作的性能优化</text>
+  <text class="t" x="70" y="465">- 并行读取：多个源 Segment 可以并行读取，提高读取效率</text>
+  <text class="t" x="70" y="490">- 增量合并：只合并变更的数据，减少合并工作量</text>
+  <text class="t" x="70" y="515">- 资源控制：控制合并时的 CPU、内存、IO 资源使用，避免影响查询性能</text>
+  <text class="t" x="70" y="540">- 错误处理：如果合并失败，可以回滚，不影响已有版本</text>
+
+  <text class="muted" x="40" y="575">理解 IndexMergeOperation，是掌握 Segment 合并执行机制的关键</text>
+</svg>

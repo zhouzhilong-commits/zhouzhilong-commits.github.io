@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .optimization{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">文件系统 IO 优化：批量 IO、异步 IO 等优化策略</text>
+  <text class="muted" x="40" y="66">文件系统 IO 优化通过批量 IO、异步 IO、预取、IO 合并等策略提高 IO 性能。</text>
+
+  <rect class="optimization" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">批量 IO</text>
+  <text class="t" x="70" y="155">批量读取和写入</text>
+  <text class="t" x="70" y="175">文件</text>
+  <text class="t" x="70" y="195">减少 IO 次数</text>
+  <text class="t" x="70" y="215">提高 IO 效率</text>
+  <text class="t" x="70" y="235">减少系统调用</text>
+  <text class="t" x="70" y="255">性能提升明显</text>
+  <text class="t" x="70" y="275">适用于批量操作</text>
+
+  <rect class="optimization" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">异步 IO</text>
+  <text class="t" x="310" y="155">异步读取和写入</text>
+  <text class="t" x="310" y="175">文件</text>
+  <text class="t" x="310" y="195">提高并发度</text>
+  <text class="t" x="310" y="215">减少阻塞</text>
+  <text class="t" x="310" y="235">性能提升明显</text>
+  <text class="t" x="310" y="255">适用于并发场景</text>
+  <text class="t" x="310" y="275">提高吞吐量</text>
+
+  <rect class="optimization" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">预取</text>
+  <text class="t" x="550" y="155">预取文件数据</text>
+  <text class="t" x="550" y="175">减少读取延迟</text>
+  <text class="t" x="550" y="195">提高读取性能</text>
+  <text class="t" x="550" y="215">预测访问模式</text>
+  <text class="t" x="550" y="235">提前加载数据</text>
+  <text class="t" x="550" y="255">性能提升明显</text>
+  <text class="t" x="550" y="275">适用于顺序访问</text>
+
+  <rect class="optimization" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">IO 合并</text>
+  <text class="t" x="790" y="155">合并多个 IO</text>
+  <text class="t" x="790" y="175">操作</text>
+  <text class="t" x="790" y="195">减少 IO 开销</text>
+  <text class="t" x="790" y="215">提高 IO 效率</text>
+  <text class="t" x="790" y="235">减少系统调用</text>
+  <text class="t" x="790" y="255">性能提升明显</text>
+  <text class="t" x="790" y="275">适用于连续操作</text>
+
+  <rect class="box" x="40" y="315" width="920" height="110"/>
+  <text class="h" x="70" y="350">文件系统 IO 优化的关键策略</text>
+  <text class="t" x="70" y="375">1. 批量 IO：批量读取和写入文件，减少 IO 次数，提高 IO 效率，减少系统调用</text>
+  <text class="t" x="70" y="395">2. 异步 IO：异步读取和写入文件，提高并发度，减少阻塞，提高吞吐量</text>
+
+  <text class="muted" x="40" y="440">文件系统 IO 优化是性能优化的关键，通过多种策略提高 IO 性能</text>
+</svg>

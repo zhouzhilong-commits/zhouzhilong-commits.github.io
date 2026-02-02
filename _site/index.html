@@ -241,6 +241,19 @@
       
     </li>
   
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -584,6 +597,20 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib/" class=""><span class="nav__sub-title">IndexLib</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -617,7 +644,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="15"
+    data-total-pages="17"
     data-current-page="1"
   
 >
@@ -627,8 +654,8 @@
       
       
         
-        <section class="archive__year" data-year="2023">
-          <h2 id="2023" class="archive__subtitle">2023</h2>
+        <section class="archive__year" data-year="2025">
+          <h2 id="2025" class="archive__subtitle">2025</h2>
         
       
       
@@ -644,7 +671,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/storage-note-036-nvme/" rel="permalink">存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端
+        <a href="/indexlib-10-filesystem-storage/" rel="permalink">IndexLib（10）：文件系统抽象与存储格式
 </a>
       
     </h2>
@@ -654,19 +681,19 @@
 
 
   
-	  少于 1 分钟阅读
+	  5 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-04-01T00:00:00+08:00">April 01, 2023</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-10T00:00:00+08:00">July 10, 2025</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 </p>
     
@@ -692,7 +719,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-2-sst-and-read-path/" rel="permalink">RocksDB（2）：SST 结构与读路径（Table/Block/Index）
+        <a href="/indexlib-9-locator-consistency/" rel="permalink">IndexLib（9）：Locator 与数据一致性
 </a>
       
     </h2>
@@ -702,19 +729,19 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-01-01T00:00:00+08:00">January 01, 2023</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-09T00:00:00+08:00">July 09, 2025</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这一篇聚焦 RocksDB 的 <strong>SST（Sorted String Table）</strong>：一个 SST 里大致有什么，以及一次点查通常会经历哪些步骤。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在上一篇文章中，我们深入了解了索引类型的实现。本文将继续深入，详细解析 Locator 的实现细节和数据一致性保证机制，这是理解 IndexLib 如何保证数据不重复、不丢失的关键。</p>
 
 </p>
     
@@ -740,7 +767,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/object-storage-2-ec-vs-replication/" rel="permalink">对象存储（2）：纠删码（EC）与副本（Replication）取舍
+        <a href="/indexlib-8-index-types/" rel="permalink">IndexLib（8）：索引类型：Normal、KV、KKV
 </a>
       
     </h2>
@@ -750,19 +777,19 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-01-01T00:00:00+08:00">January 01, 2023</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-08T00:00:00+08:00">July 08, 2025</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这一篇聊对象存储里最核心的工程取舍之一：<strong>纠删码（Erasure Coding, EC）</strong> vs <strong>多副本（Replication）</strong>。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在上一篇文章中，我们深入了解了内存管理与资源控制的机制。本文将继续深入，详细解析索引类型的实现，这是理解 IndexLib 如何支持不同类型索引的关键。</p>
 
 </p>
     
@@ -788,7 +815,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-2-raft-intuition/" rel="permalink">一致性（2）：Raft 直觉（日志复制与提交）
+        <a href="/indexlib-7-memory-management/" rel="permalink">IndexLib（7）：内存管理与资源控制
 </a>
       
     </h2>
@@ -798,19 +825,19 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-01-01T00:00:00+08:00">January 01, 2023</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-07T00:00:00+08:00">July 07, 2025</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇用“直觉模型”理解 Raft：你不需要先记住所有 RPC 和状态机细节，只需要把 <strong>日志（log）</strong> 和 <strong>提交（commit）</strong> 两个核心概念抓牢。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。</p>
 
 </p>
     
@@ -822,13 +849,6 @@
 
     
       
-      
-        
-          </section>
-        
-        <section class="archive__year" data-year="2022">
-          <h2 id="2022" class="archive__subtitle">2022</h2>
-        
       
       
 
@@ -843,7 +863,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/storage-note-022-merge/" rel="permalink">存储笔记：写入合并（merge）与写扩散：从日志到段
+        <a href="/indexlib-6-segment-merge/" rel="permalink">IndexLib（6）：Segment 合并策略
 </a>
       
     </h2>
@@ -853,19 +873,19 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-12-01T00:00:00+08:00">December 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-06T00:00:00+08:00">July 06, 2025</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「存储笔记：写入合并（merge）与写扩散：从日志到段」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在上一篇文章中，我们深入了解了版本管理和增量更新的机制。本文将继续深入，详细解析 Segment 合并策略的实现，这是理解 IndexLib 如何优化索引结构和提高查询性能的关键。</p>
 
 </p>
     
@@ -928,7 +948,7 @@
     
 
     
-      <li><a href="/page15/">15</a></li>
+      <li><a href="/page17/">17</a></li>
     
 
     
@@ -978,6 +998,88 @@
     <script src="/assets/js/main.min.js"></script>
 <script src="/assets/js/sidebar-toggle.js"></script>
 <script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
 
 
 

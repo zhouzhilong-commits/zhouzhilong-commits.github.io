@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Segment 合并流程：从合并策略到合并执行的完整过程</text>
+  <text class="muted" x="40" y="66">Segment 合并流程包括检查合并条件、创建合并计划、提交合并任务、执行合并操作、创建新版本、提交新版本等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. 检查合并条件</text>
+  <text class="t" x="70" y="155">Segment 数量</text>
+  <text class="t" x="70" y="175">大小等条件</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="130">2. 创建合并计划</text>
+  <text class="t" x="310" y="155">调用 MergeStrategy</text>
+  <text class="t" x="310" y="175">创建 MergePlan</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+
+  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="130">3. 提交合并任务</text>
+  <text class="t" x="550" y="155">提交到</text>
+  <text class="t" x="550" y="175">MergeController</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+
+  <rect class="step" x="760" y="95" width="200" height="100"/>
+  <text class="h" x="790" y="130">4. 执行合并操作</text>
+  <text class="t" x="790" y="155">执行 IndexMergeOperation</text>
+  <text class="t" x="790" y="175">合并 Segment</text>
+
+  <path class="arrow" d="M 790 195 L 790 225"/>
+
+  <rect class="step" x="40" y="235" width="200" height="100"/>
+  <text class="h" x="70" y="270">5. 创建新版本</text>
+  <text class="t" x="70" y="295">合并完成后</text>
+  <text class="t" x="70" y="315">创建新版本</text>
+
+  <path class="arrow" d="M 240 285 L 280 285"/>
+
+  <rect class="result" x="300" y="235" width="200" height="100"/>
+  <text class="h" x="330" y="270">6. 提交新版本</text>
+  <text class="t" x="330" y="295">提交新版本</text>
+  <text class="t" x="330" y="315">更新 TabletData</text>
+
+  <rect class="box" x="520" y="235" width="440" height="220"/>
+  <text class="h" x="550" y="270">Segment 合并流程的关键步骤</text>
+  <text class="t" x="550" y="295">1. 检查合并条件：判断是否需要合并（Segment 数量、大小等）</text>
+  <text class="t" x="550" y="315">2. 创建合并计划：调用 MergeStrategy 创建合并计划，决定哪些 Segment 参与合并</text>
+  <text class="t" x="550" y="335">3. 提交合并任务：将合并任务提交到 MergeController，管理合并任务的执行</text>
+  <text class="t" x="550" y="355">4. 执行合并操作：执行 IndexMergeOperation，合并 Segment，包括读取源 Segment、合并索引、写入目标 Segment</text>
+  <text class="t" x="550" y="375">5. 创建新版本：合并完成后创建新版本，包含合并后的 Segment 列表</text>
+  <text class="t" x="550" y="395">6. 提交新版本：提交新版本，更新 TabletData，支持查询</text>
+  <text class="t" x="550" y="415">关键设计：合并流程支持在线合并和离线合并，灵活适应不同场景</text>
+  <text class="t" x="550" y="435">关键设计：合并流程支持并行合并，多个 Segment 可以并行合并，提高合并效率</text>
+  <text class="t" x="550" y="455">关键设计：合并流程支持资源控制，控制合并时的 CPU、内存、IO 资源使用，避免影响查询性能</text>
+
+  <text class="muted" x="40" y="450">Segment 合并流程是索引优化的核心，需要高效地执行合并操作</text>
+</svg>

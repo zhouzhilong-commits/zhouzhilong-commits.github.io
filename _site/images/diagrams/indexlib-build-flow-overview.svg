@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .doc{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .mem{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .disk{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">索引构建流程概览：Build、Flush、Seal、Commit 的关系</text>
+  <text class="muted" x="40" y="66">索引构建从文档输入到版本提交，经过四个核心阶段，每个阶段都有特定的职责和实现机制。</text>
+
+  <rect class="doc" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">文档批次</text>
+  <text class="t" x="70" y="155">IDocumentBatch</text>
+  <text class="t" x="70" y="175">文档列表</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+  <text class="t" x="230" y="140">Build</text>
+
+  <rect class="mem" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="130">MemSegment</text>
+  <text class="t" x="310" y="155">内存索引</text>
+  <text class="t" x="310" y="175">ST_BUILDING</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+  <text class="t" x="470" y="140">Flush</text>
+
+  <rect class="disk" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="130">DiskSegment</text>
+  <text class="t" x="550" y="155">磁盘索引</text>
+  <text class="t" x="550" y="175">ST_BUILT</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+  <text class="t" x="710" y="140">Seal</text>
+
+  <rect class="disk" x="760" y="95" width="180" height="100"/>
+  <text class="h" x="790" y="130">Sealed Segment</text>
+  <text class="t" x="790" y="155">只读 Segment</text>
+  <text class="t" x="790" y="175">准备合并</text>
+
+  <path class="arrow" d="M 790 195 L 790 225"/>
+  <text class="t" x="750" y="215">Commit</text>
+
+  <rect class="version" x="40" y="235" width="900" height="180"/>
+  <text class="h" x="70" y="270">版本信息</text>
+  <text class="t" x="70" y="295">Version：包含 Segment 列表、Locator、VersionId 等</text>
+  <text class="t" x="70" y="315">持久化到磁盘，通过 Fence 保证原子性</text>
+  <text class="t" x="70" y="335">更新 TabletData，支持查询</text>
+  <text class="t" x="70" y="355">关键设计：Build 持续进行，Flush 异步执行，Seal 准备合并，Commit 提交版本</text>
+  <text class="t" x="70" y="375">关键设计：各阶段职责清晰，支持实时写入和批量构建两种场景</text>
+  <text class="t" x="70" y="395">关键设计：通过内存控制和异步机制，提高构建吞吐量，保证数据一致性</text>
+
+  <text class="muted" x="40" y="430">理解各阶段的关系和职责，是掌握索引构建流程的基础</text>
+</svg>

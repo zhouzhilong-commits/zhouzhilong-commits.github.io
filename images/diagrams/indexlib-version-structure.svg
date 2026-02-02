@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .version{fill:#e3f2fd;stroke:#1976d2;stroke-width:3;rx:12}
+      .field{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Version 的结构：包含 VersionId、Segments、Locator 等关键信息</text>
+  <text class="muted" x="40" y="66">Version 记录索引的版本信息，支持增量更新和 Schema 演进。</text>
+
+  <rect class="version" x="40" y="95" width="920" height="270"/>
+  <text class="h" x="70" y="130">Version</text>
+
+  <rect class="field" x="70" y="150" width="180" height="80"/>
+  <text class="h" x="90" y="180">VersionId</text>
+  <text class="t" x="90" y="205">版本号：100</text>
+  <text class="t" x="90" y="225">单调递增</text>
+
+  <rect class="field" x="270" y="150" width="240" height="80"/>
+  <text class="h" x="290" y="180">Segments</text>
+  <text class="t" x="290" y="205">Segment 1 (SchemaId: 1)</text>
+  <text class="t" x="290" y="225">Segment 2 (SchemaId: 1)</text>
+
+  <rect class="field" x="530" y="150" width="200" height="80"/>
+  <text class="h" x="550" y="180">Locator</text>
+  <text class="t" x="550" y="205">timestamp: 1000</text>
+  <text class="t" x="550" y="225">hashId: 0, 1, 2</text>
+
+  <rect class="field" x="750" y="150" width="190" height="80"/>
+  <text class="h" x="770" y="180">其他信息</text>
+  <text class="t" x="770" y="205">Timestamp</text>
+  <text class="t" x="770" y="225">Sealed: false</text>
+
+  <rect class="box" x="70" y="250" width="870" height="100"/>
+  <text class="h" x="100" y="285">关键操作</text>
+  <text class="t" x="100" y="310">AddSegment(segmentId, schemaId) - 添加 Segment，每个 Segment 记录自己的 SchemaId，支持 Schema 演进</text>
+  <text class="t" x="100" y="330">IncVersionId() - 版本号递增，每次 Commit 时调用，保证版本顺序</text>
+  <text class="t" x="100" y="350">SetLocator() - 更新 Locator，记录最新的数据处理位置，用于增量更新</text>
+</svg>

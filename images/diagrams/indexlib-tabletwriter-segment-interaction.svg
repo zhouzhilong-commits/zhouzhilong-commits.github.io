@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">TabletWriter 与 Segment 交互：从 Open 到 Build 的完整流程</text>
+  <text class="muted" x="40" y="66">TabletWriter 管理 MemSegment 的创建、构建、转储，与 TabletData 协同工作。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. Open</text>
+  <text class="t" x="70" y="155">初始化 TabletData</text>
+  <text class="t" x="70" y="175">创建 MemSegment</text>
+  <text class="t" x="70" y="195">设置 baseDocId</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="270" y="95" width="180" height="100"/>
+  <text class="h" x="300" y="130">2. Build</text>
+  <text class="t" x="300" y="155">接收文档批次</text>
+  <text class="t" x="300" y="175">写入 MemSegment</text>
+  <text class="t" x="300" y="195">分配 DocId</text>
+
+  <path class="arrow" d="M 450 145 L 490 145"/>
+
+  <rect class="step" x="500" y="95" width="180" height="100"/>
+  <text class="h" x="530" y="130">3. NeedDump</text>
+  <text class="t" x="530" y="155">检查转储条件</text>
+  <text class="t" x="530" y="175">触发转储</text>
+
+  <path class="arrow" d="M 680 145 L 720 145"/>
+
+  <rect class="step" x="730" y="95" width="230" height="100"/>
+  <text class="h" x="760" y="130">4. CreateSegmentDumper</text>
+  <text class="t" x="760" y="155">创建转储器</text>
+  <text class="t" x="760" y="175">准备转储任务</text>
+
+  <rect class="box" x="40" y="215" width="920" height="310"/>
+  <text class="h" x="70" y="250">详细交互流程</text>
+  <text class="t" x="70" y="275">1. Open：TabletWriter::Open() 初始化 TabletData，通过 ITabletFactory 创建 MemSegment，</text>
+  <text class="t" x="90" y="295">计算 baseDocId（前面所有 Segment 的 docCount 之和），设置 _normalBuildingSegment 和 _buildingSegmentBaseDocId</text>
+  <text class="t" x="70" y="315">2. Build：TabletWriter::Build() 接收文档批次，调用 DispatchDocIds() 为文档分配局部 DocId，</text>
+  <text class="t" x="90" y="335">调用 MemSegment::Build() 将文档写入各个 Indexer，更新 SegmentInfo 的 docCount 和 Locator</text>
+  <text class="t" x="70" y="355">3. NeedDump：定期检查 MemSegment::NeedDump()，判断是否达到转储条件（内存使用、文档数量等），</text>
+  <text class="t" x="90" y="375">返回 true 时触发转储流程</text>
+  <text class="t" x="70" y="395">4. CreateSegmentDumper：TabletWriter::CreateSegmentDumper() 创建 SegmentDumper，</text>
+  <text class="t" x="90" y="415">准备转储任务，MemSegment 状态变为 ST_DUMPING</text>
+  <text class="t" x="70" y="435">5. Dump：异步执行转储，将 MemSegment 的索引数据写入磁盘，创建 DiskSegment，</text>
+  <text class="t" x="90" y="455">更新 TabletData 的 Segment 列表</text>
+  <text class="t" x="70" y="475">6. Reopen：转储完成后，TabletWriter 可以创建新的 MemSegment 继续接收写入，</text>
+  <text class="t" x="90" y="495">或者通过 Reopen() 更新 TabletData，加载新的 DiskSegment</text>
+  <text class="t" x="70" y="515">关键设计：转储是异步的，TabletWriter 可以在转储过程中创建新的 MemSegment 继续接收写入</text>
+</svg>

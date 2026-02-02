@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .mem{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .disk{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Segment 类型：MemSegment 和 DiskSegment 的关系</text>
+  <text class="muted" x="40" y="66">MemSegment 用于实时写入，DiskSegment 用于持久化存储和查询。</text>
+
+  <rect class="mem" x="40" y="95" width="420" height="250"/>
+  <text class="h" x="70" y="130">MemSegment（内存段）</text>
+  <text class="t" x="70" y="155">状态：ST_BUILDING / ST_DUMPING</text>
+  <text class="t" x="70" y="180">特点：</text>
+  <text class="t" x="90" y="205">- 在内存中构建</text>
+  <text class="t" x="90" y="225">- 支持实时写入</text>
+  <text class="t" x="90" y="245">- 低延迟写入</text>
+  <text class="t" x="90" y="265">- 转储到磁盘</text>
+  <text class="t" x="70" y="290">用途：接收实时写入的文档</text>
+  <text class="t" x="70" y="310">接口：Build(), NeedDump(), CreateSegmentDumpItems()</text>
+
+  <path class="arrow" d="M 460 220 L 540 220"/>
+  <text class="muted" x="490" y="215" text-anchor="middle">Dump</text>
+
+  <rect class="disk" x="550" y="95" width="410" height="250"/>
+  <text class="h" x="580" y="130">DiskSegment（磁盘段）</text>
+  <text class="t" x="580" y="155">状态：ST_BUILT</text>
+  <text class="t" x="580" y="180">特点：</text>
+  <text class="t" x="600" y="205">- 存储在磁盘上</text>
+  <text class="t" x="600" y="225">- 支持按需加载</text>
+  <text class="t" x="600" y="245">- 可以查询</text>
+  <text class="t" x="600" y="265">- 可以合并</text>
+  <text class="t" x="580" y="290">用途：持久化存储，支持查询</text>
+  <text class="t" x="580" y="310">接口：Open(), Reopen(), GetIndexer()</text>
+</svg>

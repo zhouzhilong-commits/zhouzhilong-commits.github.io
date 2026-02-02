@@ -11,6 +11,8 @@ main:
         url: /object-storage/
       - title: "分布式一致性"
         url: /consensus/
+      - title: "IndexLib"
+        url: /indexlib/
 
   - title: "论文笔记"
     url: /paper-notes/
@@ -173,6 +175,8 @@ home:
         url: /cs-foundations/
       - title: "CPP"
         url: /cpp/
+      - title: "IndexLib"
+        url: /indexlib/
 
 cpp:
   - title: "C++ 系列"
@@ -249,3 +253,27 @@ cs_arch:
         url: /cs-arch-note-056-fence/
       - title: "计算机组成笔记：分支预测失败：流水线 flush 的代价"
         url: /cs-arch-note-063-flush/
+
+indexlib:
+  - title: "IndexLib 系列"
+    children:
+      - title: "IndexLib（1）：架构概览与核心概念"
+        url: /indexlib-1-architecture-overview/
+      - title: "IndexLib（2）：Tablet 与 Segment：索引的组织方式"
+        url: /indexlib-2-tablet-segment/
+      - title: "IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit"
+        url: /indexlib-3-build-flow/
+      - title: "IndexLib（4）：查询流程：TabletReader 与 IndexReader"
+        url: /indexlib-4-query-flow/
+      - title: "IndexLib（5）：版本管理与增量更新"
+        url: /indexlib-5-version-management/
+      - title: "IndexLib（6）：Segment 合并策略"
+        url: /indexlib-6-segment-merge/
+      - title: "IndexLib（7）：内存管理与资源控制"
+        url: /indexlib-7-memory-management/
+      - title: "IndexLib（8）：索引类型：Normal、KKV、KV"
+        url: /indexlib-8-index-types/
+      - title: "IndexLib（9）：Locator 与数据一致性"
+        url: /indexlib-9-locator-consistency/
+      - title: "IndexLib（10）：文件系统抽象与存储格式"
+        url: /indexlib-10-filesystem-storage/

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .disk{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">批量构建场景：一次性构建大量文档</text>
+  <text class="muted" x="40" y="66">在批量构建场景中，一次性构建大量文档，然后 Flush、Seal、Commit，完成索引构建。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. 批量 Build</text>
+  <text class="t" x="70" y="155">一次性构建</text>
+  <text class="t" x="70" y="175">大量文档</text>
+  <text class="t" x="70" y="195">写入 MemSegment</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="130">2. Flush</text>
+  <text class="t" x="310" y="155">构建完成后</text>
+  <text class="t" x="310" y="175">转储为 DiskSegment</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+
+  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="130">3. Seal</text>
+  <text class="t" x="550" y="155">Seal 所有 Segment</text>
+  <text class="t" x="550" y="175">标记为只读</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+
+  <rect class="version" x="760" y="95" width="180" height="100"/>
+  <text class="h" x="790" y="130">4. Commit</text>
+  <text class="t" x="790" y="155">Commit 最终版本</text>
+  <text class="t" x="790" y="175">持久化到磁盘</text>
+
+  <rect class="box" x="40" y="215" width="900" height="200"/>
+  <text class="h" x="70" y="250">批量构建场景的特点</text>
+  <text class="t" x="70" y="275">1. 一次性构建：批量构建场景中，一次性构建大量文档，不需要实时写入</text>
+  <text class="t" x="70" y="295">2. 构建完成后 Flush：构建完成后统一 Flush，转储为 DiskSegment</text>
+  <text class="t" x="70" y="315">3. Seal 所有 Segment：Flush 完成后 Seal 所有 Segment，标记为只读</text>
+  <text class="t" x="70" y="335">4. Commit 最终版本：Seal 完成后 Commit 最终版本，持久化到磁盘</text>
+  <text class="t" x="70" y="355">5. 适合离线场景：批量构建场景适合离线场景，不需要实时写入和查询</text>
+  <text class="t" x="70" y="375">6. 提高构建效率：批量构建可以提高构建效率，减少转储次数</text>
+  <text class="t" x="70" y="395">关键设计：批量构建场景中，构建、Flush、Seal、Commit 按顺序执行，保证数据一致性</text>
+  <text class="t" x="70" y="415">关键设计：批量构建场景适合离线场景，可以充分利用系统资源，提高构建效率</text>
+
+  <text class="muted" x="40" y="430">批量构建场景适合离线场景，可以充分利用系统资源，提高构建效率</text>
+</svg>

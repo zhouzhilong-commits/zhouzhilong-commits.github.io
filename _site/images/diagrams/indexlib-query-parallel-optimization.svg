@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .parallel{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">并行查询优化：提高查询并发度</text>
+  <text class="muted" x="40" y="66">并行查询优化通过并行处理多个 Segment 的查询，提高查询并发度，提高查询性能。</text>
+
+  <rect class="parallel" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">Segment 并行</text>
+  <text class="t" x="70" y="155">并行查询各 Segment</text>
+  <text class="t" x="70" y="175">多线程查询</text>
+  <text class="t" x="70" y="195">提高并发度</text>
+  <text class="t" x="70" y="215">提高吞吐量</text>
+  <text class="t" x="70" y="235">降低延迟</text>
+  <text class="t" x="70" y="255">资源控制</text>
+
+  <rect class="parallel" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">索引并行</text>
+  <text class="t" x="310" y="155">并行查询各索引</text>
+  <text class="t" x="310" y="175">多线程查询</text>
+  <text class="t" x="310" y="195">提高并发度</text>
+  <text class="t" x="310" y="215">提高吞吐量</text>
+  <text class="t" x="310" y="235">降低延迟</text>
+  <text class="t" x="310" y="255">资源控制</text>
+
+  <rect class="parallel" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">结果合并</text>
+  <text class="t" x="550" y="155">合并并行查询结果</text>
+  <text class="t" x="550" y="175">去重、排序</text>
+  <text class="t" x="550" y="195">保证一致性</text>
+  <text class="t" x="550" y="215">提高效率</text>
+  <text class="t" x="550" y="235">优化性能</text>
+  <text class="t" x="550" y="255">降低延迟</text>
+
+  <rect class="parallel" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">资源控制</text>
+  <text class="t" x="790" y="155">控制并发度</text>
+  <text class="t" x="790" y="175">避免资源竞争</text>
+  <text class="t" x="790" y="195">保证稳定性</text>
+  <text class="t" x="790" y="215">提高性能</text>
+  <text class="t" x="790" y="235">优化资源使用</text>
+  <text class="t" x="790" y="255">降低延迟</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">并行查询优化的关键策略</text>
+  <text class="t" x="70" y="375">1. Segment 并行：通过并行查询各 Segment，多线程查询，提高并发度，提高吞吐量，降低延迟，通过资源控制保证稳定性</text>
+  <text class="t" x="70" y="395">2. 索引并行：通过并行查询各索引，多线程查询，提高并发度，提高吞吐量，降低延迟，通过资源控制保证稳定性</text>
+  <text class="t" x="70" y="415">3. 结果合并：通过合并并行查询结果，去重、排序，保证一致性，提高效率，优化性能，降低延迟</text>
+  <text class="t" x="70" y="435">关键设计：并行查询优化通过 Segment 并行、索引并行、结果合并、资源控制等策略，全面提高查询并发度和性能</text>
+  <text class="t" x="70" y="455">关键设计：并行查询优化需要合理配置并发度，避免资源竞争，保证系统稳定性和性能</text>
+
+  <text class="muted" x="40" y="490">理解并行查询优化，是提高查询性能的关键</text>
+</svg>

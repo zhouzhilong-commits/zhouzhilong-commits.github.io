@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1010 565">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1010 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">查询流程概览：从 JSON 查询到结果返回的完整过程</text>
+  <text class="muted" x="40" y="66">查询流程包括解析查询、获取 IndexReader、遍历 Segment、并行查询、合并结果、返回结果等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="140" height="100"/>
+  <text class="h" x="70" y="130">1. 解析查询</text>
+  <text class="t" x="70" y="155">JSON → 查询对象</text>
+  <text class="t" x="70" y="175">提取查询类型</text>
+  <text class="t" x="70" y="195">和条件</text>
+
+  <path class="arrow" d="M 180 145 L 220 145"/>
+
+  <rect class="step" x="240" y="95" width="160" height="100"/>
+  <text class="h" x="270" y="130">2. 获取 IndexReader</text>
+  <text class="t" x="270" y="155">根据索引类型</text>
+  <text class="t" x="270" y="175">和名称获取</text>
+  <text class="t" x="270" y="195">（带缓存）</text>
+
+  <path class="arrow" d="M 400 145 L 440 145"/>
+
+  <rect class="step" x="460" y="95" width="160" height="100"/>
+  <text class="h" x="490" y="130">3. 遍历 Segment</text>
+  <text class="t" x="490" y="155">获取所有已构建</text>
+  <text class="t" x="490" y="175">的 Segment</text>
+
+  <path class="arrow" d="M 620 145 L 660 145"/>
+
+  <rect class="step" x="680" y="95" width="140" height="100"/>
+  <text class="h" x="710" y="130">4. 并行查询</text>
+  <text class="t" x="710" y="155">对多个 Segment</text>
+  <text class="t" x="710" y="175">进行查询</text>
+
+  <path class="arrow" d="M 820 145 L 860 145"/>
+
+  <rect class="step" x="880" y="95" width="80" height="100"/>
+  <text class="h" x="910" y="130">5. 合并结果</text>
+  <text class="t" x="910" y="155">去重、排序</text>
+
+  <path class="arrow" d="M 910 195 L 910 225"/>
+
+  <rect class="result" x="880" y="235" width="80" height="100"/>
+  <text class="h" x="910" y="270">6. 返回结果</text>
+  <text class="t" x="910" y="295">JSON 格式</text>
+
+  <rect class="box" x="40" y="355" width="920" height="120"/>
+  <text class="h" x="70" y="390">查询流程的关键特点</text>
+  <text class="t" x="70" y="415">1. 解析查询：将 JSON 格式的查询解析为内部查询对象，提取查询类型和条件</text>
+  <text class="t" x="70" y="435">2. 获取 IndexReader：根据索引类型和名称获取 IndexReader，支持缓存机制</text>
+  <text class="t" x="70" y="455">3. 遍历 Segment：遍历所有已构建的 Segment，支持并行查询</text>
+  <text class="t" x="70" y="475">4. 并行查询：对多个 Segment 进行并行查询，提高查询性能</text>
+  <text class="t" x="70" y="495">5. 合并结果：将各 Segment 的查询结果合并，包括去重、排序、分页等处理</text>
+  <text class="t" x="70" y="515">6. 返回结果：序列化为 JSON 格式返回，方便使用</text>
+
+  <text class="muted" x="40" y="480">理解查询流程是掌握 IndexLib 查询机制的关键</text>
+</svg>

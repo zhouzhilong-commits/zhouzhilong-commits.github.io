@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .dumper{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .disk{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 530" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">SegmentDumper 转储流程：从创建到完成的完整过程</text>
+  <text class="muted" x="40" y="66">SegmentDumper 负责将 MemSegment 转储到磁盘，包括创建转储器、设置状态、执行转储、创建 DiskSegment 等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 创建 Dumper</text>
+  <text class="t" x="70" y="155">CreateSegmentDumper()</text>
+  <text class="t" x="70" y="175">创建 SegmentDumper</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="dumper" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. 设置状态</text>
+  <text class="t" x="330" y="155">SetSegmentStatus()</text>
+  <text class="t" x="330" y="175">ST_DUMPING</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="dumper" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 执行转储</text>
+  <text class="t" x="590" y="155">Dump()</text>
+  <text class="t" x="590" y="175">写入磁盘</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="disk" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. DiskSegment</text>
+  <text class="t" x="850" y="155">创建完成</text>
+  <text class="t" x="850" y="175">ST_BUILT</text>
+
+  <rect class="box" x="40" y="215" width="900" height="250"/>
+  <text class="h" x="70" y="250">转储流程的详细步骤</text>
+  <text class="t" x="70" y="275">1. 创建 Dumper：TabletWriter::CreateSegmentDumper() 创建 SegmentDumper，</text>
+  <text class="t" x="90" y="295">传入 MemSegment、转储内存扩展大小等参数</text>
+  <text class="t" x="70" y="315">2. 设置状态：将 MemSegment 状态设置为 ST_DUMPING，标记为转储中</text>
+  <text class="t" x="70" y="335">3. 创建转储参数：MemSegment::CreateDumpParams() 创建转储参数，</text>
+  <text class="t" x="90" y="355">计算转储所需的内存成本（DumpExpandMemSize）</text>
+  <text class="t" x="70" y="375">4. 创建转储项：MemSegment::CreateSegmentDumpItems() 创建 SegmentDumpItem 列表，</text>
+  <text class="t" x="90" y="395">每个 Item 负责转储一部分索引数据（如一个 Indexer）</text>
+  <text class="t" x="70" y="415">5. 执行转储：SegmentDumper::Dump() 异步执行转储，遍历 SegmentDumpItem 列表，</text>
+  <text class="t" x="90" y="435">将每个 Indexer 的数据写入磁盘，创建索引文件</text>
+  <text class="t" x="70" y="455">6. 创建 DiskSegment：转储完成后，根据转储的 SegmentMeta 创建 DiskSegment，</text>
+  <text class="t" x="90" y="475">更新 TabletData 的 Segment 列表，MemSegment 被 DiskSegment 替代</text>
+
+  <text class="muted" x="40" y="480">转储流程的关键是异步执行，不阻塞写入，保证构建的连续性</text>
+</svg>

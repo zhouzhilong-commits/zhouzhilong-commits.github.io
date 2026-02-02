@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .fence{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 590" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Commit 流程：从版本准备到持久化的完整过程</text>
+  <text class="muted" x="40" y="66">Commit 阶段提交新版本，更新 Version，持久化到磁盘，包括检查提交条件、准备版本信息、创建 Fence、持久化 Version 等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <text class="h" x="70" y="130">1. 检查提交条件</text>
+  <text class="t" x="70" y="155">NeedCommit()</text>
+  <text class="t" x="70" y="175">有新的 Segment</text>
+  <text class="t" x="70" y="195">有数据变更</text>
+
+  <path class="arrow" d="M 220 145 L 260 145"/>
+
+  <rect class="step" x="280" y="95" width="180" height="100"/>
+  <text class="h" x="310" y="130">2. 准备版本信息</text>
+  <text class="t" x="310" y="155">收集 Segment 列表</text>
+  <text class="t" x="310" y="175">准备 Locator</text>
+  <text class="t" x="310" y="195">更新 VersionId</text>
+
+  <path class="arrow" d="M 460 145 L 500 145"/>
+
+  <rect class="fence" x="520" y="95" width="180" height="100"/>
+  <text class="h" x="550" y="130">3. 创建 Fence</text>
+  <text class="t" x="550" y="155">创建临时目录</text>
+  <text class="t" x="550" y="175">保证原子性</text>
+
+  <path class="arrow" d="M 700 145 L 740 145"/>
+
+  <rect class="version" x="760" y="95" width="200" height="100"/>
+  <text class="h" x="790" y="130">4. 持久化 Version</text>
+  <text class="t" x="790" y="155">写入 Fence 目录</text>
+  <text class="t" x="790" y="175">原子切换</text>
+
+  <path class="arrow" d="M 790 195 L 790 225"/>
+
+  <rect class="step" x="760" y="235" width="200" height="100"/>
+  <text class="h" x="790" y="270">5. 更新 TabletData</text>
+  <text class="t" x="790" y="295">更新 Version</text>
+  <text class="t" x="790" y="315">支持查询</text>
+
+  <rect class="box" x="40" y="355" width="920" height="170"/>
+  <text class="h" x="70" y="390">Commit 流程的关键步骤</text>
+  <text class="t" x="70" y="415">1. 检查提交条件：判断是否需要提交（有新的 Segment、有数据变更等）</text>
+  <text class="t" x="70" y="435">2. 准备版本信息：收集所有已构建的 Segment，准备 Locator，更新 VersionId</text>
+  <text class="t" x="70" y="455">3. 创建 Fence：创建 Fence 目录，保证版本提交的原子性</text>
+  <text class="t" x="70" y="475">4. 持久化 Version：将 Version 写入 Fence 目录，原子性地切换为正式版本目录</text>
+  <text class="t" x="70" y="495">5. 更新 TabletData：更新 TabletData 的 Version，支持查询</text>
+  <text class="t" x="70" y="515">6. 清理旧版本：清理不再需要的旧版本文件，释放存储空间</text>
+
+  <text class="muted" x="40" y="540">Commit 阶段的关键是保证版本提交的原子性，通过 Fence 机制实现</text>
+</svg>

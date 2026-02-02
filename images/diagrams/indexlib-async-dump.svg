@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .write{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .dump{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .parallel{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 560" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">异步转储机制：不阻塞写入，提高吞吐量</text>
+  <text class="muted" x="40" y="66">转储是异步的，转储过程中可以创建新的 MemSegment 继续接收写入，写入和转储可以并行进行。</text>
+
+  <rect class="write" x="40" y="95" width="280" height="180"/>
+  <text class="h" x="70" y="130">写入线程</text>
+  <text class="t" x="70" y="155">1. 写入 MemSegment 1</text>
+  <text class="t" x="70" y="175">2. 达到阈值，触发转储</text>
+  <text class="t" x="70" y="195">3. 创建 MemSegment 2</text>
+  <text class="t" x="70" y="215">4. 继续写入 MemSegment 2</text>
+  <text class="t" x="70" y="235">（不等待转储完成）</text>
+  <text class="t" x="70" y="255">5. 写入 MemSegment 3...</text>
+
+  <rect class="dump" x="340" y="95" width="280" height="180"/>
+  <text class="h" x="370" y="130">转储线程</text>
+  <text class="t" x="370" y="155">1. 接收转储任务</text>
+  <text class="t" x="370" y="175">2. 异步转储 MemSegment 1</text>
+  <text class="t" x="370" y="195">3. 写入磁盘（耗时操作）</text>
+  <text class="t" x="370" y="215">4. 创建 DiskSegment</text>
+  <text class="t" x="370" y="235">5. 转储完成，通知</text>
+
+  <rect class="parallel" x="640" y="95" width="320" height="180"/>
+  <text class="h" x="670" y="130">并行执行</text>
+  <text class="t" x="670" y="155">时间线：</text>
+  <text class="t" x="670" y="175">T1: 写入 MemSegment 1</text>
+  <text class="t" x="670" y="195">T2: 触发转储（异步）</text>
+  <text class="t" x="670" y="215">T3: 创建 MemSegment 2，继续写入</text>
+  <text class="t" x="670" y="235">T4: 转储进行中...</text>
+  <text class="t" x="670" y="255">T5: 转储完成</text>
+
+  <rect class="box" x="40" y="295" width="920" height="180"/>
+  <text class="h" x="70" y="330">DumpControl 控制机制</text>
+  <text class="t" x="70" y="355">- _finishCount：完成的任务数（原子变量）</text>
+  <text class="t" x="70" y="375">- _totalCount：总任务数</text>
+  <text class="t" x="70" y="395">- _dumpMutex：转储互斥锁</text>
+  <text class="t" x="70" y="415">- _dumpCv：转储条件变量</text>
+  <text class="t" x="70" y="435">- StartTask()：启动转储任务</text>
+  <text class="t" x="70" y="455">- Iterate()：迭代执行转储任务</text>
+  <text class="t" x="70" y="475">- ExitTask()：退出转储任务</text>
+
+  <text class="muted" x="40" y="510">优势：不阻塞写入，提高吞吐量，支持并发转储控制</text>
+</svg>

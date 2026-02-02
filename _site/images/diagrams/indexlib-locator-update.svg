@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .old{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .new{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+      .check{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">Locator 更新：更新数据处理位置</text>
+  <text class="muted" x="40" y="66">Locator 的更新通过 Update() 方法实现，只有当新的 Locator 完全比当前 Locator 快时，才更新，保证 Locator 只向前推进。</text>
+
+  <rect class="old" x="40" y="95" width="280" height="120"/>
+  <text class="h" x="70" y="130">当前 Locator</text>
+  <text class="t" x="70" y="155">timestamp: 100</text>
+  <text class="t" x="70" y="175">hashId: 0</text>
+  <text class="t" x="70" y="195">multiProgress: [...]</text>
+  <text class="t" x="70" y="215">处理到 timestamp=100</text>
+
+  <path class="arrow" d="M 320 155 L 360 155"/>
+
+  <rect class="check" x="380" y="95" width="200" height="120"/>
+  <text class="h" x="410" y="130">检查条件</text>
+  <text class="t" x="410" y="155">IsFasterThan()</text>
+  <text class="t" x="410" y="175">新 Locator 是否</text>
+  <text class="t" x="410" y="195">完全比当前快</text>
+  <text class="t" x="410" y="215">LCR_FULLY_FASTER</text>
+
+  <path class="arrow" d="M 580 155 L 620 155"/>
+
+  <rect class="new" x="640" y="95" width="320" height="120"/>
+  <text class="h" x="670" y="130">更新 Locator</text>
+  <text class="t" x="670" y="155">timestamp: 200</text>
+  <text class="t" x="670" y="175">hashId: 0</text>
+  <text class="t" x="670" y="195">multiProgress: [...]</text>
+  <text class="t" x="670" y="215">处理到 timestamp=200</text>
+
+  <rect class="box" x="40" y="235" width="920" height="180"/>
+  <text class="h" x="70" y="270">Locator 更新的关键逻辑</text>
+  <text class="t" x="70" y="295">1. 检查条件：只有当新的 Locator 完全比当前 Locator 快时（LCR_FULLY_FASTER），才更新</text>
+  <text class="t" x="70" y="315">2. 更新内容：更新 multiProgress，记录最新的数据处理位置</text>
+  <text class="t" x="70" y="335">3. 保证一致性：保证 Locator 只向前推进，不会回退，保证数据一致性</text>
+  <text class="t" x="70" y="355">4. 多进度支持：支持多 HashId 的进度更新，每个 HashId 记录自己的进度</text>
+  <text class="t" x="70" y="375">5. 并发安全：Locator 更新需要保证并发安全，避免并发更新导致的数据不一致</text>
+  <text class="t" x="70" y="395">关键设计：Locator 更新是增量更新的关键，需要保证更新的正确性和一致性</text>
+  <text class="t" x="70" y="415">关键设计：通过条件检查，保证 Locator 只向前推进，不会回退，保证数据一致性</text>
+
+  <text class="muted" x="40" y="430">Locator 更新是增量更新的关键，需要保证更新的正确性和一致性</text>
+</svg>

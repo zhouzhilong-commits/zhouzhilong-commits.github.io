@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .optimization{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">构建性能优化：批量写入、并行构建等</text>
+  <text class="muted" x="40" y="66">构建性能优化通过批量写入、并行构建等策略提高构建性能。</text>
+
+  <rect class="optimization" x="40" y="95" width="220" height="200"/>
+  <text class="h" x="70" y="130">批量写入</text>
+  <text class="t" x="70" y="155">批量处理文档</text>
+  <text class="t" x="70" y="175">减少 IO 次数</text>
+  <text class="t" x="70" y="195">提高写入效率</text>
+  <text class="t" x="70" y="215">减少系统调用</text>
+  <text class="t" x="70" y="235">提高吞吐量</text>
+  <text class="t" x="70" y="255">降低延迟</text>
+  <text class="t" x="70" y="275">优化性能</text>
+
+  <rect class="optimization" x="280" y="95" width="220" height="200"/>
+  <text class="h" x="310" y="130">并行构建</text>
+  <text class="t" x="310" y="155">多线程构建</text>
+  <text class="t" x="310" y="175">并行处理</text>
+  <text class="t" x="310" y="195">提高吞吐量</text>
+  <text class="t" x="310" y="215">提高并发度</text>
+  <text class="t" x="310" y="235">资源控制</text>
+  <text class="t" x="310" y="255">并发控制</text>
+  <text class="t" x="310" y="275">优化性能</text>
+
+  <rect class="optimization" x="520" y="95" width="220" height="200"/>
+  <text class="h" x="550" y="130">内存优化</text>
+  <text class="t" x="550" y="155">内存池管理</text>
+  <text class="t" x="550" y="175">减少内存分配</text>
+  <text class="t" x="550" y="195">提高内存利用率</text>
+  <text class="t" x="550" y="215">减少内存碎片</text>
+  <text class="t" x="550" y="235">优化内存使用</text>
+  <text class="t" x="550" y="255">提高性能</text>
+  <text class="t" x="550" y="275">降低延迟</text>
+
+  <rect class="optimization" x="760" y="95" width="200" height="200"/>
+  <text class="h" x="790" y="130">IO 优化</text>
+  <text class="t" x="790" y="155">批量 IO</text>
+  <text class="t" x="790" y="175">异步 IO</text>
+  <text class="t" x="790" y="195">预取机制</text>
+  <text class="t" x="790" y="215">IO 合并</text>
+  <text class="t" x="790" y="235">提高 IO 效率</text>
+  <text class="t" x="790" y="255">降低 IO 延迟</text>
+  <text class="t" x="790" y="275">优化性能</text>
+
+  <rect class="box" x="40" y="315" width="920" height="160"/>
+  <text class="h" x="70" y="350">构建性能优化的关键策略</text>
+  <text class="t" x="70" y="375">1. 批量写入：通过批量处理文档，减少 IO 次数，提高写入效率，减少系统调用，提高吞吐量，降低延迟</text>
+  <text class="t" x="70" y="395">2. 并行构建：通过多线程构建，并行处理，提高吞吐量，提高并发度，通过资源控制和并发控制优化性能</text>
+  <text class="t" x="70" y="415">3. 内存优化：通过内存池管理，减少内存分配，提高内存利用率，减少内存碎片，优化内存使用，提高性能</text>
+  <text class="t" x="70" y="435">关键设计：构建性能优化通过批量写入、并行构建、内存优化、IO 优化等策略，全面提高构建性能</text>
+  <text class="t" x="70" y="455">关键设计：构建性能优化需要根据实际场景选择合适的优化策略，平衡性能、资源消耗、复杂度等因素</text>
+
+  <text class="muted" x="40" y="490">理解构建性能优化，是提高索引构建性能的关键</text>
+</svg>

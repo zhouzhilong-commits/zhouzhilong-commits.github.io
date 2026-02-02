@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .mem{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .disk{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
+      .commit{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 550" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">实时写入场景：MemSegment 接收写入，定期转储为 DiskSegment</text>
+  <text class="muted" x="40" y="66">在实时写入场景中，文档持续写入 MemSegment，达到阈值后转储为 DiskSegment，创建新的 MemSegment 继续接收写入。</text>
+
+  <rect class="mem" x="40" y="95" width="200" height="150"/>
+  <text class="h" x="70" y="130">MemSegment 1</text>
+  <text class="t" x="70" y="155">持续写入文档</text>
+  <text class="t" x="70" y="175">docCount: 1000</text>
+  <text class="t" x="70" y="195">达到阈值</text>
+  <text class="t" x="70" y="215">触发转储</text>
+  <text class="t" x="70" y="235">状态：ST_DUMPING</text>
+
+  <path class="arrow" d="M 240 170 L 280 170"/>
+
+  <rect class="disk" x="300" y="95" width="200" height="150"/>
+  <text class="h" x="330" y="130">DiskSegment 1</text>
+  <text class="t" x="330" y="155">转储完成</text>
+  <text class="t" x="330" y="175">持久化存储</text>
+  <text class="t" x="330" y="195">状态：ST_BUILT</text>
+  <text class="t" x="330" y="215">可以查询</text>
+  <text class="t" x="330" y="235">docCount: 1000</text>
+
+  <rect class="mem" x="520" y="95" width="200" height="150"/>
+  <text class="h" x="550" y="130">MemSegment 2</text>
+  <text class="t" x="550" y="155">新创建的 Segment</text>
+  <text class="t" x="550" y="175">继续接收写入</text>
+  <text class="t" x="550" y="195">docCount: 500</text>
+  <text class="t" x="550" y="215">状态：ST_BUILDING</text>
+  <text class="t" x="550" y="235">（不阻塞写入）</text>
+
+  <rect class="commit" x="40" y="265" width="680" height="200"/>
+  <text class="h" x="70" y="300">版本提交流程</text>
+  <text class="t" x="70" y="325">1. 定期 Commit，更新 Version</text>
+  <text class="t" x="70" y="345">2. Version 记录包含的 Segment 列表</text>
+  <text class="t" x="70" y="365">3. 更新 Locator，记录数据处理位置</text>
+  <text class="t" x="70" y="385">4. 持久化 Version 到磁盘</text>
+  <text class="t" x="70" y="405">5. Reopen 时加载新版本</text>
+  <text class="t" x="70" y="425">6. 更新 TabletData，添加新 Segment</text>
+  <text class="t" x="70" y="445">7. 旧 Segment 可以合并或清理</text>
+
+  <text class="muted" x="40" y="500">关键点：异步转储不阻塞写入，定期 Commit 更新版本，支持实时写入和查询</text>
+</svg>

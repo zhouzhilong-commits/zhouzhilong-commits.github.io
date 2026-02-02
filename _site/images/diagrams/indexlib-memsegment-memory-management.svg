@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 455">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .estimate{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .evaluate{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
+      .control{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 455" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">MemSegment 内存管理：估算、评估、控制内存使用</text>
+  <text class="muted" x="40" y="66">通过估算、评估、控制三个环节，严格控制 MemSegment 的内存使用。</text>
+
+  <rect class="estimate" x="40" y="95" width="280" height="150"/>
+  <text class="h" x="70" y="130">估算（Estimate）</text>
+  <text class="t" x="70" y="155">EstimateMemUsed()</text>
+  <text class="t" x="70" y="175">- 构建前估算</text>
+  <text class="t" x="70" y="195">- 根据 Schema 计算</text>
+  <text class="t" x="70" y="215">- 预留内存空间</text>
+  <text class="t" x="70" y="235">用途：判断是否有足够内存</text>
+
+  <path class="arrow" d="M 320 170 L 360 170"/>
+
+  <rect class="evaluate" x="370" y="95" width="280" height="150"/>
+  <text class="h" x="400" y="130">评估（Evaluate）</text>
+  <text class="t" x="400" y="155">EvaluateCurrentMemUsed()</text>
+  <text class="t" x="400" y="175">- 构建中实时评估</text>
+  <text class="t" x="400" y="195">- 统计实际内存使用</text>
+  <text class="t" x="400" y="215">- 触发转储条件</text>
+  <text class="t" x="400" y="235">用途：监控内存使用情况</text>
+
+  <path class="arrow" d="M 650 170 L 690 170"/>
+
+  <rect class="control" x="700" y="95" width="260" height="150"/>
+  <text class="h" x="730" y="130">控制（Control）</text>
+  <text class="t" x="730" y="155">MemoryQuotaController</text>
+  <text class="t" x="730" y="175">- 设置内存上限</text>
+  <text class="t" x="730" y="195">- 分配内存配额</text>
+  <text class="t" x="730" y="215">- 触发转储释放</text>
+  <text class="t" x="730" y="235">用途：防止内存溢出</text>
+
+  <rect class="box" x="40" y="265" width="920" height="160"/>
+  <text class="h" x="70" y="300">内存管理流程</text>
+  <text class="t" x="70" y="325">1. 创建前：调用 EstimateMemUsed() 估算所需内存，检查 MemoryQuotaController 是否有足够配额</text>
+  <text class="t" x="70" y="345">2. 构建中：定期调用 EvaluateCurrentMemUsed() 评估实际内存使用，与阈值比较判断是否需要转储</text>
+  <text class="t" x="70" y="365">3. 内存控制：通过 MemoryQuotaController 分配和回收内存，达到上限时触发转储，释放内存</text>
+  <text class="t" x="70" y="385">4. 转储触发：当内存使用超过阈值（如 80%）或文档数量达到上限时，NeedDump() 返回 true，触发转储</text>
+  <text class="t" x="70" y="405">5. 内存回收：转储完成后，MemSegment 的内存被释放，MemoryQuotaController 回收配额，可以创建新的 MemSegment</text>
+</svg>

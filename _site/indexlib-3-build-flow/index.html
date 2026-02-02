@@ -1,0 +1,1408 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit">
+
+
+  <link rel="canonical" href="http://localhost:4000/indexlib-3-build-flow/">
+  <meta property="og:url" content="http://localhost:4000/indexlib-3-build-flow/">
+
+
+
+  <meta property="og:description" content="在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-07-03T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/object-storage/">对象存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/storage/">存储论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/databases/">数据库论文</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/distributed/">分布式系统论文</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">IndexLib 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-1-architecture-overview/" class=""><span class="nav__sub-title">IndexLib（1）：架构概览与核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-2-tablet-segment/" class=""><span class="nav__sub-title">IndexLib（2）：Tablet 与 Segment：索引的组织方式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-3-build-flow/" class="active"><span class="nav__sub-title">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-4-query-flow/" class=""><span class="nav__sub-title">IndexLib（4）：查询流程：TabletReader 与 IndexReader</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-5-version-management/" class=""><span class="nav__sub-title">IndexLib（5）：版本管理与增量更新</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-6-segment-merge/" class=""><span class="nav__sub-title">IndexLib（6）：Segment 合并策略</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-7-memory-management/" class=""><span class="nav__sub-title">IndexLib（7）：内存管理与资源控制</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-8-index-types/" class=""><span class="nav__sub-title">IndexLib（8）：索引类型：Normal、KKV、KV</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-9-locator-consistency/" class=""><span class="nav__sub-title">IndexLib（9）：Locator 与数据一致性</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/indexlib-10-filesystem-storage/" class=""><span class="nav__sub-title">IndexLib（10）：文件系统抽象与存储格式</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit">
+    <meta itemprop="description" content="在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。">
+    <meta itemprop="datePublished" content="July 03, 2025">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-03T00:00:00+08:00">July 03, 2025</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。</p>
+
+<p><img src="/images/diagrams/indexlib-build-complete-flow.svg" alt="索引构建完整流程：从 Build 到 Commit 的各个阶段" /></p>
+
+<p><strong>索引构建流程图</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[开始] --&gt; B[接收文档批次]
+    B --&gt; C{Build 阶段}
+    C --&gt; D[文档验证]
+    D --&gt; E[分配 DocId]
+    E --&gt; F[写入 Indexer]
+    F --&gt; G[更新 SegmentInfo]
+    G --&gt; H{是否需要 Flush?}
+    H --&gt;|是| I[Flush 阶段]
+    H --&gt;|否| B
+    I --&gt; J[创建 SegmentDumper]
+    J --&gt; K[转储 MemSegment]
+    K --&gt; L[创建 DiskSegment]
+    L --&gt; M{是否需要 Seal?}
+    M --&gt;|是| N[Seal 阶段]
+    M --&gt;|否| B
+    N --&gt; O[封存 Segment]
+    O --&gt; P[标记为只读]
+    P --&gt; Q{是否需要 Commit?}
+    Q --&gt;|是| R[Commit 阶段]
+    Q --&gt;|否| B
+    R --&gt; S[准备新版本]
+    S --&gt; T[更新 Version]
+    T --&gt; U[持久化到磁盘]
+    U --&gt; V[完成]
+    style C fill:#e3f2fd
+    style I fill:#fff3e0
+    style N fill:#f3e5f5
+    style R fill:#e8f5e9
+</code></pre>
+
+<h2 id="1-索引构建流程概览">1. 索引构建流程概览</h2>
+
+<h3 id="11-整体流程">1.1 整体流程</h3>
+
+<p>IndexLib 的索引构建流程包括四个核心阶段：</p>
+
+<ol>
+  <li><strong>Build</strong>：接收文档批次，构建索引到内存（MemSegment）</li>
+  <li><strong>Flush</strong>：将内存数据刷新到磁盘，创建 DiskSegment</li>
+  <li><strong>Seal</strong>：封存 Segment，标记为只读，准备合并</li>
+  <li><strong>Commit</strong>：提交新版本，更新 Version，持久化到磁盘</li>
+</ol>
+
+<p>让我们先通过图来理解整个流程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-flow-overview.svg" alt="索引构建流程概览：Build、Flush、Seal、Commit 的关系" /></p>
+
+<p><strong>流程关系图</strong>：</p>
+
+<pre><code class="language-mermaid">graph LR
+    A[Build] --&gt;|写入内存| B[MemSegment]
+    B --&gt;|触发转储| C[Flush]
+    C --&gt;|转储到磁盘| D[DiskSegment]
+    D --&gt;|封存| E[Seal]
+    E --&gt;|提交版本| F[Commit]
+    F --&gt;|更新| G[Version]
+    G --&gt;|持久化| H[磁盘]
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#f3e5f5
+    style F fill:#e8f5e9
+</code></pre>
+
+<h3 id="12-核心接口">1.2 核心接口</h3>
+
+<p>索引构建的核心接口定义在 <code class="language-plaintext highlighter-rouge">framework/ITablet.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/ITablet.h</span>
+<span class="k">class</span> <span class="nc">ITablet</span> <span class="o">:</span> <span class="k">private</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 构建：接收文档批次并写入内存段</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Build</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">&gt;&amp;</span> <span class="n">batch</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 刷新：将内存数据刷新到磁盘</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Flush</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 封存：封存当前 Segment，准备合并</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Seal</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 提交版本：创建新版本并持久化</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">VersionMeta</span><span class="o">&gt;</span> <span class="n">Commit</span><span class="p">(</span><span class="k">const</span> <span class="n">CommitOptions</span><span class="o">&amp;</span> <span class="n">commitOptions</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 判断是否需要提交</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">NeedCommit</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>关键设计</strong>：</p>
+<ul>
+  <li><strong>Build</strong>：持续构建，接收文档并写入 MemSegment</li>
+  <li><strong>Flush</strong>：触发转储，将 MemSegment 转为 DiskSegment</li>
+  <li><strong>Seal</strong>：封存 Segment，标记为只读，不再接收新文档</li>
+  <li><strong>Commit</strong>：提交版本，更新 Version，持久化到磁盘</li>
+</ul>
+
+<h2 id="2-build文档构建阶段">2. Build：文档构建阶段</h2>
+
+<h3 id="21-build-流程">2.1 Build 流程</h3>
+
+<p>Build 阶段负责接收文档批次，将文档写入内存中的索引结构。让我们先通过图来理解 Build 流程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-process.svg" alt="Build 流程：从文档批次到内存索引的构建过程" /></p>
+
+<p>Build 流程包括以下步骤：</p>
+
+<ol>
+  <li><strong>接收文档批次</strong>：<code class="language-plaintext highlighter-rouge">Build()</code> 接收 <code class="language-plaintext highlighter-rouge">IDocumentBatch</code></li>
+  <li><strong>文档验证</strong>：验证文档格式、Schema 等</li>
+  <li><strong>分配 DocId</strong>：为文档分配全局 DocId</li>
+  <li><strong>写入 Indexer</strong>：将文档写入各个 Indexer（倒排索引、正排索引等）</li>
+  <li><strong>更新 SegmentInfo</strong>：更新文档数量、Locator 等</li>
+</ol>
+
+<h3 id="22-tabletwriterbuild">2.2 TabletWriter::Build()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">TabletWriter</code> 是构建的核心实现，定义在 <code class="language-plaintext highlighter-rouge">framework/TabletWriter.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletWriter.h</span>
+<span class="k">class</span> <span class="nc">TabletWriter</span> <span class="o">:</span> <span class="k">private</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 构建文档批次</span>
+    <span class="c1">// 返回值：</span>
+    <span class="c1">// - OK: 构建成功</span>
+    <span class="c1">// - NoMem: 内存不足，需要等待内存释放</span>
+    <span class="c1">// - NeedDump: 触发转储，需要转储并重新打开</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Build</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">&gt;&amp;</span> <span class="n">batch</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 创建转储器：准备转储 MemSegment</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">SegmentDumper</span><span class="o">&gt;</span> <span class="n">CreateSegmentDumper</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取总内存使用</span>
+    <span class="k">virtual</span> <span class="kt">size_t</span> <span class="n">GetTotalMemSize</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取构建 Segment 转储所需的内存扩展大小</span>
+    <span class="k">virtual</span> <span class="kt">size_t</span> <span class="n">GetBuildingSegmentDumpExpandSize</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 判断是否有未提交的数据</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">IsDirty</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Build 的返回值</strong>：</p>
+<ul>
+  <li><strong>OK</strong>：构建成功，可以继续构建</li>
+  <li><strong>NoMem</strong>：内存不足，需要等待内存释放或触发转储</li>
+  <li><strong>NeedDump</strong>：触发转储条件，需要转储并重新打开</li>
+</ul>
+
+<h3 id="23-文档的-docid-分配">2.3 文档的 DocId 分配</h3>
+
+<p>在 Build 阶段，需要为文档分配 DocId。关键代码（<code class="language-plaintext highlighter-rouge">table/normal_table/NormalTabletWriter.h</code>）：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// table/normal_table/NormalTabletWriter.h</span>
+<span class="k">class</span> <span class="nc">NormalTabletWriter</span> <span class="o">:</span> <span class="k">public</span> <span class="n">table</span><span class="o">::</span><span class="n">CommonTabletWriter</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="c1">// 分发 DocId：为文档分配 DocId</span>
+    <span class="kt">void</span> <span class="n">DispatchDocIds</span><span class="p">(</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">*</span> <span class="n">batch</span><span class="p">);</span>
+    
+    <span class="n">docid_t</span> <span class="n">_buildingSegmentBaseDocId</span><span class="p">;</span>  <span class="c1">// 当前构建 Segment 的基础 DocId</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">NormalMemSegment</span><span class="o">&gt;</span> <span class="n">_normalBuildingSegment</span><span class="p">;</span>  <span class="c1">// 当前构建中的 Segment</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>DocId 分配机制</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-build-docid-allocation.svg" alt="DocId 分配：全局 DocId 的计算和分配" /></p>
+
+<ul>
+  <li><strong>BaseDocId</strong>：当前 MemSegment 的全局 DocId 起始值</li>
+  <li><strong>LocalDocId</strong>：在 MemSegment 内的局部 DocId（从 0 开始递增）</li>
+  <li><strong>GlobalDocId</strong>：<code class="language-plaintext highlighter-rouge">baseDocId + localDocId</code></li>
+</ul>
+
+<h3 id="24-文档写入-indexer">2.4 文档写入 Indexer</h3>
+
+<p>文档写入各个 Indexer 的过程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-write-indexer.svg" alt="文档写入 Indexer：倒排索引、正排索引等的构建" /></p>
+
+<p><strong>写入流程</strong>：</p>
+<ol>
+  <li><strong>解析文档</strong>：解析文档字段，提取索引字段</li>
+  <li><strong>写入倒排索引</strong>：将 term 写入倒排索引</li>
+  <li><strong>写入正排索引</strong>：将文档属性写入正排索引</li>
+  <li><strong>更新摘要</strong>：更新文档摘要信息</li>
+</ol>
+
+<h3 id="25-内存控制">2.5 内存控制</h3>
+
+<p>Build 阶段需要严格控制内存使用，避免内存溢出。关键机制：</p>
+
+<p><img src="/images/diagrams/indexlib-build-memory-control.svg" alt="Build 内存控制：估算、评估、触发转储" /></p>
+
+<p><strong>内存控制机制</strong>：</p>
+<ul>
+  <li><strong>估算内存</strong>：<code class="language-plaintext highlighter-rouge">EstimateMemUsed()</code> 估算构建所需内存</li>
+  <li><strong>评估内存</strong>：<code class="language-plaintext highlighter-rouge">EvaluateCurrentMemUsed()</code> 评估当前实际内存使用</li>
+  <li><strong>触发转储</strong>：达到阈值时触发转储，释放内存</li>
+</ul>
+
+<h2 id="3-flush刷新到磁盘阶段">3. Flush：刷新到磁盘阶段</h2>
+
+<h3 id="31-flush-流程">3.1 Flush 流程</h3>
+
+<p>Flush 阶段负责将内存数据刷新到磁盘，创建 DiskSegment。让我们先通过图来理解 Flush 流程：</p>
+
+<p><img src="/images/diagrams/indexlib-flush-process.svg" alt="Flush 流程：从 MemSegment 到 DiskSegment 的转储过程" /></p>
+
+<p>Flush 流程包括以下步骤：</p>
+
+<ol>
+  <li><strong>检查转储条件</strong>：判断是否需要转储（内存阈值、文档数量等）</li>
+  <li><strong>创建 SegmentDumper</strong>：创建转储器，准备转储任务</li>
+  <li><strong>创建转储参数</strong>：计算转储所需的内存成本</li>
+  <li><strong>异步转储</strong>：将内存数据写入磁盘</li>
+  <li><strong>创建 DiskSegment</strong>：转储完成后创建 DiskSegment</li>
+  <li><strong>更新 TabletData</strong>：更新 Segment 列表</li>
+</ol>
+
+<h3 id="32-转储条件判断">3.2 转储条件判断</h3>
+
+<p>转储条件判断通过 <code class="language-plaintext highlighter-rouge">MemSegment::NeedDump()</code> 实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/MemSegment.h</span>
+<span class="k">class</span> <span class="nc">MemSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Segment</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 是否需要转储：判断是否达到转储条件</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">NeedDump</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 创建转储项：准备转储到磁盘</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">SegmentDumpItem</span><span class="o">&gt;&gt;&gt;</span> 
+        <span class="n">CreateSegmentDumpItems</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>转储条件</strong>：</p>
+<ul>
+  <li><strong>内存阈值</strong>：内存使用达到配置的阈值</li>
+  <li><strong>文档数量</strong>：文档数量达到配置的阈值</li>
+  <li><strong>时间阈值</strong>：构建时间达到配置的阈值</li>
+</ul>
+
+<h3 id="33-segmentdumper转储器">3.3 SegmentDumper：转储器</h3>
+
+<p><code class="language-plaintext highlighter-rouge">SegmentDumper</code> 负责将 MemSegment 转储到磁盘，定义在 <code class="language-plaintext highlighter-rouge">framework/SegmentDumper.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/SegmentDumper.h</span>
+<span class="k">class</span> <span class="nc">SegmentDumper</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SegmentDumpable</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">SegmentDumper</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">tabletName</span><span class="p">,</span> 
+                  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MemSegment</span><span class="o">&gt;&amp;</span> <span class="n">segment</span><span class="p">,</span>
+                  <span class="kt">int64_t</span> <span class="n">dumpExpandMemSize</span><span class="p">,</span>
+                  <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">kmonitor</span><span class="o">::</span><span class="n">MetricsReporter</span><span class="o">&gt;</span> <span class="n">metricsReporter</span><span class="p">)</span>
+        <span class="o">:</span> <span class="n">_tabletName</span><span class="p">(</span><span class="n">tabletName</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">_dumpingSegment</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+        <span class="p">,</span> <span class="n">_dumpExpandMemSize</span><span class="p">(</span><span class="n">dumpExpandMemSize</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// 设置 Segment 状态为 DUMPING</span>
+        <span class="n">_dumpingSegment</span><span class="o">-&gt;</span><span class="n">SetSegmentStatus</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_DUMPING</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 执行转储</span>
+    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Dump</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取转储的 SegmentMeta</span>
+    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">SegmentMeta</span><span class="o">&gt;</span> <span class="n">GetDumpedSegmentMeta</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>转储流程</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-flush-dumper-flow.svg" alt="SegmentDumper 转储流程：从创建到完成的完整过程" /></p>
+
+<ol>
+  <li><strong>创建 Dumper</strong>：<code class="language-plaintext highlighter-rouge">CreateSegmentDumper()</code> 创建转储器</li>
+  <li><strong>设置状态</strong>：将 MemSegment 状态设置为 <code class="language-plaintext highlighter-rouge">ST_DUMPING</code></li>
+  <li><strong>执行转储</strong>：调用 <code class="language-plaintext highlighter-rouge">Dump()</code> 将内存数据写入磁盘</li>
+  <li><strong>创建 DiskSegment</strong>：转储完成后创建 DiskSegment</li>
+  <li><strong>更新状态</strong>：MemSegment 状态变为 <code class="language-plaintext highlighter-rouge">ST_BUILT</code>（实际已被 DiskSegment 替代）</li>
+</ol>
+
+<h3 id="34-异步转储机制">3.4 异步转储机制</h3>
+
+<p>转储是异步的，不会阻塞新的写入。关键设计：</p>
+
+<p><img src="/images/diagrams/indexlib-flush-async-dump.svg" alt="异步转储机制：不阻塞写入，提高吞吐量" /></p>
+
+<p><strong>异步转储的优势</strong>：</p>
+<ul>
+  <li><strong>不阻塞写入</strong>：转储过程中可以创建新的 MemSegment 继续接收写入</li>
+  <li><strong>提高吞吐量</strong>：写入和转储可以并行进行</li>
+  <li><strong>资源控制</strong>：通过 <code class="language-plaintext highlighter-rouge">DumpControl</code> 控制转储任务的并发度</li>
+</ul>
+
+<h3 id="35-转储的内存成本">3.5 转储的内存成本</h3>
+
+<p>转储需要额外的内存空间，通过 <code class="language-plaintext highlighter-rouge">DumpExpandMemSize</code> 控制：</p>
+
+<p><img src="/images/diagrams/indexlib-flush-memory-cost.svg" alt="转储内存成本：DumpExpandMemSize 的控制机制" /></p>
+
+<p><strong>内存成本控制</strong>：</p>
+<ul>
+  <li><strong>估算转储内存</strong>：<code class="language-plaintext highlighter-rouge">EstimateDumpMemUsed()</code> 估算转储所需内存</li>
+  <li><strong>检查内存配额</strong>：检查是否有足够的内存配额</li>
+  <li><strong>控制转储并发</strong>：通过内存配额控制转储任务的并发度</li>
+</ul>
+
+<h2 id="4-seal封存阶段">4. Seal：封存阶段</h2>
+
+<h3 id="41-seal-流程">4.1 Seal 流程</h3>
+
+<p>Seal 阶段负责封存 Segment，标记为只读，不再接收新文档。让我们先通过图来理解 Seal 流程：</p>
+
+<p><img src="/images/diagrams/indexlib-seal-process.svg" alt="Seal 流程：封存 Segment，标记为只读" /></p>
+
+<p>Seal 流程包括以下步骤：</p>
+
+<ol>
+  <li><strong>封存 MemSegment</strong>：调用 <code class="language-plaintext highlighter-rouge">MemSegment::Seal()</code> 封存当前构建中的 Segment</li>
+  <li><strong>标记为只读</strong>：Segment 不再接收新文档</li>
+  <li><strong>触发转储</strong>：如果 MemSegment 有数据，触发转储</li>
+  <li><strong>等待转储完成</strong>：等待转储完成，创建 DiskSegment</li>
+  <li><strong>更新状态</strong>：Segment 状态变为 <code class="language-plaintext highlighter-rouge">ST_BUILT</code></li>
+</ol>
+
+<h3 id="42-memsegmentseal">4.2 MemSegment::Seal()</h3>
+
+<p><code class="language-plaintext highlighter-rouge">MemSegment::Seal()</code> 的实现：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/MemSegment.h</span>
+<span class="k">class</span> <span class="nc">MemSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Segment</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 封存：标记为只读，不再接收新文档</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Seal</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Seal 的作用</strong>：</p>
+<ul>
+  <li><strong>标记只读</strong>：Segment 不再接收新文档</li>
+  <li><strong>准备合并</strong>：封存的 Segment 可以参与合并</li>
+  <li><strong>保证一致性</strong>：封存后 Segment 内容不再变化</li>
+</ul>
+
+<h3 id="43-seal-的使用场景">4.3 Seal 的使用场景</h3>
+
+<p>Seal 通常在以下场景使用：</p>
+
+<p><img src="/images/diagrams/indexlib-seal-scenarios.svg" alt="Seal 使用场景：合并前、版本提交前等" /></p>
+
+<p><strong>使用场景</strong>：</p>
+<ul>
+  <li><strong>合并前</strong>：合并前需要封存所有待合并的 Segment</li>
+  <li><strong>版本提交前</strong>：版本提交前需要封存所有 Segment</li>
+  <li><strong>Schema 变更前</strong>：Schema 变更前需要封存当前 Segment</li>
+</ul>
+
+<h2 id="5-commit提交版本阶段">5. Commit：提交版本阶段</h2>
+
+<h3 id="51-commit-流程">5.1 Commit 流程</h3>
+
+<p>Commit 阶段负责提交新版本，更新 Version，持久化到磁盘。让我们先通过图来理解 Commit 流程：</p>
+
+<p><img src="/images/diagrams/indexlib-commit-process.svg" alt="Commit 流程：从版本准备到持久化的完整过程" /></p>
+
+<p>Commit 流程包括以下步骤：</p>
+
+<ol>
+  <li><strong>检查提交条件</strong>：判断是否需要提交（有新的 Segment、有数据变更等）</li>
+  <li><strong>准备版本信息</strong>：准备新版本的 Segment 列表、Locator 等</li>
+  <li><strong>创建 Fence</strong>：创建 Fence，保证原子性</li>
+  <li><strong>持久化 Version</strong>：将 Version 写入磁盘</li>
+  <li><strong>更新 TabletData</strong>：更新 TabletData 的 Version</li>
+  <li><strong>清理旧版本</strong>：清理不再需要的旧版本文件</li>
+</ol>
+
+<h3 id="52-versioncommitter版本提交器">5.2 VersionCommitter：版本提交器</h3>
+
+<p><code class="language-plaintext highlighter-rouge">VersionCommitter</code> 负责版本提交，定义在 <code class="language-plaintext highlighter-rouge">framework/VersionCommitter.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/VersionCommitter.h</span>
+<span class="k">class</span> <span class="nc">VersionCommitter</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 提交版本</span>
+    <span class="k">static</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">VersionMeta</span><span class="o">&gt;</span> <span class="n">Commit</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">CommitOptions</span><span class="o">&amp;</span> <span class="n">commitOptions</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Commit 的关键步骤</strong>：</p>
+
+<p><img src="/images/diagrams/indexlib-commit-committer-flow.svg" alt="VersionCommitter 提交流程：从准备到持久化的详细步骤" /></p>
+
+<ol>
+  <li><strong>准备版本信息</strong>：收集所有已构建的 Segment，准备 Locator</li>
+  <li><strong>创建 Fence</strong>：创建 Fence 目录，保证原子性</li>
+  <li><strong>写入 Version</strong>：将 Version 写入 Fence 目录</li>
+  <li><strong>原子切换</strong>：原子性地将 Fence 目录切换为正式版本目录</li>
+  <li><strong>更新 TabletData</strong>：更新 TabletData 的 Version</li>
+</ol>
+
+<h3 id="53-fence原子性保证">5.3 Fence：原子性保证</h3>
+
+<p>Fence 机制保证版本提交的原子性：</p>
+
+<p><img src="/images/diagrams/indexlib-commit-fence.svg" alt="Fence 机制：保证版本提交的原子性" /></p>
+
+<p><strong>Fence 机制</strong>：</p>
+<ul>
+  <li><strong>创建 Fence 目录</strong>：在提交前创建临时目录（Fence）</li>
+  <li><strong>写入 Version</strong>：将 Version 写入 Fence 目录</li>
+  <li><strong>原子切换</strong>：原子性地将 Fence 目录重命名为正式版本目录</li>
+  <li><strong>保证原子性</strong>：要么全部成功，要么全部失败</li>
+</ul>
+
+<h3 id="54-commitoptions提交选项">5.4 CommitOptions：提交选项</h3>
+
+<p><code class="language-plaintext highlighter-rouge">CommitOptions</code> 控制提交行为，定义在 <code class="language-plaintext highlighter-rouge">framework/CommitOptions.h</code> 中：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/CommitOptions.h</span>
+<span class="k">struct</span> <span class="nc">CommitOptions</span>
+<span class="p">{</span>
+    <span class="c1">// 是否强制提交（即使没有数据变更）</span>
+    <span class="kt">bool</span> <span class="n">forceCommit</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    
+    <span class="c1">// 提交的描述信息</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">commitMessage</span><span class="p">;</span>
+    
+    <span class="c1">// 是否等待转储完成</span>
+    <span class="kt">bool</span> <span class="n">waitDumpFinish</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+    
+    <span class="c1">// 是否清理旧版本</span>
+    <span class="kt">bool</span> <span class="n">cleanVersion</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    
+    <span class="c1">// 保留的版本列表</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">versionid_t</span><span class="o">&gt;</span> <span class="n">reservedVersions</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>提交选项的作用</strong>：</p>
+<ul>
+  <li><strong>forceCommit</strong>：强制提交，即使没有数据变更</li>
+  <li><strong>waitDumpFinish</strong>：等待转储完成后再提交</li>
+  <li><strong>cleanVersion</strong>：清理不再需要的旧版本文件</li>
+</ul>
+
+<h3 id="55-版本演进">5.5 版本演进</h3>
+
+<p>每次 Commit 都会创建新版本，版本号递增：</p>
+
+<p><img src="/images/diagrams/indexlib-commit-version-evolution.svg" alt="版本演进：从 V1 到 V2 的版本变化" /></p>
+
+<p><strong>版本演进示例</strong>：</p>
+<ul>
+  <li><strong>V1</strong>：包含 Segment [1, 2]，Locator 记录处理到 timestamp=100</li>
+  <li><strong>V2</strong>：新增 Segment 3，Locator 更新到 timestamp=200</li>
+  <li><strong>V3</strong>：Segment 1 和 2 合并为 Segment 4，Locator 更新到 timestamp=300</li>
+</ul>
+
+<h2 id="6-完整构建流程示例">6. 完整构建流程示例</h2>
+
+<h3 id="61-实时写入场景">6.1 实时写入场景</h3>
+
+<p>在实时写入场景中，完整的构建流程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-realtime-scenario.svg" alt="实时写入场景：从 Build 到 Commit 的完整流程" /></p>
+
+<p><strong>流程示例</strong>：</p>
+<ol>
+  <li><strong>持续 Build</strong>：文档持续写入 MemSegment</li>
+  <li><strong>定期 Flush</strong>：MemSegment 达到阈值后触发 Flush，转储为 DiskSegment</li>
+  <li><strong>创建新 Segment</strong>：创建新的 MemSegment 继续接收写入</li>
+  <li><strong>定期 Seal</strong>：定期 Seal 旧的 Segment，准备合并</li>
+  <li><strong>定期 Commit</strong>：定期 Commit，更新 Version</li>
+</ol>
+
+<h3 id="62-批量构建场景">6.2 批量构建场景</h3>
+
+<p>在批量构建场景中，完整的构建流程：</p>
+
+<p><img src="/images/diagrams/indexlib-build-batch-scenario.svg" alt="批量构建场景：一次性构建大量文档" /></p>
+
+<p><strong>流程示例</strong>：</p>
+<ol>
+  <li><strong>批量 Build</strong>：一次性构建大量文档</li>
+  <li><strong>Flush</strong>：构建完成后 Flush，转储为 DiskSegment</li>
+  <li><strong>Seal</strong>：Seal 所有 Segment</li>
+  <li><strong>Commit</strong>：Commit 最终版本</li>
+</ol>
+
+<h2 id="7-构建流程的关键设计">7. 构建流程的关键设计</h2>
+
+<h3 id="71-异步与并发">7.1 异步与并发</h3>
+
+<p>IndexLib 的构建流程支持异步和并发：</p>
+
+<p><img src="/images/diagrams/indexlib-build-async-concurrent.svg" alt="构建流程的异步与并发：提高吞吐量" /></p>
+
+<p><strong>异步与并发设计</strong>：</p>
+<ul>
+  <li><strong>异步转储</strong>：转储是异步的，不阻塞写入</li>
+  <li><strong>并发构建</strong>：支持多线程构建（NormalTabletParallelBuilder）</li>
+  <li><strong>并发转储</strong>：支持多个 Segment 并发转储</li>
+</ul>
+
+<h3 id="72-内存管理">7.2 内存管理</h3>
+
+<p>构建流程需要严格控制内存使用：</p>
+
+<p><img src="/images/diagrams/indexlib-build-memory-management.svg" alt="构建流程的内存管理：估算、评估、控制" /></p>
+
+<p><strong>内存管理机制</strong>：</p>
+<ul>
+  <li><strong>内存估算</strong>：构建前估算所需内存</li>
+  <li><strong>内存评估</strong>：构建过程中评估实际内存使用</li>
+  <li><strong>内存控制</strong>：通过 <code class="language-plaintext highlighter-rouge">MemoryQuotaController</code> 控制内存上限</li>
+  <li><strong>触发转储</strong>：达到阈值时触发转储，释放内存</li>
+</ul>
+
+<h3 id="73-错误处理">7.3 错误处理</h3>
+
+<p>构建流程需要完善的错误处理：</p>
+
+<p><img src="/images/diagrams/indexlib-build-error-handling.svg" alt="构建流程的错误处理：重试、回滚等" /></p>
+
+<p><strong>错误处理机制</strong>：</p>
+<ul>
+  <li><strong>重试机制</strong>：构建失败时可以重试</li>
+  <li><strong>回滚机制</strong>：转储失败时可以回滚</li>
+  <li><strong>原子性保证</strong>：通过 Fence 保证版本提交的原子性</li>
+</ul>
+
+<h2 id="8-性能优化">8. 性能优化</h2>
+
+<h3 id="81-构建性能优化">8.1 构建性能优化</h3>
+
+<p>构建性能优化的关键点：</p>
+
+<p><img src="/images/diagrams/indexlib-build-performance-optimization.svg" alt="构建性能优化：批量写入、并行构建等" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>批量写入</strong>：支持批量写入文档，减少调用开销</li>
+  <li><strong>并行构建</strong>：支持多线程构建，提高构建速度</li>
+  <li><strong>内存优化</strong>：优化内存使用，减少内存分配开销</li>
+</ul>
+
+<h3 id="82-转储性能优化">8.2 转储性能优化</h3>
+
+<p>转储性能优化的关键点：</p>
+
+<p><img src="/images/diagrams/indexlib-flush-performance-optimization.svg" alt="转储性能优化：异步转储、并发转储等" /></p>
+
+<p><strong>优化策略</strong>：</p>
+<ul>
+  <li><strong>异步转储</strong>：转储不阻塞写入，提高吞吐量</li>
+  <li><strong>并发转储</strong>：支持多个 Segment 并发转储</li>
+  <li><strong>IO 优化</strong>：优化 IO 操作，减少 IO 开销</li>
+</ul>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>索引构建流程是 IndexLib 的核心功能，包括 Build、Flush、Seal、Commit 四个阶段。通过本文的深入解析，我们了解到：</p>
+
+<p><strong>关键要点</strong>：</p>
+<ul>
+  <li><strong>Build</strong>：接收文档批次，构建索引到内存（MemSegment）</li>
+  <li><strong>Flush</strong>：将内存数据刷新到磁盘，创建 DiskSegment</li>
+  <li><strong>Seal</strong>：封存 Segment，标记为只读，准备合并</li>
+  <li><strong>Commit</strong>：提交新版本，更新 Version，持久化到磁盘</li>
+  <li><strong>异步转储</strong>：转储是异步的，不阻塞写入，提高吞吐量</li>
+  <li><strong>内存控制</strong>：通过内存估算、评估、控制机制，避免内存溢出</li>
+  <li><strong>原子性保证</strong>：通过 Fence 机制保证版本提交的原子性</li>
+</ul>
+
+<p>理解索引构建流程，是掌握 IndexLib 索引机制的关键。在下一篇文章中，我们将深入介绍查询流程的实现细节。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    theme: 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

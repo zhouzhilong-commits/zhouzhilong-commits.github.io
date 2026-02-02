@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">合并计划的创建流程：从收集 Segment 到创建合并计划</text>
+  <text class="muted" x="40" y="66">合并计划的创建流程包括收集源 Segment、过滤 Segment、分组 Segment、创建 SegmentMergePlan、设置目标 Segment、创建 MergePlan、设置目标版本等步骤。</text>
+  <rect class="step" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">1. 收集源 Segment</text>
+  <text class="t" x="70" y="140">从 TabletData 中收集符合条件的 Segment</text>
+  <rect class="step" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">2. 过滤 Segment</text>
+  <text class="t" x="70" y="210">根据合并参数过滤 Segment</text>
+  <rect class="step" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">3. 分组 Segment</text>
+  <text class="t" x="70" y="280">根据合并参数分组 Segment</text>
+  <rect class="step" x="40" y="305" width="920" height="60"/>
+  <text class="h" x="70" y="330">4. 创建 SegmentMergePlan</text>
+  <text class="t" x="70" y="350">为每组 Segment 创建 SegmentMergePlan</text>
+  <rect class="step" x="40" y="375" width="920" height="60"/>
+  <text class="h" x="70" y="400">5. 设置目标 Segment</text>
+  <text class="t" x="70" y="420">为每个 SegmentMergePlan 设置目标 Segment</text>
+  <rect class="step" x="40" y="445" width="920" height="60"/>
+  <text class="h" x="70" y="470">6. 创建 MergePlan</text>
+  <text class="t" x="70" y="490">将所有 SegmentMergePlan 添加到 MergePlan</text>
+  <rect class="step" x="40" y="515" width="920" height="60"/>
+  <text class="h" x="70" y="540">7. 设置目标版本</text>
+  <text class="t" x="70" y="560">设置合并后的目标版本</text>
+  <text class="muted" x="40" y="605">理解 合并计划的创建流程，是掌握 Segment 合并机制的关键</text>
+</svg>

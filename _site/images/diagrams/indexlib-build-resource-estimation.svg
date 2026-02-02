@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .item{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
+    </style>
+  </defs>
+
+  <text class="title" x="40" y="42">构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程</text>
+  <text class="muted" x="40" y="66">构建资源估算包括收集构建指标、计算资源使用、估算转储资源等步骤。</text>
+  <rect class="item" x="40" y="95" width="920" height="60"/>
+  <text class="h" x="70" y="120">收集构建指标</text>
+  <text class="t" x="70" y="140">收集构建过程中的资源使用指标</text>
+  <rect class="item" x="40" y="165" width="920" height="60"/>
+  <text class="h" x="70" y="190">计算内存使用</text>
+  <text class="t" x="70" y="210">计算构建时的内存使用量</text>
+  <rect class="item" x="40" y="235" width="920" height="60"/>
+  <text class="h" x="70" y="260">估算转储资源</text>
+  <text class="t" x="70" y="280">估算转储时的资源使用量</text>
+  <text class="muted" x="40" y="325">理解 构建资源估算，是掌握 IndexLib 机制的关键</text>
+</svg>

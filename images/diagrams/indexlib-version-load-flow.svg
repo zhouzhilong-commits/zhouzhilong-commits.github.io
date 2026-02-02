@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 545">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
+      .title{font:700 20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#111}
+      .h{font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#222}
+      .t{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#333}
+      .muted{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;fill:#666}
+      .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
+      .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
+      .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
+    </style>
+    <marker id="m" viewBox="0 0 1000 545" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="40" y="42">版本加载流程：从磁盘加载版本信息</text>
+  <text class="muted" x="40" y="66">版本加载通过 VersionLoader 实现，包括读取版本文件、解析 Version、验证 Version、加载 Segment、初始化 TabletData 等步骤。</text>
+
+  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <text class="h" x="70" y="130">1. 读取版本文件</text>
+  <text class="t" x="70" y="155">从磁盘读取</text>
+  <text class="t" x="70" y="175">version.0 文件</text>
+
+  <path class="arrow" d="M 240 145 L 280 145"/>
+
+  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <text class="h" x="330" y="130">2. 解析 Version</text>
+  <text class="t" x="330" y="155">解析 JSON 格式</text>
+  <text class="t" x="330" y="175">的版本信息</text>
+
+  <path class="arrow" d="M 500 145 L 540 145"/>
+
+  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <text class="h" x="590" y="130">3. 验证 Version</text>
+  <text class="t" x="590" y="155">验证版本的有效性</text>
+  <text class="t" x="590" y="175">Segment 是否存在</text>
+
+  <path class="arrow" d="M 760 145 L 800 145"/>
+
+  <rect class="version" x="820" y="95" width="120" height="100"/>
+  <text class="h" x="850" y="130">4. 加载 Segment</text>
+  <text class="t" x="850" y="155">根据 Version</text>
+  <text class="t" x="850" y="175">中的 Segment 列表</text>
+
+  <path class="arrow" d="M 850 195 L 850 225"/>
+
+  <rect class="step" x="820" y="235" width="120" height="100"/>
+  <text class="h" x="850" y="270">5. 初始化 TabletData</text>
+  <text class="t" x="850" y="295">设置 Version</text>
+  <text class="t" x="850" y="315">和 Segment 列表</text>
+
+  <rect class="box" x="40" y="355" width="900" height="120"/>
+  <text class="h" x="70" y="390">版本加载流程的关键步骤</text>
+  <text class="t" x="70" y="415">1. 读取版本文件：从磁盘读取版本文件（version.0、version.1 等），支持指定版本号加载</text>
+  <text class="t" x="70" y="435">2. 解析 Version：解析 JSON 格式的版本信息，包括 Segment 列表、Locator、SchemaId 等</text>
+  <text class="t" x="70" y="455">3. 验证 Version：验证版本的有效性，检查 Segment 是否存在、Schema 是否兼容等</text>
+  <text class="t" x="70" y="475">4. 加载 Segment：根据 Version 中的 Segment 列表加载 Segment，初始化 TabletData</text>
+  <text class="t" x="70" y="495">5. 初始化 TabletData：初始化 TabletData，设置 Version 和 Segment 列表，支持查询</text>
+
+  <text class="muted" x="40" y="490">版本加载是 Tablet 打开的关键步骤，需要正确加载版本信息和 Segment</text>
+</svg>
