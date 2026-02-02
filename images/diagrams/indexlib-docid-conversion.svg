@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 592.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .segment{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
       .local{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 570" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 592.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,14 +19,14 @@
   <text class="title" x="40" y="42">DocId 转换：全局 DocId 到局部 DocId 的转换过程</text>
   <text class="muted" x="40" y="66">查询时需要将全局 DocId 转换为局部 DocId，在对应的 Segment 内进行查询。</text>
 
-  <rect class="global" x="40" y="95" width="280" height="100"/>
+  <rect class="global" x="40" y="95" width="280" height="114.0"/>
   <text class="h" x="70" y="130">全局 DocId</text>
   <text class="t" x="70" y="155">globalDocId = 2500</text>
   <text class="t" x="70" y="175">（在整个 Tablet 范围内唯一）</text>
 
   <path class="arrow" d="M 320 145 L 360 145"/>
 
-  <rect class="segment" x="380" y="95" width="280" height="200"/>
+  <rect class="segment" x="380" y="95" width="280" height="214.0"/>
   <text class="h" x="410" y="130">定位 Segment</text>
   <text class="t" x="410" y="155">遍历 Segment 列表：</text>
   <text class="t" x="410" y="175">Segment 1: baseDocId=0, docCount=1000</text>
@@ -38,12 +38,12 @@
 
   <path class="arrow" d="M 660 195 L 700 195"/>
 
-  <rect class="local" x="720" y="95" width="200" height="100"/>
+  <rect class="local" x="720" y="95" width="200" height="114.0"/>
   <text class="h" x="750" y="130">局部 DocId</text>
   <text class="t" x="750" y="155">localDocId = 2500 - 1000</text>
   <text class="t" x="750" y="175">= 1500</text>
 
-  <rect class="box" x="40" y="215" width="900" height="325.0"/>
+  <rect class="box" x="40" y="215" width="900" height="337.0"/>
   <text class="h" x="70" y="250">转换代码逻辑（伪代码）</text>
   <text class="t" x="70" y="275">// 全局 DocId 转局部 DocId</text>
   <text class="t" x="70" y="295">for (auto&amp; seg : segments) {</text>

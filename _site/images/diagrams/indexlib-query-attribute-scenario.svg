@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590.0">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 612.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 590.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 612.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,40 +17,40 @@
   <text class="title" x="40" y="42">属性查询场景：从属性查询到结果返回</text>
   <text class="muted" x="40" y="66">属性查询场景展示了从属性查询到结果返回的完整流程。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="110.0"/>
+  <rect class="step" x="40" y="95" width="180" height="129.0"/>
   <text class="h" x="70" y="125">1. 解析查询</text>
   <text class="t" x="70" y="150">提取属性条件</text>
   <text class="t" x="70" y="170">创建查询对象</text>
-  <text class="t" x="70" y="185">准备查询</text>
+  <text class="t" x="70" y="190.0">准备查询</text>
 
   <path class="arrow" d="M 220 145 L 260 145"/>
   <text class="t" x="230" y="150.0">查询</text>
 
-  <rect class="step" x="280" y="95" width="180" height="110.0"/>
+  <rect class="step" x="280" y="95" width="180" height="129.0"/>
   <text class="h" x="310" y="125">2. 正排索引查询</text>
   <text class="t" x="310" y="150">定位 DocId</text>
   <text class="t" x="310" y="170">读取属性值</text>
-  <text class="t" x="310" y="185">过滤属性条件</text>
+  <text class="t" x="310" y="190.0">过滤属性条件</text>
 
   <path class="arrow" d="M 460 145 L 500 145"/>
   <text class="t" x="470" y="150.0">合并</text>
 
-  <rect class="step" x="520" y="95" width="180" height="110.0"/>
+  <rect class="step" x="520" y="95" width="180" height="129.0"/>
   <text class="h" x="550" y="125">3. 合并结果</text>
   <text class="t" x="550" y="150">合并各 Segment 结果</text>
   <text class="t" x="550" y="170">去重、排序</text>
-  <text class="t" x="550" y="185">返回结果</text>
+  <text class="t" x="550" y="190.0">返回结果</text>
 
   <path class="arrow" d="M 700 145 L 740 145"/>
   <text class="t" x="710" y="150.0">返回</text>
 
-  <rect class="step" x="760" y="95" width="200" height="110.0"/>
+  <rect class="step" x="760" y="95" width="200" height="129.0"/>
   <text class="h" x="790" y="125">4. 返回结果</text>
   <text class="t" x="790" y="150">序列化为 JSON</text>
   <text class="t" x="790" y="170">返回给客户端</text>
-  <text class="t" x="790" y="185">完成查询</text>
+  <text class="t" x="790" y="190.0">完成查询</text>
 
-  <rect class="box" x="40" y="215" width="920" height="345.0"/>
+  <rect class="box" x="40" y="215" width="920" height="357.0"/>
   <text class="h" x="70" y="250">属性查询场景的关键特点</text>
   <text class="t" x="70" y="275">1. 解析查询：提取属性条件，创建查询对象，准备查询，支持范围查询、等值查询等</text>
   <text class="t" x="70" y="295">2. 正排索引查询：根据 DocId 定位到对应的 Segment，转换为局部 DocId，从正排索引中读取属性值，过滤属性条件</text>

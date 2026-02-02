@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2025-07-08T00:00:00+08:00">
+  <meta property="article:published_time" content="2025-07-14T00:00:00+08:00">
 
 
 
@@ -639,7 +639,7 @@
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="IndexLib（8）：索引类型：Normal、KV、KKV">
     <meta itemprop="description" content="在上一篇文章中，我们深入了解了内存管理与资源控制的机制。本文将继续深入，详细解析索引类型的实现，这是理解 IndexLib 如何支持不同类型索引的关键。">
-    <meta itemprop="datePublished" content="July 08, 2025">
+    <meta itemprop="datePublished" content="July 14, 2025">
     
 
     <div class="page__inner-wrap">
@@ -652,7 +652,7 @@
 
 
   
-	  1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -660,7 +660,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-08T00:00:00+08:00">July 08, 2025</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-14T00:00:00+08:00">July 14, 2025</time></p>
           
         
         
@@ -693,12 +693,88 @@
 
 <h3 id="12-索引类型的选择">1.2 索引类型的选择</h3>
 
-<p>不同索引类型适用于不同的场景：</p>
+<p>不同索引类型适用于不同的场景。让我们通过类图来理解三种索引类型的架构关系：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class ITabletFactory {
+        &lt;&lt;interface&gt;&gt;
+        +CreateTabletWriter(Schema) TabletWriter
+        +CreateTabletReader(Schema) TabletReader
+        +CreateMemSegment(SegmentMeta) MemSegment
+        +CreateDiskSegment(SegmentMeta) DiskSegment
+    }
+    
+    class NormalTableFactory {
+        +CreateTabletWriter(Schema) NormalTabletWriter
+        +CreateTabletReader(Schema) NormalTabletReader
+    }
+    
+    class KVTableFactory {
+        +CreateTabletWriter(Schema) KVTabletWriter
+        +CreateTabletReader(Schema) KVTabletReader
+    }
+    
+    class KKVTableFactory {
+        +CreateTabletWriter(Schema) KKVTabletWriter
+        +CreateTabletReader(Schema) KKVTabletReader
+    }
+    
+    class NormalTabletReader {
+        -MultiFieldIndexReader _multiFieldIndexReader
+        -AttributeReader _attributeReader
+        -PrimaryKeyReader _primaryKeyReader
+        +Search(jsonQuery) Status
+    }
+    
+    class KVTabletReader {
+        -KVIndexReader _kvIndexReader
+        -PackAttributeFormatter _formatter
+        +Search(jsonQuery) Status
+    }
+    
+    class KKVTabletReader {
+        -KKVReader _kkvReader
+        -KKVIterator _iterator
+        +Search(jsonQuery) Status
+    }
+    
+    ITabletFactory &lt;|-- NormalTableFactory : 实现
+    ITabletFactory &lt;|-- KVTableFactory : 实现
+    ITabletFactory &lt;|-- KKVTableFactory : 实现
+    NormalTableFactory --&gt; NormalTabletReader : 创建
+    KVTableFactory --&gt; KVTabletReader : 创建
+    KKVTableFactory --&gt; KKVTabletReader : 创建
+</code></pre>
+
+<p><strong>索引类型的选择</strong>：</p>
+
+<p>不同索引类型适用于不同的场景，选择合适的索引类型可以显著提高系统性能和降低复杂度：</p>
 
 <ul>
-  <li><strong>NormalTable</strong>：适用于全文检索、复杂查询、多字段查询等场景</li>
-  <li><strong>KVTable</strong>：适用于简单的键值存储、主键查询等场景</li>
-  <li><strong>KKVTable</strong>：适用于多值存储、主键+排序键查询等场景</li>
+  <li><strong>NormalTable</strong>：适用于全文检索、复杂查询、多字段查询等场景
+    <ul>
+      <li><strong>全文检索</strong>：需要全文检索功能，支持倒排索引</li>
+      <li><strong>复杂查询</strong>：需要范围查询、排序、聚合等复杂查询</li>
+      <li><strong>多字段查询</strong>：需要多字段联合查询</li>
+      <li><strong>灵活查询</strong>：需要灵活的查询方式，支持多种查询组合</li>
+    </ul>
+  </li>
+  <li><strong>KVTable</strong>：适用于简单的键值存储、主键查询等场景
+    <ul>
+      <li><strong>简单存储</strong>：只需要简单的键值存储，不需要复杂的索引</li>
+      <li><strong>主键查询</strong>：主要查询方式是主键查询，查询性能要求高</li>
+      <li><strong>高性能</strong>：需要高性能的主键查询，查询延迟要求低</li>
+      <li><strong>简单使用</strong>：希望使用简单的接口，降低使用复杂度</li>
+    </ul>
+  </li>
+  <li><strong>KKVTable</strong>：适用于多值存储、主键+排序键查询等场景
+    <ul>
+      <li><strong>多值存储</strong>：一个主键需要对应多个值，通过排序键区分</li>
+      <li><strong>排序键查询</strong>：需要根据排序键查询，支持精确查询和范围查询</li>
+      <li><strong>有序存储</strong>：需要有序存储和查询，支持排序键排序</li>
+      <li><strong>范围查询</strong>：需要排序键范围查询，支持范围扫描</li>
+    </ul>
+  </li>
 </ul>
 
 <h2 id="2-normaltable标准表">2. NormalTable：标准表</h2>
@@ -725,12 +801,79 @@
 <p><img src="/images/diagrams/indexlib-normal-table-architecture.svg" alt="NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件" /></p>
 
 <p><strong>核心组件</strong>：</p>
+
+<p>NormalTable 的架构采用组合模式，将不同的索引 Reader 组合在一起。让我们通过类图来理解详细的架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class NormalTabletReader {
+        -MultiFieldIndexReader _multiFieldIndexReader
+        -AttributeReader _attributeReader
+        -PrimaryKeyReader _primaryKeyReader
+        -SummaryReader _summaryReader
+        -DeletionMapReader _deletionMapReader
+        +Search(jsonQuery) Status
+        +GetMultiFieldIndexReader() MultiFieldIndexReader
+        +GetAttributeReader(attrName) AttributeReader
+    }
+    
+    class MultiFieldIndexReader {
+        -map~string, InvertedIndexReader~ _indexReaders
+        +Search(Query) QueryResult
+    }
+    
+    class AttributeReader {
+        -map~string, AttributeIndexReader~ _readers
+        +ReadAttribute(docId, attrName) AttributeValue
+    }
+    
+    class PrimaryKeyReader {
+        -PrimaryKeyIndexReader _reader
+        +Lookup(pk) DocId
+    }
+    
+    NormalTabletReader --&gt; MultiFieldIndexReader : 包含
+    NormalTabletReader --&gt; AttributeReader : 包含
+    NormalTabletReader --&gt; PrimaryKeyReader : 包含
+</code></pre>
+
+<p><strong>核心组件详解</strong>：</p>
+
 <ul>
-  <li><strong>NormalTabletReader</strong>：标准表查询器，支持全文检索和属性查询</li>
-  <li><strong>NormalTabletWriter</strong>：标准表写入器，支持文档构建和索引构建</li>
-  <li><strong>MultiFieldIndexReader</strong>：多字段倒排索引 Reader</li>
-  <li><strong>AttributeReader</strong>：正排索引 Reader</li>
-  <li><strong>PrimaryKeyReader</strong>：主键索引 Reader</li>
+  <li><strong>NormalTabletReader</strong>：标准表查询器，支持全文检索和属性查询
+    <ul>
+      <li><strong>查询入口</strong>：提供统一的查询接口，支持 JSON 格式的查询</li>
+      <li><strong>索引管理</strong>：管理各种索引 Reader，按需创建和缓存</li>
+      <li><strong>结果合并</strong>：合并各种索引的查询结果，支持复合查询</li>
+    </ul>
+  </li>
+  <li><strong>NormalTabletWriter</strong>：标准表写入器，支持文档构建和索引构建
+    <ul>
+      <li><strong>文档构建</strong>：接收文档批次，构建索引</li>
+      <li><strong>索引构建</strong>：构建倒排索引、正排索引、主键索引等</li>
+      <li><strong>内存管理</strong>：管理构建时的内存使用，控制内存配额</li>
+    </ul>
+  </li>
+  <li><strong>MultiFieldIndexReader</strong>：多字段倒排索引 Reader
+    <ul>
+      <li><strong>多字段支持</strong>：支持多个字段的倒排索引查询</li>
+      <li><strong>查询合并</strong>：合并多个字段的查询结果</li>
+      <li><strong>性能优化</strong>：支持并行查询，提高查询性能</li>
+    </ul>
+  </li>
+  <li><strong>AttributeReader</strong>：正排索引 Reader
+    <ul>
+      <li><strong>属性查询</strong>：支持属性查询，快速获取文档属性</li>
+      <li><strong>批量查询</strong>：支持批量查询属性，提高查询效率</li>
+      <li><strong>缓存优化</strong>：支持属性缓存，减少 IO 操作</li>
+    </ul>
+  </li>
+  <li><strong>PrimaryKeyReader</strong>：主键索引 Reader
+    <ul>
+      <li><strong>主键查询</strong>：支持主键查询，快速定位文档</li>
+      <li><strong>批量查询</strong>：支持批量主键查询，提高查询效率</li>
+      <li><strong>性能优化</strong>：针对主键查询优化，查询延迟低</li>
+    </ul>
+  </li>
 </ul>
 
 <h3 id="23-normaltable-的查询">2.3 NormalTable 的查询</h3>
@@ -740,11 +883,80 @@
 <p><img src="/images/diagrams/indexlib-normal-table-query.svg" alt="NormalTable 的查询：全文检索、属性查询、主键查询等" /></p>
 
 <p><strong>查询方式</strong>：</p>
+
+<p>NormalTable 支持多种查询方式，可以灵活组合使用。让我们通过序列图来理解完整的查询流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant NormalReader as NormalTabletReader
+    participant InvertedReader as MultiFieldIndexReader
+    participant AttributeReader as AttributeReader
+    participant PrimaryKeyReader as PrimaryKeyReader
+    participant ResultMerger as ResultMerger
+    
+    Client-&gt;&gt;NormalReader: Search(jsonQuery)
+    NormalReader-&gt;&gt;NormalReader: 解析查询类型
+    
+    alt 全文检索查询
+        NormalReader-&gt;&gt;InvertedReader: Search(termQuery)
+        InvertedReader--&gt;&gt;NormalReader: DocIdList1
+    end
+    
+    alt 属性查询
+        NormalReader-&gt;&gt;AttributeReader: Filter(attrQuery)
+        AttributeReader--&gt;&gt;NormalReader: DocIdList2
+    end
+    
+    alt 主键查询
+        NormalReader-&gt;&gt;PrimaryKeyReader: Lookup(pk)
+        PrimaryKeyReader--&gt;&gt;NormalReader: DocId3
+    end
+    
+    NormalReader-&gt;&gt;ResultMerger: MergeResults([List1, List2, DocId3])
+    ResultMerger-&gt;&gt;ResultMerger: 去重
+    ResultMerger-&gt;&gt;ResultMerger: 排序
+    ResultMerger--&gt;&gt;NormalReader: MergedResult
+    
+    NormalReader-&gt;&gt;AttributeReader: ReadAttributes(MergedResult)
+    AttributeReader--&gt;&gt;NormalReader: Attributes
+    
+    NormalReader-&gt;&gt;NormalReader: 序列化为JSON
+    NormalReader--&gt;&gt;Client: jsonResult
+</code></pre>
+
+<p><strong>查询方式详解</strong>：</p>
+
 <ul>
-  <li><strong>全文检索</strong>：通过倒排索引进行全文检索</li>
-  <li><strong>属性查询</strong>：通过正排索引进行属性查询</li>
-  <li><strong>主键查询</strong>：通过主键索引进行主键查询</li>
-  <li><strong>复合查询</strong>：支持多种查询方式的组合</li>
+  <li><strong>全文检索</strong>：通过倒排索引进行全文检索
+    <ul>
+      <li><strong>Term 查询</strong>：通过 term 查询倒排索引，获取包含该 term 的文档列表</li>
+      <li><strong>短语查询</strong>：支持短语查询，查询包含特定短语的文档</li>
+      <li><strong>布尔查询</strong>：支持 AND、OR、NOT 等布尔查询</li>
+      <li><strong>相关性排序</strong>：按相关性分数排序，返回最相关的文档</li>
+    </ul>
+  </li>
+  <li><strong>属性查询</strong>：通过正排索引进行属性查询
+    <ul>
+      <li><strong>等值查询</strong>：支持属性等值查询，快速过滤文档</li>
+      <li><strong>范围查询</strong>：支持属性范围查询，查询属性值在指定范围内的文档</li>
+      <li><strong>多属性查询</strong>：支持多个属性的联合查询</li>
+      <li><strong>属性排序</strong>：支持按属性值排序，返回排序后的文档</li>
+    </ul>
+  </li>
+  <li><strong>主键查询</strong>：通过主键索引进行主键查询
+    <ul>
+      <li><strong>精确查询</strong>：通过主键精确查询，快速定位文档</li>
+      <li><strong>批量查询</strong>：支持批量主键查询，提高查询效率</li>
+      <li><strong>查询优化</strong>：针对主键查询优化，查询延迟低</li>
+    </ul>
+  </li>
+  <li><strong>复合查询</strong>：支持多种查询方式的组合
+    <ul>
+      <li><strong>查询组合</strong>：可以组合全文检索、属性查询、主键查询等</li>
+      <li><strong>查询优化</strong>：优化查询组合，减少不必要的查询</li>
+      <li><strong>结果合并</strong>：合并各种查询的结果，支持去重、排序等</li>
+    </ul>
+  </li>
 </ul>
 
 <h2 id="3-kvtable键值表">3. KVTable：键值表</h2>
@@ -1054,22 +1266,142 @@
   <li><strong>构建优化</strong>：优化构建流程，提高构建效率</li>
 </ul>
 
-<h2 id="10-小结">10. 小结</h2>
+<h2 id="10-性能优化与最佳实践">10. 性能优化与最佳实践</h2>
+
+<h3 id="101-索引类型选择优化">10.1 索引类型选择优化</h3>
+
+<p><strong>选择策略</strong>：</p>
+
+<ol>
+  <li><strong>场景分析</strong>：
+    <ul>
+      <li><strong>查询模式</strong>：分析查询模式，选择最适合的索引类型</li>
+      <li><strong>数据特征</strong>：分析数据特征，选择最适合的索引类型</li>
+      <li><strong>性能要求</strong>：根据性能要求选择索引类型</li>
+    </ul>
+  </li>
+  <li><strong>性能权衡</strong>：
+    <ul>
+      <li><strong>功能 vs 性能</strong>：权衡功能需求和性能要求</li>
+      <li><strong>存储 vs 查询</strong>：权衡存储空间和查询性能</li>
+      <li><strong>构建 vs 查询</strong>：权衡构建性能和查询性能</li>
+    </ul>
+  </li>
+  <li><strong>混合使用</strong>：
+    <ul>
+      <li><strong>多索引类型</strong>：可以同时使用多种索引类型</li>
+      <li><strong>索引组合</strong>：组合使用不同的索引类型，满足不同需求</li>
+      <li><strong>索引切换</strong>：根据场景切换索引类型</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="102-查询性能优化">10.2 查询性能优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>NormalTable 优化</strong>：
+    <ul>
+      <li><strong>索引优化</strong>：优化倒排索引和正排索引的结构</li>
+      <li><strong>查询优化</strong>：优化查询路径，减少不必要的查询</li>
+      <li><strong>结果优化</strong>：优化结果合并，提高合并效率</li>
+    </ul>
+  </li>
+  <li><strong>KVTable 优化</strong>：
+    <ul>
+      <li><strong>主键优化</strong>：优化主键索引结构，提高查询性能</li>
+      <li><strong>批量优化</strong>：优化批量主键查询，提高查询效率</li>
+      <li><strong>缓存优化</strong>：优化主键查询缓存，减少查询延迟</li>
+    </ul>
+  </li>
+  <li><strong>KKVTable 优化</strong>：
+    <ul>
+      <li><strong>排序键优化</strong>：优化排序键索引结构，提高查询性能</li>
+      <li><strong>范围查询优化</strong>：优化范围查询，提高查询效率</li>
+      <li><strong>迭代器优化</strong>：优化迭代器实现，减少迭代开销</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="103-构建性能优化">10.3 构建性能优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>NormalTable 构建优化</strong>：
+    <ul>
+      <li><strong>并行构建</strong>：并行构建多个索引，提高构建速度</li>
+      <li><strong>索引优化</strong>：优化索引构建算法，减少构建时间</li>
+      <li><strong>内存优化</strong>：优化内存使用，减少构建内存占用</li>
+    </ul>
+  </li>
+  <li><strong>KVTable 构建优化</strong>：
+    <ul>
+      <li><strong>简化构建</strong>：简化构建流程，减少构建时间</li>
+      <li><strong>批量构建</strong>：批量构建键值对，提高构建效率</li>
+      <li><strong>压缩优化</strong>：优化数据压缩，减少存储空间</li>
+    </ul>
+  </li>
+  <li><strong>KKVTable 构建优化</strong>：
+    <ul>
+      <li><strong>排序键优化</strong>：优化排序键构建，提高构建效率</li>
+      <li><strong>批量构建</strong>：批量构建键键值对，提高构建效率</li>
+      <li><strong>索引优化</strong>：优化索引结构，减少构建时间</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="11-小结">11. 小结</h2>
 
 <p>索引类型是 IndexLib 的核心功能，通过 NormalTable、KVTable、KKVTable 三种类型支持不同的应用场景。通过本文的深入解析，我们了解到：</p>
 
-<p><strong>关键要点</strong>：</p>
+<p><strong>核心类型</strong>：</p>
+
 <ul>
-  <li><strong>NormalTable</strong>：标准表，支持全文检索、倒排索引、正排索引等，适用于全文检索和复杂查询场景</li>
-  <li><strong>KVTable</strong>：键值表，支持主键查询，适用于简单的键值存储场景，查询性能高</li>
-  <li><strong>KKVTable</strong>：键键值表，支持主键+排序键查询，适用于多值存储场景，支持范围查询</li>
-  <li><strong>索引类型选择</strong>：根据应用场景选择合适的索引类型，平衡功能和性能</li>
-  <li><strong>统一接口设计</strong>：通过统一的接口设计支持不同的索引类型实现</li>
-  <li><strong>灵活扩展设计</strong>：支持自定义索引类型和扩展功能</li>
-  <li><strong>性能优化设计</strong>：针对不同索引类型的特点进行性能优化</li>
+  <li><strong>NormalTable</strong>：标准表，支持全文检索、倒排索引、正排索引等，适用于全文检索和复杂查询场景
+    <ul>
+      <li><strong>功能完整</strong>：支持全文检索、属性查询、主键查询等多种查询方式</li>
+      <li><strong>灵活查询</strong>：支持复杂的查询组合，满足各种查询需求</li>
+      <li><strong>性能平衡</strong>：在功能和性能之间取得平衡，适合通用场景</li>
+    </ul>
+  </li>
+  <li><strong>KVTable</strong>：键值表，支持主键查询，适用于简单的键值存储场景，查询性能高
+    <ul>
+      <li><strong>简单高效</strong>：简单的键值存储模型，查询性能高</li>
+      <li><strong>主键优化</strong>：针对主键查询优化，查询延迟低</li>
+      <li><strong>存储优化</strong>：存储空间小，构建速度快</li>
+    </ul>
+  </li>
+  <li><strong>KKVTable</strong>：键键值表，支持主键+排序键查询，适用于多值存储场景，支持范围查询
+    <ul>
+      <li><strong>多值存储</strong>：一个主键可以对应多个值，通过排序键区分</li>
+      <li><strong>范围查询</strong>：支持排序键范围查询，支持有序存储和查询</li>
+      <li><strong>性能优化</strong>：针对主键+排序键查询优化，查询性能高</li>
+    </ul>
+  </li>
 </ul>
 
-<p>理解索引类型，是掌握 IndexLib 索引功能的关键。在下一篇文章中，我们将深入介绍 Locator 与数据一致性的实现细节。</p>
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>统一接口设计</strong>：通过 ITabletReader 和 ITabletWriter 统一接口，支持不同的索引类型实现</li>
+  <li><strong>工厂模式</strong>：通过工厂模式创建不同类型的 Tablet，便于扩展和维护</li>
+  <li><strong>策略模式</strong>：不同索引类型采用不同的查询和构建策略，针对性强</li>
+  <li><strong>性能优化</strong>：针对不同索引类型的特点进行性能优化，提高系统性能</li>
+  <li><strong>灵活扩展</strong>：支持自定义索引类型和扩展功能，满足特殊需求</li>
+</ol>
+
+<p><strong>性能特点</strong>：</p>
+
+<ul>
+  <li><strong>查询性能</strong>：KVTable 主键查询性能最高，延迟较低；NormalTable 全文检索性能高，延迟较低</li>
+  <li><strong>存储空间</strong>：KVTable 存储空间最小，NormalTable 存储空间最大</li>
+  <li><strong>构建性能</strong>：KVTable 构建速度最快，NormalTable 构建速度较慢</li>
+  <li><strong>功能完整性</strong>：NormalTable 功能最完整，KVTable 功能最简单</li>
+</ul>
+
+<p>理解索引类型，是掌握 IndexLib 索引功能的关键。在下一篇文章中，我们将深入介绍 Locator 与数据一致性的实现细节，包括 Locator 的完整结构、比较逻辑、更新机制、数据一致性保证等各个方面的实现原理和性能优化策略。</p>
 
         
       </section>

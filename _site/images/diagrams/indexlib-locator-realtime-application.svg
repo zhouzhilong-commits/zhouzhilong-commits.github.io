@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">实时写入场景中的 Locator：通过 Locator 判断数据是否已处理</text>
   <text class="muted" x="40" y="66">在实时写入场景中，通过 Locator 判断数据是否已处理，避免重复处理。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">获取当前 Locator</text>
   <text class="t" x="70" y="145.0">获取当前 Tablet 的 Locator，记录已处理的数据位置</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">比较数据 Locator</text>
   <text class="t" x="70" y="215.0">比较新数据的 Locator 和当前 Locator，判断是否需要处理</text>
-  <rect class="item" x="40" y="235" width="920" height="70.0"/>
+  <rect class="item" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">处理新数据</text>
   <text class="t" x="70" y="285.0">如果数据需要处理，则处理新数据</text>
-  <rect class="item" x="40" y="305" width="920" height="110.0"/>
+  <rect class="item" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">更新 Locator</text>
   <text class="t" x="70" y="355.0">处理完成后更新 Locator，记录新的处理位置</text>
   <text class="muted" x="40" y="395">理解 实时写入场景中的 Locator，是掌握 Locator 机制的关键</text>

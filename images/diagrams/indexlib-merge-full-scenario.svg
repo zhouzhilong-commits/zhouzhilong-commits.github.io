@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">全量合并场景：合并所有符合条件的 Segment</text>
   <text class="muted" x="40" y="66">全量合并场景包括收集所有 Segment、创建合并计划、执行合并、提交新版本等步骤。</text>
-  <rect class="step" x="40" y="95" width="920" height="70.0"/>
+  <rect class="step" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">1. 收集所有 Segment</text>
   <text class="t" x="70" y="145.0">收集所有符合条件的 Segment</text>
-  <rect class="step" x="40" y="165" width="920" height="70.0"/>
+  <rect class="step" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">2. 创建合并计划</text>
   <text class="t" x="70" y="215.0">创建合并计划，将所有 Segment 合并为少数几个大 Segment</text>
-  <rect class="step" x="40" y="235" width="920" height="70.0"/>
+  <rect class="step" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">3. 执行合并</text>
   <text class="t" x="70" y="285.0">执行合并操作，合并所有 Segment</text>
-  <rect class="step" x="40" y="305" width="920" height="110.0"/>
+  <rect class="step" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">4. 提交新版本</text>
   <text class="t" x="70" y="355.0">提交新版本，更新 TabletData</text>
   <text class="muted" x="40" y="395">理解 全量合并场景，是掌握 Segment 合并机制的关键</text>

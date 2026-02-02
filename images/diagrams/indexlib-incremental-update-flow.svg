@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 612.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .locator{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
       .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 590" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 612.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,14 +19,14 @@
   <text class="title" x="40" y="42">增量更新流程：通过 Locator 判断数据是否已处理</text>
   <text class="muted" x="40" y="66">增量更新通过 Locator 判断哪些数据已处理，只处理未处理的数据，避免重复处理，实现增量更新。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="100"/>
+  <rect class="step" x="40" y="95" width="180" height="114.0"/>
   <text class="h" x="70" y="130">1. 读取数据源</text>
   <text class="t" x="70" y="155">从数据源读取数据</text>
   <text class="t" x="70" y="175">timestamp: 150</text>
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="locator" x="280" y="95" width="200" height="120.0"/>
+  <rect class="locator" x="280" y="95" width="200" height="134.0"/>
   <text class="h" x="310" y="130">2. 检查 Locator</text>
   <text class="t" x="310" y="155">IsFasterThan()</text>
   <text class="t" x="310" y="175">判断数据是否已处理</text>
@@ -34,7 +34,7 @@
 
   <path class="arrow" d="M 480 145 L 520 145"/>
 
-  <rect class="step" x="540" y="95" width="200" height="100"/>
+  <rect class="step" x="540" y="95" width="200" height="114.0"/>
   <text class="h" x="570" y="130">3. 处理新数据</text>
   <text class="t" x="570" y="155">只处理未处理的数据</text>
   <text class="t" x="570" y="175">timestamp &gt; 100</text>
@@ -47,12 +47,12 @@
 
   <path class="arrow" d="M 830 195 L 830 225"/>
 
-  <rect class="version" x="800" y="235" width="120" height="100"/>
+  <rect class="version" x="800" y="235" width="120" height="114.0"/>
   <text class="h" x="830" y="270">5. 提交版本</text>
   <text class="t" x="830" y="295">Commit 时更新</text>
   <text class="t" x="830" y="315">Version 的 Locator</text>
 
-  <rect class="box" x="40" y="355" width="880" height="205.0"/>
+  <rect class="box" x="40" y="355" width="880" height="217.0"/>
   <text class="h" x="70" y="390">增量更新流程的关键步骤</text>
   <text class="t" x="70" y="415">1. 读取数据源：从数据源读取数据，获取数据的 timestamp 等信息</text>
   <text class="t" x="70" y="435">2. 检查 Locator：通过 IsFasterThan() 判断数据是否已处理，如果已处理则跳过</text>

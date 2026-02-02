@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">索引性能优化设计：针对不同索引类型的优化策略</text>
   <text class="muted" x="40" y="66">IndexLib 针对不同索引类型采用不同的性能优化策略。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">NormalTable</text>
   <text class="t" x="70" y="145.0">优化全文索引构建和查询，支持并行构建和查询</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">KVTable</text>
   <text class="t" x="70" y="215.0">优化主键索引构建和查询，支持批量操作</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">KKVTable</text>
   <text class="t" x="70" y="285.0">优化主键+排序键索引构建和查询，支持范围查询优化</text>
   <text class="muted" x="40" y="325">理解 索引性能优化设计，是掌握 IndexLib 机制的关键</text>

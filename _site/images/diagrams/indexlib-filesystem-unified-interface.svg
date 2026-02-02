@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 589.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -10,7 +10,7 @@
       .interface{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
       .backend{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 589.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -18,7 +18,7 @@
   <text class="title" x="40" y="42">统一接口设计：通过统一接口屏蔽底层存储差异</text>
   <text class="muted" x="40" y="66">文件系统抽象通过 IFileSystem、IDirectory 等统一接口，屏蔽底层存储差异，支持多种存储后端。</text>
 
-  <rect class="interface" x="40" y="95" width="400" height="300.0"/>
+  <rect class="interface" x="40" y="95" width="400" height="314.0"/>
   <text class="h" x="70" y="130">统一接口层</text>
   <text class="t" x="70" y="155">IFileSystem</text>
   <text class="t" x="70" y="175">- Init()</text>
@@ -36,7 +36,7 @@
   <path class="arrow" d="M 440 235 L 480 235"/>
   <text class="t" x="450" y="230">抽象</text>
 
-  <rect class="backend" x="500" y="95" width="460" height="300.0"/>
+  <rect class="backend" x="500" y="95" width="460" height="314.0"/>
   <text class="h" x="530" y="130">存储后端层</text>
   <text class="t" x="530" y="155">本地文件系统</text>
   <text class="t" x="530" y="175">- 本地磁盘</text>
@@ -51,7 +51,7 @@
   <text class="t" x="530" y="355">灵活配置</text>
   <text class="t" x="530" y="375">性能优化</text>
 
-  <rect class="box" x="40" y="395" width="920" height="140.0"/>
+  <rect class="box" x="40" y="395" width="920" height="154.0"/>
   <text class="h" x="70" y="430">统一接口设计的关键要点</text>
   <text class="t" x="70" y="455">1. 接口抽象：通过 IFileSystem、IDirectory 等接口抽象屏蔽底层存储差异，提供统一的文件系统接口</text>
   <text class="t" x="70" y="475">2. 多后端支持：支持多种存储后端（本地、分布式、内存等），通过统一接口访问，无需关心底层实现</text>

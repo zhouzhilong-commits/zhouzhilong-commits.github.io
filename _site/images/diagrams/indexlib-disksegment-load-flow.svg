@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 529.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 529.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">DiskSegment 加载流程：从 Open 到 GetIndexer 的完整过程</text>
   <text class="muted" x="40" y="66">DiskSegment 从磁盘加载索引数据，支持 NORMAL 和 LAZY 两种加载模式。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="120.0"/>
+  <rect class="step" x="40" y="95" width="180" height="134.0"/>
   <text class="h" x="70" y="130">1. Open</text>
   <text class="t" x="70" y="155">打开 Segment 目录</text>
   <text class="t" x="70" y="175">读取 SegmentInfo</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="step" x="270" y="95" width="200" height="120.0"/>
+  <rect class="step" x="270" y="95" width="200" height="134.0"/>
   <text class="h" x="300" y="130">2. OpenIndexer</text>
   <text class="t" x="300" y="155">NORMAL: 立即打开</text>
   <text class="t" x="300" y="175">LAZY: 延迟打开</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 470 145 L 510 145"/>
 
-  <rect class="step" x="520" y="95" width="180" height="120.0"/>
+  <rect class="step" x="520" y="95" width="180" height="134.0"/>
   <text class="h" x="550" y="130">3. GetIndexer</text>
   <text class="t" x="550" y="155">查询时获取</text>
   <text class="t" x="550" y="175">LAZY 模式下</text>
@@ -41,13 +41,13 @@
 
   <path class="arrow" d="M 700 145 L 740 145"/>
 
-  <rect class="step" x="750" y="95" width="210" height="120.0"/>
+  <rect class="step" x="750" y="95" width="210" height="134.0"/>
   <text class="h" x="780" y="130">4. Reopen</text>
   <text class="t" x="780" y="155">Schema 变更时</text>
   <text class="t" x="780" y="175">重新打开</text>
   <text class="t" x="780" y="195">更新 Indexer</text>
 
-  <rect class="box" x="40" y="215" width="920" height="260"/>
+  <rect class="box" x="40" y="215" width="920" height="274.0"/>
   <text class="h" x="70" y="250">详细流程说明</text>
   <text class="t" x="70" y="275">1. Open：调用 Open(MemoryQuotaController, OpenMode)，打开 Segment 目录，读取 SegmentInfo（docCount、Locator 等），初始化内存配额控制器</text>
   <text class="t" x="70" y="295">2. OpenIndexer：根据 OpenMode 决定加载策略：NORMAL 模式立即调用 OpenIndexer() 打开所有 Indexer，LAZY 模式只准备 Indexer 配置，不实际加载</text>

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540.0">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 562.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 540.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 562.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">构建流程的内存管理：估算、评估、控制</text>
   <text class="muted" x="40" y="66">构建流程通过内存估算、评估、控制等机制管理内存使用。</text>
 
-  <rect class="step" x="40" y="95" width="220" height="200"/>
+  <rect class="step" x="40" y="95" width="220" height="214.0"/>
   <text class="h" x="70" y="130">内存估算</text>
   <text class="t" x="70" y="155">估算内存使用</text>
   <text class="t" x="70" y="175">- MemSegment 大小</text>
@@ -30,7 +30,7 @@
   <path class="arrow" d="M 260 195 L 300 195"/>
   <text class="t" x="270" y="190">评估</text>
 
-  <rect class="step" x="320" y="95" width="220" height="200"/>
+  <rect class="step" x="320" y="95" width="220" height="214.0"/>
   <text class="h" x="350" y="130">内存评估</text>
   <text class="t" x="350" y="155">评估内存使用</text>
   <text class="t" x="350" y="175">- 检查内存配额</text>
@@ -43,7 +43,7 @@
   <path class="arrow" d="M 540 195 L 580 195"/>
   <text class="t" x="550" y="190">控制</text>
 
-  <rect class="step" x="600" y="95" width="360" height="200"/>
+  <rect class="step" x="600" y="95" width="360" height="214.0"/>
   <text class="h" x="630" y="130">内存控制</text>
   <text class="t" x="630" y="155">控制内存使用</text>
   <text class="t" x="630" y="175">- 触发转储</text>
@@ -53,7 +53,7 @@
   <text class="t" x="630" y="255">- 保证系统稳定</text>
   <text class="t" x="630" y="275">- 提高性能</text>
 
-  <rect class="box" x="40" y="315" width="920" height="195.0"/>
+  <rect class="box" x="40" y="315" width="920" height="207.0"/>
   <text class="h" x="70" y="350">构建流程内存管理的关键设计</text>
   <text class="t" x="70" y="375">1. 内存估算：通过估算 MemSegment 大小、转储内存、临时缓冲区、压缩缓冲区、DumpExpandMemSize、预留内存等，准确估算内存使用</text>
   <text class="t" x="70" y="395">2. 内存评估：通过检查内存配额、可用内存、评估内存风险，决定是否转储、是否等待、是否拒绝，保证系统稳定性</text>

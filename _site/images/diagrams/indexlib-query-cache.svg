@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540.0">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 562.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -10,7 +10,7 @@
       .cache{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
       .hit{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 540.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 562.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -51,7 +51,7 @@
   <text class="t" x="630" y="235">更新缓存</text>
   <text class="t" x="630" y="255">提高下次命中率</text>
 
-  <rect class="box" x="40" y="315" width="920" height="195.0"/>
+  <rect class="box" x="40" y="315" width="920" height="207.0"/>
   <text class="h" x="70" y="350">查询缓存的关键机制</text>
   <text class="t" x="70" y="375">1. 缓存键生成：通过查询条件生成唯一的缓存键，用于标识查询结果，支持精确匹配和模糊匹配</text>
   <text class="t" x="70" y="395">2. 缓存命中：当缓存命中时，直接返回缓存结果，无需执行实际查询，快速响应，提高性能，降低延迟</text>

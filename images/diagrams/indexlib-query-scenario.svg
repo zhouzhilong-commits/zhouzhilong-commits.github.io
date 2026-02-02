@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 622.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .segment{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
       .result{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 600" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 622.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">查询场景：遍历多个 Segment，合并查询结果</text>
   <text class="muted" x="40" y="66">在查询场景中，需要从 TabletData 获取所有已构建的 Segment，对多个 Segment 进行并行查询，最后合并查询结果。</text>
 
-  <rect class="query" x="40" y="95" width="200" height="120.0"/>
+  <rect class="query" x="40" y="95" width="200" height="134.0"/>
   <text class="h" x="70" y="130">查询请求</text>
   <text class="t" x="70" y="155">JSON 格式查询</text>
   <text class="t" x="70" y="175">索引类型、名称</text>
@@ -27,25 +27,25 @@
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="segment" x="300" y="95" width="150" height="120.0"/>
+  <rect class="segment" x="300" y="95" width="150" height="134.0"/>
   <text class="h" x="330" y="130">Segment 1</text>
   <text class="t" x="330" y="155">并行查询</text>
   <text class="t" x="330" y="175">Result1</text>
   <text class="t" x="330" y="195">docCount: 1000</text>
 
-  <rect class="segment" x="470" y="95" width="150" height="120.0"/>
+  <rect class="segment" x="470" y="95" width="150" height="134.0"/>
   <text class="h" x="500" y="130">Segment 2</text>
   <text class="t" x="500" y="155">并行查询</text>
   <text class="t" x="500" y="175">Result2</text>
   <text class="t" x="500" y="195">docCount: 2000</text>
 
-  <rect class="segment" x="640" y="95" width="150" height="120.0"/>
+  <rect class="segment" x="640" y="95" width="150" height="134.0"/>
   <text class="h" x="670" y="130">Segment 3</text>
   <text class="t" x="670" y="155">并行查询</text>
   <text class="t" x="670" y="175">Result3</text>
   <text class="t" x="670" y="195">docCount: 1500</text>
 
-  <rect class="segment" x="810" y="95" width="130" height="120.0"/>
+  <rect class="segment" x="810" y="95" width="130" height="134.0"/>
   <text class="h" x="840" y="130">Segment 4</text>
   <text class="t" x="840" y="155">并行查询</text>
   <text class="t" x="840" y="175">Result4</text>
@@ -56,7 +56,7 @@
   <path class="arrow" d="M 670 195 L 670 225"/>
   <path class="arrow" d="M 840 195 L 840 225"/>
 
-  <rect class="result" x="40" y="235" width="900" height="335.0"/>
+  <rect class="result" x="40" y="235" width="900" height="347.0"/>
   <text class="h" x="70" y="270">合并结果</text>
   <text class="t" x="70" y="295">1. 获取 Segment 列表：</text>
   <text class="t" x="90" y="315">   auto segments = tabletData-></text>

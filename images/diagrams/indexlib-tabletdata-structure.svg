@@ -23,7 +23,7 @@
   <rect class="tabletdata" x="40" y="95" width="920" height="270"/>
   <text class="h" x="70" y="130">TabletData</text>
 
-  <rect class="segments" x="70" y="150" width="300" height="195.0"/>
+  <rect class="segments" x="70" y="150" width="300" height="209.0"/>
   <text class="h" x="90" y="180">Segments 列表</text>
   <text class="t" x="90" y="205">- MemSegment (ST_BUILDING)</text>
   <text class="t" x="90" y="225">- MemSegment (ST_DUMPING)</text>
@@ -33,7 +33,7 @@
   <text class="t" x="90" y="305">CreateSlice() 筛选</text>
   <text class="t" x="90" y="325">GetSegment() 获取</text>
 
-  <rect class="version" x="390" y="150" width="250" height="195.0"/>
+  <rect class="version" x="390" y="150" width="250" height="209.0"/>
   <text class="h" x="410" y="180">Version</text>
   <text class="t" x="410" y="205">- VersionId: 100</text>
   <text class="t" x="410" y="225">- Segments: [1, 2, 3]</text>
@@ -43,7 +43,7 @@
   <text class="t" x="410" y="305">记录已持久化</text>
   <text class="t" x="410" y="325">的 Segment</text>
 
-  <rect class="resource" x="660" y="150" width="280" height="195.0"/>
+  <rect class="resource" x="660" y="150" width="280" height="209.0"/>
   <text class="h" x="680" y="180">ResourceMap</text>
   <text class="t" x="680" y="205">- 内存池</text>
   <text class="t" x="680" y="225">- 缓存</text>

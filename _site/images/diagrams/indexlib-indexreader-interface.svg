@@ -14,25 +14,25 @@
   <text class="title" x="40" y="42">IIndexReader 接口：提供索引查询的抽象</text>
   <text class="muted" x="40" y="66">IIndexReader 是索引查询的抽象接口，提供 Open、Search、GetStatistics 等方法，支持不同类型的索引查询。</text>
 
-  <rect class="interface" x="40" y="95" width="920" height="320"/>
+  <rect class="interface" x="40" y="95" width="920" height="324.0"/>
   <text class="h" x="70" y="130">IIndexReader</text>
 
-  <rect class="method" x="70" y="155" width="400" height="90.0"/>
+  <rect class="method" x="70" y="155" width="400" height="104.0"/>
   <text class="h" x="90" y="180">Open()</text>
   <text class="t" x="90" y="205">初始化 IndexReader</text>
   <text class="t" x="90" y="225">加载索引数据</text>
 
-  <rect class="method" x="490" y="155" width="400" height="90.0"/>
+  <rect class="method" x="490" y="155" width="400" height="104.0"/>
   <text class="h" x="510" y="180">Search()</text>
   <text class="t" x="510" y="205">根据查询条件查询索引</text>
   <text class="t" x="510" y="225">返回查询结果</text>
 
-  <rect class="method" x="70" y="255" width="400" height="90.0"/>
+  <rect class="method" x="70" y="255" width="400" height="104.0"/>
   <text class="h" x="90" y="280">GetStatistics()</text>
   <text class="t" x="90" y="305">获取索引统计信息</text>
   <text class="t" x="90" y="325">文档数、term 数等</text>
 
-  <rect class="box" x="490" y="255" width="400" height="150"/>
+  <rect class="box" x="490" y="255" width="400" height="164.0"/>
   <text class="h" x="510" y="280">关键设计</text>
   <text class="t" x="510" y="305">- Open：初始化 IndexReader，加载索引数据</text>
   <text class="t" x="510" y="325">- Search：根据查询条件查询索引，返回查询结果</text>

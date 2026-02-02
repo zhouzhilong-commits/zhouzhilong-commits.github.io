@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">KVTable 的特点：支持主键查询、简单的键值存储</text>
   <text class="muted" x="40" y="66">KVTable 支持主键查询、简单存储、高性能、属性查询等特点。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">主键查询</text>
   <text class="t" x="70" y="145.0">支持主键查询，快速定位数据</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">简单存储</text>
   <text class="t" x="70" y="215.0">简单的键值存储模型，易于使用</text>
-  <rect class="item" x="40" y="235" width="920" height="70.0"/>
+  <rect class="item" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">高性能</text>
   <text class="t" x="70" y="285.0">针对主键查询优化，查询性能高</text>
-  <rect class="item" x="40" y="305" width="920" height="110.0"/>
+  <rect class="item" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">属性查询</text>
   <text class="t" x="70" y="355.0">支持属性查询，可以查询指定属性</text>
   <text class="muted" x="40" y="395">理解 KVTable 的特点，是掌握 IndexLib 机制的关键</text>

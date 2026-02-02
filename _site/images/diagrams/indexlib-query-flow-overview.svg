@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 512.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .indexreader{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:12}
       .segment{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:10}
     </style>
-    <marker id="m" viewBox="0 0 1000 490" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 512.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">查询流程概览：TabletReader 与 IndexReader 的交互</text>
   <text class="muted" x="40" y="66">查询流程通过 TabletReader 和 IndexReader 两个层次实现，TabletReader 管理查询流程，IndexReader 提供索引查询能力。</text>
 
-  <rect class="tabletreader" x="40" y="95" width="280" height="200"/>
+  <rect class="tabletreader" x="40" y="95" width="280" height="214.0"/>
   <text class="h" x="70" y="130">TabletReader</text>
   <text class="t" x="70" y="155">查询入口</text>
   <text class="t" x="70" y="175">- 解析查询</text>
@@ -31,7 +31,7 @@
 
   <path class="arrow" d="M 320 195 L 360 195"/>
 
-  <rect class="indexreader" x="380" y="95" width="280" height="200"/>
+  <rect class="indexreader" x="380" y="95" width="280" height="214.0"/>
   <text class="h" x="410" y="130">IndexReader</text>
   <text class="t" x="410" y="155">索引查询接口</text>
   <text class="t" x="410" y="175">- InvertedIndexReader</text>
@@ -43,7 +43,7 @@
 
   <path class="arrow" d="M 660 195 L 700 195"/>
 
-  <rect class="segment" x="720" y="95" width="240" height="200"/>
+  <rect class="segment" x="720" y="95" width="240" height="214.0"/>
   <text class="h" x="750" y="130">Segment</text>
   <text class="t" x="750" y="155">索引数据</text>
   <text class="t" x="750" y="175">- Segment 1</text>
@@ -53,7 +53,7 @@
   <text class="t" x="750" y="255">并行查询</text>
   <text class="t" x="750" y="275">合并结果</text>
 
-  <rect class="box" x="40" y="315" width="920" height="145.0"/>
+  <rect class="box" x="40" y="315" width="920" height="157.0"/>
   <text class="h" x="70" y="350">查询流程的关键设计</text>
   <text class="t" x="70" y="375">1. TabletReader 是查询入口，提供 JSON 格式的查询接口，管理 IndexReader 缓存</text>
   <text class="t" x="70" y="395">2. IndexReader 提供索引查询能力，支持不同类型的索引查询（倒排、正排、主键等）</text>

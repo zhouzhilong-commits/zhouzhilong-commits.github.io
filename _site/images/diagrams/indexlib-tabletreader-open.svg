@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 502.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 480" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 502.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">TabletReader::Open() 流程：初始化 TabletData 和读取资源</text>
   <text class="muted" x="40" y="66">Open() 方法初始化 TabletReader，设置 TabletData 和 ReadResource，调用 DoOpen() 实现具体的打开逻辑。</text>
 
-  <rect class="step" x="40" y="95" width="200" height="120.0"/>
+  <rect class="step" x="40" y="95" width="200" height="134.0"/>
   <text class="h" x="70" y="130">1. 设置 TabletData</text>
   <text class="t" x="70" y="155">保存 TabletData 引用</text>
   <text class="t" x="70" y="175">包含所有 Segment</text>
@@ -25,26 +25,26 @@
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <rect class="step" x="300" y="95" width="200" height="114.0"/>
   <text class="h" x="330" y="130">2. 设置 ReadResource</text>
   <text class="t" x="330" y="155">保存读取资源</text>
   <text class="t" x="330" y="175">内存配额、缓存等</text>
 
   <path class="arrow" d="M 500 145 L 540 145"/>
 
-  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <rect class="step" x="560" y="95" width="200" height="114.0"/>
   <text class="h" x="590" y="130">3. 调用 DoOpen()</text>
   <text class="t" x="590" y="155">子类实现</text>
   <text class="t" x="590" y="175">具体的打开逻辑</text>
 
   <path class="arrow" d="M 760 145 L 800 145"/>
 
-  <rect class="step" x="820" y="95" width="120" height="100"/>
+  <rect class="step" x="820" y="95" width="120" height="114.0"/>
   <text class="h" x="850" y="130">4. 初始化 IndexReader</text>
   <text class="t" x="850" y="155">根据需要</text>
   <text class="t" x="850" y="175">初始化 IndexReader</text>
 
-  <rect class="box" x="40" y="215" width="900" height="235.0"/>
+  <rect class="box" x="40" y="215" width="900" height="247.0"/>
   <text class="h" x="70" y="250">Open 流程的关键步骤</text>
   <text class="t" x="70" y="275">1. 设置 TabletData：保存 TabletData 的引用，包含所有 Segment 和 Version 信息</text>
   <text class="t" x="70" y="295">2. 设置 ReadResource：保存读取资源，包括内存配额、缓存等</text>

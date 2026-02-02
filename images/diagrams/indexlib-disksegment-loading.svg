@@ -18,7 +18,7 @@
   <text class="title" x="40" y="42">DiskSegment 加载策略：NORMAL vs LAZY 模式</text>
   <text class="muted" x="40" y="66">NORMAL 模式立即加载所有索引，LAZY 模式按需加载，节省内存。</text>
 
-  <rect class="normal" x="40" y="95" width="420" height="300"/>
+  <rect class="normal" x="40" y="95" width="420" height="319.0"/>
   <text class="h" x="70" y="130">NORMAL 模式</text>
   <text class="t" x="70" y="155">OpenMode::NORMAL</text>
   <text class="t" x="70" y="180">特点：</text>
@@ -32,7 +32,7 @@
   <text class="t" x="70" y="360">优势：查询延迟低，无需等待加载</text>
   <text class="t" x="70" y="380">劣势：内存占用大，启动时间长</text>
 
-  <rect class="lazy" x="480" y="95" width="480" height="300"/>
+  <rect class="lazy" x="480" y="95" width="480" height="319.0"/>
   <text class="h" x="510" y="130">LAZY 模式</text>
   <text class="t" x="510" y="155">OpenMode::LAZY</text>
   <text class="t" x="510" y="180">特点：</text>

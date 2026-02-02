@@ -14,35 +14,35 @@
   <text class="title" x="40" y="42">TabletReader 的结构：包含 Schema、IndexReaderMap、TabletData 等</text>
   <text class="muted" x="40" y="66">TabletReader 包含 Schema、IndexReaderMap、TabletData、ReadResource 等关键组件，提供查询能力。</text>
 
-  <rect class="tabletreader" x="40" y="95" width="920" height="320"/>
+  <rect class="tabletreader" x="40" y="95" width="920" height="324.0"/>
   <text class="h" x="70" y="130">TabletReader</text>
 
-  <rect class="component" x="70" y="155" width="200" height="90.0"/>
+  <rect class="component" x="70" y="155" width="200" height="104.0"/>
   <text class="h" x="90" y="180">_schema</text>
   <text class="t" x="90" y="205">ITabletSchema</text>
   <text class="t" x="90" y="225">索引 Schema 定义</text>
 
-  <rect class="component" x="290" y="155" width="280" height="90.0"/>
+  <rect class="component" x="290" y="155" width="280" height="104.0"/>
   <text class="h" x="310" y="180">_indexReaderMap</text>
   <text class="t" x="310" y="205">map&lt;(indexType, indexName), IIndexReader&gt;</text>
   <text class="t" x="310" y="225">IndexReader 缓存</text>
 
-  <rect class="component" x="590" y="155" width="200" height="90.0"/>
+  <rect class="component" x="590" y="155" width="200" height="104.0"/>
   <text class="h" x="610" y="180">_tabletData</text>
   <text class="t" x="610" y="205">TabletData</text>
   <text class="t" x="610" y="225">索引数据</text>
 
-  <rect class="component" x="810" y="155" width="130" height="90.0"/>
+  <rect class="component" x="810" y="155" width="130" height="104.0"/>
   <text class="h" x="830" y="180">_readResource</text>
   <text class="t" x="830" y="205">ReadResource</text>
   <text class="t" x="830" y="225">读取资源</text>
 
-  <rect class="component" x="70" y="255" width="200" height="90.0"/>
+  <rect class="component" x="70" y="255" width="200" height="104.0"/>
   <text class="h" x="90" y="280">_indexMemoryReclaimer</text>
   <text class="t" x="90" y="305">IIndexMemoryReclaimer</text>
   <text class="t" x="90" y="325">内存回收器</text>
 
-  <rect class="box" x="290" y="255" width="650" height="150"/>
+  <rect class="box" x="290" y="255" width="650" height="164.0"/>
   <text class="h" x="310" y="280">关键方法</text>
   <text class="t" x="310" y="305">- Open()：初始化 TabletReader，准备查询</text>
   <text class="t" x="310" y="325">- Search()：执行查询，返回 JSON 格式结果</text>

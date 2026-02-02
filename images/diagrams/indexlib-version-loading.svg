@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 512.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -10,7 +10,7 @@
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
       .version{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 490" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 512.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -18,33 +18,33 @@
   <text class="title" x="40" y="42">Version 加载：从磁盘加载版本信息</text>
   <text class="muted" x="40" y="66">Version 的加载通过 VersionLoader 实现，包括读取版本文件、解析 Version、验证 Version、加载 Segment 等步骤。</text>
 
-  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <rect class="step" x="40" y="95" width="200" height="114.0"/>
   <text class="h" x="70" y="130">1. 读取版本文件</text>
   <text class="t" x="70" y="155">从磁盘读取</text>
   <text class="t" x="70" y="175">version.0 文件</text>
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="step" x="300" y="95" width="200" height="100"/>
+  <rect class="step" x="300" y="95" width="200" height="114.0"/>
   <text class="h" x="330" y="130">2. 解析 Version</text>
   <text class="t" x="330" y="155">解析 JSON 格式</text>
   <text class="t" x="330" y="175">的版本信息</text>
 
   <path class="arrow" d="M 500 145 L 540 145"/>
 
-  <rect class="step" x="560" y="95" width="200" height="100"/>
+  <rect class="step" x="560" y="95" width="200" height="114.0"/>
   <text class="h" x="590" y="130">3. 验证 Version</text>
   <text class="t" x="590" y="155">验证版本的有效性</text>
   <text class="t" x="590" y="175">Segment 是否存在</text>
 
   <path class="arrow" d="M 760 145 L 800 145"/>
 
-  <rect class="version" x="820" y="95" width="120" height="100"/>
+  <rect class="version" x="820" y="95" width="120" height="114.0"/>
   <text class="h" x="850" y="130">4. 加载 Segment</text>
   <text class="t" x="850" y="155">根据 Version</text>
   <text class="t" x="850" y="175">中的 Segment 列表</text>
 
-  <rect class="box" x="40" y="215" width="900" height="245.0"/>
+  <rect class="box" x="40" y="215" width="900" height="257.0"/>
   <text class="h" x="70" y="250">Version 加载的关键步骤</text>
   <text class="t" x="70" y="275">1. 读取版本文件：从磁盘读取版本文件（version.0、version.1 等），支持指定版本号加载</text>
   <text class="t" x="70" y="295">2. 解析 Version：解析 JSON 格式的版本信息，包括 Segment 列表、Locator、SchemaId 等</text>

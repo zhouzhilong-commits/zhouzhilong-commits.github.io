@@ -18,21 +18,21 @@
   <text class="title" x="40" y="42">InvertedIndexReader：倒排索引查询的实现</text>
   <text class="muted" x="40" y="66">InvertedIndexReader 是倒排索引的查询接口，支持 term 查询、范围查询等，返回 DocId 列表和相关性分数。</text>
 
-  <rect class="step" x="40" y="95" width="160" height="100"/>
+  <rect class="step" x="40" y="95" width="160" height="114.0"/>
   <text class="h" x="70" y="130">1. 解析查询</text>
   <text class="t" x="70" y="155">解析 term 查询</text>
   <text class="t" x="70" y="175">范围查询等</text>
 
   <path class="arrow" d="M 200 145 L 240 145"/>
 
-  <rect class="step" x="260" y="95" width="160" height="100"/>
+  <rect class="step" x="260" y="95" width="160" height="114.0"/>
   <text class="h" x="290" y="130">2. 查找 term</text>
   <text class="t" x="290" y="155">在倒排索引中</text>
   <text class="t" x="290" y="175">查找 term</text>
 
   <path class="arrow" d="M 420 145 L 460 145"/>
 
-  <rect class="step" x="480" y="95" width="180" height="120.0"/>
+  <rect class="step" x="480" y="95" width="180" height="134.0"/>
   <text class="h" x="510" y="130">3. 获取倒排列表</text>
   <text class="t" x="510" y="155">获取 term 对应的</text>
   <text class="t" x="510" y="175">倒排列表</text>
@@ -40,26 +40,26 @@
 
   <path class="arrow" d="M 660 145 L 700 145"/>
 
-  <rect class="step" x="720" y="95" width="200" height="100"/>
+  <rect class="step" x="720" y="95" width="200" height="114.0"/>
   <text class="h" x="750" y="130">4. 过滤删除文档</text>
   <text class="t" x="750" y="155">通过 DeletionMap</text>
   <text class="t" x="750" y="175">过滤已删除文档</text>
 
   <path class="arrow" d="M 750 195 L 750 225"/>
 
-  <rect class="step" x="40" y="235" width="200" height="100"/>
+  <rect class="step" x="40" y="235" width="200" height="114.0"/>
   <text class="h" x="70" y="270">5. 计算相关性</text>
   <text class="t" x="70" y="295">计算文档的</text>
   <text class="t" x="70" y="315">相关性分数</text>
 
   <path class="arrow" d="M 240 285 L 280 285"/>
 
-  <rect class="result" x="300" y="235" width="200" height="100"/>
+  <rect class="result" x="300" y="235" width="200" height="114.0"/>
   <text class="h" x="330" y="270">6. 排序返回</text>
   <text class="t" x="330" y="295">按相关性分数</text>
   <text class="t" x="330" y="315">排序，返回结果</text>
 
-  <rect class="box" x="520" y="235" width="400" height="220"/>
+  <rect class="box" x="520" y="235" width="400" height="234.0"/>
   <text class="h" x="550" y="270">倒排索引查询的关键点</text>
   <text class="t" x="550" y="295">1. 查找 term：在倒排索引中快速查找 term，支持前缀匹配、模糊匹配等</text>
   <text class="t" x="550" y="315">2. 获取倒排列表：获取 term 对应的倒排列表，包含 DocId 和位置信息</text>

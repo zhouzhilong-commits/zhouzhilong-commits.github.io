@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件</text>
   <text class="muted" x="40" y="66">KKVTable 的架构包括 KKVTabletReader、KKVTabletWriter、KKVIndexReader、PackAttributeFormatter 等组件。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">KKVTabletReader</text>
   <text class="t" x="70" y="145.0">KKV 表查询器，支持主键+排序键查询</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">KKVTabletWriter</text>
   <text class="t" x="70" y="215.0">KKV 表写入器，支持键键值构建</text>
-  <rect class="item" x="40" y="235" width="920" height="70.0"/>
+  <rect class="item" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">KKVIndexReader</text>
   <text class="t" x="70" y="285.0">KKV 索引 Reader，支持主键+排序键查询</text>
-  <rect class="item" x="40" y="305" width="920" height="110.0"/>
+  <rect class="item" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">PackAttributeFormatter</text>
   <text class="t" x="70" y="355.0">打包属性格式化器，支持属性查询</text>
   <text class="muted" x="40" y="395">理解 KKVTable 的架构，是掌握 IndexLib 机制的关键</text>

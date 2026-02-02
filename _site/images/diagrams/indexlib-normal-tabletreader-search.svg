@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 529.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -10,7 +10,7 @@
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
       .result{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 529.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -24,7 +24,7 @@
 
   <path class="arrow" d="M 200 145 L 240 145"/>
 
-  <rect class="step" x="260" y="95" width="200" height="120.0"/>
+  <rect class="step" x="260" y="95" width="200" height="134.0"/>
   <text class="h" x="290" y="130">2. 获取 IndexReader</text>
   <text class="t" x="290" y="155">MultiFieldIndexReader</text>
   <text class="t" x="290" y="175">DeletionMapReader</text>
@@ -32,21 +32,21 @@
 
   <path class="arrow" d="M 460 145 L 500 145"/>
 
-  <rect class="step" x="520" y="95" width="180" height="100"/>
+  <rect class="step" x="520" y="95" width="180" height="114.0"/>
   <text class="h" x="550" y="130">3. 遍历 Segment</text>
   <text class="t" x="550" y="155">获取所有已构建</text>
   <text class="t" x="550" y="175">的 Segment</text>
 
   <path class="arrow" d="M 700 145 L 740 145"/>
 
-  <rect class="step" x="760" y="95" width="160" height="100"/>
+  <rect class="step" x="760" y="95" width="160" height="114.0"/>
   <text class="h" x="790" y="130">4. 并行查询</text>
   <text class="t" x="790" y="155">对多个 Segment</text>
   <text class="t" x="790" y="175">进行查询</text>
 
   <path class="arrow" d="M 790 195 L 790 225"/>
 
-  <rect class="step" x="40" y="235" width="200" height="100"/>
+  <rect class="step" x="40" y="235" width="200" height="114.0"/>
   <text class="h" x="70" y="270">5. 过滤删除文档</text>
   <text class="t" x="70" y="295">通过 DeletionMapReader</text>
   <text class="t" x="70" y="315">过滤已删除文档</text>
@@ -63,7 +63,7 @@
   <text class="h" x="590" y="270">7. 返回结果</text>
   <text class="t" x="590" y="295">JSON 格式</text>
 
-  <rect class="box" x="740" y="235" width="180" height="240.0"/>
+  <rect class="box" x="740" y="235" width="180" height="254.0"/>
   <text class="h" x="770" y="270">Search 的关键点</text>
   <text class="t" x="770" y="295">1. 解析查询：将 JSON 查询解析为内部查询对象</text>
   <text class="t" x="770" y="315">2. 获取 IndexReader：获取 MultiFieldIndexReader、DeletionMapReader 等</text>

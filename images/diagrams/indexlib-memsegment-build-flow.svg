@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 529.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 529.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">MemSegment 构建流程：从 Open 到 Build 的完整过程</text>
   <text class="muted" x="40" y="66">MemSegment 在内存中构建索引，支持实时写入和查询。</text>
 
-  <rect class="step" x="40" y="95" width="180" height="120.0"/>
+  <rect class="step" x="40" y="95" width="180" height="134.0"/>
   <text class="h" x="70" y="130">1. Open</text>
   <text class="t" x="70" y="155">初始化构建资源</text>
   <text class="t" x="70" y="175">创建 Indexer</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 220 145 L 260 145"/>
 
-  <rect class="step" x="270" y="95" width="180" height="120.0"/>
+  <rect class="step" x="270" y="95" width="180" height="134.0"/>
   <text class="h" x="300" y="130">2. Build</text>
   <text class="t" x="300" y="155">接收文档批次</text>
   <text class="t" x="300" y="175">写入各个 Indexer</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 450 145 L 490 145"/>
 
-  <rect class="step" x="500" y="95" width="180" height="120.0"/>
+  <rect class="step" x="500" y="95" width="180" height="134.0"/>
   <text class="h" x="530" y="130">3. NeedDump</text>
   <text class="t" x="530" y="155">检查转储条件</text>
   <text class="t" x="530" y="175">内存/文档数阈值</text>
@@ -41,13 +41,13 @@
 
   <path class="arrow" d="M 680 145 L 720 145"/>
 
-  <rect class="step" x="730" y="95" width="230" height="120.0"/>
+  <rect class="step" x="730" y="95" width="230" height="134.0"/>
   <text class="h" x="760" y="130">4. CreateDumpParams</text>
   <text class="t" x="760" y="155">创建转储参数</text>
   <text class="t" x="760" y="175">计算内存成本</text>
   <text class="t" x="760" y="195">准备转储任务</text>
 
-  <rect class="box" x="40" y="215" width="920" height="260"/>
+  <rect class="box" x="40" y="215" width="920" height="274.0"/>
   <text class="h" x="70" y="250">详细流程说明</text>
   <text class="t" x="70" y="275">1. Open：调用 Open(BuildResource, SegmentMetrics)，初始化构建资源（内存池、Indexer Factory 等），根据 Schema 创建各个 Indexer（倒排索引、正排索引、摘要等）</text>
   <text class="t" x="70" y="295">2. Build：调用 Build(IDocumentBatch*)，遍历文档批次，为每个文档分配局部 DocId，将文档写入各个 Indexer，更新 SegmentInfo 的 docCount 和 Locator</text>

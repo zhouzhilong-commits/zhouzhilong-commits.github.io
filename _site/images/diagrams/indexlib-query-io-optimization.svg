@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540.0">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 562.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -49,7 +49,7 @@
   <text class="t" x="790" y="235">优化性能</text>
   <text class="t" x="790" y="255">降低延迟</text>
 
-  <rect class="box" x="40" y="315" width="920" height="195.0"/>
+  <rect class="box" x="40" y="315" width="920" height="207.0"/>
   <text class="h" x="70" y="350">查询 IO 优化的关键策略</text>
   <text class="t" x="70" y="375">1. 批量读取：通过批量读取数据，减少 IO 次数，提高 IO 效率，减少系统调用，提高吞吐量，降低延迟</text>
   <text class="t" x="70" y="395">2. 预读机制：通过预测访问模式，提前读取数据，减少读取延迟，提高查询性能，优化用户体验，降低延迟</text>

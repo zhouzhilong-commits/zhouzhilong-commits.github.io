@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">VersionMerger 的结构：管理合并流程和版本更新</text>
   <text class="muted" x="40" y="66">VersionMerger 包含 MergeController、PlanCreator、MergedVersionInfo 等关键组件。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">MergeController</text>
   <text class="t" x="70" y="145.0">合并控制器，管理合并任务的执行</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">PlanCreator</text>
   <text class="t" x="70" y="215.0">计划创建器，创建合并计划</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">MergedVersionInfo</text>
   <text class="t" x="70" y="285.0">合并后的版本信息，包含基础版本和目标版本</text>
   <text class="muted" x="40" y="325">理解 VersionMerger 的结构，是掌握 Segment 合并机制的关键</text>

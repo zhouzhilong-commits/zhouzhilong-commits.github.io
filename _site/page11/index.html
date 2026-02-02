@@ -646,7 +646,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="17"
+    data-total-pages="19"
     data-current-page="11"
   
 >
@@ -673,7 +673,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/object-storage-note-003-read-after-write-list/" rel="permalink">对象存储笔记：一致性模型：read-after-write 与 list 一致性
+        <a href="/storage-basics-3-lsm-and-compaction/" rel="permalink">存储基础（3）：LSM、Compaction 与写放大
 </a>
       
     </h2>
@@ -690,12 +690,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-02-01T00:00:00+08:00">February 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>对象存储里最容易踩坑的是一句话：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
 
 </p>
     
@@ -721,7 +721,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/storage-basics-1-write-amplification/" rel="permalink">存储基础（1）：写放大
+        <a href="/rocksdb-note-051-bloom-ribbon-filter/" rel="permalink">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本
 </a>
       
     </h2>
@@ -731,20 +731,68 @@
 
 
   
-	  1 分钟阅读
+	  少于 1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/paper-notes/databases/system-r-access-path-selection/" rel="permalink">System R：Access Path Selection（论文笔记）
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>本文是「存储基础系列」第 1 篇：解释<strong>写放大（Write Amplification）</strong>是什么、为什么几乎所有存储系统都绕不开它，以及工程上如何衡量与优化。</p>
+  <p>论文：Access Path Selection in a Relational Database Management System（System R）</p>
 </blockquote>
 
 </p>
@@ -771,55 +819,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-note-009-block-cache/" rel="permalink">RocksDB 笔记：Block Cache：缓存什么、怎么估算命中
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇笔记更“贴近工程现场”地回答 RocksDB 的一个高频问题：<strong>Block Cache 到底缓存什么？怎么估算需要多大？为什么“命中率看起来不低”但延迟还是很差？</strong></p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/paper-notes/distributed/chubby/" rel="permalink">Chubby：A Lock Service（论文笔记）
+        <a href="/paper-notes/distributed/spanner/" rel="permalink">Spanner：Globally-Distributed Database（论文笔记）
 </a>
       
     </h2>
@@ -836,13 +836,13 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems</p>
+  <p>论文：Spanner: Google’s Globally-Distributed Database</p>
 </blockquote>
 
 </p>
@@ -869,7 +869,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/paper-notes/storage/bigtable/" rel="permalink">Bigtable：A Distributed Storage System for Structured Data（论文笔记）
+        <a href="/paper-notes/storage/gfs/" rel="permalink">GFS：The Google File System（论文笔记）
 </a>
       
     </h2>
@@ -886,13 +886,13 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-01-01T00:00:00+08:00">January 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：Bigtable: A Distributed Storage System for Structured Data（Chang et al.）</p>
+  <p>论文：The Google File System（Ghemawat, Gobioff, Leung）</p>
 </blockquote>
 
 </p>
@@ -980,7 +980,7 @@
     
 
     
-      <li><a href="/page17/">17</a></li>
+      <li><a href="/page19/">19</a></li>
     
 
     

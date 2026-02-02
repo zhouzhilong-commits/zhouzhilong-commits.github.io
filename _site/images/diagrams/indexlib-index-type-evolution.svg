@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">索引类型的演进：从 Normal 到 KV、KKV 的演进</text>
   <text class="muted" x="40" y="66">索引类型从 Normal 演进到 KV、KKV，针对不同场景优化。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">NormalTable</text>
   <text class="t" x="70" y="145.0">最早的索引类型，支持完整的索引功能，适用于复杂场景</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">KVTable</text>
   <text class="t" x="70" y="215.0">针对简单键值存储场景优化，查询性能高</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">KKVTable</text>
   <text class="t" x="70" y="285.0">针对多值存储场景优化，支持主键+排序键查询</text>
   <text class="muted" x="40" y="325">理解 索引类型的演进，是掌握 IndexLib 机制的关键</text>

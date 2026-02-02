@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2025-07-07T00:00:00+08:00">
+  <meta property="article:published_time" content="2025-07-05T00:00:00+08:00">
 
 
 
@@ -639,7 +639,7 @@
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="IndexLib（7）：内存管理与资源控制">
     <meta itemprop="description" content="在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。">
-    <meta itemprop="datePublished" content="July 07, 2025">
+    <meta itemprop="datePublished" content="July 05, 2025">
     
 
     <div class="page__inner-wrap">
@@ -652,7 +652,7 @@
 
 
   
-	  3 分钟阅读
+	  7 分钟阅读
 	
 </p>
           
@@ -660,7 +660,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-07T00:00:00+08:00">July 07, 2025</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-05T00:00:00+08:00">July 05, 2025</time></p>
           
         
         
@@ -694,13 +694,81 @@
 
 <h3 id="12-内存管理的作用">1.2 内存管理的作用</h3>
 
-<p>内存管理在 IndexLib 中起到关键作用：</p>
+<p>内存管理在 IndexLib 中起到关键作用，是系统稳定性和性能的基础。让我们通过类图来理解内存管理的整体架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class MemoryQuotaController {
+        -string _name
+        -int64_t _rootQuota
+        -atomic~int64_t~ _localFreeQuota
+        -atomic~int64_t~ _reservedParentQuota
+        -MemoryQuotaController _parentController
+        +Allocate(int64_t) void
+        +TryAllocate(int64_t) Status
+        +Reserve(int64_t) Status
+        +Free(int64_t) void
+        +GetAllocatedQuota() int64_t
+    }
+    
+    class TabletMemoryCalculator {
+        -TabletWriter _tabletWriter
+        -TabletReaderContainer _tabletReaderContainer
+        +GetRtBuiltSegmentsMemsize() size_t
+        +GetRtIndexMemsize() size_t
+        +GetBuildingSegmentMemsize() size_t
+    }
+    
+    class IIndexMemoryReclaimer {
+        &lt;&lt;interface&gt;&gt;
+        +Retire(void*, deAllocator) int64_t
+        +DropRetireItem(int64_t) void
+        +TryReclaim() void
+        +Reclaim() void
+    }
+    
+    class BuildResourceCalculator {
+        +GetCurrentTotalMemoryUse(Metrics) int64_t
+        +EstimateDumpTempMemoryUse(Metrics, threadCount) int64_t
+        +EstimateDumpExpandMemoryUse(Metrics) int64_t
+    }
+    
+    MemoryQuotaController --&gt; MemoryQuotaController : 层级关系
+    TabletMemoryCalculator --&gt; MemoryQuotaController : 使用
+    IIndexMemoryReclaimer --&gt; MemoryQuotaController : 使用
+    BuildResourceCalculator --&gt; MemoryQuotaController : 使用
+</code></pre>
+
+<p><strong>内存管理的核心作用</strong>：</p>
 
 <ul>
-  <li><strong>内存配额控制</strong>：通过 MemoryQuotaController 控制内存使用，避免内存溢出</li>
-  <li><strong>内存使用统计</strong>：通过 TabletMemoryCalculator 统计内存使用，监控内存状态</li>
-  <li><strong>内存回收</strong>：通过 IIndexMemoryReclaimer 回收不再使用的内存，释放内存空间</li>
-  <li><strong>资源优化</strong>：通过 BuildResourceCalculator 优化构建资源使用，提高构建效率</li>
+  <li><strong>内存配额控制</strong>：通过 MemoryQuotaController 控制内存使用，避免内存溢出
+    <ul>
+      <li><strong>配额管理</strong>：为每个组件分配内存配额，控制内存使用上限</li>
+      <li><strong>层级管理</strong>：支持层级配额管理，灵活分配配额</li>
+      <li><strong>配额预留</strong>：通过预留机制保证关键操作的配额</li>
+    </ul>
+  </li>
+  <li><strong>内存使用统计</strong>：通过 TabletMemoryCalculator 统计内存使用，监控内存状态
+    <ul>
+      <li><strong>实时统计</strong>：实时统计各个组件的内存使用量</li>
+      <li><strong>分类统计</strong>：按类型统计内存使用（构建、查询、索引等）</li>
+      <li><strong>监控告警</strong>：根据统计结果监控内存状态，及时告警</li>
+    </ul>
+  </li>
+  <li><strong>内存回收</strong>：通过 IIndexMemoryReclaimer 回收不再使用的内存，释放内存空间
+    <ul>
+      <li><strong>延迟回收</strong>：延迟回收避免频繁的内存操作</li>
+      <li><strong>按需回收</strong>：在内存紧张时按需回收，保证系统稳定性</li>
+      <li><strong>并发安全</strong>：支持并发回收，保证线程安全</li>
+    </ul>
+  </li>
+  <li><strong>资源优化</strong>：通过 BuildResourceCalculator 优化构建资源使用，提高构建效率
+    <ul>
+      <li><strong>资源估算</strong>：估算构建和转储所需的资源</li>
+      <li><strong>资源预留</strong>：预留构建和转储所需的资源</li>
+      <li><strong>资源控制</strong>：控制资源使用，避免资源浪费</li>
+    </ul>
+  </li>
 </ul>
 
 <h2 id="2-memoryquotacontroller内存配额控制器">2. MemoryQuotaController：内存配额控制器</h2>
@@ -781,13 +849,79 @@
     style J fill:#e8f5e9
 </code></pre>
 
-<p><strong>分配机制</strong>：</p>
+<p><strong>分配机制详解</strong>：</p>
+
+<p>内存配额的分配是内存管理的核心机制。让我们通过序列图来理解完整的分配流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Component as 组件
+    participant ChildCtrl as 子控制器
+    participant ParentCtrl as 父控制器
+    participant RootCtrl as 根控制器
+    
+    Component-&gt;&gt;ChildCtrl: Allocate(quota)
+    ChildCtrl-&gt;&gt;ChildCtrl: 检查本地配额
+    alt 本地配额足够
+        ChildCtrl-&gt;&gt;ChildCtrl: 从本地分配
+        ChildCtrl--&gt;&gt;Component: Success
+    else 本地配额不足
+        ChildCtrl-&gt;&gt;ParentCtrl: 请求配额
+        ParentCtrl-&gt;&gt;ParentCtrl: 检查配额
+        alt 父控制器有配额
+            ParentCtrl-&gt;&gt;ChildCtrl: 分配配额
+            ChildCtrl-&gt;&gt;ChildCtrl: 更新本地配额
+            ChildCtrl--&gt;&gt;Component: Success
+        else 父控制器配额不足
+            ParentCtrl-&gt;&gt;RootCtrl: 请求配额
+            RootCtrl-&gt;&gt;ParentCtrl: 分配配额
+            ParentCtrl-&gt;&gt;ChildCtrl: 分配配额
+            ChildCtrl-&gt;&gt;ChildCtrl: 更新本地配额
+            ChildCtrl--&gt;&gt;Component: Success
+        end
+    end
+</code></pre>
+
+<p><strong>分配机制详解</strong>：</p>
+
 <ol>
-  <li><strong>根控制器分配</strong>：根控制器有固定的总配额</li>
-  <li><strong>子控制器分配</strong>：子控制器从父控制器分配配额</li>
-  <li><strong>配额预留</strong>：通过 Reserve() 预留配额，保证后续分配</li>
-  <li><strong>配额释放</strong>：通过 Free() 释放配额，返回给父控制器</li>
+  <li><strong>根控制器分配</strong>：根控制器有固定的总配额
+    <ul>
+      <li><strong>总配额设置</strong>：根控制器在创建时设置总配额</li>
+      <li><strong>配额分配</strong>：根控制器将配额分配给子控制器</li>
+      <li><strong>配额监控</strong>：根控制器监控总配额的使用情况</li>
+    </ul>
+  </li>
+  <li><strong>子控制器分配</strong>：子控制器从父控制器分配配额
+    <ul>
+      <li><strong>配额请求</strong>：子控制器向父控制器请求配额</li>
+      <li><strong>配额传递</strong>：父控制器将配额传递给子控制器</li>
+      <li><strong>配额隔离</strong>：不同子控制器的配额相互隔离</li>
+    </ul>
+  </li>
+  <li><strong>配额预留</strong>：通过 Reserve() 预留配额，保证后续分配
+    <ul>
+      <li><strong>预留机制</strong>：预留配额不会被其他操作占用</li>
+      <li><strong>预留释放</strong>：预留的配额可以释放，返回给父控制器</li>
+      <li><strong>预留用途</strong>：用于保证关键操作（如转储）的配额</li>
+    </ul>
+  </li>
+  <li><strong>配额释放</strong>：通过 Free() 释放配额，返回给父控制器
+    <ul>
+      <li><strong>释放时机</strong>：当内存不再使用时释放配额</li>
+      <li><strong>释放传递</strong>：释放的配额返回给父控制器</li>
+      <li><strong>配额回收</strong>：父控制器可以回收子控制器的配额</li>
+    </ul>
+  </li>
 </ol>
+
+<p><strong>分配策略的优势</strong>：</p>
+
+<ul>
+  <li><strong>灵活性</strong>：支持层级配额管理，灵活分配配额</li>
+  <li><strong>隔离性</strong>：不同组件的配额相互隔离，避免相互影响</li>
+  <li><strong>可控性</strong>：通过配额控制内存使用，避免内存溢出</li>
+  <li><strong>可扩展性</strong>：支持动态创建和销毁配额控制器</li>
+</ul>
 
 <h3 id="23-层级配额管理">2.3 层级配额管理</h3>
 
@@ -796,11 +930,88 @@
 <p><img src="/images/diagrams/indexlib-memory-quota-hierarchy.svg" alt="层级配额管理：从根控制器到子控制器的层级结构" /></p>
 
 <p><strong>层级结构</strong>：</p>
+
+<p>层级配额管理是 IndexLib 内存管理的核心设计。让我们通过类图来理解层级结构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class RootController {
+        -int64_t _rootQuota = 100GB
+        +Allocate(quota) void
+        +GetFreeQuota() int64_t
+    }
+    
+    class PartitionController {
+        -MemoryQuotaController _parent
+        -int64_t _localFreeQuota
+        +Allocate(quota) void
+        +GetFreeQuota() int64_t
+    }
+    
+    class TabletController {
+        -MemoryQuotaController _parent
+        -int64_t _localFreeQuota
+        +Allocate(quota) void
+        +GetFreeQuota() int64_t
+    }
+    
+    class BuildController {
+        -MemoryQuotaController _parent
+        -int64_t _localFreeQuota
+        +Allocate(quota) void
+    }
+    
+    class QueryController {
+        -MemoryQuotaController _parent
+        -int64_t _localFreeQuota
+        +Allocate(quota) void
+    }
+    
+    RootController --&gt; PartitionController : 分配配额
+    PartitionController --&gt; TabletController : 分配配额
+    TabletController --&gt; BuildController : 分配配额
+    TabletController --&gt; QueryController : 分配配额
+</code></pre>
+
+<p><strong>层级结构详解</strong>：</p>
+
 <ul>
-  <li><strong>根控制器</strong>：管理总配额，分配给子控制器</li>
-  <li><strong>分区控制器</strong>：管理分区的配额，分配给 Tablet 控制器</li>
-  <li><strong>Tablet 控制器</strong>：管理 Tablet 的配额，分配给各个组件</li>
-  <li><strong>组件控制器</strong>：管理组件的配额，如构建配额、查询配额等</li>
+  <li><strong>根控制器</strong>：管理总配额，分配给子控制器
+    <ul>
+      <li><strong>总配额</strong>：根控制器管理系统的总内存配额（如 100GB）</li>
+      <li><strong>配额分配</strong>：将总配额分配给分区控制器或 Tablet 控制器</li>
+      <li><strong>配额监控</strong>：监控总配额的使用情况，防止超限</li>
+    </ul>
+  </li>
+  <li><strong>分区控制器</strong>：管理分区的配额，分配给 Tablet 控制器
+    <ul>
+      <li><strong>分区配额</strong>：每个分区有独立的内存配额</li>
+      <li><strong>配额分配</strong>：将分区配额分配给该分区下的 Tablet 控制器</li>
+      <li><strong>配额隔离</strong>：不同分区的配额相互隔离</li>
+    </ul>
+  </li>
+  <li><strong>Tablet 控制器</strong>：管理 Tablet 的配额，分配给各个组件
+    <ul>
+      <li><strong>Tablet 配额</strong>：每个 Tablet 有独立的内存配额</li>
+      <li><strong>配额分配</strong>：将 Tablet 配额分配给构建、查询等组件</li>
+      <li><strong>配额平衡</strong>：根据组件的重要性平衡配额分配</li>
+    </ul>
+  </li>
+  <li><strong>组件控制器</strong>：管理组件的配额，如构建配额、查询配额等
+    <ul>
+      <li><strong>构建配额</strong>：管理构建操作的内存配额</li>
+      <li><strong>查询配额</strong>：管理查询操作的内存配额</li>
+      <li><strong>索引配额</strong>：管理索引数据的内存配额</li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>层级管理的优势</strong>：</p>
+
+<ul>
+  <li><strong>灵活分配</strong>：支持多层级配额管理，灵活分配配额</li>
+  <li><strong>配额隔离</strong>：不同层级的配额相互隔离，避免相互影响</li>
+  <li><strong>配额共享</strong>：支持配额共享，提高配额利用率</li>
+  <li><strong>配额监控</strong>：可以监控每个层级的配额使用情况</li>
 </ul>
 
 <h3 id="24-配额分配策略">2.4 配额分配策略</h3>
@@ -863,12 +1074,81 @@
 <p><img src="/images/diagrams/indexlib-memory-usage-statistics.svg" alt="内存使用统计：从 Tablet 组件到内存使用量的统计流程" /></p>
 
 <p><strong>统计流程</strong>：</p>
+
+<p>内存使用统计是监控和调优的基础。让我们通过序列图来理解完整的统计流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Calculator as TabletMemoryCalculator
+    participant Writer as TabletWriter
+    participant ReaderContainer as TabletReaderContainer
+    participant MemSeg as MemSegment
+    participant DiskSeg as DiskSegment
+    participant Indexer as Indexer
+    
+    Calculator-&gt;&gt;Writer: GetBuildingSegment()
+    Writer--&gt;&gt;Calculator: MemSegment
+    Calculator-&gt;&gt;MemSeg: EvaluateCurrentMemUsed()
+    MemSeg-&gt;&gt;Indexer: GetMemUsed()
+    Indexer--&gt;&gt;MemSeg: memUsed
+    MemSeg--&gt;&gt;Calculator: buildingMemSize
+    
+    Calculator-&gt;&gt;Writer: GetDumpingSegment()
+    Writer--&gt;&gt;Calculator: DumpingSegment
+    Calculator-&gt;&gt;DumpingSegment: EvaluateCurrentMemUsed()
+    DumpingSegment--&gt;&gt;Calculator: dumpingMemSize
+    
+    Calculator-&gt;&gt;ReaderContainer: GetTabletReaders()
+    ReaderContainer--&gt;&gt;Calculator: TabletReaders
+    loop 遍历每个TabletReader
+        Calculator-&gt;&gt;DiskSeg: GetIndexMemsize()
+        DiskSeg--&gt;&gt;Calculator: indexMemSize
+    end
+    
+    Calculator-&gt;&gt;Calculator: 汇总所有内存使用
+    Calculator--&gt;&gt;Calculator: 返回统计结果
+</code></pre>
+
+<p><strong>统计流程详解</strong>：</p>
+
 <ol>
-  <li><strong>收集组件信息</strong>：从 TabletWriter 和 TabletReaderContainer 收集组件信息</li>
-  <li><strong>计算各组件内存</strong>：计算各个组件的内存使用量</li>
-  <li><strong>汇总内存使用</strong>：汇总所有组件的内存使用量</li>
-  <li><strong>返回统计结果</strong>：返回详细的内存使用统计结果</li>
+  <li><strong>收集组件信息</strong>：从 TabletWriter 和 TabletReaderContainer 收集组件信息
+    <ul>
+      <li><strong>构建组件</strong>：收集构建中的 MemSegment、转储中的 Segment 等</li>
+      <li><strong>查询组件</strong>：收集 TabletReader、IndexReader 等查询组件</li>
+      <li><strong>索引组件</strong>：收集各种 Indexer（倒排、正排、主键等）</li>
+    </ul>
+  </li>
+  <li><strong>计算各组件内存</strong>：计算各个组件的内存使用量
+    <ul>
+      <li><strong>Segment 内存</strong>：计算 MemSegment 和 DiskSegment 的内存使用</li>
+      <li><strong>索引内存</strong>：计算各个 Indexer 的内存使用</li>
+      <li><strong>缓存内存</strong>：计算缓存的内存使用</li>
+    </ul>
+  </li>
+  <li><strong>汇总内存使用</strong>：汇总所有组件的内存使用量
+    <ul>
+      <li><strong>分类汇总</strong>：按类型汇总内存使用（构建、查询、索引等）</li>
+      <li><strong>总内存使用</strong>：计算总的内存使用量</li>
+      <li><strong>内存占比</strong>：计算各组件内存占总内存的比例</li>
+    </ul>
+  </li>
+  <li><strong>返回统计结果</strong>：返回详细的内存使用统计结果
+    <ul>
+      <li><strong>详细统计</strong>：返回各个组件的详细内存使用量</li>
+      <li><strong>统计报告</strong>：生成内存使用统计报告</li>
+      <li><strong>监控数据</strong>：提供监控数据，用于告警和调优</li>
+    </ul>
+  </li>
 </ol>
+
+<p><strong>统计的用途</strong>：</p>
+
+<ul>
+  <li><strong>内存监控</strong>：实时监控内存使用情况，及时发现内存问题</li>
+  <li><strong>性能调优</strong>：根据统计结果优化内存分配，提高内存利用率</li>
+  <li><strong>资源规划</strong>：根据统计结果规划内存资源，合理分配配额</li>
+  <li><strong>问题诊断</strong>：通过统计结果诊断内存问题，定位内存泄漏</li>
+</ul>
 
 <h2 id="4-iindexmemoryreclaimer索引内存回收器">4. IIndexMemoryReclaimer：索引内存回收器</h2>
 
@@ -931,13 +1211,85 @@
     style H fill:#e8f5e9
 </code></pre>
 
-<p><strong>回收机制</strong>：</p>
+<p><strong>回收机制详解</strong>：</p>
+
+<p>内存回收是保证系统稳定性的关键机制。让我们通过序列图来理解完整的回收流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Component as 组件
+    participant Reclaimer as IIndexMemoryReclaimer
+    participant RetireQueue as RetireQueue
+    participant MemoryQuota as MemoryQuotaController
+    
+    Component-&gt;&gt;Reclaimer: Retire(addr, deAllocator)
+    Reclaimer-&gt;&gt;RetireQueue: AddRetireItem(addr, deAllocator)
+    RetireQueue--&gt;&gt;Reclaimer: itemId
+    Reclaimer--&gt;&gt;Component: itemId
+    
+    Note over Reclaimer: 延迟回收，等待合适时机
+    
+    MemoryQuota-&gt;&gt;Reclaimer: 内存紧张，触发回收
+    Reclaimer-&gt;&gt;Reclaimer: TryReclaim()
+    Reclaimer-&gt;&gt;RetireQueue: GetRetireItems()
+    RetireQueue--&gt;&gt;Reclaimer: RetireItems
+    
+    loop 遍历回收项
+        Reclaimer-&gt;&gt;Reclaimer: 检查是否可以回收
+        alt 可以回收
+            Reclaimer-&gt;&gt;Component: deAllocator(addr)
+            Component-&gt;&gt;MemoryQuota: Free(quota)
+            MemoryQuota--&gt;&gt;Component: Success
+        end
+    end
+    
+    alt 内存仍然紧张
+        Reclaimer-&gt;&gt;Reclaimer: Reclaim()
+        Reclaimer-&gt;&gt;RetireQueue: ForceReclaimAll()
+        RetireQueue--&gt;&gt;Reclaimer: Success
+    end
+</code></pre>
+
+<p><strong>回收机制详解</strong>：</p>
+
 <ol>
-  <li><strong>Retire</strong>：将不再使用的内存加入回收队列，延迟回收</li>
-  <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存分配和释放</li>
-  <li><strong>TryReclaim</strong>：在合适的时机尝试回收一些内存</li>
-  <li><strong>Reclaim</strong>：在内存紧张时强制回收所有可回收的内存</li>
+  <li><strong>Retire</strong>：将不再使用的内存加入回收队列，延迟回收
+    <ul>
+      <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存分配和释放</li>
+      <li><strong>回收队列</strong>：使用队列管理待回收的内存，支持优先级</li>
+      <li><strong>回收标识</strong>：为每个回收项分配唯一标识，支持取消回收</li>
+    </ul>
+  </li>
+  <li><strong>延迟回收</strong>：延迟回收可以避免频繁的内存分配和释放
+    <ul>
+      <li><strong>性能优化</strong>：延迟回收减少内存操作次数，提高性能</li>
+      <li><strong>批量回收</strong>：可以批量回收多个内存块，提高回收效率</li>
+      <li><strong>时机选择</strong>：在合适的时机（如内存紧张时）进行回收</li>
+    </ul>
+  </li>
+  <li><strong>TryReclaim</strong>：在合适的时机尝试回收一些内存
+    <ul>
+      <li><strong>非阻塞回收</strong>：TryReclaim 不阻塞，可以快速返回</li>
+      <li><strong>部分回收</strong>：只回收部分内存，避免影响性能</li>
+      <li><strong>智能回收</strong>：根据内存使用情况智能决定回收量</li>
+    </ul>
+  </li>
+  <li><strong>Reclaim</strong>：在内存紧张时强制回收所有可回收的内存
+    <ul>
+      <li><strong>强制回收</strong>：Reclaim 会强制回收所有可回收的内存</li>
+      <li><strong>阻塞回收</strong>：Reclaim 可能会阻塞，直到回收完成</li>
+      <li><strong>紧急回收</strong>：在内存严重不足时使用，保证系统稳定性</li>
+    </ul>
+  </li>
 </ol>
+
+<p><strong>回收策略的优势</strong>：</p>
+
+<ul>
+  <li><strong>性能优化</strong>：延迟回收减少内存操作次数，提高性能</li>
+  <li><strong>稳定性保证</strong>：在内存紧张时强制回收，保证系统稳定性</li>
+  <li><strong>灵活性</strong>：支持取消回收，适应动态场景</li>
+  <li><strong>并发安全</strong>：支持并发回收，保证线程安全</li>
+</ul>
 
 <h3 id="43-内存回收策略">4.3 内存回收策略</h3>
 
@@ -1137,22 +1489,149 @@
   <li><strong>资源控制</strong>：控制资源使用，避免资源浪费</li>
 </ul>
 
-<h2 id="10-小结">10. 小结</h2>
+<h2 id="10-性能优化与最佳实践">10. 性能优化与最佳实践</h2>
+
+<h3 id="101-内存配额优化">10.1 内存配额优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>配额分配优化</strong>：
+    <ul>
+      <li><strong>动态调整</strong>：根据系统负载动态调整配额分配</li>
+      <li><strong>配额预留</strong>：为关键操作预留配额，保证操作成功</li>
+      <li><strong>配额共享</strong>：支持配额共享，提高配额利用率</li>
+    </ul>
+  </li>
+  <li><strong>层级管理优化</strong>：
+    <ul>
+      <li><strong>层级设计</strong>：合理设计层级结构，平衡灵活性和复杂度</li>
+      <li><strong>配额隔离</strong>：不同组件的配额相互隔离，避免相互影响</li>
+      <li><strong>配额监控</strong>：监控每个层级的配额使用情况，及时调整</li>
+    </ul>
+  </li>
+  <li><strong>配额策略优化</strong>：
+    <ul>
+      <li><strong>按需分配</strong>：根据实际需求分配配额，避免浪费</li>
+      <li><strong>预留分配</strong>：为关键操作预留配额，保证操作成功</li>
+      <li><strong>阻塞策略</strong>：合理使用阻塞和非阻塞分配，平衡性能和稳定性</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="102-内存回收优化">10.2 内存回收优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>回收时机优化</strong>：
+    <ul>
+      <li><strong>延迟回收</strong>：延迟回收减少内存操作次数，提高性能</li>
+      <li><strong>按需回收</strong>：在内存紧张时按需回收，保证系统稳定性</li>
+      <li><strong>定期回收</strong>：定期触发回收，保持内存使用在合理范围</li>
+    </ul>
+  </li>
+  <li><strong>回收策略优化</strong>：
+    <ul>
+      <li><strong>批量回收</strong>：批量回收多个内存块，提高回收效率</li>
+      <li><strong>智能回收</strong>：根据内存使用情况智能决定回收量</li>
+      <li><strong>并发回收</strong>：支持并发回收，提高回收效率</li>
+    </ul>
+  </li>
+  <li><strong>回收性能优化</strong>：
+    <ul>
+      <li><strong>回收队列优化</strong>：优化回收队列的数据结构，提高操作效率</li>
+      <li><strong>回收算法优化</strong>：优化回收算法，减少回收开销</li>
+      <li><strong>回收监控</strong>：监控回收性能，及时调整回收策略</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="103-内存使用优化">10.3 内存使用优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>内存分配优化</strong>：
+    <ul>
+      <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+      <li><strong>批量分配</strong>：批量分配内存，减少分配次数</li>
+      <li><strong>对齐分配</strong>：内存对齐分配，提高访问效率</li>
+    </ul>
+  </li>
+  <li><strong>内存使用优化</strong>：
+    <ul>
+      <li><strong>懒加载</strong>：按需加载数据，减少内存占用</li>
+      <li><strong>内存压缩</strong>：压缩内存数据，减少内存使用</li>
+      <li><strong>缓存控制</strong>：控制缓存大小，避免内存溢出</li>
+    </ul>
+  </li>
+  <li><strong>内存监控优化</strong>：
+    <ul>
+      <li><strong>实时监控</strong>：实时监控内存使用情况，及时发现内存问题</li>
+      <li><strong>统计分析</strong>：统计分析内存使用趋势，预测内存需求</li>
+      <li><strong>告警机制</strong>：设置告警阈值，及时告警内存问题</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="11-小结">11. 小结</h2>
 
 <p>内存管理与资源控制是 IndexLib 的核心功能，通过 MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 等组件实现。通过本文的深入解析，我们了解到：</p>
 
-<p><strong>关键要点</strong>：</p>
+<p><strong>核心组件</strong>：</p>
+
 <ul>
-  <li><strong>MemoryQuotaController</strong>：内存配额控制器，管理内存配额和分配，支持层级配额管理</li>
-  <li><strong>TabletMemoryCalculator</strong>：Tablet 内存计算器，计算 Tablet 的内存使用，监控内存状态</li>
-  <li><strong>IIndexMemoryReclaimer</strong>：索引内存回收器，回收不再使用的内存，释放内存空间</li>
-  <li><strong>BuildResourceCalculator</strong>：构建资源计算器，计算构建时的资源使用，优化构建效率</li>
-  <li><strong>内存分配策略</strong>：按需分配、预留分配等策略，灵活适应不同场景</li>
-  <li><strong>内存回收机制</strong>：延迟回收、按需回收等机制，保证系统稳定性</li>
-  <li><strong>内存优化策略</strong>：内存池、缓存控制等优化策略，提高内存利用率</li>
+  <li><strong>MemoryQuotaController</strong>：内存配额控制器，管理内存配额和分配，支持层级配额管理
+    <ul>
+      <li><strong>配额管理</strong>：为每个组件分配内存配额，控制内存使用上限</li>
+      <li><strong>层级管理</strong>：支持层级配额管理，灵活分配配额</li>
+      <li><strong>配额预留</strong>：通过预留机制保证关键操作的配额</li>
+    </ul>
+  </li>
+  <li><strong>TabletMemoryCalculator</strong>：Tablet 内存计算器，计算 Tablet 的内存使用，监控内存状态
+    <ul>
+      <li><strong>实时统计</strong>：实时统计各个组件的内存使用量</li>
+      <li><strong>分类统计</strong>：按类型统计内存使用（构建、查询、索引等）</li>
+      <li><strong>监控告警</strong>：根据统计结果监控内存状态，及时告警</li>
+    </ul>
+  </li>
+  <li><strong>IIndexMemoryReclaimer</strong>：索引内存回收器，回收不再使用的内存，释放内存空间
+    <ul>
+      <li><strong>延迟回收</strong>：延迟回收避免频繁的内存操作</li>
+      <li><strong>按需回收</strong>：在内存紧张时按需回收，保证系统稳定性</li>
+      <li><strong>并发安全</strong>：支持并发回收，保证线程安全</li>
+    </ul>
+  </li>
+  <li><strong>BuildResourceCalculator</strong>：构建资源计算器，计算构建时的资源使用，优化构建效率
+    <ul>
+      <li><strong>资源估算</strong>：估算构建和转储所需的资源</li>
+      <li><strong>资源预留</strong>：预留构建和转储所需的资源</li>
+      <li><strong>资源控制</strong>：控制资源使用，避免资源浪费</li>
+    </ul>
+  </li>
 </ul>
 
-<p>理解内存管理与资源控制，是掌握 IndexLib 资源管理机制的关键。在下一篇文章中，我们将深入介绍索引类型的实现细节。</p>
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>层级配额管理</strong>：支持多层级配额管理，灵活分配配额，配额相互隔离</li>
+  <li><strong>延迟回收机制</strong>：延迟回收减少内存操作次数，提高性能</li>
+  <li><strong>按需回收策略</strong>：在内存紧张时按需回收，保证系统稳定性</li>
+  <li><strong>资源估算机制</strong>：通过资源估算优化资源使用，提高构建效率</li>
+  <li><strong>内存监控体系</strong>：实时监控内存使用，及时发现和解决内存问题</li>
+</ol>
+
+<p><strong>性能优化</strong>：</p>
+
+<ul>
+  <li><strong>内存利用率</strong>：通过配额控制和回收机制，有效提升内存利用率</li>
+  <li><strong>内存分配性能</strong>：内存池和批量分配显著提高分配性能</li>
+  <li><strong>内存回收性能</strong>：延迟回收和批量回收显著提高回收性能</li>
+  <li><strong>系统稳定性</strong>：配额控制和回收机制大幅降低 OOM 风险</li>
+</ul>
+
+<p>理解内存管理与资源控制，是掌握 IndexLib 资源管理机制的关键。在下一篇文章中，我们将深入介绍索引类型的实现细节，包括 NormalTable、KVTable、KKVTable 等不同索引类型的特点、实现原理和使用场景。</p>
 
         
       </section>

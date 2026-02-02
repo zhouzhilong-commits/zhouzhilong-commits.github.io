@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2025-07-03T00:00:00+08:00">
+  <meta property="article:published_time" content="2025-06-03T00:00:00+08:00">
 
 
 
@@ -639,7 +639,7 @@
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="IndexLib（3）：索引构建流程：Build、Flush、Seal、Commit">
     <meta itemprop="description" content="在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。">
-    <meta itemprop="datePublished" content="July 03, 2025">
+    <meta itemprop="datePublished" content="June 03, 2025">
     
 
     <div class="page__inner-wrap">
@@ -652,7 +652,7 @@
 
 
   
-	  5 分钟阅读
+	  9 分钟阅读
 	
 </p>
           
@@ -660,7 +660,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-03T00:00:00+08:00">July 03, 2025</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-06-03T00:00:00+08:00">June 03, 2025</time></p>
           
         
         
@@ -768,10 +768,34 @@
 
 <p><strong>关键设计</strong>：</p>
 <ul>
-  <li><strong>Build</strong>：持续构建，接收文档并写入 MemSegment</li>
-  <li><strong>Flush</strong>：触发转储，将 MemSegment 转为 DiskSegment</li>
-  <li><strong>Seal</strong>：封存 Segment，标记为只读，不再接收新文档</li>
-  <li><strong>Commit</strong>：提交版本，更新 Version，持久化到磁盘</li>
+  <li><strong>Build</strong>：持续构建，接收文档并写入 MemSegment
+    <ul>
+      <li><strong>设计模式</strong>：采用命令模式，将文档构建封装为命令，支持批量处理和异步执行</li>
+      <li><strong>性能优化</strong>：支持批量写入、并行构建，提高构建吞吐量</li>
+      <li><strong>内存控制</strong>：通过内存估算、评估、控制机制，避免内存溢出</li>
+    </ul>
+  </li>
+  <li><strong>Flush</strong>：触发转储，将 MemSegment 转为 DiskSegment
+    <ul>
+      <li><strong>异步设计</strong>：转储是异步的，不阻塞写入，提高系统吞吐量</li>
+      <li><strong>资源控制</strong>：通过内存配额和 IO 配额控制转储任务的并发度</li>
+      <li><strong>原子性</strong>：转储过程保证原子性，要么全部成功，要么全部失败</li>
+    </ul>
+  </li>
+  <li><strong>Seal</strong>：封存 Segment，标记为只读，不再接收新文档
+    <ul>
+      <li><strong>状态管理</strong>：通过状态转换保证 Segment 的一致性</li>
+      <li><strong>合并准备</strong>：封存后的 Segment 可以参与合并，优化索引结构</li>
+      <li><strong>版本控制</strong>：封存是版本提交的前置条件，保证版本一致性</li>
+    </ul>
+  </li>
+  <li><strong>Commit</strong>：提交版本，更新 Version，持久化到磁盘
+    <ul>
+      <li><strong>原子性保证</strong>：通过 Fence 机制保证版本提交的原子性</li>
+      <li><strong>版本管理</strong>：版本号单调递增，支持版本回滚</li>
+      <li><strong>增量更新</strong>：通过 Locator 记录数据处理位置，支持增量更新</li>
+    </ul>
+  </li>
 </ul>
 
 <h2 id="2-build文档构建阶段">2. Build：文档构建阶段</h2>
@@ -785,12 +809,80 @@
 <p>Build 流程包括以下步骤：</p>
 
 <ol>
-  <li><strong>接收文档批次</strong>：<code class="language-plaintext highlighter-rouge">Build()</code> 接收 <code class="language-plaintext highlighter-rouge">IDocumentBatch</code></li>
-  <li><strong>文档验证</strong>：验证文档格式、Schema 等</li>
-  <li><strong>分配 DocId</strong>：为文档分配全局 DocId</li>
-  <li><strong>写入 Indexer</strong>：将文档写入各个 Indexer（倒排索引、正排索引等）</li>
-  <li><strong>更新 SegmentInfo</strong>：更新文档数量、Locator 等</li>
+  <li><strong>接收文档批次</strong>：<code class="language-plaintext highlighter-rouge">Build()</code> 接收 <code class="language-plaintext highlighter-rouge">IDocumentBatch</code>
+    <ul>
+      <li><strong>批次处理</strong>：支持批量处理文档，减少函数调用开销</li>
+      <li><strong>批次大小</strong>：批次大小可以配置，平衡内存和性能</li>
+    </ul>
+  </li>
+  <li><strong>文档验证</strong>：验证文档格式、Schema 等
+    <ul>
+      <li><strong>格式验证</strong>：验证文档格式是否符合要求</li>
+      <li><strong>Schema 验证</strong>：验证文档字段是否符合 Schema 定义</li>
+      <li><strong>数据验证</strong>：验证数据有效性（如数值范围、字符串长度等）</li>
+    </ul>
+  </li>
+  <li><strong>分配 DocId</strong>：为文档分配全局 DocId
+    <ul>
+      <li><strong>BaseDocId 计算</strong>：计算当前 MemSegment 的 BaseDocId</li>
+      <li><strong>LocalDocId 分配</strong>：在 MemSegment 内分配局部 DocId（从 0 开始递增）</li>
+      <li><strong>GlobalDocId 计算</strong>：<code class="language-plaintext highlighter-rouge">GlobalDocId = BaseDocId + LocalDocId</code></li>
+    </ul>
+  </li>
+  <li><strong>写入 Indexer</strong>：将文档写入各个 Indexer（倒排索引、正排索引等）
+    <ul>
+      <li><strong>倒排索引</strong>：将 term 写入倒排索引，建立 term 到文档的映射</li>
+      <li><strong>正排索引</strong>：将文档属性写入正排索引，支持属性查询</li>
+      <li><strong>主键索引</strong>：将主键写入主键索引，支持主键查询</li>
+    </ul>
+  </li>
+  <li><strong>更新 SegmentInfo</strong>：更新文档数量、Locator 等
+    <ul>
+      <li><strong>文档计数</strong>：更新 SegmentInfo 的 docCount</li>
+      <li><strong>Locator 更新</strong>：更新 Locator，记录最新的数据处理位置</li>
+      <li><strong>时间戳更新</strong>：更新时间戳，记录最后处理时间</li>
+    </ul>
+  </li>
 </ol>
+
+<p><strong>Build 流程的序列图</strong>：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant TabletWriter
+    participant MemSegment
+    participant InvertedIndexer
+    participant AttributeIndexer
+    participant SegmentInfo
+    participant MemCtrl as MemoryQuotaController
+    
+    Client-&gt;&gt;TabletWriter: Build(documentBatch)
+    TabletWriter-&gt;&gt;TabletWriter: ValidateDocuments(batch)
+    TabletWriter-&gt;&gt;TabletWriter: DispatchDocIds(batch)
+    TabletWriter-&gt;&gt;MemSegment: Build(batch)
+    
+    loop 遍历每个文档
+        MemSegment-&gt;&gt;InvertedIndexer: BuildDocument(doc, docId)
+        MemSegment-&gt;&gt;AttributeIndexer: BuildDocument(doc, docId)
+        InvertedIndexer--&gt;&gt;MemSegment: Success
+        AttributeIndexer--&gt;&gt;MemSegment: Success
+    end
+    
+    MemSegment-&gt;&gt;SegmentInfo: UpdateDocCount()
+    MemSegment-&gt;&gt;SegmentInfo: UpdateLocator()
+    MemSegment--&gt;&gt;TabletWriter: Success
+    
+    TabletWriter-&gt;&gt;MemCtrl: CheckMemoryQuota()
+    MemCtrl--&gt;&gt;TabletWriter: quotaStatus
+    
+    alt 内存不足
+        TabletWriter--&gt;&gt;Client: NoMem
+    else 需要转储
+        TabletWriter--&gt;&gt;Client: NeedDump
+    else 成功
+        TabletWriter--&gt;&gt;Client: OK
+    end
+</code></pre>
 
 <h3 id="22-tabletwriterbuild">2.2 TabletWriter::Build()</h3>
 
@@ -822,11 +914,62 @@
 </code></pre></div></div>
 
 <p><strong>Build 的返回值</strong>：</p>
+
+<p>Build 方法的返回值反映了构建的状态，调用方需要根据返回值采取相应的行动：</p>
+
 <ul>
-  <li><strong>OK</strong>：构建成功，可以继续构建</li>
-  <li><strong>NoMem</strong>：内存不足，需要等待内存释放或触发转储</li>
-  <li><strong>NeedDump</strong>：触发转储条件，需要转储并重新打开</li>
+  <li><strong>OK</strong>：构建成功，可以继续构建
+    <ul>
+      <li><strong>含义</strong>：文档已成功写入 MemSegment，可以继续接收新文档</li>
+      <li><strong>后续操作</strong>：继续调用 Build 接收新文档，或检查是否需要 Flush</li>
+    </ul>
+  </li>
+  <li><strong>NoMem</strong>：内存不足，需要等待内存释放或触发转储
+    <ul>
+      <li><strong>含义</strong>：当前内存配额不足，无法继续构建</li>
+      <li><strong>后续操作</strong>：
+        <ul>
+          <li>等待转储完成释放内存</li>
+          <li>或主动触发 Flush 释放内存</li>
+          <li>或拒绝写入，返回错误给客户端</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><strong>NeedDump</strong>：触发转储条件，需要转储并重新打开
+    <ul>
+      <li><strong>含义</strong>：MemSegment 已达到转储条件（内存阈值、文档数量等）</li>
+      <li><strong>后续操作</strong>：
+        <ul>
+          <li>调用 <code class="language-plaintext highlighter-rouge">CreateSegmentDumper()</code> 创建转储器</li>
+          <li>调用 <code class="language-plaintext highlighter-rouge">Flush()</code> 执行转储</li>
+          <li>转储完成后重新打开，创建新的 MemSegment</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
 </ul>
+
+<p><strong>状态转换图</strong>：</p>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; Building: Build(OK)
+    Building --&gt; Building: Build(OK)
+    Building --&gt; NeedDump: Build(NeedDump)
+    Building --&gt; NoMem: Build(NoMem)
+    
+    NeedDump --&gt; Flushing: CreateSegmentDumper()
+    Flushing --&gt; Dumped: Flush()
+    Dumped --&gt; Building: Reopen()
+    
+    NoMem --&gt; Waiting: 等待内存释放
+    Waiting --&gt; Building: 内存释放
+    Waiting --&gt; Flushing: 主动Flush
+    
+    style Building fill:#e3f2fd
+    style Flushing fill:#fff3e0
+    style NoMem fill:#ffebee
+</code></pre>
 
 <h3 id="23-文档的-docid-分配">2.3 文档的 DocId 分配</h3>
 
@@ -861,12 +1004,82 @@
 <p><img src="/images/diagrams/indexlib-build-write-indexer.svg" alt="文档写入 Indexer：倒排索引、正排索引等的构建" /></p>
 
 <p><strong>写入流程</strong>：</p>
+
+<p>文档写入 Indexer 是构建的核心步骤，需要高效地处理大量文档。让我们通过序列图来理解详细的写入流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Writer as TabletWriter
+    participant MemSeg as MemSegment
+    participant DocParser as DocumentParser
+    participant InvertedIdx as InvertedIndexer
+    participant AttributeIdx as AttributeIndexer
+    participant SummaryIdx as SummaryIndexer
+    
+    Writer-&gt;&gt;MemSeg: Build(documentBatch)
+    
+    loop 遍历每个文档
+        MemSeg-&gt;&gt;DocParser: ParseDocument(doc)
+        DocParser-&gt;&gt;DocParser: ExtractFields()
+        DocParser-&gt;&gt;DocParser: ExtractTerms()
+        DocParser--&gt;&gt;MemSeg: ParsedDocument
+        
+        MemSeg-&gt;&gt;InvertedIdx: BuildDocument(parsedDoc, docId)
+        InvertedIdx-&gt;&gt;InvertedIdx: AddTerm(term, docId)
+        InvertedIdx-&gt;&gt;InvertedIdx: UpdatePostingList()
+        InvertedIdx--&gt;&gt;MemSeg: Success
+        
+        MemSeg-&gt;&gt;AttributeIdx: BuildDocument(parsedDoc, docId)
+        AttributeIdx-&gt;&gt;AttributeIdx: WriteAttribute(field, value)
+        AttributeIdx--&gt;&gt;MemSeg: Success
+        
+        MemSeg-&gt;&gt;SummaryIdx: BuildDocument(parsedDoc, docId)
+        SummaryIdx-&gt;&gt;SummaryIdx: UpdateSummary()
+        SummaryIdx--&gt;&gt;MemSeg: Success
+    end
+    
+    MemSeg--&gt;&gt;Writer: Success
+</code></pre>
+
+<p><strong>写入流程详解</strong>：</p>
+
 <ol>
-  <li><strong>解析文档</strong>：解析文档字段，提取索引字段</li>
-  <li><strong>写入倒排索引</strong>：将 term 写入倒排索引</li>
-  <li><strong>写入正排索引</strong>：将文档属性写入正排索引</li>
-  <li><strong>更新摘要</strong>：更新文档摘要信息</li>
+  <li><strong>解析文档</strong>：解析文档字段，提取索引字段
+    <ul>
+      <li><strong>字段提取</strong>：根据 Schema 提取需要索引的字段</li>
+      <li><strong>Term 提取</strong>：对文本字段进行分词，提取 term</li>
+      <li><strong>数据转换</strong>：将文档数据转换为索引格式</li>
+    </ul>
+  </li>
+  <li><strong>写入倒排索引</strong>：将 term 写入倒排索引
+    <ul>
+      <li><strong>Term 索引</strong>：为每个 term 建立倒排列表</li>
+      <li><strong>Posting List</strong>：记录包含该 term 的文档列表</li>
+      <li><strong>位置信息</strong>：记录 term 在文档中的位置（用于短语查询）</li>
+    </ul>
+  </li>
+  <li><strong>写入正排索引</strong>：将文档属性写入正排索引
+    <ul>
+      <li><strong>属性存储</strong>：按字段存储文档属性</li>
+      <li><strong>数据类型</strong>：支持多种数据类型（整数、浮点数、字符串等）</li>
+      <li><strong>压缩存储</strong>：采用压缩算法减少存储空间</li>
+    </ul>
+  </li>
+  <li><strong>更新摘要</strong>：更新文档摘要信息
+    <ul>
+      <li><strong>摘要生成</strong>：生成文档摘要（用于搜索结果展示）</li>
+      <li><strong>摘要存储</strong>：存储摘要信息，减少查询时的磁盘 IO</li>
+      <li><strong>摘要更新</strong>：支持摘要的动态更新</li>
+    </ul>
+  </li>
 </ol>
+
+<p><strong>性能优化</strong>：</p>
+<ul>
+  <li><strong>批量写入</strong>：批量处理文档，减少函数调用开销</li>
+  <li><strong>并行写入</strong>：多个 Indexer 可以并行写入，提高构建速度</li>
+  <li><strong>内存优化</strong>：使用内存池减少内存分配开销</li>
+  <li><strong>数据结构优化</strong>：采用高效的数据结构（如跳表、B+树）提高写入性能</li>
+</ul>
 
 <h3 id="25-内存控制">2.5 内存控制</h3>
 
@@ -875,11 +1088,89 @@
 <p><img src="/images/diagrams/indexlib-build-memory-control.svg" alt="Build 内存控制：估算、评估、触发转储" /></p>
 
 <p><strong>内存控制机制</strong>：</p>
+
+<p>内存控制是保证系统稳定性的关键。让我们通过流程图来理解完整的内存控制机制：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[开始构建] --&gt; B[EstimateMemUsed]
+    B --&gt; C{内存配额检查}
+    C --&gt;|配额不足| D[返回NoMem]
+    C --&gt;|配额充足| E[分配内存]
+    E --&gt; F[Build文档]
+    F --&gt; G[EvaluateCurrentMemUsed]
+    G --&gt; H{内存使用检查}
+    H --&gt;|未超阈值| I{文档数检查}
+    H --&gt;|超过阈值| J[返回NeedDump]
+    I --&gt;|未超阈值| F
+    I --&gt;|超过阈值| J
+    J --&gt; K[触发转储]
+    K --&gt; L[释放内存]
+    
+    style C fill:#e3f2fd
+    style H fill:#fff3e0
+    style J fill:#f3e5f5
+    style K fill:#e8f5e9
+</code></pre>
+
+<p><strong>内存控制机制详解</strong>：</p>
+
 <ul>
-  <li><strong>估算内存</strong>：<code class="language-plaintext highlighter-rouge">EstimateMemUsed()</code> 估算构建所需内存</li>
-  <li><strong>评估内存</strong>：<code class="language-plaintext highlighter-rouge">EvaluateCurrentMemUsed()</code> 评估当前实际内存使用</li>
-  <li><strong>触发转储</strong>：达到阈值时触发转储，释放内存</li>
+  <li><strong>估算内存</strong>：<code class="language-plaintext highlighter-rouge">EstimateMemUsed()</code> 估算构建所需内存
+    <ul>
+      <li><strong>目的</strong>：在构建前预估内存需求，避免内存不足</li>
+      <li><strong>方法</strong>：根据 Schema、文档数、索引类型等估算</li>
+      <li><strong>精度</strong>：估算值通常略大于实际值，保证安全</li>
+      <li><strong>优化</strong>：使用历史数据优化估算精度</li>
+    </ul>
+  </li>
+  <li><strong>评估内存</strong>：<code class="language-plaintext highlighter-rouge">EvaluateCurrentMemUsed()</code> 评估当前实际内存使用
+    <ul>
+      <li><strong>目的</strong>：实时监控内存使用，及时触发转储</li>
+      <li><strong>方法</strong>：统计所有 Indexer 的内存使用</li>
+      <li><strong>频率</strong>：每次 Build 后评估，或定期评估</li>
+      <li><strong>优化</strong>：使用采样评估，减少评估开销</li>
+    </ul>
+  </li>
+  <li><strong>触发转储</strong>：达到阈值时触发转储，释放内存
+    <ul>
+      <li><strong>触发条件</strong>：
+        <ul>
+          <li>内存使用超过阈值（如 80%）</li>
+          <li>文档数超过阈值（如 100 万）</li>
+          <li>时间间隔达到（如 5 分钟）</li>
+        </ul>
+      </li>
+      <li><strong>转储策略</strong>：异步转储，不阻塞写入</li>
+      <li><strong>内存释放</strong>：转储完成后释放 MemSegment 的内存</li>
+    </ul>
+  </li>
 </ul>
+
+<p><strong>内存控制策略</strong>：</p>
+
+<ol>
+  <li><strong>分级阈值</strong>：
+    <ul>
+      <li><strong>警告阈值</strong>：内存使用达到 70%，发出警告</li>
+      <li><strong>转储阈值</strong>：内存使用达到 80%，触发转储</li>
+      <li><strong>拒绝阈值</strong>：内存使用达到 95%，拒绝新写入</li>
+    </ul>
+  </li>
+  <li><strong>动态调整</strong>：
+    <ul>
+      <li>根据系统负载动态调整阈值</li>
+      <li>根据历史数据预测内存需求</li>
+      <li>根据转储速度调整触发频率</li>
+    </ul>
+  </li>
+  <li><strong>资源预留</strong>：
+    <ul>
+      <li>预留一定内存用于转储</li>
+      <li>预留一定内存用于查询</li>
+      <li>避免内存竞争导致系统不稳定</li>
+    </ul>
+  </li>
+</ol>
 
 <h2 id="3-flush刷新到磁盘阶段">3. Flush：刷新到磁盘阶段</h2>
 
@@ -918,11 +1209,79 @@
 </code></pre></div></div>
 
 <p><strong>转储条件</strong>：</p>
+
+<p>转储条件的判断是 Flush 阶段的关键，需要综合考虑多个因素。让我们通过流程图来理解转储条件的判断逻辑：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[检查转储条件] --&gt; B{内存使用检查}
+    B --&gt;|超过阈值| C[触发转储]
+    B --&gt;|未超阈值| D{文档数检查}
+    D --&gt;|超过阈值| C
+    D --&gt;|未超阈值| E{时间检查}
+    E --&gt;|超过阈值| C
+    E --&gt;|未超阈值| F[继续构建]
+    
+    C --&gt; G[创建SegmentDumper]
+    G --&gt; H[执行转储]
+    
+    style B fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#f3e5f5
+    style C fill:#e8f5e9
+</code></pre>
+
+<p><strong>转储条件详解</strong>：</p>
+
 <ul>
-  <li><strong>内存阈值</strong>：内存使用达到配置的阈值</li>
-  <li><strong>文档数量</strong>：文档数量达到配置的阈值</li>
-  <li><strong>时间阈值</strong>：构建时间达到配置的阈值</li>
+  <li><strong>内存阈值</strong>：内存使用达到配置的阈值
+    <ul>
+      <li><strong>默认阈值</strong>：通常设置为内存配额的 80%</li>
+      <li><strong>动态调整</strong>：根据系统负载动态调整阈值</li>
+      <li><strong>分级阈值</strong>：设置多个阈值（警告、转储、拒绝）</li>
+      <li><strong>监控指标</strong>：实时监控内存使用，及时触发转储</li>
+    </ul>
+  </li>
+  <li><strong>文档数量</strong>：文档数量达到配置的阈值
+    <ul>
+      <li><strong>默认阈值</strong>：通常设置为 100 万文档</li>
+      <li><strong>场景相关</strong>：不同场景可以设置不同的阈值</li>
+      <li><strong>性能考虑</strong>：文档数过多会影响查询性能</li>
+      <li><strong>合并优化</strong>：合理的文档数有利于后续合并</li>
+    </ul>
+  </li>
+  <li><strong>时间阈值</strong>：构建时间达到配置的阈值
+    <ul>
+      <li><strong>默认阈值</strong>：通常设置为 5 分钟</li>
+      <li><strong>实时性</strong>：保证数据的实时性，定期转储</li>
+      <li><strong>一致性</strong>：定期转储保证数据一致性</li>
+      <li><strong>资源平衡</strong>：避免长时间占用内存</li>
+    </ul>
+  </li>
 </ul>
+
+<p><strong>转储条件组合策略</strong>：</p>
+
+<ol>
+  <li><strong>OR 策略</strong>：满足任一条件即触发转储
+    <ul>
+      <li><strong>优势</strong>：及时转储，避免内存溢出</li>
+      <li><strong>劣势</strong>：可能频繁转储，影响性能</li>
+    </ul>
+  </li>
+  <li><strong>AND 策略</strong>：满足所有条件才触发转储
+    <ul>
+      <li><strong>优势</strong>：减少转储频率，提高性能</li>
+      <li><strong>劣势</strong>：可能延迟转储，增加内存压力</li>
+    </ul>
+  </li>
+  <li><strong>优先级策略</strong>：按优先级判断条件
+    <ul>
+      <li><strong>内存优先</strong>：内存使用优先，避免溢出</li>
+      <li><strong>文档数次之</strong>：文档数作为次要条件</li>
+      <li><strong>时间最后</strong>：时间作为兜底条件</li>
+    </ul>
+  </li>
+</ol>
 
 <h3 id="33-segmentdumper转储器">3.3 SegmentDumper：转储器</h3>
 
@@ -971,10 +1330,66 @@
 <p><img src="/images/diagrams/indexlib-flush-async-dump.svg" alt="异步转储机制：不阻塞写入，提高吞吐量" /></p>
 
 <p><strong>异步转储的优势</strong>：</p>
+
+<p>异步转储是 IndexLib 高性能写入的关键设计。让我们通过序列图来理解异步转储的完整机制：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Writer as TabletWriter
+    participant MemSeg1 as MemSegment1
+    participant Dumper as SegmentDumper
+    participant DumpQueue as DumpQueue
+    participant DumpThread as DumpThread
+    participant MemSeg2 as MemSegment2
+    participant DiskSeg as DiskSegment
+    
+    Writer-&gt;&gt;MemSeg1: NeedDump()?
+    MemSeg1--&gt;&gt;Writer: true
+    
+    Writer-&gt;&gt;Writer: CreateSegmentDumper()
+    Writer-&gt;&gt;Dumper: SegmentDumper(MemSeg1)
+    Writer-&gt;&gt;DumpQueue: Enqueue(Dumper)
+    Writer-&gt;&gt;MemSeg2: CreateNewMemSegment()
+    Writer-&gt;&gt;MemSeg2: Build(newBatch)
+    
+    DumpThread-&gt;&gt;DumpQueue: Dequeue()
+    DumpQueue--&gt;&gt;DumpThread: Dumper
+    DumpThread-&gt;&gt;Dumper: Dump()
+    Dumper-&gt;&gt;DiskSeg: CreateDiskSegment()
+    DiskSeg--&gt;&gt;Dumper: Success
+    Dumper--&gt;&gt;DumpThread: Success
+</code></pre>
+
+<p><strong>异步转储的优势详解</strong>：</p>
+
 <ul>
-  <li><strong>不阻塞写入</strong>：转储过程中可以创建新的 MemSegment 继续接收写入</li>
-  <li><strong>提高吞吐量</strong>：写入和转储可以并行进行</li>
-  <li><strong>资源控制</strong>：通过 <code class="language-plaintext highlighter-rouge">DumpControl</code> 控制转储任务的并发度</li>
+  <li><strong>不阻塞写入</strong>：转储过程中可以创建新的 MemSegment 继续接收写入
+    <ul>
+      <li><strong>写入连续性</strong>：写入操作不会被转储阻塞，保证低延迟</li>
+      <li><strong>吞吐量提升</strong>：写入和转储并行，提高系统吞吐量</li>
+      <li><strong>用户体验</strong>：用户写入请求可以立即返回，不需要等待转储完成</li>
+    </ul>
+  </li>
+  <li><strong>提高吞吐量</strong>：写入和转储可以并行进行
+    <ul>
+      <li><strong>CPU 利用</strong>：充分利用多核 CPU，写入和转储可以并行执行</li>
+      <li><strong>IO 优化</strong>：转储 IO 和写入 IO 可以并行，提高 IO 利用率</li>
+      <li><strong>资源平衡</strong>：通过资源控制平衡写入和转储的资源使用</li>
+    </ul>
+  </li>
+  <li><strong>资源控制</strong>：通过 <code class="language-plaintext highlighter-rouge">DumpControl</code> 控制转储任务的并发度
+    <ul>
+      <li><strong>并发限制</strong>：限制同时进行的转储任务数量，避免资源竞争</li>
+      <li><strong>优先级调度</strong>：支持转储任务的优先级调度，重要任务优先执行</li>
+      <li><strong>资源监控</strong>：监控转储任务的资源使用，及时调整策略</li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>异步转储的性能优化</strong>：</p>
+<ul>
+  <li><strong>写入延迟</strong>：异步转储有效降低写入延迟</li>
+  <li><strong>吞吐量</strong>：并行写入和转储显著提高吞吐量</li>
+  <li><strong>资源利用</strong>：CPU 和 IO 利用率显著提升</li>
 </ul>
 
 <h3 id="35-转储的内存成本">3.5 转储的内存成本</h3>
@@ -1247,22 +1662,149 @@
   <li><strong>IO 优化</strong>：优化 IO 操作，减少 IO 开销</li>
 </ul>
 
-<h2 id="9-小结">9. 小结</h2>
+<h2 id="9-性能优化与最佳实践">9. 性能优化与最佳实践</h2>
+
+<h3 id="91-构建性能优化">9.1 构建性能优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>批量写入优化</strong>：
+    <ul>
+      <li><strong>批次大小</strong>：根据系统负载动态调整批次大小</li>
+      <li><strong>批次合并</strong>：合并多个小批次为大批次，减少函数调用</li>
+      <li><strong>批次预分配</strong>：预分配批次内存，减少内存分配开销</li>
+    </ul>
+  </li>
+  <li><strong>并行构建优化</strong>：
+    <ul>
+      <li><strong>多线程构建</strong>：支持多线程并行构建，提高构建速度</li>
+      <li><strong>索引并行</strong>：多个 Indexer 可以并行写入</li>
+      <li><strong>文档并行</strong>：多个文档可以并行处理（如果无依赖）</li>
+    </ul>
+  </li>
+  <li><strong>内存优化</strong>：
+    <ul>
+      <li><strong>内存池</strong>：使用内存池减少内存分配开销</li>
+      <li><strong>内存复用</strong>：转储后复用内存，减少内存分配</li>
+      <li><strong>内存压缩</strong>：对索引数据压缩，减少内存占用</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="92-转储性能优化">9.2 转储性能优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>异步转储优化</strong>：
+    <ul>
+      <li><strong>转储队列</strong>：使用队列管理转储任务，支持优先级调度</li>
+      <li><strong>并发控制</strong>：控制转储任务的并发度，避免资源竞争</li>
+      <li><strong>资源预留</strong>：预留转储所需的内存和 IO 资源</li>
+    </ul>
+  </li>
+  <li><strong>IO 优化</strong>：
+    <ul>
+      <li><strong>批量 IO</strong>：批量写入文件，减少 IO 次数</li>
+      <li><strong>异步 IO</strong>：使用异步 IO，提高 IO 吞吐量</li>
+      <li><strong>IO 合并</strong>：合并多个小 IO 为大 IO，提高 IO 效率</li>
+    </ul>
+  </li>
+  <li><strong>压缩优化</strong>：
+    <ul>
+      <li><strong>压缩算法</strong>：选择合适的压缩算法（LZ4、Zstd 等）</li>
+      <li><strong>压缩级别</strong>：根据场景选择合适的压缩级别</li>
+      <li><strong>压缩缓存</strong>：缓存压缩结果，减少重复压缩</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="93-版本提交优化">9.3 版本提交优化</h3>
+
+<p><strong>优化策略</strong>：</p>
+
+<ol>
+  <li><strong>提交频率优化</strong>：
+    <ul>
+      <li><strong>批量提交</strong>：批量提交多个 Segment，减少提交次数</li>
+      <li><strong>延迟提交</strong>：延迟提交，合并多个变更</li>
+      <li><strong>条件提交</strong>：只在有数据变更时提交</li>
+    </ul>
+  </li>
+  <li><strong>Fence 优化</strong>：
+    <ul>
+      <li><strong>Fence 复用</strong>：复用 Fence 目录，减少目录创建开销</li>
+      <li><strong>原子操作</strong>：使用原子操作保证切换的原子性</li>
+      <li><strong>失败恢复</strong>：Fence 失败时支持恢复</li>
+    </ul>
+  </li>
+  <li><strong>版本清理优化</strong>：
+    <ul>
+      <li><strong>延迟清理</strong>：延迟清理旧版本，避免影响查询</li>
+      <li><strong>批量清理</strong>：批量清理旧版本，减少 IO 开销</li>
+      <li><strong>清理策略</strong>：根据版本使用情况选择清理策略</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="10-小结">10. 小结</h2>
 
 <p>索引构建流程是 IndexLib 的核心功能，包括 Build、Flush、Seal、Commit 四个阶段。通过本文的深入解析，我们了解到：</p>
 
-<p><strong>关键要点</strong>：</p>
+<p><strong>核心流程</strong>：</p>
+
 <ul>
-  <li><strong>Build</strong>：接收文档批次，构建索引到内存（MemSegment）</li>
-  <li><strong>Flush</strong>：将内存数据刷新到磁盘，创建 DiskSegment</li>
-  <li><strong>Seal</strong>：封存 Segment，标记为只读，准备合并</li>
-  <li><strong>Commit</strong>：提交新版本，更新 Version，持久化到磁盘</li>
-  <li><strong>异步转储</strong>：转储是异步的，不阻塞写入，提高吞吐量</li>
-  <li><strong>内存控制</strong>：通过内存估算、评估、控制机制，避免内存溢出</li>
-  <li><strong>原子性保证</strong>：通过 Fence 机制保证版本提交的原子性</li>
+  <li><strong>Build</strong>：接收文档批次，构建索引到内存（MemSegment）
+    <ul>
+      <li><strong>文档处理</strong>：文档验证、DocId 分配、写入 Indexer</li>
+      <li><strong>内存控制</strong>：内存估算、评估、控制，避免内存溢出</li>
+      <li><strong>性能优化</strong>：批量写入、并行构建，提高构建速度</li>
+    </ul>
+  </li>
+  <li><strong>Flush</strong>：将内存数据刷新到磁盘，创建 DiskSegment
+    <ul>
+      <li><strong>转储条件</strong>：内存阈值、文档数量、时间阈值</li>
+      <li><strong>异步转储</strong>：转储是异步的，不阻塞写入，提高吞吐量</li>
+      <li><strong>资源控制</strong>：通过内存配额和 IO 配额控制转储并发度</li>
+    </ul>
+  </li>
+  <li><strong>Seal</strong>：封存 Segment，标记为只读，准备合并
+    <ul>
+      <li><strong>状态管理</strong>：通过状态转换保证 Segment 的一致性</li>
+      <li><strong>合并准备</strong>：封存后的 Segment 可以参与合并</li>
+      <li><strong>版本控制</strong>：封存是版本提交的前置条件</li>
+    </ul>
+  </li>
+  <li><strong>Commit</strong>：提交新版本，更新 Version，持久化到磁盘
+    <ul>
+      <li><strong>原子性保证</strong>：通过 Fence 机制保证版本提交的原子性</li>
+      <li><strong>版本管理</strong>：版本号单调递增，支持版本回滚</li>
+      <li><strong>增量更新</strong>：通过 Locator 记录数据处理位置</li>
+    </ul>
+  </li>
 </ul>
 
-<p>理解索引构建流程，是掌握 IndexLib 索引机制的关键。在下一篇文章中，我们将深入介绍查询流程的实现细节。</p>
+<p><strong>设计亮点</strong>：</p>
+
+<ol>
+  <li><strong>异步转储</strong>：转储不阻塞写入，写入和转储并行，提高系统吞吐量</li>
+  <li><strong>内存控制</strong>：通过内存估算、评估、控制机制，避免内存溢出</li>
+  <li><strong>原子性保证</strong>：通过 Fence 机制保证版本提交的原子性</li>
+  <li><strong>资源管理</strong>：通过资源配额控制转储任务的并发度</li>
+  <li><strong>性能优化</strong>：批量写入、并行构建、IO 优化等提高构建性能</li>
+</ol>
+
+<p><strong>性能优化</strong>：</p>
+
+<ul>
+  <li><strong>构建吞吐量</strong>：批量写入和并行构建显著提高吞吐量</li>
+  <li><strong>写入延迟</strong>：异步转储有效降低写入延迟</li>
+  <li><strong>内存使用</strong>：内存控制机制有效降低内存使用</li>
+  <li><strong>转储性能</strong>：异步转储和 IO 优化显著提高转储性能</li>
+</ul>
+
+<p>理解索引构建流程，是掌握 IndexLib 索引机制的关键。在下一篇文章中，我们将深入介绍查询流程的实现细节，包括 TabletReader、IndexReader、查询解析、结果合并等各个组件的实现原理和性能优化策略。</p>
 
         
       </section>

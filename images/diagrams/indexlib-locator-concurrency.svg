@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">并发控制：通过 concurrentIdx 处理时间戳相同的情况</text>
   <text class="muted" x="40" y="66">Locator 通过 concurrentIdx 处理时间戳相同的情况，保证数据处理的顺序性。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">concurrentIdx</text>
   <text class="t" x="70" y="145.0">当时间戳相同时，使用 concurrentIdx 区分不同的数据</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">顺序保证</text>
   <text class="t" x="70" y="215.0">通过 concurrentIdx 保证数据处理的顺序性</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">并发安全</text>
   <text class="t" x="70" y="285.0">支持并发处理，保证数据一致性</text>
   <text class="muted" x="40" y="325">理解 并发控制，是掌握 Locator 机制的关键</text>

@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">Locator 的序列化：将 Locator 序列化为字符串</text>
   <text class="muted" x="40" y="66">Locator 的序列化包括序列化 _src、_minOffset、_multiProgress、_userData 等字段。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">序列化 _src</text>
   <text class="t" x="70" y="145.0">序列化数据源标识</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">序列化 _minOffset</text>
   <text class="t" x="70" y="215.0">序列化最小偏移量（timestamp, concurrentIdx）</text>
-  <rect class="item" x="40" y="235" width="920" height="70.0"/>
+  <rect class="item" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">序列化 _multiProgress</text>
   <text class="t" x="70" y="285.0">序列化多进度信息（每个 hashId 的进度）</text>
-  <rect class="item" x="40" y="305" width="920" height="110.0"/>
+  <rect class="item" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">序列化 _userData</text>
   <text class="t" x="70" y="355.0">序列化用户数据</text>
   <text class="muted" x="40" y="395">理解 Locator 的序列化，是掌握 Locator 机制的关键</text>

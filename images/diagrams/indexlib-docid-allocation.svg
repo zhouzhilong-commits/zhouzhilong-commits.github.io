@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 505">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 529.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .base{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
       .global{fill:#e8f5e9;stroke:#2e7d32;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 505" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 529.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">文档 DocId 分配：全局 DocId 的计算和分配</text>
   <text class="muted" x="40" y="66">TabletWriter 在构建时为文档分配 DocId，通过 baseDocId + localDocId 计算全局 DocId。</text>
 
-  <rect class="doc" x="40" y="95" width="280" height="140.0"/>
+  <rect class="doc" x="40" y="95" width="280" height="154.0"/>
   <text class="h" x="70" y="130">文档批次</text>
   <text class="t" x="70" y="155">Document 1</text>
   <text class="t" x="70" y="175">Document 2</text>
@@ -28,7 +28,7 @@
 
   <path class="arrow" d="M 320 155 L 360 155"/>
 
-  <rect class="base" x="370" y="95" width="280" height="140.0"/>
+  <rect class="base" x="370" y="95" width="280" height="154.0"/>
   <text class="h" x="400" y="130">BaseDocId</text>
   <text class="t" x="400" y="155">_buildingSegmentBaseDocId</text>
   <text class="t" x="400" y="175">= 前面所有 Segment</text>
@@ -37,13 +37,13 @@
 
   <path class="arrow" d="M 650 155 L 690 155"/>
 
-  <rect class="global" x="700" y="95" width="260" height="120"/>
+  <rect class="global" x="700" y="95" width="260" height="134.0"/>
   <text class="h" x="730" y="130">全局 DocId</text>
   <text class="t" x="730" y="155">Doc 1: 3000 + 0 = 3000</text>
   <text class="t" x="730" y="175">Doc 2: 3000 + 1 = 3001</text>
   <text class="t" x="730" y="195">Doc 3: 3000 + 2 = 3002</text>
 
-  <rect class="box" x="40" y="235" width="920" height="240"/>
+  <rect class="box" x="40" y="235" width="920" height="254.0"/>
   <text class="h" x="70" y="270">DocId 分配机制</text>
   <text class="t" x="70" y="295">1. 计算 BaseDocId：TabletWriter::Open() 时，计算当前 MemSegment 的 baseDocId = 前面所有 Segment 的 docCount 之和</text>
   <text class="t" x="70" y="315">2. 分配局部 DocId：TabletWriter::DispatchDocIds() 为文档分配局部 DocId（从 0 开始递增），每个文档在 MemSegment 内有唯一的局部 DocId</text>

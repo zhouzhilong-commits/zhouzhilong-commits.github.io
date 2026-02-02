@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2025-07-09T00:00:00+08:00">
+  <meta property="article:published_time" content="2025-07-22T00:00:00+08:00">
 
 
 
@@ -639,7 +639,7 @@
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="IndexLib（9）：Locator 与数据一致性">
     <meta itemprop="description" content="在上一篇文章中，我们深入了解了索引类型的实现。本文将继续深入，详细解析 Locator 的实现细节和数据一致性保证机制，这是理解 IndexLib 如何保证数据不重复、不丢失的关键。">
-    <meta itemprop="datePublished" content="July 09, 2025">
+    <meta itemprop="datePublished" content="July 22, 2025">
     
 
     <div class="page__inner-wrap">
@@ -652,7 +652,7 @@
 
 
   
-	  3 分钟阅读
+	  23 分钟阅读
 	
 </p>
           
@@ -660,7 +660,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-09T00:00:00+08:00">July 09, 2025</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-22T00:00:00+08:00">July 22, 2025</time></p>
           
         
         
@@ -679,7 +679,57 @@
 
 <h3 id="11-locator-的完整结构">1.1 Locator 的完整结构</h3>
 
-<p><code class="language-plaintext highlighter-rouge">Locator</code> 是增量更新的核心，定义在 <code class="language-plaintext highlighter-rouge">framework/Locator.h</code> 中：</p>
+<p><code class="language-plaintext highlighter-rouge">Locator</code> 是增量更新的核心，定义在 <code class="language-plaintext highlighter-rouge">framework/Locator.h</code> 中。Locator 的设计目标是精确定位数据处理位置，支持增量更新和数据一致性保证。让我们先通过类图来理解 Locator 的整体架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Locator {
+        -uint64_t _src
+        -Progress::Offset _minOffset
+        -MultiProgress _multiProgress
+        -string _userData
+        -bool _isLegacyLocator
+        +IsFasterThan(Locator, bool) LocatorCompareResult
+        +Update(Locator) void
+        +Serialize() string
+        +Deserialize(string) Status
+        +GetSrc() uint64_t
+        +GetMinOffset() Offset
+        +GetMultiProgress() MultiProgress
+        +GetUserData() string
+    }
+    
+    class LocatorCompareResult {
+        &lt;&lt;enumeration&gt;&gt;
+        LCR_INVALID
+        LCR_SLOWER
+        LCR_PARTIAL_FASTER
+        LCR_FULLY_FASTER
+    }
+    
+    class DocInfo {
+        +int64_t timestamp
+        +uint32_t concurrentIdx
+        +uint16_t hashId
+        +uint8_t sourceIdx
+    }
+    
+    class Progress {
+        +uint32_t from
+        +uint32_t to
+        +Offset offset
+    }
+    
+    class MultiProgress {
+        +vector~ProgressVector~ _progresses
+    }
+    
+    Locator --&gt; LocatorCompareResult : 返回
+    Locator --&gt; DocInfo : 包含
+    Locator --&gt; MultiProgress : 包含
+    MultiProgress --&gt; Progress : 包含
+</code></pre>
+
+<p><strong>Locator 的完整定义</strong>：</p>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.h</span>
 <span class="k">class</span> <span class="nc">Locator</span> <span class="k">final</span>
@@ -687,19 +737,68 @@
 <span class="nl">public:</span>
     <span class="c1">// Locator 比较结果</span>
     <span class="k">enum</span> <span class="k">class</span> <span class="nc">LocatorCompareResult</span> <span class="p">{</span>
-        <span class="n">LCR_INVALID</span><span class="p">,</span>        <span class="c1">// 无效</span>
-        <span class="n">LCR_SLOWER</span><span class="p">,</span>         <span class="c1">// 比这个 locator 慢</span>
-        <span class="n">LCR_PARTIAL_FASTER</span><span class="p">,</span> <span class="c1">// 部分 hash id 更快</span>
-        <span class="n">LCR_FULLY_FASTER</span>    <span class="c1">// 完全比这个 locator 快（包括相等）</span>
+        <span class="n">LCR_INVALID</span><span class="p">,</span>        <span class="c1">// 无效：数据源不同，无法比较</span>
+        <span class="n">LCR_SLOWER</span><span class="p">,</span>         <span class="c1">// 比这个 locator 慢：数据未处理</span>
+        <span class="n">LCR_PARTIAL_FASTER</span><span class="p">,</span> <span class="c1">// 部分 hash id 更快：需要部分处理</span>
+        <span class="n">LCR_FULLY_FASTER</span>    <span class="c1">// 完全比这个 locator 快（包括相等）：数据已处理</span>
     <span class="p">};</span>
 
     <span class="c1">// 文档信息：记录文档在数据源中的位置</span>
     <span class="k">struct</span> <span class="nc">DocInfo</span> <span class="p">{</span>
-        <span class="kt">int64_t</span> <span class="n">timestamp</span><span class="p">;</span>        <span class="c1">// 时间戳</span>
-        <span class="kt">uint32_t</span> <span class="n">concurrentIdx</span><span class="p">;</span>   <span class="c1">// 并发索引（时间戳相同时的序号）</span>
-        <span class="kt">uint16_t</span> <span class="n">hashId</span><span class="p">;</span>          <span class="c1">// Hash ID（用于分片）</span>
-        <span class="kt">uint8_t</span> <span class="n">sourceIdx</span><span class="p">;</span>        <span class="c1">// 数据源索引</span>
+        <span class="kt">int64_t</span> <span class="n">timestamp</span><span class="p">;</span>        <span class="c1">// 时间戳：记录数据的时间位置</span>
+        <span class="kt">uint32_t</span> <span class="n">concurrentIdx</span><span class="p">;</span>   <span class="c1">// 并发索引：处理时间戳相同的情况</span>
+        <span class="kt">uint16_t</span> <span class="n">hashId</span><span class="p">;</span>          <span class="c1">// Hash ID：用于分片处理</span>
+        <span class="kt">uint8_t</span> <span class="n">sourceIdx</span><span class="p">;</span>        <span class="c1">// 数据源索引：支持多数据源场景</span>
+        
+        <span class="c1">// 比较两个 DocInfo</span>
+        <span class="kt">bool</span> <span class="k">operator</span><span class="o">&lt;</span><span class="p">(</span><span class="k">const</span> <span class="n">DocInfo</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">timestamp</span> <span class="o">!=</span> <span class="n">other</span><span class="p">.</span><span class="n">timestamp</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">timestamp</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">timestamp</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">concurrentIdx</span> <span class="o">!=</span> <span class="n">other</span><span class="p">.</span><span class="n">concurrentIdx</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">concurrentIdx</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">concurrentIdx</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">hashId</span> <span class="o">!=</span> <span class="n">other</span><span class="p">.</span><span class="n">hashId</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">hashId</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">hashId</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">return</span> <span class="n">sourceIdx</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">sourceIdx</span><span class="p">;</span>
+        <span class="p">}</span>
     <span class="p">};</span>
+
+    <span class="c1">// 构造函数</span>
+    <span class="n">Locator</span><span class="p">();</span>
+    <span class="k">explicit</span> <span class="n">Locator</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">src</span><span class="p">);</span>
+    <span class="n">Locator</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">src</span><span class="p">,</span> <span class="k">const</span> <span class="n">MultiProgress</span><span class="o">&amp;</span> <span class="n">multiProgress</span><span class="p">);</span>
+    <span class="n">Locator</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+    <span class="n">Locator</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+
+    <span class="c1">// 比较方法：判断数据是否已处理</span>
+    <span class="n">LocatorCompareResult</span> <span class="n">IsFasterThan</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> 
+                                      <span class="kt">bool</span> <span class="n">ignoreLegacyDiffSrc</span> <span class="o">=</span> <span class="nb">false</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+    
+    <span class="c1">// 更新方法：更新 Locator，只向前推进</span>
+    <span class="kt">void</span> <span class="n">Update</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+    
+    <span class="c1">// 序列化方法</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">Serialize</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">Status</span> <span class="n">Deserialize</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">str</span><span class="p">);</span>
+    
+    <span class="c1">// 访问方法</span>
+    <span class="kt">uint64_t</span> <span class="n">GetSrc</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_src</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">const</span> <span class="n">Progress</span><span class="o">::</span><span class="n">Offset</span><span class="o">&amp;</span> <span class="n">GetMinOffset</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_minOffset</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">const</span> <span class="n">MultiProgress</span><span class="o">&amp;</span> <span class="n">GetMultiProgress</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_multiProgress</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">GetUserData</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_userData</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">bool</span> <span class="n">IsLegacyLocator</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_isLegacyLocator</span><span class="p">;</span> <span class="p">}</span>
+    
+    <span class="c1">// 设置方法</span>
+    <span class="kt">void</span> <span class="n">SetSrc</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">src</span><span class="p">)</span> <span class="p">{</span> <span class="n">_src</span> <span class="o">=</span> <span class="n">src</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">SetUserData</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">userData</span><span class="p">)</span> <span class="p">{</span> <span class="n">_userData</span> <span class="o">=</span> <span class="n">userData</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">SetMultiProgress</span><span class="p">(</span><span class="k">const</span> <span class="n">MultiProgress</span><span class="o">&amp;</span> <span class="n">multiProgress</span><span class="p">);</span>
+    
+    <span class="c1">// 工具方法</span>
+    <span class="kt">bool</span> <span class="n">IsValid</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">IsSameSrc</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">ignoreLegacyDiffSrc</span> <span class="o">=</span> <span class="nb">false</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">ToString</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
 
 <span class="nl">private:</span>
     <span class="kt">uint64_t</span> <span class="n">_src</span><span class="p">;</span>                              <span class="c1">// 数据源标识</span>
@@ -707,6 +806,11 @@
     <span class="n">base</span><span class="o">::</span><span class="n">MultiProgress</span> <span class="n">_multiProgress</span><span class="p">;</span>        <span class="c1">// 多进度信息（每个 hashId 的进度）</span>
     <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_userData</span><span class="p">;</span>                      <span class="c1">// 用户数据</span>
     <span class="kt">bool</span> <span class="n">_isLegacyLocator</span><span class="p">;</span>                     <span class="c1">// 是否遗留 Locator</span>
+    
+    <span class="c1">// 内部方法</span>
+    <span class="n">LocatorCompareResult</span> <span class="n">CompareProgress</span><span class="p">(</span><span class="k">const</span> <span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv1</span><span class="p">,</span> 
+                                         <span class="k">const</span> <span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv2</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="n">UpdateMinOffset</span><span class="p">();</span>
 <span class="p">};</span>
 </code></pre></div></div>
 
@@ -715,11 +819,11 @@
 <p><img src="/images/diagrams/indexlib-locator-complete-structure.svg" alt="Locator 的完整结构：包含所有关键字段和 DocInfo 结构" /></p>
 
 <ul>
-  <li><strong>_src</strong>：数据源标识，用于区分不同的数据源</li>
-  <li><strong>_minOffset</strong>：最小偏移量，记录最小的 timestamp 和 concurrentIdx</li>
-  <li><strong>_multiProgress</strong>：多进度信息，每个 hashId 记录自己的进度</li>
-  <li><strong>_userData</strong>：用户数据，可以存储自定义信息</li>
-  <li><strong>_isLegacyLocator</strong>：是否遗留 Locator，用于兼容旧版本</li>
+  <li><strong>_src</strong>：数据源标识，用于区分不同的数据源。每个数据源有唯一的 <code class="language-plaintext highlighter-rouge">_src</code>，不同数据源的 Locator 无法比较</li>
+  <li><strong>_minOffset</strong>：最小偏移量，记录所有 hashId 中最小的 timestamp 和 concurrentIdx，用于快速判断整体进度</li>
+  <li><strong>_multiProgress</strong>：多进度信息，每个 hashId 记录自己的进度（ProgressVector），支持分片处理和并行处理</li>
+  <li><strong>_userData</strong>：用户数据，可以存储自定义信息，支持业务扩展</li>
+  <li><strong>_isLegacyLocator</strong>：是否遗留 Locator，用于兼容旧版本，保证向后兼容</li>
 </ul>
 
 <h3 id="12-progress-结构">1.2 Progress 结构</h3>
@@ -772,60 +876,440 @@
 
 <h3 id="21-isfasterthan-方法">2.1 IsFasterThan() 方法</h3>
 
-<p><code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 是 Locator 比较的核心方法：</p>
+<p><code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 是 Locator 比较的核心方法，用于判断数据是否已处理。这是增量更新的基础，通过比较两个 Locator 来判断数据的新旧关系。让我们先通过流程图来理解比较的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始比较]) --&gt; CheckSrc{检查数据源&lt;br/&gt;是否相同?}
+    CheckSrc --&gt;|不同| ReturnInvalid[返回 LCR_INVALID]
+    CheckSrc --&gt;|相同| CheckSize{比较 MultiProgress&lt;br/&gt;大小}
+    CheckSize --&gt;|this.size &gt; other.size| ReturnPartial[返回 LCR_PARTIAL_FASTER]
+    CheckSize --&gt;|this.size &lt; other.size| CheckEach[遍历每个 hashId]
+    CheckSize --&gt;|this.size == other.size| CheckEach
+    CheckEach --&gt; CompareProgress[比较该 hashId 的进度]
+    CompareProgress --&gt; CheckResult{比较结果?}
+    CheckResult --&gt;|LCR_FULLY_FASTER| CheckNext{还有更多&lt;br/&gt;hashId?}
+    CheckResult --&gt;|LCR_SLOWER| ReturnSlower[返回 LCR_SLOWER]
+    CheckResult --&gt;|LCR_PARTIAL_FASTER| ReturnPartial
+    CheckNext --&gt;|是| CheckEach
+    CheckNext --&gt;|否| ReturnFully[返回 LCR_FULLY_FASTER]
+    ReturnInvalid --&gt; End([结束])
+    ReturnSlower --&gt; End
+    ReturnPartial --&gt; End
+    ReturnFully --&gt; End
+</code></pre>
+
+<p><strong>IsFasterThan() 的完整实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="n">LocatorCompareResult</span> <span class="n">Locator</span><span class="o">::</span><span class="n">IsFasterThan</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> 
+                                            <span class="kt">bool</span> <span class="n">ignoreLegacyDiffSrc</span><span class="p">)</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 检查数据源是否相同</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">IsSameSrc</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ignoreLegacyDiffSrc</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_INVALID</span><span class="p">;</span>  <span class="c1">// 数据源不同，无法比较</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 快速路径：如果 MultiProgress 为空，特殊处理</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>  <span class="c1">// 都为空，认为相等</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>  <span class="c1">// 当前为空，其他不为空，当前更慢</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>  <span class="c1">// 当前不为空，其他为空，当前更快</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 3. 比较每个 hashId 的进度</span>
+    <span class="kt">bool</span> <span class="n">hasPartialFaster</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">hasSlower</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    
+    <span class="kt">size_t</span> <span class="n">minSize</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">minSize</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 比较该 hashId 的进度</span>
+        <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">CompareProgress</span><span class="p">(</span><span class="n">_multiProgress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">LCR_SLOWER</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">hasSlower</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="c1">// 如果有一个 hashId 更慢，且没有部分更快，直接返回更慢</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">hasPartialFaster</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">LCR_PARTIAL_FASTER</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">hasPartialFaster</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="c1">// 如果有一个 hashId 部分更快，且没有更慢，继续检查</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 该 hashId 完全更快，继续检查下一个</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="c1">// LCR_INVALID，不应该发生</span>
+            <span class="k">return</span> <span class="n">LCR_INVALID</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 4. 处理大小不同的情况</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="c1">// 当前有更多的 hashId，部分更快</span>
+        <span class="k">return</span> <span class="n">LCR_PARTIAL_FASTER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="c1">// 当前有更少的 hashId，检查是否有更慢的</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">hasSlower</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="c1">// 如果所有 hashId 都完全更快，但数量更少，返回部分更快</span>
+        <span class="k">return</span> <span class="n">LCR_PARTIAL_FASTER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 5. 大小相同，汇总结果</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">hasPartialFaster</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">hasSlower</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_PARTIAL_FASTER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">hasSlower</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 所有 hashId 都完全更快</span>
+    <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>比较算法的性能优化</strong>：</p>
+
+<ol>
+  <li><strong>快速路径优化</strong>：
+    <ul>
+      <li>数据源不同时，直接返回 <code class="language-plaintext highlighter-rouge">LCR_INVALID</code>，避免遍历 Progress</li>
+      <li>MultiProgress 为空时，快速判断，避免不必要的比较</li>
+    </ul>
+  </li>
+  <li><strong>短路优化</strong>：
+    <ul>
+      <li>如果某个 hashId 更慢，且没有部分更快，立即返回 <code class="language-plaintext highlighter-rouge">LCR_SLOWER</code></li>
+      <li>不需要继续比较后续 hashId，减少比较次数</li>
+    </ul>
+  </li>
+  <li><strong>缓存优化</strong>：
+    <ul>
+      <li>比较结果可以缓存，避免重复计算</li>
+      <li>对于相同的 Locator 对，直接返回缓存结果</li>
+    </ul>
+  </li>
+  <li><strong>位运算优化</strong>：
+    <ul>
+      <li>使用位运算优化 Progress 的比较</li>
+      <li>减少比较开销，提高比较性能</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-compare-logic.svg" alt="IsFasterThan() 方法：比较两个 Locator 的实现逻辑" /></p>
 
-<p><strong>比较逻辑</strong>：</p>
-<ol>
-  <li><strong>检查数据源</strong>：检查两个 Locator 是否来自同一数据源</li>
-  <li><strong>比较 MultiProgress</strong>：比较每个 hashId 的进度</li>
-  <li><strong>返回比较结果</strong>：返回 LCR_INVALID、LCR_SLOWER、LCR_PARTIAL_FASTER 或 LCR_FULLY_FASTER</li>
-</ol>
+<h3 id="22-compareprogress-方法">2.2 CompareProgress() 方法</h3>
 
-<h3 id="22-比较结果的语义">2.2 比较结果的语义</h3>
+<p><code class="language-plaintext highlighter-rouge">CompareProgress()</code> 是比较单个 hashId 进度的核心方法：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="n">LocatorCompareResult</span> <span class="n">Locator</span><span class="o">::</span><span class="n">CompareProgress</span><span class="p">(</span><span class="k">const</span> <span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv1</span><span class="p">,</span> 
+                                               <span class="k">const</span> <span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv2</span><span class="p">)</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 快速路径：如果 ProgressVector 为空</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pv1</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pv2</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>  <span class="c1">// 都为空，认为相等</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>  <span class="c1">// pv1 为空，pv2 不为空，pv1 更慢</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">pv2</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>  <span class="c1">// pv1 不为空，pv2 为空，pv1 更快</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 比较每个 Progress</span>
+    <span class="kt">bool</span> <span class="n">hasPartialFaster</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">hasSlower</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    
+    <span class="c1">// 合并两个 ProgressVector，按 from 排序</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Progress</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="n">Progress</span><span class="o">*&gt;&gt;</span> <span class="n">pairs</span><span class="p">;</span>
+    <span class="c1">// ... 合并逻辑 ...</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">pair</span> <span class="o">:</span> <span class="n">pairs</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">const</span> <span class="n">Progress</span><span class="o">*</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">pair</span><span class="p">.</span><span class="n">first</span><span class="p">;</span>
+        <span class="k">const</span> <span class="n">Progress</span><span class="o">*</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">pair</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">p1</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// p1 没有该范围的 Progress，p2 有，p1 更慢</span>
+            <span class="n">hasSlower</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">p2</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// p1 有该范围的 Progress，p2 没有，p1 部分更快</span>
+            <span class="n">hasPartialFaster</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 比较 offset</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="o">-&gt;</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">p2</span><span class="o">-&gt;</span><span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">hasSlower</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">hasPartialFaster</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">p1</span><span class="o">-&gt;</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="n">p2</span><span class="o">-&gt;</span><span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">hasPartialFaster</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="c1">// 相等，继续检查下一个</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 3. 汇总结果</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">hasPartialFaster</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">hasSlower</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_PARTIAL_FASTER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">hasSlower</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">LCR_SLOWER</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="23-比较结果的语义">2.3 比较结果的语义</h3>
 
 <p>Locator 比较结果的语义：</p>
 
 <p><img src="/images/diagrams/indexlib-locator-compare-result-semantics.svg" alt="Locator 比较结果的语义：不同结果的含义和应用场景" /></p>
 
-<p><strong>比较结果</strong>：</p>
+<p><strong>比较结果详解</strong>：</p>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; LCR_INVALID: 数据源不同
+    [*] --&gt; LCR_SLOWER: 有hashId更慢
+    [*] --&gt; LCR_PARTIAL_FASTER: 部分hashId更快
+    [*] --&gt; LCR_FULLY_FASTER: 所有hashId更快或相等
+    
+    LCR_INVALID: 无法比较，跳过处理
+    LCR_SLOWER: 数据未处理，需要处理
+    LCR_PARTIAL_FASTER: 部分数据已处理，需要部分处理
+    LCR_FULLY_FASTER: 数据已处理，跳过处理
+    
+    LCR_INVALID --&gt; [*]
+    LCR_SLOWER --&gt; [*]
+    LCR_PARTIAL_FASTER --&gt; [*]
+    LCR_FULLY_FASTER --&gt; [*]
+</code></pre>
+
 <ul>
-  <li><strong>LCR_INVALID</strong>：数据源不同，无法比较</li>
-  <li><strong>LCR_SLOWER</strong>：比目标 Locator 慢，数据未处理</li>
-  <li><strong>LCR_PARTIAL_FASTER</strong>：部分 hashId 更快，需要部分处理</li>
-  <li><strong>LCR_FULLY_FASTER</strong>：完全比目标 Locator 快，数据已处理</li>
+  <li><strong>LCR_INVALID</strong>：数据源不同，无法比较。这种情况下，应该跳过比较，或者使用其他方式判断</li>
+  <li><strong>LCR_SLOWER</strong>：比目标 Locator 慢，数据未处理。需要处理这些数据，更新 Locator</li>
+  <li><strong>LCR_PARTIAL_FASTER</strong>：部分 hashId 更快，需要部分处理。需要分别处理每个 hashId 的数据</li>
+  <li><strong>LCR_FULLY_FASTER</strong>：完全比目标 Locator 快（包括相等），数据已处理。可以跳过这些数据</li>
 </ul>
 
-<h3 id="23-多进度比较">2.3 多进度比较</h3>
+<h3 id="24-多进度比较">2.4 多进度比较</h3>
 
 <p>多进度比较的实现：</p>
 
 <p><img src="/images/diagrams/indexlib-multi-progress-compare.svg" alt="多进度比较：比较 MultiProgress 中每个 hashId 的进度" /></p>
 
-<p><strong>比较流程</strong>：</p>
+<p><strong>多进度比较的序列图</strong>：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant Locator1
+    participant Locator2
+    participant CompareProgress
+    
+    Client-&gt;&gt;Locator1: IsFasterThan(Locator2)
+    Locator1-&gt;&gt;Locator1: IsSameSrc(Locator2)
+    alt 数据源不同
+        Locator1--&gt;&gt;Client: LCR_INVALID
+    else 数据源相同
+        loop 遍历每个 hashId
+            Locator1-&gt;&gt;CompareProgress: CompareProgress(pv1[i], pv2[i])
+            CompareProgress-&gt;&gt;CompareProgress: 比较 ProgressVector
+            CompareProgress--&gt;&gt;Locator1: 比较结果
+            alt 有更慢的 hashId
+                Locator1--&gt;&gt;Client: LCR_SLOWER
+            else 有部分更快的 hashId
+                Locator1--&gt;&gt;Client: LCR_PARTIAL_FASTER
+            end
+        end
+        Locator1--&gt;&gt;Client: LCR_FULLY_FASTER
+    end
+</code></pre>
+
+<p><strong>比较流程详解</strong>：</p>
 <ol>
-  <li><strong>遍历 MultiProgress</strong>：遍历每个 hashId 的进度列表</li>
-  <li><strong>比较进度</strong>：比较每个 hashId 的进度（timestamp 和 concurrentIdx）</li>
-  <li><strong>汇总结果</strong>：汇总所有 hashId 的比较结果</li>
-  <li><strong>返回最终结果</strong>：返回整体的比较结果</li>
+  <li><strong>遍历 MultiProgress</strong>：遍历每个 hashId 的进度列表，按 hashId 顺序比较</li>
+  <li><strong>比较进度</strong>：比较每个 hashId 的进度（timestamp 和 concurrentIdx），使用 <code class="language-plaintext highlighter-rouge">CompareProgress()</code> 方法</li>
+  <li><strong>汇总结果</strong>：汇总所有 hashId 的比较结果，根据是否有更慢、部分更快等情况决定最终结果</li>
+  <li><strong>返回最终结果</strong>：返回整体的比较结果，用于判断数据是否已处理</li>
 </ol>
 
 <h2 id="3-locator-的更新机制">3. Locator 的更新机制</h2>
 
 <h3 id="31-update-方法">3.1 Update() 方法</h3>
 
-<p><code class="language-plaintext highlighter-rouge">Update()</code> 方法用于更新 Locator：</p>
+<p><code class="language-plaintext highlighter-rouge">Update()</code> 方法用于更新 Locator，保证 Locator 只向前推进，不会回退。这是数据一致性保证的关键。让我们先通过流程图来理解更新的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始更新]) --&gt; CheckFaster{检查新 Locator&lt;br/&gt;是否完全更快?}
+    CheckFaster --&gt;|否| Return[返回，不更新]
+    CheckFaster --&gt;|是| CheckSrc{检查数据源&lt;br/&gt;是否相同?}
+    CheckSrc --&gt;|不同| Return
+    CheckSrc --&gt;|相同| UpdateMulti[更新 MultiProgress]
+    UpdateMulti --&gt; MergeProgress[合并 ProgressVector]
+    MergeProgress --&gt; UpdateMin[更新 MinOffset]
+    UpdateMin --&gt; UpdateUserData{需要更新&lt;br/&gt;UserData?}
+    UpdateUserData --&gt;|是| SetUserData[设置 UserData]
+    UpdateUserData --&gt;|否| End([结束])
+    SetUserData --&gt; End
+    Return --&gt; End
+</code></pre>
+
+<p><strong>Update() 的完整实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="kt">void</span> <span class="n">Locator</span><span class="o">::</span><span class="n">Update</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 检查数据源是否相同</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">IsSameSrc</span><span class="p">(</span><span class="n">other</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// 数据源不同，不更新</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 检查新 Locator 是否完全更快</span>
+    <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">IsFasterThan</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">!=</span> <span class="n">LCR_FULLY_FASTER</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 新 Locator 不是完全更快，不更新</span>
+        <span class="c1">// 这保证了 Locator 只向前推进，不会回退</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 3. 更新 MultiProgress</span>
+    <span class="c1">// 合并两个 MultiProgress，保留更大的进度</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">_multiProgress</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// 逐个 hashId 合并，保留更大的进度</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;=</span> <span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+                <span class="n">_multiProgress</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="c1">// 合并 ProgressVector</span>
+                <span class="n">MergeProgressVector</span><span class="p">(</span><span class="n">_multiProgress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">other</span><span class="p">.</span><span class="n">_multiProgress</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 4. 更新 MinOffset</span>
+    <span class="n">UpdateMinOffset</span><span class="p">();</span>
+    
+    <span class="c1">// 5. 更新 UserData（如果新 Locator 有 UserData）</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">other</span><span class="p">.</span><span class="n">_userData</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">_userData</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">_userData</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>MergeProgressVector() 的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="kt">void</span> <span class="n">Locator</span><span class="o">::</span><span class="n">MergeProgressVector</span><span class="p">(</span><span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv1</span><span class="p">,</span> 
+                                    <span class="k">const</span> <span class="n">ProgressVector</span><span class="o">&amp;</span> <span class="n">pv2</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 合并两个 ProgressVector，保留更大的进度</span>
+    <span class="c1">// 1. 按 from 排序</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">pv1</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">pv1</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> 
+              <span class="p">[](</span><span class="k">const</span> <span class="n">Progress</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Progress</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+                  <span class="k">return</span> <span class="n">a</span><span class="p">.</span><span class="n">from</span> <span class="o">&lt;</span> <span class="n">b</span><span class="p">.</span><span class="n">from</span><span class="p">;</span>
+              <span class="p">});</span>
+    
+    <span class="c1">// 2. 合并重叠的 Progress</span>
+    <span class="n">ProgressVector</span> <span class="n">merged</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">p</span> <span class="o">:</span> <span class="n">pv1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">bool</span> <span class="n">merged</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">m</span> <span class="o">:</span> <span class="n">merged</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">from</span> <span class="o">&lt;=</span> <span class="n">p</span><span class="p">.</span><span class="n">to</span> <span class="o">&amp;&amp;</span> <span class="n">m</span><span class="p">.</span><span class="n">to</span> <span class="o">&gt;=</span> <span class="n">p</span><span class="p">.</span><span class="n">from</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// 有重叠，合并</span>
+                <span class="n">m</span><span class="p">.</span><span class="n">from</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">from</span><span class="p">,</span> <span class="n">p</span><span class="p">.</span><span class="n">from</span><span class="p">);</span>
+                <span class="n">m</span><span class="p">.</span><span class="n">to</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">to</span><span class="p">,</span> <span class="n">p</span><span class="p">.</span><span class="n">to</span><span class="p">);</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="n">m</span><span class="p">.</span><span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">m</span><span class="p">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">offset</span><span class="p">;</span>  <span class="c1">// 保留更大的进度</span>
+                <span class="p">}</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">merged</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">merged</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 3. 与 pv2 合并</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">p</span> <span class="o">:</span> <span class="n">pv2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">bool</span> <span class="n">merged</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">m</span> <span class="o">:</span> <span class="n">merged</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">from</span> <span class="o">&lt;=</span> <span class="n">p</span><span class="p">.</span><span class="n">to</span> <span class="o">&amp;&amp;</span> <span class="n">m</span><span class="p">.</span><span class="n">to</span> <span class="o">&gt;=</span> <span class="n">p</span><span class="p">.</span><span class="n">from</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">m</span><span class="p">.</span><span class="n">from</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">from</span><span class="p">,</span> <span class="n">p</span><span class="p">.</span><span class="n">from</span><span class="p">);</span>
+                <span class="n">m</span><span class="p">.</span><span class="n">to</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">to</span><span class="p">,</span> <span class="n">p</span><span class="p">.</span><span class="n">to</span><span class="p">);</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="n">m</span><span class="p">.</span><span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">m</span><span class="p">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">offset</span><span class="p">;</span>
+                <span class="p">}</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">merged</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">merged</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="n">pv1</span> <span class="o">=</span> <span class="n">merged</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>UpdateMinOffset() 的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="kt">void</span> <span class="n">Locator</span><span class="o">::</span><span class="n">UpdateMinOffset</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">_minOffset</span> <span class="o">=</span> <span class="n">Progress</span><span class="o">::</span><span class="n">INVALID_OFFSET</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 找到所有 Progress 中最小的 offset</span>
+    <span class="n">Progress</span><span class="o">::</span><span class="n">Offset</span> <span class="n">minOffset</span> <span class="o">=</span> <span class="n">Progress</span><span class="o">::</span><span class="n">MAX_OFFSET</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">pv</span> <span class="o">:</span> <span class="n">_multiProgress</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">p</span> <span class="o">:</span> <span class="n">pv</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">minOffset</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">minOffset</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">offset</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="n">_minOffset</span> <span class="o">=</span> <span class="n">minOffset</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>更新机制的关键设计</strong>：</p>
+
+<ol>
+  <li><strong>只向前推进</strong>：只有当新 Locator 完全比当前 Locator 快时，才更新。这保证了 Locator 只向前推进，不会回退，是数据一致性保证的基础</li>
+  <li><strong>原子性更新</strong>：更新操作是原子的，要么全部更新，要么全部不更新，不会出现部分更新的情况</li>
+  <li><strong>进度合并</strong>：支持合并多个 Progress，保留更大的进度，支持并行处理和分片处理</li>
+  <li><strong>最小偏移量维护</strong>：自动维护 <code class="language-plaintext highlighter-rouge">_minOffset</code>，用于快速判断整体进度</li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-update-logic.svg" alt="Update() 方法：更新 Locator 的实现逻辑" /></p>
-
-<p><strong>更新逻辑</strong>：</p>
-<ul>
-  <li><strong>条件检查</strong>：只有当新的 Locator 完全比当前 Locator 快时，才更新</li>
-  <li><strong>更新 MultiProgress</strong>：更新 <code class="language-plaintext highlighter-rouge">_multiProgress</code>，记录最新的数据处理位置</li>
-  <li><strong>更新 MinOffset</strong>：更新 <code class="language-plaintext highlighter-rouge">_minOffset</code>，记录最小的偏移量</li>
-  <li><strong>保证一致性</strong>：保证 Locator 只向前推进，不会回退</li>
-</ul>
 
 <h3 id="32-更新时机">3.2 更新时机</h3>
 
@@ -833,88 +1317,615 @@
 
 <p><img src="/images/diagrams/indexlib-locator-update-timing.svg" alt="Locator 的更新时机：在数据处理完成后更新 Locator" /></p>
 
-<p><strong>更新时机</strong>：</p>
-<ul>
-  <li><strong>数据处理完成</strong>：处理完一批数据后更新 Locator</li>
-  <li><strong>Segment 构建完成</strong>：Segment 构建完成后更新 Locator</li>
-  <li><strong>版本提交时</strong>：版本提交时更新 Version 的 Locator</li>
-  <li><strong>增量更新时</strong>：增量更新时更新 Locator，记录处理位置</li>
-</ul>
+<p><strong>更新时机的序列图</strong>：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant DataSource
+    participant TabletWriter
+    participant MemSegment
+    participant Locator
+    participant Version
+    
+    DataSource-&gt;&gt;TabletWriter: 写入数据
+    TabletWriter-&gt;&gt;MemSegment: Build(doc)
+    MemSegment-&gt;&gt;MemSegment: 处理文档
+    MemSegment-&gt;&gt;Locator: 更新 Locator
+    Locator-&gt;&gt;Locator: Update(newLocator)
+    
+    MemSegment-&gt;&gt;MemSegment: Flush()
+    MemSegment-&gt;&gt;Locator: 获取 Locator
+    MemSegment-&gt;&gt;Version: 提交版本
+    Version-&gt;&gt;Version: SetLocator(locator)
+    
+    Note over Version: 版本提交时，Locator 被持久化
+</code></pre>
+
+<p><strong>更新时机详解</strong>：</p>
+
+<ol>
+  <li><strong>数据处理完成</strong>：处理完一批数据后更新 Locator
+    <ul>
+      <li>在 <code class="language-plaintext highlighter-rouge">TabletWriter::Build()</code> 中，每处理完一批文档，更新 MemSegment 的 Locator</li>
+      <li>保证 Locator 反映最新的数据处理位置</li>
+    </ul>
+  </li>
+  <li><strong>Segment 构建完成</strong>：Segment 构建完成后更新 Locator
+    <ul>
+      <li>在 <code class="language-plaintext highlighter-rouge">MemSegment::Seal()</code> 中，Segment 构建完成后，更新 Locator</li>
+      <li>保证 Locator 反映 Segment 的数据处理位置</li>
+    </ul>
+  </li>
+  <li><strong>版本提交时</strong>：版本提交时更新 Version 的 Locator
+    <ul>
+      <li>在 <code class="language-plaintext highlighter-rouge">VersionCommitter::Commit()</code> 中，版本提交时，将 TabletWriter 的 Locator 设置到 Version 中</li>
+      <li>保证 Version 的 Locator 反映该版本的数据处理位置</li>
+    </ul>
+  </li>
+  <li><strong>增量更新时</strong>：增量更新时更新 Locator，记录处理位置
+    <ul>
+      <li>在增量更新流程中，处理完新数据后，更新 Locator</li>
+      <li>保证下次增量更新时，可以正确判断哪些数据已处理</li>
+    </ul>
+  </li>
+</ol>
 
 <h2 id="4-locator-的序列化">4. Locator 的序列化</h2>
 
 <h3 id="41-serialize-方法">4.1 Serialize() 方法</h3>
 
-<p><code class="language-plaintext highlighter-rouge">Serialize()</code> 方法用于序列化 Locator：</p>
+<p><code class="language-plaintext highlighter-rouge">Serialize()</code> 方法用于序列化 Locator，将 Locator 持久化到磁盘或网络传输。序列化格式需要支持版本兼容和向后兼容。让我们先通过流程图来理解序列化的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始序列化]) --&gt; WriteMagic[写入 Magic Number]
+    WriteMagic --&gt; WriteVersion[写入 Version]
+    WriteVersion --&gt; WriteSrc[写入 Src]
+    WriteSrc --&gt; WriteMultiProgress[写入 MultiProgress]
+    WriteMultiProgress --&gt; WriteUserData[写入 UserData]
+    WriteUserData --&gt; Compress{需要压缩?}
+    Compress --&gt;|是| CompressData[压缩数据]
+    Compress --&gt;|否| End([结束])
+    CompressData --&gt; End
+</code></pre>
+
+<p><strong>Serialize() 的完整实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">Locator</span><span class="o">::</span><span class="n">Serialize</span><span class="p">()</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 构建序列化缓冲区</span>
+    <span class="n">autil</span><span class="o">::</span><span class="n">DataBuffer</span> <span class="n">buffer</span><span class="p">;</span>
+    
+    <span class="c1">// 2. 写入 Magic Number（用于验证）</span>
+    <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">MAGIC_NUMBER</span> <span class="o">=</span> <span class="mh">0x4C4F4341</span><span class="p">;</span>  <span class="c1">// "LOCA"</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">MAGIC_NUMBER</span><span class="p">);</span>
+    
+    <span class="c1">// 3. 写入 Version（用于兼容性）</span>
+    <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">VERSION</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>  <span class="c1">// 当前版本</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">VERSION</span><span class="p">);</span>
+    
+    <span class="c1">// 4. 写入 Src</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">_src</span><span class="p">);</span>
+    
+    <span class="c1">// 5. 写入 MinOffset</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">_minOffset</span><span class="p">.</span><span class="n">first</span><span class="p">);</span>   <span class="c1">// timestamp</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">_minOffset</span><span class="p">.</span><span class="n">second</span><span class="p">);</span>  <span class="c1">// concurrentIdx</span>
+    
+    <span class="c1">// 6. 写入 MultiProgress</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">_multiProgress</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">pv</span> <span class="o">:</span> <span class="n">_multiProgress</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pv</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span>
+        <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">p</span> <span class="o">:</span> <span class="n">pv</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">from</span><span class="p">);</span>
+            <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">to</span><span class="p">);</span>
+            <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">offset</span><span class="p">.</span><span class="n">first</span><span class="p">);</span>   <span class="c1">// timestamp</span>
+            <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">offset</span><span class="p">.</span><span class="n">second</span><span class="p">);</span> <span class="c1">// concurrentIdx</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 7. 写入 UserData</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">_userData</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">_userData</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">buffer</span><span class="p">.</span><span class="n">writeBytes</span><span class="p">(</span><span class="n">_userData</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">_userData</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 8. 写入 Legacy 标志</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">_isLegacyLocator</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">));</span>
+    
+    <span class="c1">// 9. 转换为字符串（可选：压缩）</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">result</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">.</span><span class="n">toString</span><span class="p">();</span>
+    
+    <span class="c1">// 可选：压缩序列化数据</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1024</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 大于 1KB 时压缩</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">Compress</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>序列化格式详解</strong>：</p>
+
+<ol>
+  <li><strong>Magic Number</strong>：魔数 <code class="language-plaintext highlighter-rouge">0x4C4F4341</code>（”LOCA”），用于验证数据格式是否正确</li>
+  <li><strong>Version</strong>：版本号，用于兼容性。不同版本的 Locator 可能有不同的序列化格式</li>
+  <li><strong>Src</strong>：数据源标识，8 字节</li>
+  <li><strong>MinOffset</strong>：最小偏移量，包含 timestamp（8 字节）和 concurrentIdx（4 字节）</li>
+  <li><strong>MultiProgress</strong>：
+    <ul>
+      <li>先写入 hashId 数量（4 字节）</li>
+      <li>对每个 hashId，写入 ProgressVector 大小（4 字节）</li>
+      <li>对每个 Progress，写入 from（4 字节）、to（4 字节）、offset（8+4 字节）</li>
+    </ul>
+  </li>
+  <li><strong>UserData</strong>：用户数据，先写入大小（4 字节），再写入数据内容</li>
+  <li><strong>Legacy 标志</strong>：是否遗留 Locator（1 字节）</li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-serialize.svg" alt="Locator 的序列化：将 Locator 序列化为字符串" /></p>
 
-<p><strong>序列化内容</strong>：</p>
-<ul>
-  <li><strong>Magic Number</strong>：魔数，用于验证</li>
-  <li><strong>Version</strong>：版本号，用于兼容性</li>
-  <li><strong>Src</strong>：数据源标识</li>
-  <li><strong>MultiProgress</strong>：多进度信息</li>
-  <li><strong>UserData</strong>：用户数据</li>
-</ul>
-
 <h3 id="42-deserialize-方法">4.2 Deserialize() 方法</h3>
 
-<p><code class="language-plaintext highlighter-rouge">Deserialize()</code> 方法用于反序列化 Locator：</p>
+<p><code class="language-plaintext highlighter-rouge">Deserialize()</code> 方法用于反序列化 Locator，从字符串恢复 Locator 对象。需要支持版本兼容和向后兼容。让我们先通过流程图来理解反序列化的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始反序列化]) --&gt; Decompress{数据是否压缩?}
+    Decompress --&gt;|是| DecompressData[解压数据]
+    Decompress --&gt;|否| ReadMagic[读取 Magic Number]
+    DecompressData --&gt; ReadMagic
+    ReadMagic --&gt; CheckMagic{验证 Magic Number}
+    CheckMagic --&gt;|失败| Error[返回错误]
+    CheckMagic --&gt;|成功| ReadVersion[读取 Version]
+    ReadVersion --&gt; CheckVersion{检查版本}
+    CheckVersion --&gt;|不支持| Error
+    CheckVersion --&gt;|支持| ReadSrc[读取 Src]
+    ReadSrc --&gt; ReadMinOffset[读取 MinOffset]
+    ReadMinOffset --&gt; ReadMultiProgress[读取 MultiProgress]
+    ReadMultiProgress --&gt; ReadUserData[读取 UserData]
+    ReadUserData --&gt; ReadLegacy[读取 Legacy 标志]
+    ReadLegacy --&gt; Validate[验证数据]
+    Validate --&gt;|失败| Error
+    Validate --&gt;|成功| End([结束])
+    Error --&gt; End
+</code></pre>
+
+<p><strong>Deserialize() 的完整实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="n">Status</span> <span class="n">Locator</span><span class="o">::</span><span class="n">Deserialize</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">str</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Empty string"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 1. 尝试解压（如果压缩了）</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">data</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">IsCompressed</span><span class="p">(</span><span class="n">str</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">status</span> <span class="o">=</span> <span class="n">Decompress</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 构建反序列化缓冲区</span>
+    <span class="n">autil</span><span class="o">::</span><span class="n">DataBuffer</span> <span class="n">buffer</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    
+    <span class="c1">// 3. 读取并验证 Magic Number</span>
+    <span class="kt">uint32_t</span> <span class="n">magic</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">magic</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read magic number"</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">magic</span> <span class="o">!=</span> <span class="mh">0x4C4F4341</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Invalid magic number"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 4. 读取 Version</span>
+    <span class="kt">uint32_t</span> <span class="n">version</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">version</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read version"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 5. 根据版本选择解析方式</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">version</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">DeserializeV1</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">version</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">DeserializeV2</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Unsupported version: "</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">version</span><span class="p">));</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">Status</span> <span class="n">Locator</span><span class="o">::</span><span class="n">DeserializeV2</span><span class="p">(</span><span class="n">autil</span><span class="o">::</span><span class="n">DataBuffer</span><span class="o">&amp;</span> <span class="n">buffer</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 读取 Src</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">_src</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read src"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 读取 MinOffset</span>
+    <span class="kt">int64_t</span> <span class="n">timestamp</span><span class="p">;</span>
+    <span class="kt">uint32_t</span> <span class="n">concurrentIdx</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span> <span class="o">||</span> <span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">concurrentIdx</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read min offset"</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">_minOffset</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">concurrentIdx</span><span class="p">);</span>
+    
+    <span class="c1">// 3. 读取 MultiProgress</span>
+    <span class="kt">uint32_t</span> <span class="n">multiProgressSize</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">multiProgressSize</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read multi progress size"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="n">_multiProgress</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+    <span class="n">_multiProgress</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="n">multiProgressSize</span><span class="p">);</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="kt">uint32_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">multiProgressSize</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">uint32_t</span> <span class="n">pvSize</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">pvSize</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read progress vector size"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">ProgressVector</span> <span class="n">pv</span><span class="p">;</span>
+        <span class="n">pv</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="n">pvSize</span><span class="p">);</span>
+        
+        <span class="k">for</span> <span class="p">(</span><span class="kt">uint32_t</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">pvSize</span><span class="p">;</span> <span class="o">++</span><span class="n">j</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">uint32_t</span> <span class="n">from</span><span class="p">,</span> <span class="n">to</span><span class="p">;</span>
+            <span class="kt">int64_t</span> <span class="n">ts</span><span class="p">;</span>
+            <span class="kt">uint32_t</span> <span class="n">idx</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">from</span><span class="p">)</span> <span class="o">||</span> <span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">to</span><span class="p">)</span> <span class="o">||</span> 
+                <span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span> <span class="o">||</span> <span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read progress"</span><span class="p">);</span>
+            <span class="p">}</span>
+            
+            <span class="n">pv</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">from</span><span class="p">,</span> <span class="n">to</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">idx</span><span class="p">));</span>
+        <span class="p">}</span>
+        
+        <span class="n">_multiProgress</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">pv</span><span class="p">));</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 4. 读取 UserData</span>
+    <span class="kt">uint32_t</span> <span class="n">userDataSize</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">userDataSize</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read user data size"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">userDataSize</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_userData</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="n">userDataSize</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">readBytes</span><span class="p">(</span><span class="n">_userData</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">userDataSize</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read user data"</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">_userData</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 5. 读取 Legacy 标志</span>
+    <span class="kt">uint8_t</span> <span class="n">legacyFlag</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">buffer</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">legacyFlag</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Failed to read legacy flag"</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">_isLegacyLocator</span> <span class="o">=</span> <span class="p">(</span><span class="n">legacyFlag</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">);</span>
+    
+    <span class="c1">// 6. 验证数据</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">IsValid</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">InvalidArgs</span><span class="p">(</span><span class="s">"Invalid locator after deserialization"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>反序列化的关键设计</strong>：</p>
+
+<ol>
+  <li><strong>版本兼容</strong>：支持多个版本的 Locator 格式，通过版本号选择解析方式</li>
+  <li><strong>向后兼容</strong>：新版本可以读取旧版本的 Locator，保证平滑升级</li>
+  <li><strong>数据验证</strong>：反序列化后验证数据的有效性，确保 Locator 正确</li>
+  <li><strong>压缩支持</strong>：支持压缩的序列化数据，减少存储空间和网络传输</li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-deserialize.svg" alt="Locator 的反序列化：从字符串反序列化为 Locator" /></p>
 
-<p><strong>反序列化流程</strong>：</p>
-<ol>
-  <li><strong>验证 Magic Number</strong>：验证魔数，确保数据格式正确</li>
-  <li><strong>读取 Version</strong>：读取版本号，根据版本号选择解析方式</li>
-  <li><strong>读取数据</strong>：读取 Src、MultiProgress、UserData 等数据</li>
-  <li><strong>验证数据</strong>：验证数据的有效性</li>
-  <li><strong>构建 Locator</strong>：构建 Locator 对象</li>
-</ol>
-
 <h2 id="5-数据一致性保证">5. 数据一致性保证</h2>
+
+<p>数据一致性是 IndexLib 的核心保证，通过 Locator 实现数据不重复、不丢失，支持多数据源场景。让我们先通过流程图来理解数据一致性保证的完整机制：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([数据到达]) --&gt; CheckLocator{检查 Locator}
+    CheckLocator --&gt; Compare[IsFasterThan 比较]
+    Compare --&gt; CheckResult{比较结果?}
+    CheckResult --&gt;|LCR_FULLY_FASTER| Skip[跳过，数据已处理]
+    CheckResult --&gt;|LCR_SLOWER| Process[处理新数据]
+    CheckResult --&gt;|LCR_PARTIAL_FASTER| ProcessPartial[部分处理]
+    CheckResult --&gt;|LCR_INVALID| CheckSrc{数据源相同?}
+    CheckSrc --&gt;|不同| ProcessMulti[多数据源处理]
+    CheckSrc --&gt;|相同| Error[错误处理]
+    Process --&gt; UpdateLocator[更新 Locator]
+    ProcessPartial --&gt; UpdateLocator
+    ProcessMulti --&gt; UpdateLocator
+    UpdateLocator --&gt; Commit[提交版本]
+    Commit --&gt; Persist[持久化 Locator]
+    Persist --&gt; End([结束])
+    Skip --&gt; End
+    Error --&gt; End
+</code></pre>
 
 <h3 id="51-数据不重复保证">5.1 数据不重复保证</h3>
 
-<p>通过 Locator 保证数据不重复：</p>
+<p>通过 Locator 保证数据不重复，这是增量更新的基础。让我们通过序列图来理解数据不重复保证的完整流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant DataSource
+    participant TabletWriter
+    participant Locator
+    participant MemSegment
+    
+    DataSource-&gt;&gt;TabletWriter: 写入数据(doc)
+    TabletWriter-&gt;&gt;Locator: IsFasterThan(doc.locator)
+    Locator-&gt;&gt;Locator: 比较 MultiProgress
+    alt 数据已处理 (LCR_FULLY_FASTER)
+        Locator--&gt;&gt;TabletWriter: LCR_FULLY_FASTER
+        TabletWriter-&gt;&gt;TabletWriter: 跳过该文档
+    else 数据未处理 (LCR_SLOWER)
+        Locator--&gt;&gt;TabletWriter: LCR_SLOWER
+        TabletWriter-&gt;&gt;MemSegment: Build(doc)
+        MemSegment-&gt;&gt;MemSegment: 处理文档
+        MemSegment-&gt;&gt;Locator: Update(newLocator)
+    else 部分已处理 (LCR_PARTIAL_FASTER)
+        Locator--&gt;&gt;TabletWriter: LCR_PARTIAL_FASTER
+        TabletWriter-&gt;&gt;TabletWriter: 部分处理该文档
+        TabletWriter-&gt;&gt;MemSegment: Build(doc, partial)
+    end
+</code></pre>
+
+<p><strong>数据不重复保证的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/TabletWriter.cpp</span>
+<span class="n">Status</span> <span class="n">TabletWriter</span><span class="o">::</span><span class="n">Build</span><span class="p">(</span><span class="k">const</span> <span class="n">Document</span><span class="o">&amp;</span> <span class="n">doc</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 获取文档的 Locator</span>
+    <span class="n">Locator</span> <span class="n">docLocator</span> <span class="o">=</span> <span class="n">doc</span><span class="p">.</span><span class="n">GetLocator</span><span class="p">();</span>
+    
+    <span class="c1">// 2. 检查数据是否已处理</span>
+    <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">docLocator</span><span class="p">.</span><span class="n">IsFasterThan</span><span class="p">(</span><span class="n">_currentLocator</span><span class="p">);</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">Locator</span><span class="o">::</span><span class="n">LCR_FULLY_FASTER</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 数据已处理，跳过</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">Locator</span><span class="o">::</span><span class="n">LCR_INVALID</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 数据源不同，需要特殊处理</span>
+        <span class="k">return</span> <span class="n">HandleDifferentSource</span><span class="p">(</span><span class="n">doc</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 3. 处理新数据</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">Locator</span><span class="o">::</span><span class="n">LCR_SLOWER</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 数据未处理，正常处理</span>
+        <span class="k">return</span> <span class="n">ProcessDocument</span><span class="p">(</span><span class="n">doc</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="n">Locator</span><span class="o">::</span><span class="n">LCR_PARTIAL_FASTER</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 部分数据已处理，需要部分处理</span>
+        <span class="k">return</span> <span class="n">ProcessPartialDocument</span><span class="p">(</span><span class="n">doc</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>保证机制详解</strong>：</p>
+
+<ol>
+  <li><strong>Locator 比较</strong>：通过 <code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 判断数据是否已处理
+    <ul>
+      <li>如果返回 <code class="language-plaintext highlighter-rouge">LCR_FULLY_FASTER</code>，说明数据已处理，跳过</li>
+      <li>如果返回 <code class="language-plaintext highlighter-rouge">LCR_SLOWER</code>，说明数据未处理，需要处理</li>
+      <li>如果返回 <code class="language-plaintext highlighter-rouge">LCR_PARTIAL_FASTER</code>，说明部分数据已处理，需要部分处理</li>
+    </ul>
+  </li>
+  <li><strong>跳过已处理数据</strong>：如果数据已处理（LCR_FULLY_FASTER），则跳过，避免重复处理
+    <ul>
+      <li>减少不必要的计算和存储开销</li>
+      <li>保证数据不重复</li>
+    </ul>
+  </li>
+  <li><strong>只处理新数据</strong>：只处理未处理的数据（LCR_SLOWER），避免重复处理
+    <ul>
+      <li>保证增量更新的正确性</li>
+      <li>提高处理效率</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-data-no-duplicate.svg" alt="数据不重复保证：通过 Locator 比较避免重复处理数据" /></p>
 
-<p><strong>保证机制</strong>：</p>
-<ul>
-  <li><strong>Locator 比较</strong>：通过 <code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 判断数据是否已处理</li>
-  <li><strong>跳过已处理数据</strong>：如果数据已处理（LCR_FULLY_FASTER），则跳过</li>
-  <li><strong>只处理新数据</strong>：只处理未处理的数据（LCR_SLOWER），避免重复处理</li>
-</ul>
-
 <h3 id="52-数据不丢失保证">5.2 数据不丢失保证</h3>
 
-<p>通过 Locator 保证数据不丢失：</p>
+<p>通过 Locator 保证数据不丢失，这是数据可靠性的基础。让我们通过序列图来理解数据不丢失保证的完整流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant DataSource
+    participant TabletWriter
+    participant MemSegment
+    participant Locator
+    participant Version
+    participant Disk
+    
+    DataSource-&gt;&gt;TabletWriter: 写入数据
+    TabletWriter-&gt;&gt;MemSegment: Build(doc)
+    MemSegment-&gt;&gt;MemSegment: 处理文档
+    MemSegment-&gt;&gt;Locator: Update(newLocator)
+    Locator-&gt;&gt;Locator: 更新 MultiProgress
+    
+    MemSegment-&gt;&gt;MemSegment: Flush()
+    MemSegment-&gt;&gt;Locator: 获取 Locator
+    MemSegment-&gt;&gt;Version: 提交版本
+    Version-&gt;&gt;Version: SetLocator(locator)
+    Version-&gt;&gt;Disk: 持久化 Version
+    
+    Note over Disk: Locator 被持久化到磁盘
+    
+    alt 故障恢复
+        Disk-&gt;&gt;Version: 加载 Version
+        Version-&gt;&gt;Version: 获取 Locator
+        Version-&gt;&gt;TabletWriter: 设置 Locator
+        TabletWriter-&gt;&gt;DataSource: 从 Locator 位置继续处理
+    end
+</code></pre>
+
+<p><strong>数据不丢失保证的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/VersionCommitter.cpp</span>
+<span class="n">Status</span> <span class="n">VersionCommitter</span><span class="o">::</span><span class="n">Commit</span><span class="p">(</span><span class="k">const</span> <span class="n">TabletData</span><span class="o">&amp;</span> <span class="n">tabletData</span><span class="p">,</span>
+                                 <span class="k">const</span> <span class="n">Schema</span><span class="o">&amp;</span> <span class="n">schema</span><span class="p">,</span>
+                                 <span class="k">const</span> <span class="n">CommitOptions</span><span class="o">&amp;</span> <span class="n">options</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 获取 TabletWriter 的 Locator</span>
+    <span class="n">Locator</span> <span class="n">currentLocator</span> <span class="o">=</span> <span class="n">tabletData</span><span class="p">.</span><span class="n">GetLocator</span><span class="p">();</span>
+    
+    <span class="c1">// 2. 创建新版本</span>
+    <span class="n">Version</span> <span class="n">newVersion</span> <span class="o">=</span> <span class="n">CreateNewVersion</span><span class="p">(</span><span class="n">tabletData</span><span class="p">);</span>
+    
+    <span class="c1">// 3. 设置 Locator</span>
+    <span class="n">newVersion</span><span class="p">.</span><span class="n">SetLocator</span><span class="p">(</span><span class="n">currentLocator</span><span class="p">);</span>
+    
+    <span class="c1">// 4. 持久化版本</span>
+    <span class="k">auto</span> <span class="n">status</span> <span class="o">=</span> <span class="n">WriteVersion</span><span class="p">(</span><span class="n">newVersion</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 5. 持久化 Locator（在 Version 中）</span>
+    <span class="c1">// Locator 会被序列化并写入版本文件</span>
+    <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>保证机制详解</strong>：</p>
+
+<ol>
+  <li><strong>记录处理位置</strong>：通过 Locator 记录数据处理位置
+    <ul>
+      <li>每次处理完数据后，更新 Locator</li>
+      <li>Locator 记录每个 hashId 的处理进度</li>
+    </ul>
+  </li>
+  <li><strong>增量更新</strong>：通过 Locator 实现增量更新，只处理新数据
+    <ul>
+      <li>下次增量更新时，从 Locator 记录的位置继续处理</li>
+      <li>保证数据不丢失</li>
+    </ul>
+  </li>
+  <li><strong>故障恢复</strong>：故障恢复时，通过 Locator 判断需要重新处理的数据
+    <ul>
+      <li>加载故障前的版本，获取 Locator</li>
+      <li>从 Locator 记录的位置继续处理，保证数据不丢失</li>
+    </ul>
+  </li>
+  <li><strong>版本一致性</strong>：通过 Version 的 Locator 保证版本数据的一致性
+    <ul>
+      <li>每个版本都有对应的 Locator</li>
+      <li>版本提交时，Locator 被持久化</li>
+      <li>版本加载时，Locator 被恢复</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-data-no-lost.svg" alt="数据不丢失保证：通过 Locator 记录处理位置，保证数据不丢失" /></p>
 
-<p><strong>保证机制</strong>：</p>
-<ul>
-  <li><strong>记录处理位置</strong>：通过 Locator 记录数据处理位置</li>
-  <li><strong>增量更新</strong>：通过 Locator 实现增量更新，只处理新数据</li>
-  <li><strong>故障恢复</strong>：故障恢复时，通过 Locator 判断需要重新处理的数据</li>
-  <li><strong>版本一致性</strong>：通过 Version 的 Locator 保证版本数据的一致性</li>
-</ul>
-
 <h3 id="53-多数据源一致性">5.3 多数据源一致性</h3>
 
-<p>多数据源场景下的数据一致性：</p>
+<p>多数据源场景下的数据一致性，通过 <code class="language-plaintext highlighter-rouge">_src</code> 和 <code class="language-plaintext highlighter-rouge">sourceIdx</code> 区分数据源，每个数据源有独立的 Locator。让我们通过类图来理解多数据源一致性的架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Version {
+        -versionid_t _versionId
+        -map~uint64_t, Locator~ _locators
+        +GetLocator(uint64_t src) Locator
+        +SetLocator(uint64_t src, Locator) void
+        +GetAllLocators() map~uint64_t, Locator~
+    }
+    
+    class Locator {
+        -uint64_t _src
+        -MultiProgress _multiProgress
+        +IsFasterThan(Locator) LocatorCompareResult
+        +Update(Locator) void
+    }
+    
+    class TabletWriter {
+        -map~uint64_t, Locator~ _locators
+        +Build(Document) Status
+        +GetLocator(uint64_t src) Locator
+    }
+    
+    class Document {
+        +uint64_t _src
+        +DocInfo _docInfo
+        +GetLocator() Locator
+    }
+    
+    Version --&gt; Locator : 包含多个
+    TabletWriter --&gt; Locator : 管理多个
+    Document --&gt; Locator : 包含
+</code></pre>
+
+<p><strong>多数据源一致性的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Version.h</span>
+<span class="k">class</span> <span class="nc">Version</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="p">,</span> <span class="n">Locator</span><span class="o">&gt;</span> <span class="n">_locators</span><span class="p">;</span>  <span class="c1">// 每个数据源的 Locator</span>
+    
+<span class="nl">public:</span>
+    <span class="n">Locator</span> <span class="n">GetLocator</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">src</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">_locators</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">src</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">!=</span> <span class="n">_locators</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">Locator</span><span class="p">(</span><span class="n">src</span><span class="p">);</span>  <span class="c1">// 返回空的 Locator</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">SetLocator</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">src</span><span class="p">,</span> <span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">locator</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_locators</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">=</span> <span class="n">locator</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="p">,</span> <span class="n">Locator</span><span class="o">&gt;&amp;</span> <span class="n">GetAllLocators</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">_locators</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>保证机制详解</strong>：</p>
+
+<ol>
+  <li><strong>数据源标识</strong>：通过 <code class="language-plaintext highlighter-rouge">_src</code> 和 <code class="language-plaintext highlighter-rouge">sourceIdx</code> 区分数据源
+    <ul>
+      <li>每个数据源有唯一的 <code class="language-plaintext highlighter-rouge">_src</code></li>
+      <li>文档中的 <code class="language-plaintext highlighter-rouge">sourceIdx</code> 标识数据来源</li>
+    </ul>
+  </li>
+  <li><strong>独立 Locator</strong>：每个数据源有独立的 Locator
+    <ul>
+      <li>Version 中维护多个 Locator，每个数据源一个</li>
+      <li>不同数据源的 Locator 互不干扰</li>
+    </ul>
+  </li>
+  <li><strong>独立处理</strong>：每个数据源独立处理，互不干扰
+    <ul>
+      <li>处理数据时，根据文档的 <code class="language-plaintext highlighter-rouge">_src</code> 选择对应的 Locator</li>
+      <li>不同数据源的数据可以并行处理</li>
+    </ul>
+  </li>
+  <li><strong>统一管理</strong>：通过 Version 统一管理所有数据源的 Locator
+    <ul>
+      <li>版本提交时，所有数据源的 Locator 都被持久化</li>
+      <li>版本加载时，所有数据源的 Locator 都被恢复</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-multi-source-consistency.svg" alt="多数据源一致性：通过 sourceIdx 区分数据源，保证多数据源场景的数据一致性" /></p>
-
-<p><strong>保证机制</strong>：</p>
-<ul>
-  <li><strong>数据源标识</strong>：通过 <code class="language-plaintext highlighter-rouge">_src</code> 和 <code class="language-plaintext highlighter-rouge">sourceIdx</code> 区分数据源</li>
-  <li><strong>独立 Locator</strong>：每个数据源有独立的 Locator</li>
-  <li><strong>独立处理</strong>：每个数据源独立处理，互不干扰</li>
-  <li><strong>统一管理</strong>：通过 Version 统一管理所有数据源的 Locator</li>
-</ul>
 
 <h2 id="6-locator-的高级特性">6. Locator 的高级特性</h2>
 
@@ -1011,77 +2022,542 @@
 
 <h2 id="8-locator-的性能优化">8. Locator 的性能优化</h2>
 
+<p>Locator 的性能直接影响增量更新的效率，需要从比较、更新、序列化等多个方面进行优化。让我们先通过流程图来理解性能优化的整体策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([性能优化]) --&gt; CompareOpt[比较优化]
+    CompareOpt --&gt; FastPath[快速路径]
+    CompareOpt --&gt; Cache[结果缓存]
+    CompareOpt --&gt; Parallel[并行比较]
+    
+    Start --&gt; UpdateOpt[更新优化]
+    UpdateOpt --&gt; Atomic[原子更新]
+    UpdateOpt --&gt; Merge[进度合并]
+    
+    Start --&gt; SerializeOpt[序列化优化]
+    SerializeOpt --&gt; Compact[紧凑格式]
+    SerializeOpt --&gt; Compress[压缩支持]
+    SerializeOpt --&gt; Batch[批量序列化]
+    
+    Start --&gt; MemoryOpt[内存优化]
+    MemoryOpt --&gt; Pool[对象池]
+    MemoryOpt --&gt; Reuse[对象复用]
+    
+    FastPath --&gt; End([优化完成])
+    Cache --&gt; End
+    Parallel --&gt; End
+    Atomic --&gt; End
+    Merge --&gt; End
+    Compact --&gt; End
+    Compress --&gt; End
+    Batch --&gt; End
+    Pool --&gt; End
+    Reuse --&gt; End
+</code></pre>
+
 <h3 id="81-比较性能优化">8.1 比较性能优化</h3>
 
-<p>Locator 比较的性能优化：</p>
+<p>Locator 比较是增量更新的核心操作，需要优化比较算法，提高比较效率。让我们通过流程图来理解比较优化的策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始比较]) --&gt; CheckCache{检查缓存}
+    CheckCache --&gt;|命中| ReturnCache[返回缓存结果]
+    CheckCache --&gt;|未命中| CheckSrc{检查数据源}
+    CheckSrc --&gt;|不同| ReturnInvalid[返回 LCR_INVALID]
+    CheckSrc --&gt;|相同| CheckEmpty{检查是否为空}
+    CheckEmpty --&gt;|都为空| ReturnEqual[返回 LCR_FULLY_FASTER]
+    CheckEmpty --&gt;|不同| CheckSize{比较大小}
+    CheckSize --&gt;|this.size &gt; other.size| ReturnPartial[返回 LCR_PARTIAL_FASTER]
+    CheckSize --&gt;|相等| CompareEach[逐个比较]
+    CompareEach --&gt; ShortCircuit{短路优化}
+    ShortCircuit --&gt;|有更慢的| ReturnSlower[返回 LCR_SLOWER]
+    ShortCircuit --&gt;|继续| CompareEach
+    CompareEach --&gt; UpdateCache[更新缓存]
+    UpdateCache --&gt; End([结束])
+    ReturnCache --&gt; End
+    ReturnInvalid --&gt; End
+    ReturnEqual --&gt; End
+    ReturnPartial --&gt; End
+    ReturnSlower --&gt; End
+</code></pre>
+
+<p><strong>比较性能优化的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="k">class</span> <span class="nc">LocatorCompareCache</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="k">struct</span> <span class="nc">CacheKey</span> <span class="p">{</span>
+        <span class="kt">uint64_t</span> <span class="n">src1</span><span class="p">,</span> <span class="n">src2</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">hash1</span><span class="p">,</span> <span class="n">hash2</span><span class="p">;</span>
+        
+        <span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span> <span class="n">CacheKey</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">src1</span> <span class="o">==</span> <span class="n">other</span><span class="p">.</span><span class="n">src1</span> <span class="o">&amp;&amp;</span> <span class="n">src2</span> <span class="o">==</span> <span class="n">other</span><span class="p">.</span><span class="n">src2</span> <span class="o">&amp;&amp;</span>
+                   <span class="n">hash1</span> <span class="o">==</span> <span class="n">other</span><span class="p">.</span><span class="n">hash1</span> <span class="o">&amp;&amp;</span> <span class="n">hash2</span> <span class="o">==</span> <span class="n">other</span><span class="p">.</span><span class="n">hash2</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+    
+    <span class="k">struct</span> <span class="nc">CacheValue</span> <span class="p">{</span>
+        <span class="n">LocatorCompareResult</span> <span class="n">result</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">time_point</span> <span class="n">timestamp</span><span class="p">;</span>
+    <span class="p">};</span>
+    
+    <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">CacheKey</span><span class="p">,</span> <span class="n">CacheValue</span><span class="o">&gt;</span> <span class="n">_cache</span><span class="p">;</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">size_t</span> <span class="n">MAX_CACHE_SIZE</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="k">auto</span> <span class="n">CACHE_TTL</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">minutes</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+    
+<span class="nl">public:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">LocatorCompareResult</span><span class="o">&gt;</span> <span class="n">Get</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">l1</span><span class="p">,</span> <span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">l2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">CacheKey</span> <span class="n">key</span> <span class="o">=</span> <span class="n">MakeKey</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">);</span>
+        <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">_cache</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">!=</span> <span class="n">_cache</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">auto</span> <span class="n">now</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">.</span><span class="n">timestamp</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">.</span><span class="n">result</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">_cache</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">it</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">nullopt</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">Put</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">l1</span><span class="p">,</span> <span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">l2</span><span class="p">,</span> <span class="n">LocatorCompareResult</span> <span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_cache</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">MAX_CACHE_SIZE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 清理过期项</span>
+            <span class="n">CleanExpired</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="n">CacheKey</span> <span class="n">key</span> <span class="o">=</span> <span class="n">MakeKey</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">);</span>
+        <span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">result</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">()};</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>优化策略详解</strong>：</p>
+
+<ol>
+  <li><strong>快速路径优化</strong>：
+    <ul>
+      <li>数据源不同时，直接返回 <code class="language-plaintext highlighter-rouge">LCR_INVALID</code>，避免遍历 Progress</li>
+      <li>MultiProgress 为空时，快速判断，避免不必要的比较</li>
+      <li>大小不同时，快速判断部分更快或更慢</li>
+    </ul>
+  </li>
+  <li><strong>短路优化</strong>：
+    <ul>
+      <li>如果某个 hashId 更慢，且没有部分更快，立即返回 <code class="language-plaintext highlighter-rouge">LCR_SLOWER</code></li>
+      <li>不需要继续比较后续 hashId，减少比较次数</li>
+    </ul>
+  </li>
+  <li><strong>缓存优化</strong>：
+    <ul>
+      <li>比较结果可以缓存，避免重复计算</li>
+      <li>对于相同的 Locator 对，直接返回缓存结果</li>
+      <li>使用 LRU 缓存策略，限制缓存大小</li>
+    </ul>
+  </li>
+  <li><strong>位运算优化</strong>：
+    <ul>
+      <li>使用位运算优化 Progress 的比较</li>
+      <li>减少比较开销，提高比较性能</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-compare-optimization.svg" alt="Locator 比较的性能优化：优化比较算法，提高比较效率" /></p>
 
-<p><strong>优化策略</strong>：</p>
-<ul>
-  <li><strong>快速路径</strong>：对于常见情况使用快速路径</li>
-  <li><strong>缓存结果</strong>：缓存比较结果，避免重复比较</li>
-  <li><strong>并行比较</strong>：支持并行比较多个 Locator</li>
-  <li><strong>算法优化</strong>：优化比较算法，减少比较次数</li>
-</ul>
-
 <h3 id="82-序列化性能优化">8.2 序列化性能优化</h3>
 
-<p>Locator 序列化的性能优化：</p>
+<p>Locator 序列化的性能优化，包括格式优化、压缩支持、批量序列化等。让我们通过流程图来理解序列化优化的策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始序列化]) --&gt; CheckSize{检查大小}
+    CheckSize --&gt;|小于阈值| Serialize[直接序列化]
+    CheckSize --&gt;|大于阈值| Compress[压缩后序列化]
+    Serialize --&gt; WriteMagic[写入 Magic Number]
+    Compress --&gt; WriteMagic
+    WriteMagic --&gt; WriteVersion[写入 Version]
+    WriteVersion --&gt; WriteData[写入数据]
+    WriteData --&gt; CompactFormat[使用紧凑格式]
+    CompactFormat --&gt; End([结束])
+</code></pre>
+
+<p><strong>序列化性能优化的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">Locator</span><span class="o">::</span><span class="n">Serialize</span><span class="p">()</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 估算序列化大小</span>
+    <span class="kt">size_t</span> <span class="n">estimatedSize</span> <span class="o">=</span> <span class="n">EstimateSize</span><span class="p">();</span>
+    
+    <span class="c1">// 2. 选择序列化策略</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">estimatedSize</span> <span class="o">&lt;</span> <span class="mi">1024</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 小数据，直接序列化</span>
+        <span class="k">return</span> <span class="n">SerializeDirect</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// 大数据，压缩后序列化</span>
+        <span class="k">return</span> <span class="n">SerializeCompressed</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">Locator</span><span class="o">::</span><span class="n">SerializeCompressed</span><span class="p">()</span> <span class="k">const</span>
+<span class="p">{</span>
+    <span class="c1">// 1. 先序列化</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">data</span> <span class="o">=</span> <span class="n">SerializeDirect</span><span class="p">();</span>
+    
+    <span class="c1">// 2. 压缩</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">compressed</span> <span class="o">=</span> <span class="n">Compress</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+    
+    <span class="c1">// 3. 添加压缩标志</span>
+    <span class="n">autil</span><span class="o">::</span><span class="n">DataBuffer</span> <span class="n">buffer</span><span class="p">;</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>  <span class="c1">// 压缩标志</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint32_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">compressed</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span>
+    <span class="n">buffer</span><span class="p">.</span><span class="n">writeBytes</span><span class="p">(</span><span class="n">compressed</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">compressed</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    
+    <span class="k">return</span> <span class="n">buffer</span><span class="p">.</span><span class="n">toString</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>优化策略详解</strong>：</p>
+
+<ol>
+  <li><strong>紧凑格式</strong>：使用紧凑的序列化格式，减少序列化大小
+    <ul>
+      <li>使用变长编码（VarInt）编码整数</li>
+      <li>合并相邻的 Progress，减少存储空间</li>
+      <li>使用位图压缩 MultiProgress</li>
+    </ul>
+  </li>
+  <li><strong>压缩支持</strong>：支持压缩序列化数据，减少存储空间
+    <ul>
+      <li>对于大于 1KB 的数据，使用压缩</li>
+      <li>使用 LZ4 或 Snappy 等快速压缩算法</li>
+      <li>压缩标志存储在序列化数据中</li>
+    </ul>
+  </li>
+  <li><strong>批量序列化</strong>：支持批量序列化，提高序列化效率
+    <ul>
+      <li>批量序列化多个 Locator，减少开销</li>
+      <li>使用对象池复用缓冲区</li>
+    </ul>
+  </li>
+  <li><strong>版本兼容</strong>：支持版本兼容，平滑升级
+    <ul>
+      <li>新版本可以读取旧版本的 Locator</li>
+      <li>旧版本可以读取新版本的 Locator（如果兼容）</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-serialize-optimization.svg" alt="Locator 序列化的性能优化：优化序列化格式，提高序列化效率" /></p>
 
-<p><strong>优化策略</strong>：</p>
-<ul>
-  <li><strong>紧凑格式</strong>：使用紧凑的序列化格式，减少序列化大小</li>
-  <li><strong>压缩支持</strong>：支持压缩序列化数据，减少存储空间</li>
-  <li><strong>批量序列化</strong>：支持批量序列化，提高序列化效率</li>
-  <li><strong>版本兼容</strong>：支持版本兼容，平滑升级</li>
-</ul>
+<h3 id="83-内存优化">8.3 内存优化</h3>
+
+<p>Locator 的内存优化，包括对象池、对象复用等。让我们通过类图来理解内存优化的架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class LocatorPool {
+        -queue~Locator*~ _pool
+        -mutex _mutex
+        +Get() Locator*
+        +Put(Locator*) void
+        +Clear() void
+    }
+    
+    class Locator {
+        -uint64_t _src
+        -MultiProgress _multiProgress
+        -string _userData
+        +Reset() void
+        +Reuse() void
+    }
+    
+    class ProgressPool {
+        -queue~ProgressVector*~ _pool
+        +Get() ProgressVector*
+        +Put(ProgressVector*) void
+    }
+    
+    LocatorPool --&gt; Locator : 管理
+    ProgressPool --&gt; ProgressVector : 管理
+</code></pre>
+
+<p><strong>内存优化的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/LocatorPool.h</span>
+<span class="k">class</span> <span class="nc">LocatorPool</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">queue</span><span class="o">&lt;</span><span class="n">Locator</span><span class="o">*&gt;</span> <span class="n">_pool</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">_mutex</span><span class="p">;</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">size_t</span> <span class="n">MAX_POOL_SIZE</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">Locator</span><span class="o">*</span> <span class="n">Get</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">_mutex</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">_pool</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">Locator</span><span class="o">*</span> <span class="n">locator</span> <span class="o">=</span> <span class="n">_pool</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+            <span class="n">_pool</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+            <span class="n">locator</span><span class="o">-&gt;</span><span class="n">Reset</span><span class="p">();</span>  <span class="c1">// 重置状态</span>
+            <span class="k">return</span> <span class="n">locator</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">Locator</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="kt">void</span> <span class="n">Put</span><span class="p">(</span><span class="n">Locator</span><span class="o">*</span> <span class="n">locator</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">locator</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">_mutex</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_pool</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">MAX_POOL_SIZE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">locator</span><span class="o">-&gt;</span><span class="n">Reset</span><span class="p">();</span>
+            <span class="n">_pool</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">locator</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">delete</span> <span class="n">locator</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>内存优化策略</strong>：</p>
+
+<ol>
+  <li><strong>对象池</strong>：使用对象池复用 Locator 对象，减少内存分配
+    <ul>
+      <li>限制池大小，避免内存泄漏</li>
+      <li>线程安全，支持并发访问</li>
+    </ul>
+  </li>
+  <li><strong>对象复用</strong>：复用 Locator 对象，减少构造和析构开销
+    <ul>
+      <li>重置状态，而不是重新构造</li>
+      <li>复用 MultiProgress，减少内存分配</li>
+    </ul>
+  </li>
+  <li><strong>内存预分配</strong>：预分配内存，减少动态分配
+    <ul>
+      <li>预分配 MultiProgress 的容量</li>
+      <li>预分配 UserData 的容量</li>
+    </ul>
+  </li>
+</ol>
 
 <h2 id="9-locator-的关键设计">9. Locator 的关键设计</h2>
 
+<p>Locator 的设计遵循简单、高效、可靠、可扩展的原则，是 IndexLib 数据一致性保证的基础。让我们先通过类图来理解 Locator 的整体设计：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class LocatorDesign {
+        &lt;&lt;设计原则&gt;&gt;
+        +简单性
+        +高效性
+        +可靠性
+        +扩展性
+    }
+    
+    class Locator {
+        -uint64_t _src
+        -MultiProgress _multiProgress
+        +IsFasterThan() LocatorCompareResult
+        +Update() void
+        +Serialize() string
+    }
+    
+    class Compatibility {
+        +遗留Locator支持
+        +版本兼容
+        +平滑升级
+        +向后兼容
+    }
+    
+    class ThreadSafety {
+        +原子操作
+        +无锁设计
+        +读写分离
+        +并发控制
+    }
+    
+    LocatorDesign --&gt; Locator : 指导
+    Locator --&gt; Compatibility : 支持
+    Locator --&gt; ThreadSafety : 保证
+</code></pre>
+
 <h3 id="91-设计原则">9.1 设计原则</h3>
 
-<p>Locator 的设计原则：</p>
+<p>Locator 的设计遵循以下核心原则，确保简单、高效、可靠、可扩展：</p>
 
 <p><img src="/images/diagrams/indexlib-locator-design-principles.svg" alt="Locator 的设计原则：简单、高效、可靠的设计原则" /></p>
 
-<p><strong>设计原则</strong>：</p>
-<ul>
-  <li><strong>简单性</strong>：设计简单，易于理解和实现</li>
-  <li><strong>高效性</strong>：比较和更新操作高效，不影响性能</li>
-  <li><strong>可靠性</strong>：保证数据一致性，不重复、不丢失</li>
-  <li><strong>扩展性</strong>：支持多数据源、分片处理等扩展功能</li>
-</ul>
+<p><strong>设计原则详解</strong>：</p>
+
+<ol>
+  <li><strong>简单性</strong>：设计简单，易于理解和实现
+    <ul>
+      <li><strong>清晰的接口</strong>：<code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 和 <code class="language-plaintext highlighter-rouge">Update()</code> 接口清晰，易于使用</li>
+      <li><strong>直观的语义</strong>：比较结果语义直观，易于理解</li>
+      <li><strong>最小化依赖</strong>：最小化外部依赖，降低复杂度</li>
+    </ul>
+  </li>
+  <li><strong>高效性</strong>：比较和更新操作高效，不影响性能
+    <ul>
+      <li><strong>快速路径</strong>：常见情况使用快速路径，减少开销</li>
+      <li><strong>短路优化</strong>：尽早返回结果，减少不必要的计算</li>
+      <li><strong>缓存优化</strong>：缓存比较结果，避免重复计算</li>
+    </ul>
+  </li>
+  <li><strong>可靠性</strong>：保证数据一致性，不重复、不丢失
+    <ul>
+      <li><strong>只向前推进</strong>：Locator 只向前推进，不会回退</li>
+      <li><strong>原子性更新</strong>：更新操作是原子的，保证一致性</li>
+      <li><strong>持久化支持</strong>：支持序列化和反序列化，保证持久化</li>
+    </ul>
+  </li>
+  <li><strong>扩展性</strong>：支持多数据源、分片处理等扩展功能
+    <ul>
+      <li><strong>多数据源支持</strong>：通过 <code class="language-plaintext highlighter-rouge">_src</code> 和 <code class="language-plaintext highlighter-rouge">sourceIdx</code> 支持多数据源</li>
+      <li><strong>分片处理支持</strong>：通过 MultiProgress 支持分片处理</li>
+      <li><strong>用户数据支持</strong>：通过 <code class="language-plaintext highlighter-rouge">_userData</code> 支持业务扩展</li>
+    </ul>
+  </li>
+</ol>
 
 <h3 id="92-兼容性设计">9.2 兼容性设计</h3>
 
-<p>Locator 的兼容性设计：</p>
+<p>Locator 的兼容性设计，支持遗留 Locator 和版本兼容，保证平滑升级。让我们通过流程图来理解兼容性设计的机制：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([加载 Locator]) --&gt; CheckVersion{检查版本}
+    CheckVersion --&gt;|版本1| DeserializeV1[反序列化 V1]
+    CheckVersion --&gt;|版本2| DeserializeV2[反序列化 V2]
+    CheckVersion --&gt;|未知版本| Error[返回错误]
+    DeserializeV1 --&gt; CheckLegacy{检查 Legacy 标志}
+    DeserializeV2 --&gt; CheckLegacy
+    CheckLegacy --&gt;|是| ConvertLegacy[转换为新格式]
+    CheckLegacy --&gt;|否| Validate[验证数据]
+    ConvertLegacy --&gt; Validate
+    Validate --&gt;|失败| Error
+    Validate --&gt;|成功| End([结束])
+    Error --&gt; End
+</code></pre>
+
+<p><strong>兼容性机制详解</strong>：</p>
+
+<ol>
+  <li><strong>遗留 Locator 支持</strong>：支持遗留 Locator，通过 <code class="language-plaintext highlighter-rouge">_isLegacyLocator</code> 标识
+    <ul>
+      <li>遗留 Locator 使用旧的格式，需要转换为新格式</li>
+      <li>转换过程是透明的，用户无感知</li>
+      <li>保证向后兼容，旧数据可以正常使用</li>
+    </ul>
+  </li>
+  <li><strong>版本兼容</strong>：支持不同版本的 Locator，通过版本号区分
+    <ul>
+      <li>版本 1：旧格式，支持基本的 Locator 功能</li>
+      <li>版本 2：新格式，支持 MultiProgress 和 UserData</li>
+      <li>新版本可以读取旧版本，保证平滑升级</li>
+    </ul>
+  </li>
+  <li><strong>平滑升级</strong>：支持平滑升级，不影响已有数据
+    <ul>
+      <li>升级过程中，旧版本的 Locator 可以正常使用</li>
+      <li>新版本的 Locator 可以读取旧版本的数据</li>
+      <li>升级完成后，逐步迁移到新格式</li>
+    </ul>
+  </li>
+  <li><strong>向后兼容</strong>：保证向后兼容，旧版本可以读取新版本数据
+    <ul>
+      <li>新版本的 Locator 包含版本信息</li>
+      <li>旧版本可以识别新版本，并跳过不支持的字段</li>
+      <li>保证数据不会因为版本升级而丢失</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-locator-compatibility.svg" alt="Locator 的兼容性设计：支持遗留 Locator 和版本兼容" /></p>
 
-<p><strong>兼容性机制</strong>：</p>
-<ul>
-  <li><strong>遗留 Locator</strong>：支持遗留 Locator，通过 <code class="language-plaintext highlighter-rouge">_isLegacyLocator</code> 标识</li>
-  <li><strong>版本兼容</strong>：支持不同版本的 Locator，通过版本号区分</li>
-  <li><strong>平滑升级</strong>：支持平滑升级，不影响已有数据</li>
-  <li><strong>向后兼容</strong>：保证向后兼容，旧版本可以读取新版本数据</li>
-</ul>
-
 <h3 id="93-线程安全设计">9.3 线程安全设计</h3>
 
-<p>Locator 的线程安全设计：</p>
+<p>Locator 的线程安全设计，支持并发访问，保证线程安全。让我们通过序列图来理解线程安全设计的机制：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Thread1
+    participant Thread2
+    participant Locator
+    participant Lock
+    
+    Thread1-&gt;&gt;Locator: IsFasterThan(other)
+    Thread2-&gt;&gt;Locator: Update(newLocator)
+    
+    alt 读操作 (IsFasterThan)
+        Locator-&gt;&gt;Locator: 只读访问
+        Note over Locator: 无锁，线程安全
+        Locator--&gt;&gt;Thread1: 返回结果
+    else 写操作 (Update)
+        Thread2-&gt;&gt;Lock: 获取锁
+        Lock-&gt;&gt;Locator: 更新 MultiProgress
+        Locator-&gt;&gt;Locator: 原子更新
+        Lock--&gt;&gt;Thread2: 释放锁
+        Locator--&gt;&gt;Thread2: 更新完成
+    end
+</code></pre>
+
+<p><strong>线程安全机制详解</strong>：</p>
+
+<ol>
+  <li><strong>原子操作</strong>：使用原子操作保证线程安全
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 是只读操作，不需要锁</li>
+      <li><code class="language-plaintext highlighter-rouge">Update()</code> 是写操作，需要锁保护</li>
+      <li>使用 <code class="language-plaintext highlighter-rouge">std::atomic</code> 保证基本类型的原子性</li>
+    </ul>
+  </li>
+  <li><strong>无锁设计</strong>：尽可能使用无锁设计，提高并发性能
+    <ul>
+      <li>读操作无锁，支持并发读取</li>
+      <li>写操作使用细粒度锁，减少锁竞争</li>
+      <li>使用读写锁，支持多读单写</li>
+    </ul>
+  </li>
+  <li><strong>读写分离</strong>：支持读写分离，提高并发度
+    <ul>
+      <li>读操作可以并发执行，不需要锁</li>
+      <li>写操作需要互斥，保证一致性</li>
+      <li>使用 <code class="language-plaintext highlighter-rouge">std::shared_mutex</code> 实现读写分离</li>
+    </ul>
+  </li>
+  <li><strong>并发控制</strong>：通过 concurrentIdx 支持并发控制
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">concurrentIdx</code> 处理时间戳相同的情况</li>
+      <li>支持并发写入，保证顺序性</li>
+      <li>通过两级定位（timestamp + concurrentIdx）保证唯一性</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>线程安全实现的示例</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// framework/Locator.cpp</span>
+<span class="k">class</span> <span class="nc">Locator</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="k">mutable</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_mutex</span> <span class="n">_mutex</span><span class="p">;</span>  <span class="c1">// 读写锁</span>
+    <span class="kt">uint64_t</span> <span class="n">_src</span><span class="p">;</span>
+    <span class="n">MultiProgress</span> <span class="n">_multiProgress</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="c1">// 读操作：使用共享锁</span>
+    <span class="n">LocatorCompareResult</span> <span class="n">IsFasterThan</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">shared_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">_mutex</span><span class="p">);</span>
+        <span class="c1">// 只读操作，不需要互斥锁</span>
+        <span class="k">return</span> <span class="n">IsFasterThanImpl</span><span class="p">(</span><span class="n">other</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 写操作：使用独占锁</span>
+    <span class="kt">void</span> <span class="n">Update</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">_mutex</span><span class="p">);</span>
+        <span class="c1">// 写操作，需要互斥锁</span>
+        <span class="n">UpdateImpl</span><span class="p">(</span><span class="n">other</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
 
 <p><img src="/images/diagrams/indexlib-locator-thread-safety.svg" alt="Locator 的线程安全设计：支持并发访问，保证线程安全" /></p>
-
-<p><strong>线程安全机制</strong>：</p>
-<ul>
-  <li><strong>原子操作</strong>：使用原子操作保证线程安全</li>
-  <li><strong>无锁设计</strong>：尽可能使用无锁设计，提高并发性能</li>
-  <li><strong>读写分离</strong>：支持读写分离，提高并发度</li>
-  <li><strong>并发控制</strong>：通过 concurrentIdx 支持并发控制</li>
-</ul>
 
 <h2 id="10-小结">10. 小结</h2>
 

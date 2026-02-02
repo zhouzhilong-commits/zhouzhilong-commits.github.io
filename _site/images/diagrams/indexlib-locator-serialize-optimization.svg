@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">Locator 序列化的性能优化：优化序列化格式，提高序列化效率</text>
   <text class="muted" x="40" y="66">Locator 序列化的性能优化包括优化序列化格式、压缩数据、批量序列化等。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">格式优化</text>
   <text class="t" x="70" y="145.0">优化序列化格式，减少序列化数据大小</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">数据压缩</text>
   <text class="t" x="70" y="215.0">压缩序列化数据，减少存储空间</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">批量序列化</text>
   <text class="t" x="70" y="285.0">批量序列化多个 Locator，提高序列化效率</text>
   <text class="muted" x="40" y="325">理解 Locator 序列化的性能优化，是掌握 Locator 机制的关键</text>

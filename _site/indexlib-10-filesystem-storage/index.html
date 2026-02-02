@@ -55,7 +55,7 @@
 
 
   <meta property="og:type" content="article">
-  <meta property="article:published_time" content="2025-07-10T00:00:00+08:00">
+  <meta property="article:published_time" content="2025-07-28T00:00:00+08:00">
 
 
 
@@ -639,7 +639,7 @@
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="IndexLib（10）：文件系统抽象与存储格式">
     <meta itemprop="description" content="在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。">
-    <meta itemprop="datePublished" content="July 10, 2025">
+    <meta itemprop="datePublished" content="July 28, 2025">
     
 
     <div class="page__inner-wrap">
@@ -652,7 +652,7 @@
 
 
   
-	  5 分钟阅读
+	  18 分钟阅读
 	
 </p>
           
@@ -660,7 +660,7 @@
           
           
           
-            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-10T00:00:00+08:00">July 10, 2025</time></p>
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2025-07-28T00:00:00+08:00">July 28, 2025</time></p>
           
         
         
@@ -679,36 +679,228 @@
 
 <h3 id="11-文件系统抽象的核心概念">1.1 文件系统抽象的核心概念</h3>
 
-<p>IndexLib 的文件系统抽象包括以下核心概念：</p>
+<p>IndexLib 的文件系统抽象包括以下核心概念，通过统一的接口屏蔽底层存储差异，支持多种存储后端。让我们先通过类图来理解文件系统抽象的整体架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class IFileSystem {
+        &lt;&lt;interface&gt;&gt;
+        +Init(FileSystemOptions) FSResult~void~
+        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
+        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
+        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
+        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
+        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
+    }
+    
+    class IDirectory {
+        &lt;&lt;interface&gt;&gt;
+        +CreateFileWriter(filePath, writerOption) FSResult~FileWriter~
+        +CreateFileReader(filePath, readerOption) FSResult~FileReader~
+        +MakeDirectory(dirPath, directoryOption) FSResult~IDirectory~
+        +GetDirectory(dirPath) FSResult~IDirectory~
+        +RemoveFile(filePath, removeOption) FSResult~void~
+        +RemoveDirectory(dirPath, removeOption) FSResult~void~
+        +Rename(srcPath, destDirectory, destPath) FSResult~void~
+        +IsExist(path) FSResult~bool~
+        +ListDir(path, listOption, fileList) FSResult~void~
+        +GetFileLength(filePath) FSResult~size_t~
+    }
+    
+    class FileReader {
+        &lt;&lt;interface&gt;&gt;
+        +Open() FSResult~void~
+        +Close() FSResult~void~
+        +Read(buffer, length, offset, option) FSResult~size_t~
+        +Prefetch(length, offset, option) FSResult~size_t~
+        +ReadAsync(buffer, length, offset, option) Future~FSResult~size_t~~
+        +GetLength() size_t
+        +GetLogicalPath() string
+        +GetPhysicalPath() string
+    }
+    
+    class FileWriter {
+        &lt;&lt;interface&gt;&gt;
+        +Open(logicalPath, physicalPath) FSResult~void~
+        +Close() FSResult~void~
+        +Write(buffer, length) FSResult~size_t~
+        +ReserveFile(reserveSize) FSResult~void~
+        +Truncate(truncateSize) FSResult~void~
+        +GetLength() size_t
+        +GetLogicalPath() string
+        +GetPhysicalPath() string
+    }
+    
+    class Storage {
+        &lt;&lt;interface&gt;&gt;
+        +CreateInputStorage(options, memController, entryTable) Storage
+        +CreateOutputStorage(outputRoot, options, memController) Storage
+        +CreateFileReader(logicalFilePath, physicalFilePath, readerOption) FSResult~FileReader~
+        +CreateFileWriter(logicalFilePath, physicalFilePath, writerOption) FSResult~FileWriter~
+        +Sync() FSResult~Future~bool~~
+        +GetStorageType() FSStorageType
+    }
+    
+    IFileSystem --&gt; IDirectory : 创建
+    IFileSystem --&gt; FileReader : 创建
+    IFileSystem --&gt; FileWriter : 创建
+    IDirectory --&gt; FileReader : 创建
+    IDirectory --&gt; FileWriter : 创建
+    Storage --&gt; FileReader : 创建
+    Storage --&gt; FileWriter : 创建
+</code></pre>
+
+<p><strong>文件系统抽象的核心组件</strong>：</p>
 
 <ol>
-  <li><strong>IFileSystem</strong>：文件系统接口，提供文件系统的基本操作</li>
-  <li><strong>IDirectory</strong>：目录接口，提供目录和文件的操作</li>
-  <li><strong>FileReader</strong>：文件读取器，提供文件读取功能</li>
-  <li><strong>FileWriter</strong>：文件写入器，提供文件写入功能</li>
-  <li><strong>Storage</strong>：存储抽象，提供底层存储操作</li>
+  <li><strong>IFileSystem</strong>：文件系统接口，提供文件系统的基本操作
+    <ul>
+      <li>初始化文件系统，设置文件系统选项</li>
+      <li>挂载版本、目录、文件，实现路径映射</li>
+      <li>创建文件读取器和写入器</li>
+    </ul>
+  </li>
+  <li><strong>IDirectory</strong>：目录接口，提供目录和文件的操作
+    <ul>
+      <li>创建、删除、重命名文件和目录</li>
+      <li>列出目录内容，检查文件是否存在</li>
+      <li>获取文件长度等元数据信息</li>
+    </ul>
+  </li>
+  <li><strong>FileReader</strong>：文件读取器，提供文件读取功能
+    <ul>
+      <li>同步和异步读取文件数据</li>
+      <li>预取文件数据，提高读取性能</li>
+      <li>支持指定偏移量读取</li>
+    </ul>
+  </li>
+  <li><strong>FileWriter</strong>：文件写入器，提供文件写入功能
+    <ul>
+      <li>写入文件数据</li>
+      <li>预留文件空间，支持地址访问模式</li>
+      <li>截断文件，调整文件大小</li>
+    </ul>
+  </li>
+  <li><strong>Storage</strong>：存储抽象，提供底层存储操作
+    <ul>
+      <li>创建输入和输出存储</li>
+      <li>创建文件读取器和写入器</li>
+      <li>同步存储，刷新数据到磁盘</li>
+    </ul>
+  </li>
 </ol>
-
-<p>让我们先通过图来理解文件系统抽象的整体架构：</p>
 
 <p><img src="/images/diagrams/indexlib-filesystem-architecture.svg" alt="文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系" /></p>
 
 <h3 id="12-文件系统抽象的作用">1.2 文件系统抽象的作用</h3>
 
-<p>文件系统抽象在 IndexLib 中起到关键作用：</p>
+<p>文件系统抽象在 IndexLib 中起到关键作用，是存储管理的基础。让我们通过流程图来理解文件系统抽象的整体工作流程：</p>
 
-<ul>
-  <li><strong>统一接口</strong>：通过统一的接口屏蔽底层存储差异，支持多种存储后端</li>
-  <li><strong>逻辑路径</strong>：通过逻辑路径管理文件，支持版本管理和 Segment 管理</li>
-  <li><strong>缓存机制</strong>：通过缓存机制提高文件访问性能</li>
-  <li><strong>存储格式</strong>：支持多种存储格式（Package、Archive 等），优化存储效率</li>
-</ul>
+<pre><code class="language-mermaid">flowchart TD
+    Start([文件系统初始化]) --&gt; Init[Init 文件系统]
+    Init --&gt; MountVersion[挂载版本]
+    MountVersion --&gt; MountDir[挂载目录]
+    MountDir --&gt; CreateWriter{创建写入器?}
+    CreateWriter --&gt;|是| GetDirectory[获取目录]
+    CreateWriter --&gt;|否| CreateReader{创建读取器?}
+    GetDirectory --&gt; CreateFileWriter[创建文件写入器]
+    CreateFileWriter --&gt; Write[写入文件]
+    Write --&gt; CloseWriter[关闭写入器]
+    CreateReader --&gt;|是| GetDirectory2[获取目录]
+    GetDirectory2 --&gt; CreateFileReader[创建文件读取器]
+    CreateFileReader --&gt; Read[读取文件]
+    Read --&gt; CloseReader[关闭读取器]
+    CloseWriter --&gt; End([结束])
+    CloseReader --&gt; End
+</code></pre>
+
+<p><strong>文件系统抽象的核心作用</strong>：</p>
+
+<ol>
+  <li><strong>统一接口</strong>：通过统一的接口屏蔽底层存储差异，支持多种存储后端
+    <ul>
+      <li>本地文件系统、分布式文件系统（HDFS）、内存文件系统等</li>
+      <li>上层代码无需关心底层存储实现</li>
+      <li>支持存储后端的动态切换</li>
+    </ul>
+  </li>
+  <li><strong>逻辑路径</strong>：通过逻辑路径管理文件，支持版本管理和 Segment 管理
+    <ul>
+      <li>物理路径映射到逻辑路径，实现路径抽象</li>
+      <li>支持版本挂载，不同版本的文件可以共存</li>
+      <li>支持 Segment 管理，每个 Segment 有独立的路径空间</li>
+    </ul>
+  </li>
+  <li><strong>缓存机制</strong>：通过缓存机制提高文件访问性能
+    <ul>
+      <li>文件内容缓存，减少磁盘读取</li>
+      <li>元数据缓存，减少元数据查询</li>
+      <li>预取缓存，提前加载可能访问的文件</li>
+    </ul>
+  </li>
+  <li><strong>存储格式</strong>：支持多种存储格式（Package、Archive 等），优化存储效率
+    <ul>
+      <li>Package 格式：打包多个小文件，减少文件数量</li>
+      <li>Archive 格式：归档存储，支持压缩和索引</li>
+      <li>压缩格式：支持多种压缩算法，减少存储空间</li>
+    </ul>
+  </li>
+</ol>
 
 <h2 id="2-ifilesystem文件系统接口">2. IFileSystem：文件系统接口</h2>
 
 <h3 id="21-ifilesystem-的结构">2.1 IFileSystem 的结构</h3>
 
-<p><code class="language-plaintext highlighter-rouge">IFileSystem</code> 是文件系统接口，定义在 <code class="language-plaintext highlighter-rouge">file_system/IFileSystem.h</code> 中：</p>
+<p><code class="language-plaintext highlighter-rouge">IFileSystem</code> 是文件系统接口，定义在 <code class="language-plaintext highlighter-rouge">file_system/IFileSystem.h</code> 中。它提供了文件系统的基本操作，包括初始化、挂载、文件读写等。让我们先通过类图来理解 IFileSystem 的完整接口：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class IFileSystem {
+        &lt;&lt;interface&gt;&gt;
+        +Init(FileSystemOptions) FSResult~void~
+        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
+        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
+        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
+        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
+        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
+        +GetDirectory(logicalPath) FSResult~IDirectory~
+        +RemoveFile(logicalPath, removeOption) FSResult~void~
+        +RemoveDirectory(logicalPath, removeOption) FSResult~void~
+        +IsExist(logicalPath) FSResult~bool~
+        +ListDir(logicalPath, listOption, fileList) FSResult~void~
+        +GetFileLength(logicalPath) FSResult~size_t~
+    }
+    
+    class FileSystemOptions {
+        +string rootPath
+        +bool enableCache
+        +size_t cacheSize
+        +FSStorageType storageType
+    }
+    
+    class MountOption {
+        +FSMountType mountType
+        +bool readOnly
+        +bool lazyLoad
+    }
+    
+    class WriterOption {
+        +bool atomicWrite
+        +bool syncOnClose
+        +size_t bufferSize
+    }
+    
+    class ReaderOption {
+        +bool useCache
+        +bool prefetch
+        +size_t bufferSize
+    }
+    
+    IFileSystem --&gt; FileSystemOptions : 使用
+    IFileSystem --&gt; MountOption : 使用
+    IFileSystem --&gt; WriterOption : 使用
+    IFileSystem --&gt; ReaderOption : 使用
+</code></pre>
+
+<p><strong>IFileSystem 的完整定义</strong>：</p>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/IFileSystem.h</span>
 <span class="k">class</span> <span class="nc">IFileSystem</span> <span class="o">:</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoMoveable</span>
@@ -717,65 +909,211 @@
     <span class="c1">// 初始化文件系统</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Init</span><span class="p">(</span><span class="k">const</span> <span class="n">FileSystemOptions</span><span class="o">&amp;</span> <span class="n">fileSystemOptions</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 挂载版本</span>
+    <span class="c1">// 挂载版本：将物理路径映射到逻辑路径</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">MountVersion</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span> 
-        <span class="n">versionid_t</span> <span class="n">versionId</span><span class="p">,</span> 
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span>      <span class="c1">// 物理根路径</span>
+        <span class="n">versionid_t</span> <span class="n">versionId</span><span class="p">,</span>                 <span class="c1">// 版本ID</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>       <span class="c1">// 逻辑路径</span>
         <span class="n">MountOption</span> <span class="n">mountOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 挂载目录</span>
+    <span class="c1">// 挂载目录：支持目录级别的挂载</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">MountDir</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span>      <span class="c1">// 物理根路径</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">,</span>      <span class="c1">// 物理路径</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>      <span class="c1">// 逻辑路径</span>
         <span class="n">MountOption</span> <span class="n">mountOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 挂载文件</span>
+    <span class="c1">// 挂载文件：支持文件级别的挂载</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">MountFile</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalRoot</span><span class="p">,</span>      <span class="c1">// 物理根路径</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">,</span>      <span class="c1">// 物理路径</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>      <span class="c1">// 逻辑路径</span>
         <span class="n">FSMountType</span> <span class="n">mountType</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
     <span class="c1">// 创建文件写入器</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">FileWriter</span><span class="o">&gt;&gt;</span> <span class="n">CreateFileWriter</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">rawPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">rawPath</span><span class="p">,</span>          <span class="c1">// 原始路径（逻辑路径或物理路径）</span>
         <span class="k">const</span> <span class="n">WriterOption</span><span class="o">&amp;</span> <span class="n">writerOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
     <span class="c1">// 创建文件读取器</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">FileReader</span><span class="o">&gt;&gt;</span> <span class="n">CreateFileReader</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">rawPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">rawPath</span><span class="p">,</span>          <span class="c1">// 原始路径（逻辑路径或物理路径）</span>
         <span class="k">const</span> <span class="n">ReaderOption</span><span class="o">&amp;</span> <span class="n">readerOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取目录</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">IDirectory</span><span class="o">&gt;&gt;</span> <span class="n">GetDirectory</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 删除文件</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">RemoveFile</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">RemoveOption</span><span class="o">&amp;</span> <span class="n">removeOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 删除目录</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">RemoveDirectory</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">RemoveOption</span><span class="o">&amp;</span> <span class="n">removeOption</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 检查文件是否存在</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">IsExist</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 列出目录</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">ListDir</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">ListOption</span><span class="o">&amp;</span> <span class="n">listOption</span><span class="p">,</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;&amp;</span> <span class="n">fileList</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取文件长度</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">GetFileLength</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 同步文件系统</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Sync</span><span class="p">(</span><span class="kt">bool</span> <span class="n">waitFinish</span> <span class="o">=</span> <span class="nb">true</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取文件系统类型</span>
+    <span class="k">virtual</span> <span class="n">FSStorageType</span> <span class="n">GetStorageType</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">};</span>
 </code></pre></div></div>
 
-<p><strong>IFileSystem 的关键方法</strong>：</p>
+<p><strong>IFileSystem 的关键方法详解</strong>：</p>
+
+<ol>
+  <li><strong>Init()</strong>：初始化文件系统，设置文件系统选项
+    <ul>
+      <li>设置根路径、缓存选项、存储类型等</li>
+      <li>初始化底层存储系统</li>
+      <li>创建必要的目录结构</li>
+    </ul>
+  </li>
+  <li><strong>MountVersion()</strong>：挂载版本，将物理路径映射到逻辑路径
+    <ul>
+      <li>将版本目录挂载到逻辑路径</li>
+      <li>支持只读和读写挂载</li>
+      <li>支持延迟加载，按需加载文件</li>
+    </ul>
+  </li>
+  <li><strong>MountDir()</strong>：挂载目录，支持目录级别的挂载
+    <ul>
+      <li>将物理目录挂载到逻辑路径</li>
+      <li>支持递归挂载子目录</li>
+      <li>支持挂载选项（只读、延迟加载等）</li>
+    </ul>
+  </li>
+  <li><strong>MountFile()</strong>：挂载文件，支持文件级别的挂载
+    <ul>
+      <li>将物理文件挂载到逻辑路径</li>
+      <li>支持不同的挂载类型（只读、读写等）</li>
+    </ul>
+  </li>
+  <li><strong>CreateFileWriter()</strong>：创建文件写入器
+    <ul>
+      <li>根据路径类型（逻辑路径或物理路径）创建写入器</li>
+      <li>支持写入选项（原子写入、同步关闭等）</li>
+    </ul>
+  </li>
+  <li><strong>CreateFileReader()</strong>：创建文件读取器
+    <ul>
+      <li>根据路径类型（逻辑路径或物理路径）创建读取器</li>
+      <li>支持读取选项（使用缓存、预取等）</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-filesystem-interface.svg" alt="IFileSystem 接口：提供文件系统的基本操作" /></p>
 
-<ul>
-  <li><strong>Init()</strong>：初始化文件系统，设置文件系统选项</li>
-  <li><strong>MountVersion()</strong>：挂载版本，将物理路径映射到逻辑路径</li>
-  <li><strong>MountDir()</strong>：挂载目录，支持目录级别的挂载</li>
-  <li><strong>MountFile()</strong>：挂载文件，支持文件级别的挂载</li>
-  <li><strong>CreateFileWriter()</strong>：创建文件写入器</li>
-  <li><strong>CreateFileReader()</strong>：创建文件读取器</li>
-</ul>
-
 <h3 id="22-逻辑路径与物理路径">2.2 逻辑路径与物理路径</h3>
 
-<p>文件系统抽象通过逻辑路径和物理路径管理文件：</p>
+<p>文件系统抽象通过逻辑路径和物理路径管理文件，实现路径抽象和版本管理。让我们通过流程图来理解路径映射的机制：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([文件操作请求]) --&gt; CheckPath{路径类型?}
+    CheckPath --&gt;|逻辑路径| ResolvePath[解析逻辑路径]
+    CheckPath --&gt;|物理路径| DirectAccess[直接访问]
+    ResolvePath --&gt; CheckMount{检查挂载点}
+    CheckMount --&gt;|已挂载| GetPhysical[获取物理路径]
+    CheckMount --&gt;|未挂载| Error[返回错误]
+    GetPhysical --&gt; MergePath[合并路径]
+    MergePath --&gt; DirectAccess
+    DirectAccess --&gt; AccessFile[访问文件]
+    AccessFile --&gt; End([结束])
+    Error --&gt; End
+</code></pre>
+
+<p><strong>路径映射的实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/FileSystem.cpp</span>
+<span class="k">class</span> <span class="nc">FileSystem</span> <span class="o">:</span> <span class="k">public</span> <span class="n">IFileSystem</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="k">struct</span> <span class="nc">MountPoint</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">physicalPath</span><span class="p">;</span>    <span class="c1">// 物理路径</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">logicalPath</span><span class="p">;</span>    <span class="c1">// 逻辑路径</span>
+        <span class="n">FSMountType</span> <span class="n">mountType</span><span class="p">;</span>      <span class="c1">// 挂载类型</span>
+        <span class="kt">bool</span> <span class="n">readOnly</span><span class="p">;</span>              <span class="c1">// 是否只读</span>
+    <span class="p">};</span>
+    
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">MountPoint</span><span class="o">&gt;</span> <span class="n">_mountPoints</span><span class="p">;</span>  <span class="c1">// 挂载点映射</span>
+    
+<span class="nl">public:</span>
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">ResolvePath</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="c1">// 1. 查找最长的匹配挂载点</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">bestMatch</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">bestMatchLen</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        
+        <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="p">[</span><span class="n">logical</span><span class="p">,</span> <span class="n">mount</span><span class="p">]</span> <span class="o">:</span> <span class="n">_mountPoints</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">logicalPath</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">logical</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">logical</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">bestMatchLen</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">bestMatch</span> <span class="o">=</span> <span class="n">logical</span><span class="p">;</span>
+                    <span class="n">bestMatchLen</span> <span class="o">=</span> <span class="n">logical</span><span class="p">.</span><span class="n">length</span><span class="p">();</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">bestMatch</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"No mount point found"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 2. 替换逻辑路径为物理路径</span>
+        <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">mount</span> <span class="o">=</span> <span class="n">_mountPoints</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">bestMatch</span><span class="p">);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">relativePath</span> <span class="o">=</span> <span class="n">logicalPath</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">bestMatch</span><span class="p">.</span><span class="n">length</span><span class="p">());</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">physicalPath</span> <span class="o">=</span> <span class="n">mount</span><span class="p">.</span><span class="n">physicalPath</span> <span class="o">+</span> <span class="n">relativePath</span><span class="p">;</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">(</span><span class="n">physicalPath</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>路径映射的关键概念</strong>：</p>
+
+<ol>
+  <li><strong>物理路径</strong>：文件在磁盘上的实际路径
+    <ul>
+      <li>例如：<code class="language-plaintext highlighter-rouge">/data/indexlib/version_1/segment_0/index</code></li>
+      <li>直接对应磁盘上的文件位置</li>
+    </ul>
+  </li>
+  <li><strong>逻辑路径</strong>：文件在逻辑文件系统中的路径
+    <ul>
+      <li>例如：<code class="language-plaintext highlighter-rouge">/indexlib/version_1/segment_0/index</code></li>
+      <li>通过挂载点映射到物理路径</li>
+    </ul>
+  </li>
+  <li><strong>路径映射</strong>：通过 Mount 操作将物理路径映射到逻辑路径
+    <ul>
+      <li>支持版本级别的挂载：<code class="language-plaintext highlighter-rouge">MountVersion("/data/indexlib", 1, "/indexlib/v1")</code></li>
+      <li>支持目录级别的挂载：<code class="language-plaintext highlighter-rouge">MountDir("/data/indexlib/seg0", "/indexlib/seg0")</code></li>
+      <li>支持文件级别的挂载：<code class="language-plaintext highlighter-rouge">MountFile("/data/indexlib/file", "/indexlib/file")</code></li>
+    </ul>
+  </li>
+  <li><strong>版本管理</strong>：通过逻辑路径支持版本管理和 Segment 管理
+    <ul>
+      <li>不同版本的文件可以共存，通过逻辑路径区分</li>
+      <li>每个 Segment 有独立的路径空间</li>
+      <li>支持版本切换，无需修改代码</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-logical-physical-path.svg" alt="逻辑路径与物理路径：从物理路径到逻辑路径的映射" /></p>
-
-<p><strong>路径映射</strong>：</p>
-<ul>
-  <li><strong>物理路径</strong>：文件在磁盘上的实际路径</li>
-  <li><strong>逻辑路径</strong>：文件在逻辑文件系统中的路径</li>
-  <li><strong>路径映射</strong>：通过 Mount 操作将物理路径映射到逻辑路径</li>
-  <li><strong>版本管理</strong>：通过逻辑路径支持版本管理和 Segment 管理</li>
-</ul>
 
 <h3 id="23-文件系统类型">2.3 文件系统类型</h3>
 
@@ -886,7 +1224,41 @@
 
 <h3 id="41-filereader文件读取器">4.1 FileReader：文件读取器</h3>
 
-<p><code class="language-plaintext highlighter-rouge">FileReader</code> 是文件读取器，定义在 <code class="language-plaintext highlighter-rouge">file_system/file/FileReader.h</code> 中：</p>
+<p><code class="language-plaintext highlighter-rouge">FileReader</code> 是文件读取器，提供文件读取功能，支持同步和异步读取。让我们先通过序列图来理解 FileReader 的完整工作流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant FileReader
+    participant Cache
+    participant Storage
+    
+    Client-&gt;&gt;FileReader: CreateFileReader(path, option)
+    FileReader-&gt;&gt;FileReader: 解析路径
+    FileReader-&gt;&gt;Storage: 打开文件
+    Storage--&gt;&gt;FileReader: 文件句柄
+    FileReader--&gt;&gt;Client: FileReader对象
+    
+    Client-&gt;&gt;FileReader: Read(buffer, length, offset)
+    FileReader-&gt;&gt;Cache: 检查缓存
+    alt 缓存命中
+        Cache--&gt;&gt;FileReader: 返回缓存数据
+    else 缓存未命中
+        FileReader-&gt;&gt;Storage: 读取文件
+        Storage--&gt;&gt;FileReader: 文件数据
+        FileReader-&gt;&gt;Cache: 更新缓存
+    end
+    FileReader--&gt;&gt;Client: 返回读取长度
+    
+    Client-&gt;&gt;FileReader: Prefetch(length, offset)
+    FileReader-&gt;&gt;Storage: 异步预取
+    Storage--&gt;&gt;FileReader: 预取完成
+    
+    Client-&gt;&gt;FileReader: Close()
+    FileReader-&gt;&gt;Storage: 关闭文件
+    FileReader-&gt;&gt;Cache: 清理缓存
+</code></pre>
+
+<p><strong>FileReader 的完整定义</strong>：</p>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/file/FileReader.h</span>
 <span class="k">class</span> <span class="nc">FileReader</span>
@@ -898,24 +1270,29 @@
     <span class="c1">// 关闭文件</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Close</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 读取文件</span>
+    <span class="c1">// 读取文件：同步读取</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Read</span><span class="p">(</span>
-        <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> 
-        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> 
-        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>
+        <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span>                    <span class="c1">// 缓冲区</span>
+        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>                   <span class="c1">// 读取长度</span>
+        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>                   <span class="c1">// 偏移量</span>
         <span class="n">ReadOption</span> <span class="n">option</span> <span class="o">=</span> <span class="n">ReadOption</span><span class="p">())</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 预取文件</span>
+    <span class="c1">// 预取文件：异步预取，不阻塞</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Prefetch</span><span class="p">(</span>
-        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> 
-        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>
+        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>                  <span class="c1">// 预取长度</span>
+        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>                  <span class="c1">// 偏移量</span>
         <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 异步读取</span>
+    <span class="c1">// 异步读取：返回 Future</span>
     <span class="k">virtual</span> <span class="n">future_lite</span><span class="o">::</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;&gt;</span> <span class="n">ReadAsync</span><span class="p">(</span>
-        <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> 
-        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> 
-        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>
+        <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span>                   <span class="c1">// 缓冲区</span>
+        <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>                  <span class="c1">// 读取长度</span>
+        <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span>                  <span class="c1">// 偏移量</span>
+        <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 批量读取：读取多个不连续的区域</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">BatchRead</span><span class="p">(</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">ReadRequest</span><span class="o">&gt;&amp;</span> <span class="n">requests</span><span class="p">,</span>
         <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
     <span class="c1">// 获取文件长度</span>
@@ -926,27 +1303,159 @@
     
     <span class="c1">// 获取物理路径</span>
     <span class="k">virtual</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">GetPhysicalPath</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 获取文件元数据</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="n">FileMeta</span><span class="o">&gt;</span> <span class="n">GetFileMeta</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">};</span>
 </code></pre></div></div>
 
-<p><strong>FileReader 的关键方法</strong>：</p>
+<p><strong>FileReader 的实现示例</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/file/LocalFileReader.cpp</span>
+<span class="k">class</span> <span class="nc">LocalFileReader</span> <span class="o">:</span> <span class="k">public</span> <span class="n">FileReader</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_logicalPath</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_physicalPath</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">_fd</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">_fileLength</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">FileCache</span><span class="o">&gt;</span> <span class="n">_cache</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Open</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="n">_fd</span> <span class="o">=</span> <span class="o">::</span><span class="n">open</span><span class="p">(</span><span class="n">_physicalPath</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">O_RDONLY</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to open file: "</span> <span class="o">+</span> <span class="n">_physicalPath</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 获取文件长度</span>
+        <span class="k">struct</span> <span class="nc">stat</span> <span class="n">st</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fstat</span><span class="p">(</span><span class="n">_fd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">st</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">::</span><span class="n">close</span><span class="p">(</span><span class="n">_fd</span><span class="p">);</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to get file length"</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">_fileLength</span> <span class="o">=</span> <span class="n">st</span><span class="p">.</span><span class="n">st_size</span><span class="p">;</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Read</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span> 
+                          <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 1. 检查缓存</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">option</span><span class="p">.</span><span class="n">useCache</span> <span class="o">&amp;&amp;</span> <span class="n">_cache</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">auto</span> <span class="n">cached</span> <span class="o">=</span> <span class="n">_cache</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">_physicalPath</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">length</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">cached</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">cached</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">(),</span> <span class="n">length</span><span class="p">);</span>
+                <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">(</span><span class="n">length</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 2. 读取文件</span>
+        <span class="kt">ssize_t</span> <span class="n">nread</span> <span class="o">=</span> <span class="n">pread</span><span class="p">(</span><span class="n">_fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">nread</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to read file"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 3. 更新缓存</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">option</span><span class="p">.</span><span class="n">useCache</span> <span class="o">&amp;&amp;</span> <span class="n">_cache</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">_cache</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="n">_physicalPath</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">nread</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">(</span><span class="n">nread</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Prefetch</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span> <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 使用 posix_fadvise 预取</span>
+        <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">posix_fadvise</span><span class="p">(</span><span class="n">_fd</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">POSIX_FADV_WILLNEED</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to prefetch"</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">(</span><span class="n">length</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="n">future_lite</span><span class="o">::</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;&gt;</span> <span class="n">ReadAsync</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> 
+                                                    <span class="kt">size_t</span> <span class="n">offset</span><span class="p">,</span> <span class="n">ReadOption</span> <span class="n">option</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 使用异步 IO（如 io_uring）实现</span>
+        <span class="k">return</span> <span class="n">future_lite</span><span class="o">::</span><span class="n">async</span><span class="p">([</span><span class="o">=</span><span class="p">]()</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">Read</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">option</span><span class="p">);</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Close</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">::</span><span class="n">close</span><span class="p">(</span><span class="n">_fd</span><span class="p">);</span>
+            <span class="n">_fd</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>FileReader 的关键特性</strong>：</p>
+
+<ol>
+  <li><strong>同步读取</strong>：<code class="language-plaintext highlighter-rouge">Read()</code> 方法提供同步读取，阻塞直到读取完成
+    <ul>
+      <li>支持指定偏移量，实现随机访问</li>
+      <li>支持缓存，减少磁盘读取</li>
+      <li>支持读取选项（使用缓存、预取等）</li>
+    </ul>
+  </li>
+  <li><strong>异步读取</strong>：<code class="language-plaintext highlighter-rouge">ReadAsync()</code> 方法提供异步读取，不阻塞
+    <ul>
+      <li>返回 Future，支持异步编程</li>
+      <li>支持并发读取，提高吞吐量</li>
+      <li>使用底层异步 IO（如 io_uring、epoll 等）</li>
+    </ul>
+  </li>
+  <li><strong>预取</strong>：<code class="language-plaintext highlighter-rouge">Prefetch()</code> 方法提供预取功能，提前加载数据
+    <ul>
+      <li>使用 <code class="language-plaintext highlighter-rouge">posix_fadvise</code> 或类似机制</li>
+      <li>不阻塞，后台预取</li>
+      <li>提高后续读取的性能</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-file-reader-interface.svg" alt="FileReader 接口：提供文件读取功能" /></p>
 
-<ul>
-  <li><strong>Open()</strong>：打开文件，准备读取</li>
-  <li><strong>Close()</strong>：关闭文件，释放资源</li>
-  <li><strong>Read()</strong>：读取文件数据，支持指定偏移量</li>
-  <li><strong>Prefetch()</strong>：预取文件数据，提高读取性能</li>
-  <li><strong>ReadAsync()</strong>：异步读取文件数据，支持并发读取</li>
-  <li><strong>GetLength()</strong>：获取文件长度</li>
-  <li><strong>GetLogicalPath()</strong>：获取逻辑路径</li>
-  <li><strong>GetPhysicalPath()</strong>：获取物理路径</li>
-</ul>
-
 <h3 id="42-filewriter文件写入器">4.2 FileWriter：文件写入器</h3>
 
-<p><code class="language-plaintext highlighter-rouge">FileWriter</code> 是文件写入器，定义在 <code class="language-plaintext highlighter-rouge">file_system/file/FileWriter.h</code> 中：</p>
+<p><code class="language-plaintext highlighter-rouge">FileWriter</code> 是文件写入器，提供文件写入功能，支持同步和异步写入。让我们先通过序列图来理解 FileWriter 的完整工作流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant FileWriter
+    participant Buffer
+    participant Storage
+    
+    Client-&gt;&gt;FileWriter: CreateFileWriter(path, option)
+    FileWriter-&gt;&gt;Storage: 创建文件
+    Storage--&gt;&gt;FileWriter: 文件句柄
+    FileWriter-&gt;&gt;Buffer: 初始化缓冲区
+    FileWriter--&gt;&gt;Client: FileWriter对象
+    
+    Client-&gt;&gt;FileWriter: Write(buffer, length)
+    FileWriter-&gt;&gt;Buffer: 写入缓冲区
+    alt 缓冲区满
+        Buffer-&gt;&gt;Storage: 刷新到磁盘
+        Storage--&gt;&gt;Buffer: 刷新完成
+    end
+    FileWriter--&gt;&gt;Client: 返回写入长度
+    
+    Client-&gt;&gt;FileWriter: ReserveFile(size)
+    FileWriter-&gt;&gt;Storage: 预留空间
+    Storage--&gt;&gt;FileWriter: 预留完成
+    
+    Client-&gt;&gt;FileWriter: Close()
+    FileWriter-&gt;&gt;Buffer: 刷新缓冲区
+    Buffer-&gt;&gt;Storage: 刷新到磁盘
+    Storage--&gt;&gt;FileWriter: 刷新完成
+    FileWriter-&gt;&gt;Storage: 关闭文件
+    FileWriter--&gt;&gt;Client: 关闭完成
+</code></pre>
+
+<p><strong>FileWriter 的完整定义</strong>：</p>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/file/FileWriter.h</span>
 <span class="k">class</span> <span class="nc">FileWriter</span> <span class="o">:</span> <span class="k">public</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
@@ -954,22 +1463,33 @@
 <span class="nl">public:</span>
     <span class="c1">// 打开文件</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Open</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span>   <span class="c1">// 逻辑路径</span>
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 物理路径</span>
     
     <span class="c1">// 关闭文件</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Close</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 写入文件</span>
+    <span class="c1">// 写入文件：同步写入</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Write</span><span class="p">(</span>
+        <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span>                <span class="c1">// 缓冲区</span>
+        <span class="kt">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>               <span class="c1">// 写入长度</span>
+    
+    <span class="c1">// 异步写入：返回 Future</span>
+    <span class="k">virtual</span> <span class="n">future_lite</span><span class="o">::</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;&gt;</span> <span class="n">WriteAsync</span><span class="p">(</span>
         <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span>
         <span class="kt">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 预留文件空间</span>
+    <span class="c1">// 预留文件空间：用于地址访问模式</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">ReserveFile</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">reserveSize</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
-    <span class="c1">// 截断文件</span>
+    <span class="c1">// 截断文件：调整文件大小</span>
     <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Truncate</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">truncateSize</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 刷新缓冲区：将缓冲区数据刷新到磁盘</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Flush</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="c1">// 同步文件：确保数据写入磁盘</span>
+    <span class="k">virtual</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Sync</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
     
     <span class="c1">// 获取文件长度</span>
     <span class="k">virtual</span> <span class="kt">size_t</span> <span class="n">GetLength</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
@@ -982,20 +1502,154 @@
 <span class="p">};</span>
 </code></pre></div></div>
 
-<p><strong>FileWriter 的关键方法</strong>：</p>
+<p><strong>FileWriter 的实现示例</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/file/LocalFileWriter.cpp</span>
+<span class="k">class</span> <span class="nc">LocalFileWriter</span> <span class="o">:</span> <span class="k">public</span> <span class="n">FileWriter</span>
+<span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_logicalPath</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">_physicalPath</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">_fd</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">_fileLength</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">_buffer</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">_bufferSize</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">_atomicWrite</span><span class="p">;</span>
+    
+<span class="nl">public:</span>
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">logicalPath</span><span class="p">,</span> 
+                        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">physicalPath</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="n">_logicalPath</span> <span class="o">=</span> <span class="n">logicalPath</span><span class="p">;</span>
+        <span class="n">_physicalPath</span> <span class="o">=</span> <span class="n">physicalPath</span><span class="p">;</span>
+        
+        <span class="c1">// 原子写入：先写入临时文件</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_atomicWrite</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">_physicalPath</span> <span class="o">=</span> <span class="n">physicalPath</span> <span class="o">+</span> <span class="s">".tmp"</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="n">_fd</span> <span class="o">=</span> <span class="o">::</span><span class="n">open</span><span class="p">(</span><span class="n">_physicalPath</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">O_TRUNC</span><span class="p">,</span> <span class="mo">0644</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to open file: "</span> <span class="o">+</span> <span class="n">_physicalPath</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">_fileLength</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">_buffer</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+        <span class="n">_buffer</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="n">_bufferSize</span><span class="p">);</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">Write</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 1. 写入缓冲区</span>
+        <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">data</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+        <span class="n">_buffer</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">_buffer</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">length</span><span class="p">);</span>
+        
+        <span class="c1">// 2. 如果缓冲区满，刷新到磁盘</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_buffer</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">_bufferSize</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">auto</span> <span class="n">status</span> <span class="o">=</span> <span class="n">Flush</span><span class="p">();</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">GetError</span><span class="p">());</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="n">_fileLength</span> <span class="o">+=</span> <span class="n">length</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">(</span><span class="n">length</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Flush</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_buffer</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+        <span class="p">}</span>
+        
+        <span class="kt">ssize_t</span> <span class="n">nwrite</span> <span class="o">=</span> <span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">_fd</span><span class="p">,</span> <span class="n">_buffer</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">_buffer</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">nwrite</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to write file"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">_buffer</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Sync</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 先刷新缓冲区</span>
+        <span class="k">auto</span> <span class="n">status</span> <span class="o">=</span> <span class="n">Flush</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 同步到磁盘</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fsync</span><span class="p">(</span><span class="n">_fd</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to sync file"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">Close</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 1. 刷新缓冲区</span>
+        <span class="k">auto</span> <span class="n">status</span> <span class="o">=</span> <span class="n">Flush</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 2. 同步到磁盘</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">Sync</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 3. 关闭文件</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">::</span><span class="n">close</span><span class="p">(</span><span class="n">_fd</span><span class="p">);</span>
+            <span class="n">_fd</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 4. 原子写入：重命名临时文件</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_atomicWrite</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">finalPath</span> <span class="o">=</span> <span class="n">_physicalPath</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">_physicalPath</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">-</span> <span class="mi">4</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">rename</span><span class="p">(</span><span class="n">_physicalPath</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">finalPath</span><span class="p">.</span><span class="n">c_str</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to rename file"</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    
+    <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">ReserveFile</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">reserveSize</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+        <span class="c1">// 使用 fallocate 预留空间</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fallocate</span><span class="p">(</span><span class="n">_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">reserveSize</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to reserve file space"</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>FileWriter 的关键特性</strong>：</p>
+
+<ol>
+  <li><strong>缓冲写入</strong>：使用缓冲区减少系统调用，提高写入性能
+    <ul>
+      <li>缓冲区满时自动刷新</li>
+      <li>支持手动刷新和同步</li>
+    </ul>
+  </li>
+  <li><strong>原子写入</strong>：支持原子写入，保证数据一致性
+    <ul>
+      <li>先写入临时文件</li>
+      <li>写入完成后重命名为最终文件</li>
+      <li>失败时不会破坏原文件</li>
+    </ul>
+  </li>
+  <li><strong>预留空间</strong>：支持预留文件空间，用于地址访问模式
+    <ul>
+      <li>使用 <code class="language-plaintext highlighter-rouge">fallocate</code> 预留空间</li>
+      <li>支持随机写入，提高性能</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-file-writer-interface.svg" alt="FileWriter 接口：提供文件写入功能" /></p>
-
-<ul>
-  <li><strong>Open()</strong>：打开文件，准备写入</li>
-  <li><strong>Close()</strong>：关闭文件，刷新数据到磁盘</li>
-  <li><strong>Write()</strong>：写入文件数据</li>
-  <li><strong>ReserveFile()</strong>：预留文件空间，用于地址访问模式</li>
-  <li><strong>Truncate()</strong>：截断文件，调整文件大小</li>
-  <li><strong>GetLength()</strong>：获取文件长度</li>
-  <li><strong>GetLogicalPath()</strong>：获取逻辑路径</li>
-  <li><strong>GetPhysicalPath()</strong>：获取物理路径</li>
-</ul>
 
 <h2 id="5-storage存储抽象">5. Storage：存储抽象</h2>
 
@@ -1068,47 +1722,430 @@
 
 <h2 id="6-存储格式">6. 存储格式</h2>
 
+<p>IndexLib 支持多种存储格式，包括 Package、Archive 和压缩格式，用于优化存储效率和访问性能。让我们先通过类图来理解存储格式的整体架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class StorageFormat {
+        &lt;&lt;interface&gt;&gt;
+        +Pack(files, outputPath) FSResult~void~
+        +Unpack(packagePath, outputDir) FSResult~void~
+        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
+    }
+    
+    class PackageFormat {
+        +Pack(files, outputPath) FSResult~void~
+        +Unpack(packagePath, outputDir) FSResult~void~
+        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
+        -WriteIndex(FileIndex) void
+        -ReadIndex(packagePath) FileIndex
+    }
+    
+    class ArchiveFormat {
+        +Pack(files, outputPath) FSResult~void~
+        +Unpack(archivePath, outputDir) FSResult~void~
+        +AppendFile(archivePath, file) FSResult~void~
+        -WriteIndex(ArchiveIndex) void
+        -ReadIndex(archivePath) ArchiveIndex
+    }
+    
+    class Compressor {
+        &lt;&lt;interface&gt;&gt;
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+        +GetCompressionRatio() double
+    }
+    
+    class LZ4Compressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+    }
+    
+    class ZstdCompressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+    }
+    
+    StorageFormat &lt;|-- PackageFormat : 实现
+    StorageFormat &lt;|-- ArchiveFormat : 实现
+    PackageFormat --&gt; Compressor : 使用
+    ArchiveFormat --&gt; Compressor : 使用
+    Compressor &lt;|-- LZ4Compressor : 实现
+    Compressor &lt;|-- ZstdCompressor : 实现
+</code></pre>
+
 <h3 id="61-package-格式">6.1 Package 格式</h3>
 
-<p>Package 格式是一种打包存储格式：</p>
+<p>Package 格式是一种打包存储格式，将多个小文件打包成一个大文件，减少文件系统的小文件数量，提高 IO 效率。让我们通过流程图来理解 Package 格式的打包和解包流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始打包]) --&gt; ReadFiles[读取文件列表]
+    ReadFiles --&gt; CreatePackage[创建 Package 文件]
+    CreatePackage --&gt; WriteHeader[写入 Package 头]
+    WriteHeader --&gt; LoopFiles{遍历文件}
+    LoopFiles --&gt;|下一个文件| ReadFile[读取文件内容]
+    ReadFile --&gt; Compress{需要压缩?}
+    Compress --&gt;|是| CompressData[压缩数据]
+    Compress --&gt;|否| WriteData[写入文件数据]
+    CompressData --&gt; WriteData
+    WriteData --&gt; UpdateIndex[更新索引]
+    UpdateIndex --&gt; LoopFiles
+    LoopFiles --&gt;|完成| WriteIndex[写入索引]
+    WriteIndex --&gt; ClosePackage[关闭 Package]
+    ClosePackage --&gt; End([结束])
+</code></pre>
+
+<p><strong>Package 格式的结构</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/package/PackageFormat.h</span>
+<span class="k">struct</span> <span class="nc">PackageHeader</span> <span class="p">{</span>
+    <span class="kt">uint32_t</span> <span class="n">magic</span><span class="p">;</span>           <span class="c1">// 魔数：0x504B4741 ("PKGA")</span>
+    <span class="kt">uint32_t</span> <span class="n">version</span><span class="p">;</span>         <span class="c1">// 版本号</span>
+    <span class="kt">uint32_t</span> <span class="n">fileCount</span><span class="p">;</span>       <span class="c1">// 文件数量</span>
+    <span class="kt">uint64_t</span> <span class="n">indexOffset</span><span class="p">;</span>     <span class="c1">// 索引偏移量</span>
+    <span class="kt">uint64_t</span> <span class="n">indexSize</span><span class="p">;</span>       <span class="c1">// 索引大小</span>
+    <span class="kt">uint32_t</span> <span class="n">flags</span><span class="p">;</span>           <span class="c1">// 标志位（压缩、加密等）</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nc">FileEntry</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">fileName</span><span class="p">;</span>     <span class="c1">// 文件名</span>
+    <span class="kt">uint64_t</span> <span class="n">offset</span><span class="p">;</span>          <span class="c1">// 文件在 Package 中的偏移量</span>
+    <span class="kt">uint64_t</span> <span class="n">size</span><span class="p">;</span>            <span class="c1">// 文件大小（压缩前）</span>
+    <span class="kt">uint64_t</span> <span class="n">compressedSize</span><span class="p">;</span>  <span class="c1">// 压缩后大小</span>
+    <span class="kt">uint32_t</span> <span class="n">compressionType</span><span class="p">;</span> <span class="c1">// 压缩类型</span>
+    <span class="kt">uint32_t</span> <span class="n">crc32</span><span class="p">;</span>           <span class="c1">// CRC32 校验</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nc">PackageIndex</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">FileEntry</span><span class="o">&gt;</span> <span class="n">entries</span><span class="p">;</span>  <span class="c1">// 文件条目列表</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">nameToIndex</span><span class="p">;</span>  <span class="c1">// 文件名到索引的映射</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Package 格式的打包实现</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/package/PackageFormat.cpp</span>
+<span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">PackageFormat</span><span class="o">::</span><span class="n">Pack</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;&amp;</span> <span class="n">files</span><span class="p">,</span>
+                                     <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">outputPath</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 1. 创建 Package 文件</span>
+    <span class="k">auto</span> <span class="n">writer</span> <span class="o">=</span> <span class="n">CreateFileWriter</span><span class="p">(</span><span class="n">outputPath</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">writer</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to create package file"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 2. 写入 Package 头（占位，稍后更新）</span>
+    <span class="n">PackageHeader</span> <span class="n">header</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="n">header</span><span class="p">.</span><span class="n">magic</span> <span class="o">=</span> <span class="mh">0x504B4741</span><span class="p">;</span>  <span class="c1">// "PKGA"</span>
+    <span class="n">header</span><span class="p">.</span><span class="n">version</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">header</span><span class="p">.</span><span class="n">fileCount</span> <span class="o">=</span> <span class="n">files</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    
+    <span class="kt">size_t</span> <span class="n">headerSize</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">PackageHeader</span><span class="p">);</span>
+    <span class="kt">size_t</span> <span class="n">dataOffset</span> <span class="o">=</span> <span class="n">headerSize</span><span class="p">;</span>
+    
+    <span class="c1">// 3. 写入文件数据</span>
+    <span class="n">PackageIndex</span> <span class="n">index</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">filePath</span> <span class="o">:</span> <span class="n">files</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 读取文件</span>
+        <span class="k">auto</span> <span class="n">reader</span> <span class="o">=</span> <span class="n">CreateFileReader</span><span class="p">(</span><span class="n">filePath</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">reader</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to read file: "</span> <span class="o">+</span> <span class="n">filePath</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">(</span><span class="n">reader</span><span class="o">-&gt;</span><span class="n">GetLength</span><span class="p">());</span>
+        <span class="k">auto</span> <span class="n">readResult</span> <span class="o">=</span> <span class="n">reader</span><span class="o">-&gt;</span><span class="n">Read</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">readResult</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to read file data"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 压缩文件（可选）</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">compressed</span><span class="p">;</span>
+        <span class="kt">uint32_t</span> <span class="n">compressionType</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_options</span><span class="p">.</span><span class="n">compress</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">auto</span> <span class="n">compressResult</span> <span class="o">=</span> <span class="n">_compressor</span><span class="o">-&gt;</span><span class="n">Compress</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">compressed</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">compressResult</span><span class="p">.</span><span class="n">IsOK</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">compressed</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">compressed</span><span class="p">;</span>
+                <span class="n">compressionType</span> <span class="o">=</span> <span class="n">_compressor</span><span class="o">-&gt;</span><span class="n">GetType</span><span class="p">();</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 写入文件数据</span>
+        <span class="n">FileEntry</span> <span class="n">entry</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">fileName</span> <span class="o">=</span> <span class="n">GetFileName</span><span class="p">(</span><span class="n">filePath</span><span class="p">);</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">dataOffset</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">reader</span><span class="o">-&gt;</span><span class="n">GetLength</span><span class="p">();</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">compressedSize</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">compressionType</span> <span class="o">=</span> <span class="n">compressionType</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">crc32</span> <span class="o">=</span> <span class="n">CalculateCRC32</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+        
+        <span class="k">auto</span> <span class="n">writeResult</span> <span class="o">=</span> <span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">writeResult</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to write file data"</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="n">dataOffset</span> <span class="o">+=</span> <span class="n">data</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+        <span class="n">index</span><span class="p">.</span><span class="n">entries</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">entry</span><span class="p">);</span>
+        <span class="n">index</span><span class="p">.</span><span class="n">nameToIndex</span><span class="p">[</span><span class="n">entry</span><span class="p">.</span><span class="n">fileName</span><span class="p">]</span> <span class="o">=</span> <span class="n">index</span><span class="p">.</span><span class="n">entries</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 4. 写入索引</span>
+    <span class="n">header</span><span class="p">.</span><span class="n">indexOffset</span> <span class="o">=</span> <span class="n">dataOffset</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">indexData</span> <span class="o">=</span> <span class="n">SerializeIndex</span><span class="p">(</span><span class="n">index</span><span class="p">);</span>
+    <span class="n">header</span><span class="p">.</span><span class="n">indexSize</span> <span class="o">=</span> <span class="n">indexData</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    
+    <span class="k">auto</span> <span class="n">writeResult</span> <span class="o">=</span> <span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">indexData</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">indexData</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">writeResult</span><span class="p">.</span><span class="n">IsOK</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">Error</span><span class="p">(</span><span class="s">"Failed to write index"</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 5. 更新 Package 头</span>
+    <span class="n">writer</span><span class="o">-&gt;</span><span class="n">Seek</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">header</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">header</span><span class="p">));</span>
+    
+    <span class="c1">// 6. 关闭文件</span>
+    <span class="n">writer</span><span class="o">-&gt;</span><span class="n">Close</span><span class="p">();</span>
+    
+    <span class="k">return</span> <span class="n">FSResult</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>Package 格式的特点</strong>：</p>
+
+<ol>
+  <li><strong>文件打包</strong>：将多个小文件打包成一个大文件
+    <ul>
+      <li>减少文件系统的小文件数量</li>
+      <li>提高文件系统的性能</li>
+    </ul>
+  </li>
+  <li><strong>减少文件数</strong>：减少文件系统的小文件数量
+    <ul>
+      <li>文件系统对小文件的支持较差</li>
+      <li>打包后可以减少文件数量，提高性能</li>
+    </ul>
+  </li>
+  <li><strong>提高 IO 效率</strong>：提高批量 IO 的效率
+    <ul>
+      <li>打包后可以批量读取多个文件</li>
+      <li>减少文件打开和关闭的开销</li>
+    </ul>
+  </li>
+  <li><strong>支持压缩</strong>：支持文件压缩，减少存储空间
+    <ul>
+      <li>每个文件可以独立压缩</li>
+      <li>支持多种压缩算法（LZ4、Zstd 等）</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-package-format.svg" alt="Package 格式：将多个文件打包成一个文件" /></p>
 
-<p><strong>Package 格式特点</strong>：</p>
-<ul>
-  <li><strong>文件打包</strong>：将多个小文件打包成一个大文件</li>
-  <li><strong>减少文件数</strong>：减少文件系统的小文件数量</li>
-  <li><strong>提高 IO 效率</strong>：提高批量 IO 的效率</li>
-  <li><strong>支持压缩</strong>：支持文件压缩，减少存储空间</li>
-</ul>
-
 <h3 id="62-archive-格式">6.2 Archive 格式</h3>
 
-<p>Archive 格式是一种归档存储格式：</p>
+<p>Archive 格式是一种归档存储格式，支持文件归档、压缩、索引和追加。让我们通过流程图来理解 Archive 格式的归档流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始归档]) --&gt; CreateArchive[创建 Archive 文件]
+    CreateArchive --&gt; WriteHeader[写入 Archive 头]
+    WriteHeader --&gt; LoopFiles{遍历文件}
+    LoopFiles --&gt;|下一个文件| ReadFile[读取文件]
+    ReadFile --&gt; Compress[压缩文件]
+    Compress --&gt; WriteData[写入文件数据]
+    WriteData --&gt; UpdateIndex[更新索引]
+    UpdateIndex --&gt; LoopFiles
+    LoopFiles --&gt;|完成| WriteIndex[写入索引]
+    WriteIndex --&gt; CloseArchive[关闭 Archive]
+    CloseArchive --&gt; End([结束])
+    
+    AppendFile([追加文件]) --&gt; OpenArchive[打开 Archive]
+    OpenArchive --&gt; ReadIndex[读取索引]
+    ReadIndex --&gt; AppendData[追加文件数据]
+    AppendData --&gt; UpdateIndex2[更新索引]
+    UpdateIndex2 --&gt; WriteIndex2[写入索引]
+    WriteIndex2 --&gt; CloseArchive2[关闭 Archive]
+    CloseArchive2 --&gt; End2([结束])
+</code></pre>
+
+<p><strong>Archive 格式的结构</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// file_system/archive/ArchiveFormat.h</span>
+<span class="k">struct</span> <span class="nc">ArchiveHeader</span> <span class="p">{</span>
+    <span class="kt">uint32_t</span> <span class="n">magic</span><span class="p">;</span>           <span class="c1">// 魔数：0x41524348 ("ARCH")</span>
+    <span class="kt">uint32_t</span> <span class="n">version</span><span class="p">;</span>         <span class="c1">// 版本号</span>
+    <span class="kt">uint64_t</span> <span class="n">fileCount</span><span class="p">;</span>       <span class="c1">// 文件数量</span>
+    <span class="kt">uint64_t</span> <span class="n">indexOffset</span><span class="p">;</span>     <span class="c1">// 索引偏移量</span>
+    <span class="kt">uint64_t</span> <span class="n">indexSize</span><span class="p">;</span>       <span class="c1">// 索引大小</span>
+    <span class="kt">uint32_t</span> <span class="n">flags</span><span class="p">;</span>           <span class="c1">// 标志位</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nc">ArchiveEntry</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">fileName</span><span class="p">;</span>     <span class="c1">// 文件名</span>
+    <span class="kt">uint64_t</span> <span class="n">offset</span><span class="p">;</span>          <span class="c1">// 文件在 Archive 中的偏移量</span>
+    <span class="kt">uint64_t</span> <span class="n">size</span><span class="p">;</span>            <span class="c1">// 文件大小</span>
+    <span class="kt">uint64_t</span> <span class="n">compressedSize</span><span class="p">;</span>  <span class="c1">// 压缩后大小</span>
+    <span class="kt">uint32_t</span> <span class="n">compressionType</span><span class="p">;</span> <span class="c1">// 压缩类型</span>
+    <span class="kt">uint64_t</span> <span class="n">timestamp</span><span class="p">;</span>       <span class="c1">// 时间戳</span>
+    <span class="kt">uint32_t</span> <span class="n">crc32</span><span class="p">;</span>           <span class="c1">// CRC32 校验</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nc">ArchiveIndex</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">ArchiveEntry</span><span class="o">&gt;</span> <span class="n">entries</span><span class="p">;</span>  <span class="c1">// 文件条目列表</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">&gt;</span> <span class="n">nameToIndex</span><span class="p">;</span>  <span class="c1">// 文件名到索引的映射</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;&gt;</span> <span class="n">timestampToIndex</span><span class="p">;</span>  <span class="c1">// 时间戳到索引的映射</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>Archive 格式的特点</strong>：</p>
+
+<ol>
+  <li><strong>文件归档</strong>：将文件归档存储
+    <ul>
+      <li>支持追加文件到归档</li>
+      <li>支持按时间戳查询文件</li>
+    </ul>
+  </li>
+  <li><strong>支持压缩</strong>：支持文件压缩
+    <ul>
+      <li>每个文件可以独立压缩</li>
+      <li>支持多种压缩算法</li>
+    </ul>
+  </li>
+  <li><strong>支持索引</strong>：支持文件索引，快速定位文件
+    <ul>
+      <li>文件名索引：快速查找文件</li>
+      <li>时间戳索引：按时间查询文件</li>
+    </ul>
+  </li>
+  <li><strong>支持追加</strong>：支持追加文件到归档
+    <ul>
+      <li>不需要重新打包整个归档</li>
+      <li>更新索引即可</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-archive-format.svg" alt="Archive 格式：归档存储格式的特点和应用" /></p>
 
-<p><strong>Archive 格式特点</strong>：</p>
-<ul>
-  <li><strong>文件归档</strong>：将文件归档存储</li>
-  <li><strong>支持压缩</strong>：支持文件压缩</li>
-  <li><strong>支持索引</strong>：支持文件索引，快速定位文件</li>
-  <li><strong>支持追加</strong>：支持追加文件到归档</li>
-</ul>
-
 <h3 id="63-压缩格式">6.3 压缩格式</h3>
 
-<p>IndexLib 支持多种压缩格式：</p>
+<p>IndexLib 支持多种压缩格式，包括 LZ4、Zstd、Snappy 和 Gzip。让我们通过类图来理解压缩格式的架构：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Compressor {
+        &lt;&lt;interface&gt;&gt;
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+        +GetType() CompressionType
+        +GetCompressionRatio() double
+        +GetCompressionSpeed() double
+        +GetDecompressionSpeed() double
+    }
+    
+    class LZ4Compressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+        -lz4_compress_level int
+    }
+    
+    class ZstdCompressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+        -zstd_compression_level int
+    }
+    
+    class SnappyCompressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+    }
+    
+    class GzipCompressor {
+        +Compress(data, compressed) FSResult~void~
+        +Decompress(compressed, data) FSResult~void~
+        -gzip_compression_level int
+    }
+    
+    Compressor &lt;|-- LZ4Compressor : 实现
+    Compressor &lt;|-- ZstdCompressor : 实现
+    Compressor &lt;|-- SnappyCompressor : 实现
+    Compressor &lt;|-- GzipCompressor : 实现
+</code></pre>
+
+<p><strong>压缩格式的对比</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>压缩算法</th>
+      <th>压缩速度</th>
+      <th>压缩率</th>
+      <th>解压速度</th>
+      <th>适用场景</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LZ4</td>
+      <td>极快</td>
+      <td>中等</td>
+      <td>极快</td>
+      <td>实时写入、高频访问</td>
+    </tr>
+    <tr>
+      <td>Zstd</td>
+      <td>快</td>
+      <td>高</td>
+      <td>快</td>
+      <td>存储优化、离线处理</td>
+    </tr>
+    <tr>
+      <td>Snappy</td>
+      <td>极快</td>
+      <td>低</td>
+      <td>极快</td>
+      <td>实时写入、低延迟</td>
+    </tr>
+    <tr>
+      <td>Gzip</td>
+      <td>慢</td>
+      <td>高</td>
+      <td>中等</td>
+      <td>兼容性要求高</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>压缩格式的选择</strong>：</p>
+
+<ol>
+  <li><strong>LZ4</strong>：快速压缩算法，压缩速度快
+    <ul>
+      <li>适用于实时写入场景</li>
+      <li>压缩速度极快，解压速度也极快</li>
+      <li>压缩率中等，适合对速度要求高的场景</li>
+    </ul>
+  </li>
+  <li><strong>Zstd</strong>：高效压缩算法，压缩率高
+    <ul>
+      <li>适用于存储优化场景</li>
+      <li>压缩率高，适合对存储空间要求高的场景</li>
+      <li>压缩和解压速度都较快</li>
+    </ul>
+  </li>
+  <li><strong>Snappy</strong>：快速压缩算法，压缩速度快
+    <ul>
+      <li>适用于实时写入场景</li>
+      <li>压缩速度极快，解压速度也极快</li>
+      <li>压缩率较低，适合对速度要求极高的场景</li>
+    </ul>
+  </li>
+  <li><strong>Gzip</strong>：通用压缩算法，兼容性好
+    <ul>
+      <li>适用于兼容性要求高的场景</li>
+      <li>压缩率高，但压缩速度较慢</li>
+      <li>兼容性好，支持广泛</li>
+    </ul>
+  </li>
+</ol>
 
 <p><img src="/images/diagrams/indexlib-compress-format.svg" alt="压缩格式：支持多种压缩算法" /></p>
-
-<p><strong>压缩格式</strong>：</p>
-<ul>
-  <li><strong>LZ4</strong>：快速压缩算法，压缩速度快</li>
-  <li><strong>Zstd</strong>：高效压缩算法，压缩率高</li>
-  <li><strong>Snappy</strong>：快速压缩算法，压缩速度快</li>
-  <li><strong>Gzip</strong>：通用压缩算法，兼容性好</li>
-</ul>
 
 <h2 id="7-文件系统缓存">7. 文件系统缓存</h2>
 

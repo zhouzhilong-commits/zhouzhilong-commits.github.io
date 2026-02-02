@@ -18,14 +18,14 @@
   <text class="title" x="40" y="42">NormalTabletReader::DoOpen() 流程：初始化各种 IndexReader</text>
   <text class="muted" x="40" y="66">DoOpen() 方法初始化 NormalTabletReader，创建 MultiFieldIndexReader、DeletionMapReader、PrimaryKeyReader 等各种 IndexReader。</text>
 
-  <rect class="step" x="40" y="95" width="200" height="100"/>
+  <rect class="step" x="40" y="95" width="200" height="114.0"/>
   <text class="h" x="70" y="130">1. 初始化 TabletData</text>
   <text class="t" x="70" y="155">保存 TabletData 引用</text>
   <text class="t" x="70" y="175">包含所有 Segment</text>
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="reader" x="300" y="95" width="200" height="100"/>
+  <rect class="reader" x="300" y="95" width="200" height="114.0"/>
   <text class="h" x="330" y="130">2. 创建 MultiFieldIndexReader</text>
   <text class="t" x="330" y="155">多字段倒排索引</text>
   <text class="t" x="330" y="175">Reader</text>
@@ -54,7 +54,7 @@
   <text class="h" x="510" y="250">7. 创建 AttributeReader</text>
   <text class="t" x="510" y="275">属性 Reader（按需）</text>
 
-  <rect class="box" x="700" y="215" width="240" height="220"/>
+  <rect class="box" x="700" y="215" width="240" height="234.0"/>
   <text class="h" x="730" y="250">DoOpen 的关键步骤</text>
   <text class="t" x="730" y="275">1. 初始化 TabletData：保存 TabletData 的引用</text>
   <text class="t" x="730" y="295">2. 创建各种 IndexReader：根据需要创建各种 IndexReader</text>

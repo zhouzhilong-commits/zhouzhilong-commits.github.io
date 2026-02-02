@@ -13,16 +13,16 @@
 
   <text class="title" x="40" y="42">合并的性能优化：并行合并、资源控制等优化策略</text>
   <text class="muted" x="40" y="66">合并的性能优化包括并行合并、增量合并、资源控制、合并优先级等。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">并行合并</text>
   <text class="t" x="70" y="145.0">多个 Segment 可以并行合并，提高合并效率</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">增量合并</text>
   <text class="t" x="70" y="215.0">只合并变更的 Segment，减少合并工作量</text>
-  <rect class="item" x="40" y="235" width="920" height="70.0"/>
+  <rect class="item" x="40" y="235" width="920" height="84.0"/>
   <text class="h" x="70" y="260">资源控制</text>
   <text class="t" x="70" y="285.0">控制合并时的资源使用，避免影响查询性能</text>
-  <rect class="item" x="40" y="305" width="920" height="110.0"/>
+  <rect class="item" x="40" y="305" width="920" height="122.0"/>
   <text class="h" x="70" y="330">合并优先级</text>
   <text class="t" x="70" y="355.0">根据 Segment 重要性设置合并优先级</text>
   <text class="muted" x="40" y="395">理解 合并的性能优化，是掌握 Segment 合并机制的关键</text>

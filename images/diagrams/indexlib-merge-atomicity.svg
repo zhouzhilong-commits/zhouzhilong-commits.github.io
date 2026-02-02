@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">合并的原子性：通过 Fence 机制保证合并的原子性</text>
   <text class="muted" x="40" y="66">合并的原子性保证包括 Fence 机制、事务性提交、错误恢复等。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">Fence 机制</text>
   <text class="t" x="70" y="145.0">通过 Fence 目录保证合并的原子性</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">事务性提交</text>
   <text class="t" x="70" y="215.0">合并完成后原子性地提交新版本</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">错误恢复</text>
   <text class="t" x="70" y="285.0">如果合并失败，可以回滚，不影响已有版本</text>
   <text class="muted" x="40" y="325">理解 合并的原子性，是掌握 Segment 合并机制的关键</text>

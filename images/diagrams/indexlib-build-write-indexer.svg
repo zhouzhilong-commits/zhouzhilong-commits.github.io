@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 545">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 567.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -11,7 +11,7 @@
       .indexer{fill:#f3e5f5;stroke:#7b1fa2;stroke-width:2;rx:10}
       .result{fill:#fff3e0;stroke:#e65100;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 545" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 567.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -19,7 +19,7 @@
   <text class="title" x="40" y="42">文档写入 Indexer：倒排索引、正排索引等的构建</text>
   <text class="muted" x="40" y="66">文档写入各个 Indexer 的过程包括解析文档、写入倒排索引、写入正排索引、更新摘要等步骤。</text>
 
-  <rect class="doc" x="40" y="95" width="200" height="140.0"/>
+  <rect class="doc" x="40" y="95" width="200" height="154.0"/>
   <text class="h" x="70" y="130">文档</text>
   <text class="t" x="70" y="155">Document</text>
   <text class="t" x="70" y="175">字段列表</text>
@@ -28,42 +28,42 @@
 
   <path class="arrow" d="M 240 155 L 280 155"/>
 
-  <rect class="result" x="300" y="95" width="200" height="140.0"/>
+  <rect class="result" x="300" y="95" width="200" height="154.0"/>
   <text class="h" x="330" y="130">解析文档</text>
   <text class="t" x="330" y="155">提取索引字段</text>
   <text class="t" x="330" y="175">提取属性字段</text>
   <text class="t" x="330" y="195">提取摘要字段</text>
   <text class="t" x="330" y="215">验证字段格式</text>
 
-  <rect class="indexer" x="40" y="235" width="220" height="130.0"/>
+  <rect class="indexer" x="40" y="235" width="220" height="154.0"/>
   <text class="h" x="70" y="270">倒排索引</text>
   <text class="t" x="70" y="295">提取 term</text>
   <text class="t" x="70" y="315">写入倒排列表</text>
   <text class="t" x="70" y="335">更新 term 频率</text>
-  <text class="t" x="70" y="345">构建倒排索引结构</text>
+  <text class="t" x="70" y="355.0">构建倒排索引结构</text>
 
-  <rect class="indexer" x="280" y="235" width="220" height="130.0"/>
+  <rect class="indexer" x="280" y="235" width="220" height="154.0"/>
   <text class="h" x="310" y="270">正排索引</text>
   <text class="t" x="310" y="295">写入文档属性</text>
   <text class="t" x="310" y="315">构建属性索引</text>
   <text class="t" x="310" y="335">更新属性统计</text>
-  <text class="t" x="310" y="345">构建正排索引结构</text>
+  <text class="t" x="310" y="355.0">构建正排索引结构</text>
 
-  <rect class="indexer" x="520" y="235" width="220" height="130.0"/>
+  <rect class="indexer" x="520" y="235" width="220" height="154.0"/>
   <text class="h" x="550" y="270">摘要索引</text>
   <text class="t" x="550" y="295">更新摘要信息</text>
   <text class="t" x="550" y="315">构建摘要数据</text>
   <text class="t" x="550" y="335">更新摘要统计</text>
-  <text class="t" x="550" y="345">构建摘要索引结构</text>
+  <text class="t" x="550" y="355.0">构建摘要索引结构</text>
 
-  <rect class="indexer" x="760" y="235" width="200" height="130.0"/>
+  <rect class="indexer" x="760" y="235" width="200" height="154.0"/>
   <text class="h" x="790" y="270">其他索引</text>
   <text class="t" x="790" y="295">主键索引</text>
   <text class="t" x="790" y="315">位图索引</text>
   <text class="t" x="790" y="335">范围索引等</text>
-  <text class="t" x="790" y="345">根据 Schema 配置</text>
+  <text class="t" x="790" y="355.0">根据 Schema 配置</text>
 
-  <rect class="box" x="40" y="375" width="920" height="140.0"/>
+  <rect class="box" x="40" y="375" width="920" height="152.0"/>
   <text class="h" x="70" y="410">写入流程的关键点</text>
   <text class="t" x="70" y="435">1. 并行写入：多个 Indexer 可以并行写入，提高构建速度</text>
   <text class="t" x="70" y="455">2. 内存优化：优化内存使用，减少内存分配开销</text>

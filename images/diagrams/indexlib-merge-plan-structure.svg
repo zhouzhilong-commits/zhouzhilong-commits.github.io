@@ -15,10 +15,10 @@
   <text class="title" x="40" y="42">MergePlan 的结构：包含 SegmentMergePlan 列表和目标版本</text>
   <text class="muted" x="40" y="66">MergePlan 包含多个 SegmentMergePlan，每个 SegmentMergePlan 定义了一组要合并的 Segment 和目标 Segment。</text>
 
-  <rect class="plan" x="40" y="95" width="920" height="380"/>
+  <rect class="plan" x="40" y="95" width="920" height="389.0"/>
   <text class="h" x="70" y="130">MergePlan</text>
 
-  <rect class="segment" x="70" y="150" width="400" height="245.0"/>
+  <rect class="segment" x="70" y="150" width="400" height="334.0"/>
   <text class="h" x="100" y="180">SegmentMergePlan 列表</text>
   <text class="t" x="100" y="205">SegmentMergePlan 1:</text>
   <text class="t" x="120" y="225">- 源 Segment: [1, 2, 3]</text>
@@ -30,7 +30,7 @@
   <text class="t" x="120" y="355">- 源 Segment: [6, 7, 8, 9]</text>
   <text class="t" x="120" y="375">- 目标 Segment: 12</text>
 
-  <rect class="version" x="490" y="150" width="450" height="200"/>
+  <rect class="version" x="490" y="150" width="450" height="209.0"/>
   <text class="h" x="520" y="180">目标版本 (TargetVersion)</text>
   <text class="t" x="520" y="205">- 版本 ID: 2</text>
   <text class="t" x="520" y="225">- Segment 列表: [10, 11, 12]</text>
@@ -40,7 +40,7 @@
   <text class="t" x="520" y="305">- 清理旧 Segment</text>
   <text class="t" x="520" y="325">- 更新 Locator</text>
 
-  <rect class="box" x="70" y="370" width="870" height="100.0"/>
+  <rect class="box" x="70" y="370" width="870" height="114.0"/>
   <text class="h" x="100" y="400">MergePlan 的关键字段</text>
   <text class="t" x="100" y="425">- _mergePlan: SegmentMergePlan 列表，每个 SegmentMergePlan 包含一组要合并的 Segment 和目标 Segment</text>
   <text class="t" x="100" y="450">- _targetVersion: 目标版本，包含合并后的 Segment 列表，用于更新 TabletData</text>

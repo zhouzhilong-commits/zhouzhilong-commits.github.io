@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 565">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000.0 589.0">
   <defs>
     <style>
       .box{fill:#fff;stroke:#333;stroke-width:2;rx:14}
@@ -9,7 +9,7 @@
       .arrow{stroke:#333;stroke-width:2;fill:none;marker-end:url(#m)}
       .step{fill:#e3f2fd;stroke:#1976d2;stroke-width:2;rx:12}
     </style>
-    <marker id="m" viewBox="0 0 1000 565" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="m" viewBox="0 0 1000.0 589.0" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
     </marker>
   </defs>
@@ -17,7 +17,7 @@
   <text class="title" x="40" y="42">Segment 转储流程：从 MemSegment 到 DiskSegment 的完整过程</text>
   <text class="muted" x="40" y="66">转储是异步的，将 MemSegment 的内存数据写入磁盘，创建 DiskSegment。</text>
 
-  <rect class="step" x="40" y="95" width="200" height="120.0"/>
+  <rect class="step" x="40" y="95" width="200" height="134.0"/>
   <text class="h" x="70" y="130">1. CreateSegmentDumper</text>
   <text class="t" x="70" y="155">创建转储器</text>
   <text class="t" x="70" y="175">设置状态 DUMPING</text>
@@ -25,7 +25,7 @@
 
   <path class="arrow" d="M 240 145 L 280 145"/>
 
-  <rect class="step" x="290" y="95" width="180" height="120.0"/>
+  <rect class="step" x="290" y="95" width="180" height="134.0"/>
   <text class="h" x="320" y="130">2. CreateDumpParams</text>
   <text class="t" x="320" y="155">创建转储参数</text>
   <text class="t" x="320" y="175">计算内存成本</text>
@@ -33,7 +33,7 @@
 
   <path class="arrow" d="M 470 145 L 510 145"/>
 
-  <rect class="step" x="520" y="95" width="180" height="120.0"/>
+  <rect class="step" x="520" y="95" width="180" height="134.0"/>
   <text class="h" x="550" y="130">3. Dump（异步）</text>
   <text class="t" x="550" y="155">写入磁盘</text>
   <text class="t" x="550" y="175">创建索引文件</text>
@@ -41,13 +41,13 @@
 
   <path class="arrow" d="M 700 145 L 740 145"/>
 
-  <rect class="step" x="750" y="95" width="210" height="120.0"/>
+  <rect class="step" x="750" y="95" width="210" height="134.0"/>
   <text class="h" x="780" y="130">4. 创建 DiskSegment</text>
   <text class="t" x="780" y="155">转储完成</text>
   <text class="t" x="780" y="175">创建 DiskSegment</text>
   <text class="t" x="780" y="195">更新 TabletData</text>
 
-  <rect class="box" x="40" y="215" width="920" height="320.0"/>
+  <rect class="box" x="40" y="215" width="920" height="334.0"/>
   <text class="h" x="70" y="250">详细转储流程</text>
   <text class="t" x="70" y="275">1. CreateSegmentDumper：TabletWriter::CreateSegmentDumper() 创建 SegmentDumper，</text>
   <text class="t" x="90" y="295">将 MemSegment 状态设置为 ST_DUMPING，准备转储任务</text>

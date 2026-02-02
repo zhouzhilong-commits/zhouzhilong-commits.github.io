@@ -13,13 +13,13 @@
 
   <text class="title" x="40" y="42">层级配额管理：从根控制器到子控制器的层级结构</text>
   <text class="muted" x="40" y="66">层级配额管理设计支持从根控制器到子控制器的层级结构，实现配额的分层分配和管理。</text>
-  <rect class="item" x="40" y="95" width="920" height="70.0"/>
+  <rect class="item" x="40" y="95" width="920" height="84.0"/>
   <text class="h" x="70" y="120">根控制器</text>
   <text class="t" x="70" y="145.0">管理总配额，分配给子控制器，支持配额预留和回收</text>
-  <rect class="item" x="40" y="165" width="920" height="70.0"/>
+  <rect class="item" x="40" y="165" width="920" height="84.0"/>
   <text class="h" x="70" y="190">子控制器</text>
   <text class="t" x="70" y="215.0">从父控制器获取配额，分配给更下层的控制器，支持配额传递</text>
-  <rect class="item" x="40" y="235" width="920" height="110.0"/>
+  <rect class="item" x="40" y="235" width="920" height="122.0"/>
   <text class="h" x="70" y="260">叶子控制器</text>
   <text class="t" x="70" y="285.0">实际使用配额的控制器，分配给具体组件，支持配额释放</text>
   <text class="muted" x="40" y="325">理解 层级配额管理，是掌握 IndexLib 机制的关键</text>
