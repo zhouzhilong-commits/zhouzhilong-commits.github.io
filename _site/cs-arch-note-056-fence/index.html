@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「计算机组成笔记：内存屏障：为什么需要 fence」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文深入解析内存屏障（fence）的必要性、工作原理、常见场景和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="计算机组成笔记：内存屏障：为什么需要 fence">
-    <meta itemprop="description" content="本文围绕「计算机组成笔记：内存屏障：为什么需要 fence」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文深入解析内存屏障（fence）的必要性、工作原理、常见场景和工程实践。">
     <meta itemprop="datePublished" content="June 01, 2019">
     
 
@@ -610,7 +554,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -629,10 +573,11 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「计算机组成笔记：内存屏障：为什么需要 fence」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文深入解析内存屏障（fence）的必要性、工作原理、常见场景和工程实践。</p>
 
 <p><img src="/images/diagrams/memory-reorder-fence.svg" alt="计算机组成笔记：内存屏障：为什么需要 fence" /></p>
-<h2 id="1-为什么需要-fence因为顺序不是你以为的顺序">1. 为什么需要 fence：因为“顺序”不是你以为的顺序</h2>
+
+<h2 id="1-为什么需要-fence因为顺序不是你以为的顺序">1. 为什么需要 fence：因为”顺序”不是你以为的顺序</h2>
 
 <p>并发 bug 最难的一类是：代码看起来没问题，但在某些机器/负载/优化级别下偶现。</p>
 
@@ -644,9 +589,52 @@
   <li><strong>缓存系统</strong>：不同 core 的可见性与一致性传播存在延迟</li>
 </ul>
 
-<p>因此，“我先写 A 再写 B” 并不保证另一个线程也按这个顺序观察到。</p>
+<p>因此，”我先写 A 再写 B” 并不保证另一个线程也按这个顺序观察到。</p>
 
 <p>fence（内存屏障）提供的是：<strong>跨线程可见性的顺序约束</strong>。</p>
+
+<h3 id="11-三层重排机制">1.1 三层重排机制</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[源代码] --&gt; B[编译器重排]
+  B --&gt; C[CPU 重排]
+  C --&gt; D[缓存系统重排]
+  D --&gt; E[实际执行顺序]
+  
+  F[期望顺序] --&gt; G[写 A]
+  G --&gt; H[写 B]
+  
+  E --&gt; I{顺序一致?}
+  I --&gt;|否| J[需要 Fence]
+  I --&gt;|是| K[正常执行]
+</code></pre>
+
+<h3 id="12-编译器重排示例">1.2 编译器重排示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 源代码</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+
+<span class="c1">// 编译器可能重排为</span>
+<span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>  <span class="c1">// 先执行</span>
+<span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// 后执行</span>
+<span class="c1">// 单线程语义不变，但多线程可能观察到不同顺序</span>
+</code></pre></div></div>
+
+<h3 id="13-cpu-重排示例">1.3 CPU 重排示例</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant CPU as CPU Core
+  participant SB as Store Buffer
+  participant Cache as Cache
+  participant Mem as Memory
+
+  CPU-&gt;&gt;SB: Store A
+  CPU-&gt;&gt;SB: Store B
+  Note over SB: Store Buffer 可能乱序
+  SB-&gt;&gt;Cache: Flush (可能乱序)
+  Cache-&gt;&gt;Mem: Write (可能乱序)
+</code></pre>
 
 <h2 id="2-最常见场景发布-订阅publishconsume">2. 最常见场景：发布-订阅（publish/consume）</h2>
 
@@ -666,11 +654,151 @@
   <li>如果为 1，再读数据 <code class="language-plaintext highlighter-rouge">data</code></li>
 </ol>
 
-<p>你希望的承诺是：consumer 看到 <code class="language-plaintext highlighter-rouge">ready==1</code> 时，必然能看到 producer 写入的 <code class="language-plaintext highlighter-rouge">data</code>。</p>
+<p>希望的承诺是：consumer 看到 <code class="language-plaintext highlighter-rouge">ready==1</code> 时，必然能看到 producer 写入的 <code class="language-plaintext highlighter-rouge">data</code>。</p>
 
 <p>要达成这个承诺，需要正确的内存序（通常用语言层 atomic 的 release/acquire 语义，而不是手写 fence）。</p>
 
-<h2 id="3-为什么偶现它依赖时序缓存与编译优化">3. 为什么“偶现”：它依赖时序、缓存与编译优化</h2>
+<h3 id="23-问题场景">2.3 问题场景</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant P as Producer
+  participant M as Memory
+  participant C as Consumer
+
+  P-&gt;&gt;M: Write data
+  Note over M: 可能重排
+  P-&gt;&gt;M: Write ready=1
+  
+  C-&gt;&gt;M: Read ready
+  M--&gt;&gt;C: ready=1
+  C-&gt;&gt;M: Read data
+  M--&gt;&gt;C: old data (错误!)
+  
+  Note over P,C: 需要 Fence 保证顺序
+</code></pre>
+
+<h3 id="24-正确实现">2.4 正确实现</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 错误实现（无同步）</span>
+<span class="kt">int</span> <span class="n">data</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">ready</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// Producer</span>
+<span class="n">data</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+<span class="n">ready</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// 可能重排到 data 之前</span>
+
+<span class="c1">// Consumer</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">ready</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">data</span><span class="p">;</span>  <span class="c1">// 可能读到旧值</span>
+<span class="p">}</span>
+
+<span class="c1">// 正确实现（使用 atomic）</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">ready</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="c1">// Producer</span>
+<span class="n">data</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+<span class="n">ready</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>  <span class="c1">// release 保证之前的所有写可见</span>
+
+<span class="c1">// Consumer</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">ready</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// acquire 保证之后的所有读看到 release 之前的写</span>
+    <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>  <span class="c1">// 保证看到 42</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant P as Producer
+  participant F as Fence
+  participant M as Memory
+  participant C as Consumer
+
+  P-&gt;&gt;M: Write data=42
+  P-&gt;&gt;F: Release fence
+  F-&gt;&gt;M: Ensure order
+  P-&gt;&gt;M: Write ready=1
+  
+  C-&gt;&gt;M: Read ready
+  M--&gt;&gt;C: ready=1
+  C-&gt;&gt;F: Acquire fence
+  F-&gt;&gt;M: Ensure visibility
+  C-&gt;&gt;M: Read data
+  M--&gt;&gt;C: data=42 (正确!)
+</code></pre>
+
+<h2 id="3-内存序memory-order">3. 内存序（Memory Order）</h2>
+
+<h3 id="31-内存序类型">3.1 内存序类型</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Memory Order] --&gt; B[Relaxed]
+  A --&gt; C[Acquire]
+  A --&gt; D[Release]
+  A --&gt; E[Acquire-Release]
+  A --&gt; F[Sequential Consistency]
+  
+  B --&gt; G[无顺序保证]
+  C --&gt; H[读屏障]
+  D --&gt; I[写屏障]
+  E --&gt; J[读写屏障]
+  F --&gt; K[最强保证]
+</code></pre>
+
+<h3 id="32-内存序语义">3.2 内存序语义</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>内存序</th>
+      <th>语义</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>relaxed</td>
+      <td>无顺序保证</td>
+      <td>计数器等</td>
+    </tr>
+    <tr>
+      <td>acquire</td>
+      <td>读屏障</td>
+      <td>Consumer 端</td>
+    </tr>
+    <tr>
+      <td>release</td>
+      <td>写屏障</td>
+      <td>Producer 端</td>
+    </tr>
+    <tr>
+      <td>acq_rel</td>
+      <td>读写屏障</td>
+      <td>双向同步</td>
+    </tr>
+    <tr>
+      <td>seq_cst</td>
+      <td>顺序一致性</td>
+      <td>默认，最强保证</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="33-内存序示例">3.3 内存序示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Release-Acquire 配对</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">ready</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+
+<span class="c1">// Thread 1 (Producer)</span>
+<span class="n">data</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+<span class="n">ready</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="nb">true</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>  <span class="c1">// release: 之前的所有写对 acquire 可见</span>
+
+<span class="c1">// Thread 2 (Consumer)</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">ready</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">))</span> <span class="p">{</span>  <span class="c1">// acquire: 看到 release 之前的所有写</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">)</span> <span class="o">==</span> <span class="mi">42</span><span class="p">);</span>  <span class="c1">// 保证看到 42</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-为什么偶现它依赖时序缓存与编译优化">4. 为什么”偶现”：它依赖时序、缓存与编译优化</h2>
 
 <p>这类 bug 往往具有这些特征：</p>
 
@@ -680,7 +808,43 @@
   <li>只在某些架构出现（例如 x86 上不容易复现，ARM 更容易暴露）</li>
 </ul>
 
-<h2 id="4-工程建议优先用成熟原语不要手写-fence">4. 工程建议：优先用成熟原语，不要手写 fence</h2>
+<h3 id="41-架构差异">4.1 架构差异</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[CPU 架构] --&gt; B[x86]
+  A --&gt; C[ARM]
+  A --&gt; D[PowerPC]
+  
+  B --&gt; E[TSO 模型]
+  E --&gt; F[Store 不会重排]
+  F --&gt; G[问题不易暴露]
+  
+  C --&gt; H[弱内存模型]
+  H --&gt; I[更多重排]
+  I --&gt; J[问题容易暴露]
+  
+  D --&gt; K[弱内存模型]
+  K --&gt; L[需要显式同步]
+</code></pre>
+
+<h3 id="42-调试困难">4.2 调试困难</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[并发 Bug] --&gt; B{特征}
+  B --&gt; C[偶现]
+  B --&gt; D[依赖时序]
+  B --&gt; E[架构相关]
+  
+  C --&gt; F[难以复现]
+  D --&gt; G[加日志消失]
+  E --&gt; H[特定平台出现]
+  
+  F --&gt; I[需要系统化方法]
+  G --&gt; I
+  H --&gt; I
+</code></pre>
+
+<h2 id="5-工程建议优先用成熟原语不要手写-fence">5. 工程建议：优先用成熟原语，不要手写 fence</h2>
 
 <p>大原则：</p>
 
@@ -690,18 +854,158 @@
   <li><strong>最后才考虑手写 fence</strong>：因为它很难保证跨平台正确性与可维护性</li>
 </ul>
 
-<h2 id="5-排障顺序遇到偶发并发错">5. 排障顺序（遇到“偶发并发错”）</h2>
+<h3 id="51-选择原则">5.1 选择原则</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[需要同步] --&gt; B{性能要求?}
+  B --&gt;|低| C[使用锁]
+  B --&gt;|高| D{无锁需求?}
+  
+  D --&gt;|是| E[使用 atomic]
+  D --&gt;|否| C
+  
+  E --&gt; F{需要自定义?}
+  F --&gt;|是| G[手写 fence]
+  F --&gt;|否| E
+  
+  C --&gt; H[std::mutex]
+  E --&gt; I[std::atomic]
+  G --&gt; J[__sync_synchronize]
+</code></pre>
+
+<h3 id="52-代码示例">5.2 代码示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 推荐：使用 atomic</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">counter</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">counter</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+
+<span class="c1">// 不推荐：手写 fence</span>
+<span class="kt">int</span> <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">__sync_synchronize</span><span class="p">();</span>  <span class="c1">// 全屏障，性能差</span>
+<span class="n">counter</span><span class="o">++</span><span class="p">;</span>
+<span class="n">__sync_synchronize</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h2 id="6-排障顺序遇到偶发并发错">6. 排障顺序（遇到”偶发并发错”）</h2>
 
 <ol>
   <li><strong>先确认是否数据竞争</strong>：是否存在未同步的共享读写？</li>
-  <li><strong>把语义写成可验证的承诺</strong>：例如“看到 ready==1 必须看到 data”</li>
+  <li><strong>把语义写成可验证的承诺</strong>：例如”看到 ready==1 必须看到 data”</li>
   <li><strong>用更强原语做 A/B</strong>：用锁或更强 memory order 验证是否为可见性问题</li>
   <li><strong>最后再优化回无锁</strong>：先正确，再谈性能</li>
 </ol>
 
-<h2 id="6-小结">6. 小结</h2>
+<h3 id="61-排障流程">6.1 排障流程</h3>
 
-<p>fence 的存在是因为现代系统会重排；你需要的是“跨线程的可见性承诺”。工程实践里，把 fence 隐藏在原子操作/锁里通常是最稳的做法：语义清晰、跨平台一致、也更可维护。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[偶发并发错误] --&gt; B[确认数据竞争]
+  B --&gt; C{存在竞争?}
+  C --&gt;|否| D[其他问题]
+  C --&gt;|是| E[明确语义承诺]
+  
+  E --&gt; F[使用更强同步]
+  F --&gt; G{问题消失?}
+  G --&gt;|是| H[确认是可见性问题]
+  G --&gt;|否| I[其他问题]
+  
+  H --&gt; J[逐步优化]
+  J --&gt; K[使用合适的 memory order]
+  K --&gt; L[验证正确性]
+</code></pre>
+
+<h3 id="62-工具与方法">6.2 工具与方法</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 使用 ThreadSanitizer 检测数据竞争</span>
+gcc <span class="nt">-fsanitize</span><span class="o">=</span>thread program.c
+
+<span class="c"># 使用内存模型检查工具</span>
+<span class="c"># C++ memory model checker</span>
+</code></pre></div></div>
+
+<h2 id="7-实际案例">7. 实际案例</h2>
+
+<h3 id="71-案例无锁队列">7.1 案例：无锁队列</h3>
+
+<p><strong>问题</strong>：偶发读取到旧值</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>Producer 和 Consumer 之间缺少同步</li>
+  <li>Store 和 Load 可能重排</li>
+</ul>
+
+<p><strong>修复</strong>：</p>
+<ul>
+  <li>使用 release-acquire 语义</li>
+  <li>Producer 使用 release，Consumer 使用 acquire</li>
+</ul>
+
+<p><strong>结果</strong>：问题消失</p>
+
+<h3 id="72-案例双重检查锁定">7.2 案例：双重检查锁定</h3>
+
+<p><strong>问题</strong>：单例模式偶发创建多个实例</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>缺少内存屏障</li>
+  <li>编译器优化导致重排</li>
+</ul>
+
+<p><strong>修复</strong>：</p>
+<ul>
+  <li>使用 atomic 和 memory_order</li>
+  <li>或使用 std::call_once</li>
+</ul>
+
+<p><strong>结果</strong>：问题解决</p>
+
+<h2 id="8-设计原则与最佳实践">8. 设计原则与最佳实践</h2>
+
+<h3 id="81-设计原则">8.1 设计原则</h3>
+
+<ol>
+  <li><strong>优先使用高级抽象</strong>：锁 &gt; atomic &gt; fence</li>
+  <li><strong>明确语义</strong>：使用合适的 memory order</li>
+  <li><strong>跨平台考虑</strong>：不要依赖特定架构的强内存模型</li>
+</ol>
+
+<h3 id="82-最佳实践">8.2 最佳实践</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[同步需求] --&gt; B[选择方案]
+  B --&gt; C[锁]
+  B --&gt; D[atomic]
+  B --&gt; E[fence]
+  
+  C --&gt; F[语义清晰]
+  D --&gt; G[性能好]
+  E --&gt; H[最后选择]
+  
+  F --&gt; I[推荐]
+  G --&gt; I
+  H --&gt; J[谨慎使用]
+</code></pre>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>fence 的存在是因为现代系统会重排；需要的是”跨线程的可见性承诺”。工程实践里，把 fence 隐藏在原子操作/锁里通常是最稳的做法：语义清晰、跨平台一致、也更可维护。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>现代系统有三层重排：编译器、CPU、缓存</li>
+  <li>需要 fence 保证跨线程可见性顺序</li>
+  <li>优先使用高级抽象（锁、atomic），最后才考虑手写 fence</li>
+  <li>使用合适的 memory order 平衡性能和正确性</li>
+</ul>
+
+<p><strong>排障流程</strong>：</p>
+<ol>
+  <li>确认是否存在数据竞争</li>
+  <li>明确语义承诺</li>
+  <li>使用更强同步验证</li>
+  <li>逐步优化到合适的 memory order</li>
+</ol>
 
         
       </section>
@@ -743,12 +1047,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

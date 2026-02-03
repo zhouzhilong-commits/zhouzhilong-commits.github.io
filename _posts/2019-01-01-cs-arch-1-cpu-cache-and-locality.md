@@ -224,7 +224,169 @@ struct GoodAlignment {
    - 使用 `__builtin_prefetch` 预取数据
    - 编译器自动预取
 
-## 8. 设计模式与架构原则
+### 7.3 Cache 访问流程
+
+```mermaid
+sequenceDiagram
+  participant CPU as CPU
+  participant L1 as L1 Cache
+  participant L2 as L2 Cache
+  participant L3 as L3 Cache
+  participant Mem as Memory
+
+  CPU->>L1: 访问地址
+  L1->>L1: 查找 Cache
+  
+  alt L1 Hit
+    L1-->>CPU: 返回数据 (1-3周期)
+  else L1 Miss
+    L1->>L2: 查找 Cache
+    alt L2 Hit
+      L2-->>L1: 返回数据
+      L1-->>CPU: 返回数据 (10-20周期)
+    else L2 Miss
+      L2->>L3: 查找 Cache
+      alt L3 Hit
+        L3-->>L2: 返回数据
+        L2-->>L1: 返回数据
+        L1-->>CPU: 返回数据 (40-75周期)
+      else L3 Miss
+        L3->>Mem: 访问内存
+        Mem-->>L3: 返回数据
+        L3-->>L2: 更新 Cache
+        L2-->>L1: 更新 Cache
+        L1-->>CPU: 返回数据 (100-300周期)
+      end
+    end
+  end
+```
+
+### 7.4 AMAT 计算
+
+平均内存访问时间（AMAT）的计算公式：
+
+```
+AMAT = Hit Time + Miss Rate × Miss Penalty
+```
+
+对于多级 Cache：
+
+```
+AMAT = L1 Hit Time + L1 Miss Rate × (L2 Hit Time + L2 Miss Rate × (L3 Hit Time + L3 Miss Rate × Memory Access Time))
+```
+
+```mermaid
+flowchart TD
+  A[AMAT 计算] --> B[L1 Hit Time]
+  A --> C[L1 Miss Rate]
+  A --> D[Miss Penalty]
+  
+  C --> E[L2 Hit Time]
+  C --> F[L2 Miss Rate]
+  F --> G[L3 Hit Time]
+  F --> H[L3 Miss Rate]
+  H --> I[Memory Access Time]
+  
+  B --> J[总延迟]
+  E --> J
+  G --> J
+  I --> J
+```
+
+### 7.5 性能优化示例
+
+```cpp
+// 优化前：随机访问，Cache 不友好
+void process_random(int* data, int* indices, int n) {
+    for (int i = 0; i < n; ++i) {
+        process(data[indices[i]]);  // 随机访问，Cache miss 率高
+    }
+}
+
+// 优化后：排序索引，提高局部性
+void process_optimized(int* data, int* indices, int n) {
+    // 按索引排序，提高空间局部性
+    std::sort(indices, indices + n);
+    for (int i = 0; i < n; ++i) {
+        process(data[indices[i]]);  // 顺序访问，Cache 友好
+    }
+}
+```
+
+## 8. 实际性能测试案例
+
+### 8.1 顺序访问 vs 随机访问
+
+测试不同访问模式对性能的影响：
+
+```cpp
+// 顺序访问测试
+void test_sequential_access(int* arr, int n) {
+    int sum = 0;
+    for (int i = 0; i < n; ++i) {
+        sum += arr[i];
+    }
+}
+
+// 随机访问测试
+void test_random_access(int* arr, int* indices, int n) {
+    int sum = 0;
+    for (int i = 0; i < n; ++i) {
+        sum += arr[indices[i]];
+    }
+}
+```
+
+**性能对比**（n=1M，数组大小 4MB）：
+- 顺序访问：~10ms
+- 随机访问：~50ms
+
+差异主要来自 Cache miss 率：
+- 顺序访问：Cache miss 率 < 1%
+- 随机访问：Cache miss 率 > 50%
+
+### 8.2 数据结构选择的影响
+
+```mermaid
+flowchart TD
+  A[数据结构选择] --> B[数组]
+  A --> C[链表]
+  A --> D[树]
+  
+  B --> E[顺序访问]
+  E --> F[Cache 友好]
+  F --> G[性能好]
+  
+  C --> H[随机访问]
+  H --> I[Cache 不友好]
+  I --> J[性能差]
+  
+  D --> K[部分顺序]
+  K --> L[中等性能]
+```
+
+### 8.3 False Sharing 性能影响
+
+```cpp
+// 测试 False Sharing 的影响
+struct Counter {
+    alignas(64) int count1;  // 分离到不同 Cache line
+    alignas(64) int count2;
+};
+
+void test_false_sharing() {
+    Counter c;
+    // 两个线程分别写 count1 和 count2
+    // 如果不在同一 Cache line，性能好
+    // 如果在同一 Cache line，性能差（Cache line 乒乓）
+}
+```
+
+**性能影响**：
+- 无 False Sharing：吞吐 ~100M ops/s
+- 有 False Sharing：吞吐 ~10M ops/s
+
+## 9. 设计模式与架构原则
 
 ### 8.1 设计模式视角
 

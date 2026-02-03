@@ -9,7 +9,7 @@ redirect_from:
   - /rocksdb-note-037-write-stall/
 ---
 
-本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次**工程化**的梳理：先定义语义/模型，再给出可观测信号与排障顺序。
+本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。
 
 ![RocksDB 笔记：Write stall：为什么会卡住、如何定位](/images/diagrams/rocksdb-flush-l0-stall.svg)
 ## 1. write stall 的本质：系统在“欠账过多”时强制刹车
@@ -22,7 +22,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 
 于是系统选择：**宁可卡写，也不要把整个实例拖到不可恢复的抖动里**。
 
-你可以把它理解成写入链路上的“保险丝”。
+可以将它理解成写入链路上的“保险丝”。
 
 ## 2. 一张根因树：stall 一般是这三类欠账之一
 
@@ -34,7 +34,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 - memtable 相关内存占用持续上升
 - flush 变慢或 flush 线程/队列被挤压
 
-直觉：写入把“内存缓冲”吃光了，系统只能卡写等待 flush 把欠账还掉。
+要点：写入把“内存缓冲”吃光了，系统只能卡写等待 flush 把欠账还掉。
 
 ### 2.2 L0 欠账（flush 产出太多，L0→L1 compaction 跟不上）
 
@@ -44,7 +44,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 - compaction backlog 持续增长
 - 读放大指标变差（读路径需要触碰更多文件）
 
-直觉：flush 很勤快，但 compaction 还债能力不足，L0 堆成“炸弹”。
+要点：flush 很勤快，但 compaction 还债能力不足，L0 堆成“炸弹”。
 
 ### 2.3 compaction 欠账（整体还债能力不足，进入“追债-抖动”循环）
 
@@ -54,7 +54,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 - compaction/flush 的耗时分位数出现长尾
 - 写入 P99 抖动、且随时间逐步恶化
 
-直觉：后台长期追不上，系统为了不崩只能频繁限速/卡写。
+要点：后台长期追不上，系统为了不崩只能频繁限速/卡写。
 
 ## 3. 线上最常见的“诱因”（按出现频率）
 
@@ -63,7 +63,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 3. **写入形态问题**：大量小写、热点 key、覆盖写多，导致 flush/L0 更频繁。
 4. **CPU 成为瓶颈**：NVMe 足够快后，压缩/校验/锁竞争更容易成为主导。
 
-## 4. 你应该先看哪些指标（从“最能证明因果”开始）
+## 4. 应当先看哪些指标（从“最能证明因果”开始）
 
 - **immutable memtable 数量**：是否持续上升？
 - **L0 文件数 / L0 size**：是否持续上升并接近阈值？
@@ -71,7 +71,7 @@ write stall（或 write stop）通常不是“写路径坏了”，而是 RocksD
 - **flush / compaction 的耗时分位数**：是否出现长尾？
 - **stall/throttle 次数与持续时间**：卡写是偶发还是长期？
 
-## 5. 最小排障顺序（强烈建议按这个走）
+## 5. 排障顺序（强烈建议按这个走）
 
 1. **先判定是哪类欠账**：immutable 先堆？还是 L0/backlog 先堆？
 2. **再判定瓶颈类型**：IO-bound 还是 CPU-bound？

@@ -16,7 +16,7 @@ SST 本质上是“磁盘上的有序 KV 文件”，它让：
 - flush 能顺序写出一个有序文件
 - 读路径可以做二分查找 + block 粒度读取
 
-## 2. 你可以把 SST 理解成三层
+## 2. 可以将 SST 理解成三层
 
 - **Data blocks**：真正存 KV 数据（通常是压缩后的 block）
 - **Index blocks**：告诉你某个 key 大概在哪个 data block

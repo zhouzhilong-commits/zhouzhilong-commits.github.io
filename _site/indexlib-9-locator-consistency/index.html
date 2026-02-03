@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -683,19 +627,19 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Locator {
-        -uint64_t _src
-        -Progress::Offset _minOffset
-        -MultiProgress _multiProgress
-        -string _userData
-        -bool _isLegacyLocator
-        +IsFasterThan(Locator, bool) LocatorCompareResult
-        +Update(Locator) void
-        +Serialize() string
-        +Deserialize(string) Status
-        +GetSrc() uint64_t
-        +GetMinOffset() Offset
-        +GetMultiProgress() MultiProgress
-        +GetUserData() string
+        - uint64_t _src
+        - Progress::Offset _minOffset
+        - MultiProgress _multiProgress
+        - string _userData
+        - bool _isLegacyLocator
+        + IsFasterThan()
+        + Update()
+        + Serialize()
+        + Deserialize()
+        + GetSrc()
+        + GetMinOffset()
+        + GetMultiProgress()
+        + GetUserData()
     }
     
     class LocatorCompareResult {
@@ -707,20 +651,20 @@
     }
     
     class DocInfo {
-        +int64_t timestamp
-        +uint32_t concurrentIdx
-        +uint16_t hashId
-        +uint8_t sourceIdx
+        + int64_t timestamp
+        + uint32_t concurrentIdx
+        + uint16_t hashId
+        + uint8_t sourceIdx
     }
     
     class Progress {
-        +uint32_t from
-        +uint32_t to
-        +Offset offset
+        + uint32_t from
+        + uint32_t to
+        + Offset offset
     }
     
     class MultiProgress {
-        +vector~ProgressVector~ _progresses
+        + vector_ProgressVector _progresses
     }
     
     Locator --&gt; LocatorCompareResult : 返回
@@ -1838,30 +1782,30 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Version {
-        -versionid_t _versionId
-        -map~uint64_t, Locator~ _locators
-        +GetLocator(uint64_t src) Locator
-        +SetLocator(uint64_t src, Locator) void
-        +GetAllLocators() map~uint64_t, Locator~
+        - versionid_t _versionId
+        - map_uint64_t_Locator _locators
+        + GetLocator()
+        + SetLocator()
+        + GetAllLocators()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan(Locator) LocatorCompareResult
-        +Update(Locator) void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
     }
     
     class TabletWriter {
-        -map~uint64_t, Locator~ _locators
-        +Build(Document) Status
-        +GetLocator(uint64_t src) Locator
+        - map_uint64_t_Locator _locators
+        + Build()
+        + GetLocator()
     }
     
     class Document {
-        +uint64_t _src
-        +DocInfo _docInfo
-        +GetLocator() Locator
+        + uint64_t _src
+        + DocInfo _docInfo
+        + GetLocator()
     }
     
     Version --&gt; Locator : 包含多个
@@ -2255,25 +2199,25 @@
 
 <pre><code class="language-mermaid">classDiagram
     class LocatorPool {
-        -queue~Locator*~ _pool
-        -mutex _mutex
-        +Get() Locator*
-        +Put(Locator*) void
-        +Clear() void
+        - queue_Locator _pool
+        - mutex _mutex
+        + Get()
+        + Put()
+        + Clear()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        -string _userData
-        +Reset() void
-        +Reuse() void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        - string _userData
+        + Reset()
+        + Reuse()
     }
     
     class ProgressPool {
-        -queue~ProgressVector*~ _pool
-        +Get() ProgressVector*
-        +Put(ProgressVector*) void
+        - queue_ProgressVector _pool
+        + Get()
+        + Put()
     }
     
     LocatorPool --&gt; Locator : 管理
@@ -2352,11 +2296,11 @@
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan() LocatorCompareResult
-        +Update() void
-        +Serialize() string
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
+        + Serialize()
     }
     
     class Compatibility {
@@ -2617,12 +2561,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

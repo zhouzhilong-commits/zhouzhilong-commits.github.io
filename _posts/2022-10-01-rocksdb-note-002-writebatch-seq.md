@@ -13,15 +13,15 @@ permalink: /rocksdb-note-002-writebatch-seq/
 
 ![WriteBatch 与 seq：原子批次、可见性与确认点](/images/diagrams/rocksdb-writebatch-seq-atomicity.svg)
 
-## 1. 你为什么会关心 WriteBatch / seq
+## 1. 为什么需要关注 WriteBatch / seq
 
 线上常见触发点：
 
-- **你想要“要么全写入、要么全不写入”**：例如写一条主记录 + 两个索引更新；或者 Put 新值同时 Delete 旧 key。
-- **你遇到“读到了半套数据”**：多 key 更新没有原子边界，读端在更新中间切入。
-- **你在 debug“乱序/覆盖”**：同一个 key 连续写，多线程并发下到底谁赢？读到的是哪次写？
+- **需要“要么全写入、要么全不写入”**：例如写一条主记录 + 两个索引更新；或者 Put 新值同时 Delete 旧 key。
+- **遇到“读到了半套数据”**：多 key 更新没有原子边界，读端在更新中间切入。
+- **在调试“乱序/覆盖”**：同一个 key 连续写，多线程并发下到底谁赢？读到的是哪次写？
 
-一句话：**WriteBatch 提供“原子边界”，seq 提供“全局顺序”**（以 DB 为单位）。
+核心要点：**WriteBatch 提供“原子边界”，seq 提供“全局顺序”**（以 DB 为单位）。
 
 ## 2. 核心模型：用 4 个概念把写入讲清楚
 
@@ -32,7 +32,7 @@ permalink: /rocksdb-note-002-writebatch-seq/
 
 ## 3. 机制拆解：一次 WriteBatch 到底发生了什么（高层）
 
-你可以把它当成下面这个最短闭环：
+可以将它当成下面这个最短闭环：
 
 1. **给 batch 分配一个起始 seq**（比如 `seq = S`）。
 2. batch 内的第 i 个操作，逻辑上对应 `S + i`（实现上可能通过 encode/iterate 实现）。
@@ -49,7 +49,7 @@ permalink: /rocksdb-note-002-writebatch-seq/
 
 > 注意：不同读 API（是否使用 snapshot）会影响你能得到的语义；不要把“单 key 读到新值”误当成“多 key 原子可见”。
 
-## 4. 你会在系统里看到的现象（可观测信号）
+## 4. 会在系统里看到的现象（可观测信号）
 
 当 write path 出问题时，WriteBatch/seq 往往体现在这些地方：
 
@@ -59,7 +59,7 @@ permalink: /rocksdb-note-002-writebatch-seq/
 
 ## 5. 工程建议：怎么用好 WriteBatch
 
-- **把“逻辑事务”做成 batch**：主记录 + 索引更新尽量同批（否则你要自己处理崩溃恢复/补偿）。
+- **把“逻辑事务”做成 batch**：主记录 + 索引更新尽量同批（否则需要自己处理崩溃恢复/补偿）。
 - **不要为了吞吐盲目变大**：batch 过大可能拉高 P99（尤其当你开启 sync 或磁盘抖动时）。
 - **明确一致性目标**：
   - 只要“单 key 最终正确”：写后读一般就够。

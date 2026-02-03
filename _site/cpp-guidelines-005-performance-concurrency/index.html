@@ -1,0 +1,1378 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ Core Guidelines 阅读笔记（5）：性能与并发 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ Core Guidelines 阅读笔记（5）：性能与并发">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-guidelines-005-performance-concurrency/">
+  <meta property="og:url" content="http://localhost:4000/cpp-guidelines-005-performance-concurrency/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2024-05-10T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class=""><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class=""><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class="active"><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ Core Guidelines 阅读笔记（5）：性能与并发">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="May 10, 2024">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ Core Guidelines 阅读笔记（5）：性能与并发
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  4 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2024-05-10T00:00:00+08:00">May 10, 2024</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>本文是 C++ Core Guidelines 阅读笔记的第五篇，重点讨论性能优化和并发编程的规范。C++ 的优势在于性能，但需要正确使用才能发挥出来。</p>
+
+<h2 id="1-性能优化原则">1. 性能优化原则</h2>
+
+<p>性能优化需要遵循正确的原则，避免过早优化和错误优化。</p>
+
+<h3 id="11-先测量再优化">1.1 先测量，再优化</h3>
+
+<p>性能优化的黄金法则：先测量，找到真正的瓶颈，再优化。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：先测量性能</span>
+<span class="kt">void</span> <span class="nf">optimize</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">start</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+    <span class="n">process_data</span><span class="p">();</span>
+    <span class="k">auto</span> <span class="n">end</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+    
+    <span class="k">auto</span> <span class="n">duration</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">microseconds</span><span class="o">&gt;</span><span class="p">(</span>
+        <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Time: "</span> <span class="o">&lt;&lt;</span> <span class="n">duration</span><span class="p">.</span><span class="n">count</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">" us</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+    <span class="c1">// 分析性能瓶颈，找到真正的热点</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：过早优化</span>
+<span class="kt">void</span> <span class="n">optimize</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 没有测量就优化，可能优化了错误的地方</span>
+    <span class="c1">// 浪费时间和精力，代码变得更复杂</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="12-避免不必要的拷贝">1.2 避免不必要的拷贝</h3>
+
+<p>拷贝是常见的性能瓶颈，应该尽量避免：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：使用引用</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">vec</span><span class="p">);</span>
+<span class="c1">// 无拷贝开销</span>
+
+<span class="c1">// 不好：值传递</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">);</span>  
+<span class="c1">// 拷贝整个 vector，开销大</span>
+</code></pre></div></div>
+
+<h3 id="13-使用移动语义">1.3 使用移动语义</h3>
+
+<p>移动语义可以避免昂贵的拷贝操作：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：移动语义</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">create_data</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">;</span>
+    <span class="c1">// ...</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">;</span>  <span class="c1">// 移动，不拷贝</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：不必要的拷贝</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span> <span class="o">=</span> <span class="n">create_data</span><span class="p">();</span>  
+<span class="c1">// 可能拷贝（如果编译器没有优化）</span>
+</code></pre></div></div>
+
+<h2 id="2-内存管理性能">2. 内存管理性能</h2>
+
+<h3 id="21-预分配容器空间">2.1 预分配容器空间</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：预分配空间</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="n">vec</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">1000</span><span class="p">);</span>  <span class="c1">// 避免多次重新分配</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：动态分配</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>  <span class="c1">// 可能多次重新分配</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="22-使用对象池">2.2 使用对象池</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：对象池</span>
+<span class="k">class</span> <span class="nc">ObjectPool</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;&gt;</span> <span class="n">pool_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">acquire</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pool_</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="k">auto</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">pool_</span><span class="p">.</span><span class="n">back</span><span class="p">());</span>
+        <span class="n">pool_</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">release</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">obj</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">pool_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">obj</span><span class="p">));</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="3-算法选择">3. 算法选择</h2>
+
+<h3 id="31-选择合适的算法">3.1 选择合适的算法</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：选择合适的算法</span>
+<span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>  <span class="c1">// O(n log n)</span>
+
+<span class="c1">// 如果只需要部分排序</span>
+<span class="n">std</span><span class="o">::</span><span class="n">partial_sort</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10</span><span class="p">,</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+
+<span class="c1">// 如果只需要第 k 大元素</span>
+<span class="n">std</span><span class="o">::</span><span class="n">nth_element</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">()</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+</code></pre></div></div>
+
+<h3 id="32-避免不必要的算法调用">3.2 避免不必要的算法调用</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：直接访问</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">vec</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">first</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：使用算法</span>
+<span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">find_if</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nb">true</span><span class="p">;</span> <span class="p">});</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">!=</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">first</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-并发编程">4. 并发编程</h2>
+
+<h3 id="41-使用标准库线程">4.1 使用标准库线程</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：标准库线程</span>
+<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp">
+</span>
+<span class="kt">void</span> <span class="nf">worker</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 工作逻辑</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">t</span><span class="p">(</span><span class="n">worker</span><span class="p">);</span>
+<span class="n">t</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h3 id="42-使用互斥锁保护共享数据">4.2 使用互斥锁保护共享数据</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：使用互斥锁</span>
+<span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">mtx</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">shared_data</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">increment</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+    <span class="o">++</span><span class="n">shared_data</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：无保护访问</span>
+<span class="kt">int</span> <span class="n">shared_data</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">++</span><span class="n">shared_data</span><span class="p">;</span>  <span class="c1">// 数据竞争</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="43-避免死锁">4.3 避免死锁</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：按固定顺序获取锁</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock</span><span class="p">(</span><span class="n">mtx1</span><span class="p">,</span> <span class="n">mtx2</span><span class="p">);</span>  <span class="c1">// 同时获取多个锁</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock1</span><span class="p">(</span><span class="n">mtx1</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">adopt_lock</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock2</span><span class="p">(</span><span class="n">mtx2</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">adopt_lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：不同顺序获取锁</span>
+<span class="kt">void</span> <span class="n">process1</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">mtx1</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>
+    <span class="n">mtx2</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>  <span class="c1">// 可能死锁</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">process2</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">mtx2</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>
+    <span class="n">mtx1</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>  <span class="c1">// 不同顺序</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="5-原子操作">5. 原子操作</h2>
+
+<h3 id="51-使用原子类型">5.1 使用原子类型</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：原子类型</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">counter</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">counter</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：非原子操作</span>
+<span class="kt">int</span> <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">++</span><span class="n">counter</span><span class="p">;</span>  <span class="c1">// 数据竞争</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="52-内存序">5.2 内存序</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：明确内存序</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">ready</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+
+<span class="c1">// 线程 1</span>
+<span class="n">data</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+<span class="n">ready</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="nb">true</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+
+<span class="c1">// 线程 2</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">ready</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">))</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="6-条件变量">6. 条件变量</h2>
+
+<h3 id="61-使用条件变量同步">6.1 使用条件变量同步</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：条件变量</span>
+<span class="n">std</span><span class="o">::</span><span class="n">condition_variable</span> <span class="n">cv</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">mtx</span><span class="p">;</span>
+<span class="kt">bool</span> <span class="n">ready</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">producer</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+    <span class="n">ready</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="n">cv</span><span class="p">.</span><span class="n">notify_one</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">consumer</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+    <span class="n">cv</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="p">[]{</span> <span class="k">return</span> <span class="n">ready</span><span class="p">;</span> <span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="7-异步编程">7. 异步编程</h2>
+
+<h3 id="71-使用-stdasync">7.1 使用 std::async</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：std::async</span>
+<span class="k">auto</span> <span class="n">future</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">async</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">launch</span><span class="o">::</span><span class="n">async</span><span class="p">,</span> <span class="p">[]()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">compute_result</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">future</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h3 id="72-使用-stdfuture">7.2 使用 std::future</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：std::future</span>
+<span class="n">std</span><span class="o">::</span><span class="n">promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">promise</span><span class="p">;</span>
+<span class="k">auto</span> <span class="n">future</span> <span class="o">=</span> <span class="n">promise</span><span class="p">.</span><span class="n">get_future</span><span class="p">();</span>
+
+<span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="nf">t</span><span class="p">([</span><span class="o">&amp;</span><span class="n">promise</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="n">promise</span><span class="p">.</span><span class="n">set_value</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">future</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+<span class="n">t</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h2 id="8-性能测量">8. 性能测量</h2>
+
+<h3 id="81-使用性能分析工具">8.1 使用性能分析工具</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 使用 perf 分析</span>
+<span class="c1">// perf record ./program</span>
+<span class="c1">// perf report</span>
+
+<span class="c1">// 使用 gprof</span>
+<span class="c1">// 编译时添加 -pg</span>
+<span class="c1">// gprof ./program gmon.out</span>
+</code></pre></div></div>
+
+<h3 id="82-基准测试">8.2 基准测试</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：基准测试</span>
+<span class="kt">void</span> <span class="nf">benchmark</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">iterations</span> <span class="o">=</span> <span class="mi">1000000</span><span class="p">;</span>
+    
+    <span class="k">auto</span> <span class="n">start</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">process</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="k">auto</span> <span class="n">end</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+    
+    <span class="k">auto</span> <span class="n">duration</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">microseconds</span><span class="o">&gt;</span><span class="p">(</span>
+        <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Average: "</span> <span class="o">&lt;&lt;</span> <span class="n">duration</span><span class="p">.</span><span class="n">count</span><span class="p">()</span> <span class="o">/</span> <span class="n">iterations</span> <span class="o">&lt;&lt;</span> <span class="s">" us</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="9-最佳实践">9. 最佳实践</h2>
+
+<h3 id="91-性能优化检查清单">9.1 性能优化检查清单</h3>
+
+<ol>
+  <li><strong>先测量，再优化</strong></li>
+  <li><strong>避免不必要的拷贝</strong></li>
+  <li><strong>使用移动语义</strong></li>
+  <li><strong>预分配容器空间</strong></li>
+  <li><strong>选择合适的算法</strong></li>
+  <li><strong>使用并发提高性能</strong></li>
+  <li><strong>保护共享数据</strong></li>
+  <li><strong>避免死锁</strong></li>
+</ol>
+
+<h3 id="92-常见性能问题">9.2 常见性能问题</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 问题 1：不必要的拷贝</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">);</span>  <span class="c1">// 拷贝开销</span>
+
+<span class="c1">// 问题 2：频繁内存分配</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>  <span class="c1">// 可能多次重新分配</span>
+<span class="p">}</span>
+
+<span class="c1">// 问题 3：数据竞争</span>
+<span class="kt">int</span> <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">++</span><span class="n">counter</span><span class="p">;</span>  <span class="c1">// 多线程不安全</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="11-实际工程案例">11. 实际工程案例</h2>
+
+<h3 id="111-案例性能优化">11.1 案例：性能优化</h3>
+
+<p><strong>问题</strong>：程序运行慢</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始代码：性能差</span>
+<span class="kt">void</span> <span class="nf">process_data</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 拷贝</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">x</span> <span class="o">:</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 范围 for</span>
+        <span class="n">process</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：优化参数传递和算法</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进代码：性能好</span>
+<span class="kt">void</span> <span class="nf">process_data</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 引用传递</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">for_each</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="n">process</span><span class="p">);</span>  <span class="c1">// 算法</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="112-案例并发优化">11.2 案例：并发优化</h3>
+
+<p><strong>问题</strong>：单线程处理慢</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始代码：单线程</span>
+<span class="kt">void</span> <span class="nf">process_all</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;&amp;</span> <span class="n">items</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">item</span> <span class="o">:</span> <span class="n">items</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">process</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>  <span class="c1">// 串行处理</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：使用多线程</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进代码：多线程</span>
+<span class="kt">void</span> <span class="nf">process_all</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;&amp;</span> <span class="n">items</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">&gt;</span> <span class="n">threads</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">size_t</span> <span class="n">num_threads</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">::</span><span class="n">hardware_concurrency</span><span class="p">();</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">threads</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">([</span><span class="o">&amp;</span><span class="n">items</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">num_threads</span><span class="p">]()</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">j</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">items</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">j</span> <span class="o">+=</span> <span class="n">num_threads</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">process</span><span class="p">(</span><span class="n">items</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+            <span class="p">}</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">t</span> <span class="o">:</span> <span class="n">threads</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">t</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="12-性能分析工具">12. 性能分析工具</h2>
+
+<h3 id="121-性能分析工具">12.1 性能分析工具</h3>
+
+<h3 id="122-性能指标">12.2 性能指标</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 关键性能指标</span>
+<span class="k">struct</span> <span class="nc">PerformanceMetrics</span> <span class="p">{</span>
+    <span class="kt">double</span> <span class="n">cpu_time</span><span class="p">;</span>      <span class="c1">// CPU 时间</span>
+    <span class="kt">double</span> <span class="n">wall_time</span><span class="p">;</span>     <span class="c1">// 墙上时钟时间</span>
+    <span class="kt">size_t</span> <span class="n">memory_usage</span><span class="p">;</span>  <span class="c1">// 内存使用</span>
+    <span class="kt">size_t</span> <span class="n">cache_misses</span><span class="p">;</span> <span class="c1">// 缓存未命中</span>
+    <span class="kt">size_t</span> <span class="n">branch_misses</span><span class="p">;</span> <span class="c1">// 分支预测失败</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="13-并发设计模式">13. 并发设计模式</h2>
+
+<h3 id="131-生产者-消费者模式">13.1 生产者-消费者模式</h3>
+
+<h3 id="132-线程池模式">13.2 线程池模式</h3>
+
+<h2 id="14-最佳实践检查清单">14. 最佳实践检查清单</h2>
+
+<h3 id="141-性能优化检查清单">14.1 性能优化检查清单</h3>
+
+<ol>
+  <li><strong>先测量，再优化</strong></li>
+  <li><strong>避免不必要的拷贝</strong></li>
+  <li><strong>使用移动语义</strong></li>
+  <li><strong>预分配容器空间</strong></li>
+  <li><strong>选择合适的算法</strong></li>
+  <li><strong>使用并发提高性能</strong></li>
+  <li><strong>保护共享数据</strong></li>
+  <li><strong>避免死锁</strong></li>
+</ol>
+
+<h3 id="142-并发编程检查清单">14.2 并发编程检查清单</h3>
+
+<ol>
+  <li><strong>使用互斥锁保护共享数据</strong></li>
+  <li><strong>避免数据竞争</strong></li>
+  <li><strong>避免死锁</strong></li>
+  <li><strong>使用原子操作进行简单同步</strong></li>
+  <li><strong>使用条件变量进行线程同步</strong></li>
+  <li><strong>合理使用线程池</strong></li>
+</ol>
+
+<h2 id="15-小结">15. 小结</h2>
+
+<p>性能优化和并发编程需要遵循正确的原则和模式。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li><strong>性能优化原则</strong>：先测量再优化、避免不必要的拷贝、使用移动语义</li>
+  <li><strong>内存管理性能</strong>：预分配空间、使用对象池</li>
+  <li><strong>算法选择</strong>：选择合适的算法、避免不必要的调用</li>
+  <li><strong>并发编程</strong>：使用标准库线程、互斥锁保护数据、避免死锁</li>
+  <li><strong>原子操作</strong>：使用原子类型、明确内存序</li>
+  <li><strong>条件变量</strong>：使用条件变量同步线程</li>
+  <li><strong>异步编程</strong>：使用 std::async 和 std::future</li>
+  <li><strong>性能测量</strong>：使用性能分析工具、基准测试</li>
+</ul>
+
+<p>遵循这些规范，可以写出高性能、线程安全的 C++ 代码。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

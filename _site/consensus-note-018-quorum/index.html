@@ -22,7 +22,7 @@
 
 
 
-<title>一致性笔记：Quorum 的直觉：读写多数派为什么能工作 - zhouzhilong</title>
+<title>一致性笔记：Quorum 的要点：读写多数派为什么能工作 - zhouzhilong</title>
 
 
 
@@ -32,7 +32,7 @@
 
 <meta property="og:locale" content="zh-CN">
 <meta property="og:site_name" content="zhouzhilong">
-<meta property="og:title" content="一致性笔记：Quorum 的直觉：读写多数派为什么能工作">
+<meta property="og:title" content="一致性笔记：Quorum 的要点：读写多数派为什么能工作">
 
 
   <link rel="canonical" href="http://localhost:4000/consensus-note-018-quorum/">
@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文围绕“读写多数派（quorum）为什么能工作”做一次工程化梳理：不背公式也能理解它的安全性来源，能把它落到系统实现与排障上。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -637,22 +581,22 @@
 
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
-    <meta itemprop="headline" content="一致性笔记：Quorum 的直觉：读写多数派为什么能工作">
-    <meta itemprop="description" content="本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="headline" content="一致性笔记：Quorum 的要点：读写多数派为什么能工作">
+    <meta itemprop="description" content="本文围绕“读写多数派（quorum）为什么能工作”做一次工程化梳理：不背公式也能理解它的安全性来源，能把它落到系统实现与排障上。">
     <meta itemprop="datePublished" content="March 01, 2022">
     
 
     <div class="page__inner-wrap">
       
         <header>
-          <h1 class="page__title" itemprop="headline">一致性笔记：Quorum 的直觉：读写多数派为什么能工作
+          <h1 class="page__title" itemprop="headline">一致性笔记：Quorum 的要点：读写多数派为什么能工作
 </h1>
           
             <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,73 +615,184 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文围绕“读写多数派（quorum）为什么能工作”做一次工程化梳理：不背公式也能理解它的安全性来源，能把它落到系统实现与排障上。</p>
 
-<p><img src="/images/diagrams/quorum-majority.svg" alt="一致性笔记：Quorum 的直觉：读写多数派为什么能工作" /></p>
-<h2 id="1-quorum-的意义在故障与不确定性里做出唯一决定">1. quorum 的意义：在故障与不确定性里做出“唯一决定”</h2>
+<h2 id="1-quorum-在解决什么故障与不确定性里做出唯一决定">1. quorum 在解决什么：故障与不确定性里做出唯一决定</h2>
 
-<p>分布式系统最难的不是“平时跑得快”，而是“出故障时别做错决定”。</p>
+<p>分布式系统最难的不是平时跑得快，而是故障时不要做错决定。</p>
 
-<p>quorum（多数派）的核心价值是：</p>
-
-<ul>
-  <li><strong>避免双写/脑裂</strong>：同一时刻不允许两个“多数派”同时对外承诺成功</li>
-  <li><strong>允许部分故障仍可用</strong>：例如 3 副本允许坏 1 个仍能继续提供强语义（取决于读写路径）</li>
-</ul>
-
-<p>一句话：多数派是一种“仲裁机制”，让系统在网络分区/节点宕机时仍能保持安全性。</p>
-
-<h2 id="2-为什么多数派能工作交集intersection保证不会各说各话">2. 为什么多数派能工作：交集（intersection）保证“不会各说各话”</h2>
-
-<p>多数派集合有一个关键性质：</p>
-
-<blockquote>
-  <p>任意两个多数派一定有交集。</p>
-</blockquote>
-
-<p>交集意味着：如果写入需要多数派确认，那么后续任何“多数派读/多数派选主”一定能碰到至少一个知道这次写入的人（具体取决于算法实现）。</p>
-
-<p>这就是为什么多数派可以在不可靠网络里提供更强语义的直觉基础。</p>
-
-<h2 id="3-工程上的代价延迟与可用性是硬约束">3. 工程上的代价：延迟与可用性是硬约束</h2>
-
-<p>多数派不是免费的：</p>
+<p>quorum（多数派）的核心价值：</p>
 
 <ul>
-  <li><strong>写入确认延迟</strong>：至少要等到多数派返回（最慢的那条路径决定 P99）</li>
-  <li><strong>跨 AZ/跨 Region 更明显</strong>：RTT 拉长会把写入尾延迟直接抬高</li>
-  <li><strong>可用性门槛</strong>：丢失多数派时，强语义写入通常无法继续（系统必须选择“停写”或“降级语义”）</li>
+  <li><strong>仲裁</strong>：同一时刻不会出现两个互不相交的“多数派”同时宣称成功</li>
+  <li><strong>容错</strong>：N=2f+1 时，允许 f 个故障仍然能形成多数派</li>
 </ul>
 
-<h2 id="4-常见坑把quorum-成本当成了别的锅">4. 常见坑：把“quorum 成本”当成了别的锅</h2>
+<pre><code class="language-mermaid">flowchart TD
+  Q[Quorum] --&gt; A[Arbitration]
+  Q --&gt; F[Fault tolerance]
+
+  A --&gt; S1[prevent double-commit]
+  F --&gt; S2[N=2f+1 tolerates f failures]
+</code></pre>
+
+<h2 id="2-为什么多数派能工作交集intersection是第一性原理">2. 为什么多数派能工作：交集（intersection）是第一性原理</h2>
+
+<p>多数派有一个关键性质：</p>
 
 <ul>
-  <li>平均 RTT 还行，但 <strong>P99 很差</strong>：多数派里的慢副本拖住确认点</li>
-  <li>机器没满，但写入变慢：其实是跨域/跨 AZ 的尾 RTT 把确认点抬高</li>
-  <li>频繁选主：心跳/超时没有匹配真实 RTT 分布，导致误判</li>
+  <li>任意两个多数派集合一定有交集</li>
 </ul>
 
-<h2 id="5-你应该观测什么从最有用的开始">5. 你应该观测什么（从最有用的开始）</h2>
+<p>这句话背后是 quorum 能提供安全性的根：</p>
 
 <ul>
-  <li><strong>quorum 路径的延迟分布</strong>：写入一次需要等哪些节点？它们的 P99 是多少？</li>
-  <li><strong>慢副本比例与持续时间</strong>：慢是偶发还是长期？</li>
-  <li><strong>选主频率与原因</strong>：是否存在网络抖动/GC/IO 抢占导致心跳超时？</li>
-  <li><strong>跨 AZ/跨 Region 的 RTT 分布</strong>：不要只看平均，重点看尾部与抖动。</li>
+  <li>如果一个写已经被某个多数派“确认”，那么任何后续想做出“新的决定”（新的 leader、新的提交）的人，只要也需要多数派，就<strong>一定会碰到</strong>至少一个知道旧决定的成员。</li>
 </ul>
 
-<h2 id="6-最小排障顺序">6. 最小排障顺序</h2>
+<pre><code class="language-mermaid">flowchart TD
+  A[Quorum Q1] --&gt; I[Intersection]
+  B[Quorum Q2] --&gt; I
+  I --&gt; K[carry knowledge forward]
+</code></pre>
+
+<p>可以将交集理解为：系统在不可靠网络里传递“已发生事实”的最小通道。</p>
+
+<h2 id="3-从复制到一致性多数派不是语义自动升级器">3. 从复制到一致性：多数派不是语义自动升级器</h2>
+
+<p>很多人听到 <code class="language-plaintext highlighter-rouge">R + W &gt; N</code> 就以为“这就强一致了”。需要更谨慎：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">R+W&gt;N</code> 只是保证读集合与写集合有交集（在特定假设下更容易读到新值）</li>
+  <li>真正要达到<strong>线性一致</strong>，通常还需要更强约束：
+    <ul>
+      <li>单写者/leader 排序</li>
+      <li>明确的提交点（commit point）</li>
+      <li>版本比较与冲突处理（尤其是允许多写者或读任意副本时）</li>
+    </ul>
+  </li>
+</ul>
+
+<p>换句话说：quorum 给你的是“工具”，不是“语义保证书”。</p>
+
+<h2 id="4-两种常见使用方式直觉版">4. 两种常见使用方式（直觉版）</h2>
+
+<h3 id="41-写多数派把提交点绑定到多数派确认">4.1 写多数派：把提交点绑定到多数派确认</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L as Leader
+  participant R1 as Replica1
+  participant R2 as Replica2
+  participant R3 as Replica3
+
+  C-&gt;&gt;L: Write
+  L-&gt;&gt;R1: Replicate
+  L-&gt;&gt;R2: Replicate
+  L-&gt;&gt;R3: Replicate
+  R1--&gt;&gt;L: Ack
+  R2--&gt;&gt;L: Ack
+  L--&gt;&gt;C: Ack after quorum
+</code></pre>
+
+<p>要点：只要“对外 ack”之前要求多数派确认，就把已确认写的回滚概率压到很低（仍要配合选主/日志规则）。</p>
+
+<h3 id="42-读多数派用多数派读来避免读到明显旧值">4.2 读多数派：用多数派读来避免读到明显旧值</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant R1 as Replica1
+  participant R2 as Replica2
+  participant R3 as Replica3
+
+  C-&gt;&gt;R1: Read
+  C-&gt;&gt;R2: Read
+  R1--&gt;&gt;C: v1
+  R2--&gt;&gt;C: v2
+  C-&gt;&gt;C: pick latest by version
+</code></pre>
+
+<p>注意：读多数派本身并不等于线性一致读，仍然需要定义“版本比较”与“并发写冲突”的处理规则。</p>
+
+<h2 id="5-常见配置n3-时-wr-怎么选">5. 常见配置：N=3 时 W/R 怎么选</h2>
+
+<ul>
+  <li><strong>W=2, R=2</strong>：读写都多数派
+    <ul>
+      <li>优点：语义更强（更接近强一致实现）</li>
+      <li>代价：读写延迟都更受尾延迟影响</li>
+    </ul>
+  </li>
+  <li><strong>W=2, R=1</strong>：写偏强、读偏快
+    <ul>
+      <li>优点：读便宜</li>
+      <li>代价：读可能旧（要靠 read repair/lease/read-index 等机制补语义）</li>
+    </ul>
+  </li>
+  <li><strong>W=1, R=2</strong>：读偏强、写偏快
+    <ul>
+      <li>常见于写可丢/可重算的场景，否则风险很高</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="6-多数派的工程代价尾延迟与可用性门槛">6. 多数派的工程代价：尾延迟与可用性门槛</h2>
+
+<h3 id="61-尾延迟最慢那段路径决定提交点">6.1 尾延迟：最慢那段路径决定提交点</h3>
+
+<p>多数派写的延迟近似由“第 W 快的副本 ack”决定。在 N=3,W=2 时：</p>
+
+<ul>
+  <li>不是平均 RTT 决定你有多快</li>
+  <li>是“第二快”的 ack 决定你能不能 ack</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Write latency] --&gt; B[depends on quorum acks]
+  B --&gt; C[tail RTT dominates]
+  C --&gt; D[slow replica becomes amplifier]
+</code></pre>
+
+<h3 id="62-可用性门槛多数派不可达时怎么办">6.2 可用性门槛：多数派不可达时怎么办</h3>
+
+<p>失去多数派：</p>
+
+<ul>
+  <li>强语义写通常必须停</li>
+  <li>只能在“停写/降级语义/只读”里选一个</li>
+</ul>
+
+<p>这不是实现问题，是 CAP 与故障模型决定的约束。</p>
+
+<h2 id="7-常见问题把-quorum-的问题当成别的锅">7. 常见问题：把 quorum 的问题当成别的锅</h2>
+
+<ul>
+  <li>平均 RTT 还行但 P99 很差：慢副本拖住确认点</li>
+  <li>机器不满但写变慢：跨 AZ/跨 Region 的尾 RTT 抬高</li>
+  <li>频繁选主：心跳/超时没有匹配真实 RTT 分布（误判）</li>
+</ul>
+
+<h2 id="8-应当观测什么从最有用的开始">8. 应当观测什么（从最有用的开始）</h2>
+
+<ul>
+  <li><strong>quorum 路径的延迟分布</strong>：本次写等了哪些副本的 ack</li>
+  <li><strong>慢副本比例与持续时间</strong>：慢是偶发还是长期</li>
+  <li><strong>选主频率与原因</strong>：是网络抖动、GC、IO 抢占还是参数问题</li>
+  <li><strong>跨 AZ/跨 Region 的 RTT 分布</strong>：重点看尾部</li>
+</ul>
+
+<h2 id="9-排障顺序">9. 排障顺序</h2>
 
 <ol>
-  <li><strong>先定位慢副本</strong>：网络 RTT、磁盘抖动、GC/CPU 抢占（慢副本=尾延迟放大器）</li>
-  <li><strong>再检查副本分布</strong>：是否把多数派路径拉长了（跨域设计是否符合目标）</li>
-  <li><strong>再看选主/超时参数</strong>：是否与真实 RTT 分布匹配（避免误判）</li>
-  <li><strong>最后才谈降级策略</strong>：当多数派不可用时，你要的是停写、还是弱一致/只读？</li>
+  <li>定位慢副本：网络 RTT、磁盘抖动、CPU/GC 抢占</li>
+  <li>检查副本拓扑：是否把多数派路径拉长了</li>
+  <li>检查选主与超时参数：是否匹配真实 RTT</li>
+  <li>明确降级策略：失去多数派时需要的到底是什么</li>
 </ol>
 
-<h2 id="7-小结">7. 小结</h2>
+<h2 id="10-小结">10. 小结</h2>
 
-<p>quorum 的本质是用“多数派交集”换来安全性；代价是把写入确认点绑定到多数派路径的尾延迟上。工程排障时，把注意力放在 <strong>“多数派路径的最慢一段”</strong>，往往比调参更有效。</p>
+<p>quorum 的本质是用“多数派交集”换安全性；代价是把提交点绑定到多数派路径的尾延迟上。工程上最有效的优化与排障，通常都围绕“让多数派路径更短、更稳定、慢副本更少”。</p>
 
         
       </section>
@@ -779,12 +834,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

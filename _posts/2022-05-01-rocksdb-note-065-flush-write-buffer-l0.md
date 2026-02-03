@@ -6,7 +6,7 @@ categories: [storage]
 tags: [存储, RocksDB]
 permalink: /rocksdb-note-065-flush-write-buffer-l0/
 ---
-你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：
+在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：
 
 - 写入延迟开始抖（P99 上升）
 - 甚至出现 **write stall / throttle**（写被限速或阻塞）
@@ -20,7 +20,7 @@ permalink: /rocksdb-note-065-flush-write-buffer-l0/
 ## 1. 先把术语对齐：write buffer / memtable / flush / L0
 
 - **memtable**：内存中的写入缓冲（通常是有序结构），写入先落这里。
-- **write buffer**：你可以把它理解成 memtable 占用的预算（受 `write_buffer_size`、memtable 数量等影响）。
+- **write buffer**：可以将它理解成 memtable 占用的预算（受 `write_buffer_size`、memtable 数量等影响）。
 - **flush**：把 immutable memtable 持久化为 SST 文件（通常落到 **L0**）。
 - **L0**：RocksDB 分层里的第 0 层，文件之间可能重叠，读放大敏感，也容易引发后续 compaction 压力。
 
@@ -48,7 +48,7 @@ RocksDB 需要保证自己不会把系统写爆或把读拖垮，所以常见有
 - **memtable/immutable 太多**：flush 跟不上。
 - **L0 太多**：compaction 跟不上（且 L0 对读放大影响大）。
 
-## 4. 你应该看哪些指标（从最有用的开始）
+## 4. 应当看哪些指标（从最有用的开始）
 
 建议优先盯这几类“因果链中间量”：
 
@@ -67,7 +67,7 @@ RocksDB 需要保证自己不会把系统写爆或把读拖垮，所以常见有
 - **flush 慢** 还是 **compaction 慢**？
 - 主要瓶颈是 **IO** 还是 **CPU（压缩/校验）**？
 
-### 5.1 flush 跟不上：你在“攒 immutable”
+### 5.1 flush 跟不上：在"攒 immutable"
 
 常见策略：
 
@@ -75,7 +75,7 @@ RocksDB 需要保证自己不会把系统写爆或把读拖垮，所以常见有
 - 提升 flush 并行/预算（取决于你的 RocksDB 版本与配置项）
 - 避免让后台任务与前台争抢同一块 IO（尤其是在 compaction 也很重时）
 
-### 5.2 compaction 跟不上：你在“攒 L0”
+### 5.2 compaction 跟不上：在"攒 L0"
 
 常见策略：
 
@@ -93,7 +93,7 @@ RocksDB 需要保证自己不会把系统写爆或把读拖垮，所以常见有
 2. **只提升 flush 能力**（例如增加 flush 线程/预算）观察 L0 变化
 3. **只提升 compaction 能力**观察 L0 与 P99 的变化
 
-你会很快知道：到底是 flush 还是 compaction 主导欠账。
+会很快知道：到底是 flush 还是 compaction 主导欠账。
 
 ## 7. 最小排障清单（线上写入变慢/变抖）
 

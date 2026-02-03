@@ -33,44 +33,44 @@ IndexLib 支持三种主要的索引类型：
 classDiagram
     class ITabletFactory {
         <<interface>>
-        +CreateTabletWriter(Schema) TabletWriter
-        +CreateTabletReader(Schema) TabletReader
-        +CreateMemSegment(SegmentMeta) MemSegment
-        +CreateDiskSegment(SegmentMeta) DiskSegment
+        + CreateTabletWriter()
+        + CreateTabletReader()
+        + CreateMemSegment()
+        + CreateDiskSegment()
     }
     
     class NormalTableFactory {
-        +CreateTabletWriter(Schema) NormalTabletWriter
-        +CreateTabletReader(Schema) NormalTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KVTableFactory {
-        +CreateTabletWriter(Schema) KVTabletWriter
-        +CreateTabletReader(Schema) KVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KKVTableFactory {
-        +CreateTabletWriter(Schema) KKVTabletWriter
-        +CreateTabletReader(Schema) KKVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        +Search(jsonQuery) Status
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        + Search()
     }
     
     class KVTabletReader {
-        -KVIndexReader _kvIndexReader
-        -PackAttributeFormatter _formatter
-        +Search(jsonQuery) Status
+        - KVIndexReader _kvIndexReader
+        - PackAttributeFormatter _formatter
+        + Search()
     }
     
     class KKVTabletReader {
-        -KKVReader _kkvReader
-        -KKVIterator _iterator
-        +Search(jsonQuery) Status
+        - KKVReader _kkvReader
+        - KKVIterator _iterator
+        + Search()
     }
     
     ITabletFactory <|-- NormalTableFactory : 实现
@@ -131,29 +131,29 @@ NormalTable 的架构采用组合模式，将不同的索引 Reader 组合在一
 ```mermaid
 classDiagram
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        -SummaryReader _summaryReader
-        -DeletionMapReader _deletionMapReader
-        +Search(jsonQuery) Status
-        +GetMultiFieldIndexReader() MultiFieldIndexReader
-        +GetAttributeReader(attrName) AttributeReader
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        - SummaryReader _summaryReader
+        - DeletionMapReader _deletionMapReader
+        + Search()
+        + GetMultiFieldIndexReader()
+        + GetAttributeReader()
     }
     
     class MultiFieldIndexReader {
-        -map~string, InvertedIndexReader~ _indexReaders
-        +Search(Query) QueryResult
+        - map_string_InvertedIndexReader _indexReaders
+        + Search()
     }
     
     class AttributeReader {
-        -map~string, AttributeIndexReader~ _readers
-        +ReadAttribute(docId, attrName) AttributeValue
+        - map_string_AttributeIndexReader _readers
+        + ReadAttribute()
     }
     
     class PrimaryKeyReader {
-        -PrimaryKeyIndexReader _reader
-        +Lookup(pk) DocId
+        - PrimaryKeyIndexReader _reader
+        + Lookup()
     }
     
     NormalTabletReader --> MultiFieldIndexReader : 包含

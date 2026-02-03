@@ -5,7 +5,7 @@ series: storage_basics
 tags: [存储基础系列]
 ---
 
-这篇是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：**读放大（Read Amplification）**、**布隆过滤器（Bloom Filter）**、以及 **缓存（Cache / Page Cache / Block Cache）**。它们本质上都在回答一个问题：*“我为一次读取，付出了多少额外成本？”*
+本文是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：**读放大（Read Amplification）**、**布隆过滤器（Bloom Filter）**、以及 **缓存（Cache / Page Cache / Block Cache）**。它们本质上都在回答一个问题：*“我为一次读取，付出了多少额外成本？”*
 
 ![读放大如何被 Bloom + Cache 降下来（以 LSM/RocksDB 为例）](/images/diagrams/read-amplification-bloom-cache.svg)
 
@@ -22,7 +22,7 @@ tags: [存储基础系列]
 - **数据局部性差**：随机 IO 多，导致每次读都要带出很多无用数据。
 - **远端存储**：对象存储/网络盘，每次读的固定开销更高，放大更明显。
 
-衡量方式没有唯一标准，但你可以用“为完成一次查询需要触碰多少个数据块/文件”来直觉理解。
+衡量方式没有唯一标准，但可以用“为完成一次查询需要触碰多少个数据块/文件”来直觉理解。
 
 ### 1.1 更工程化的度量：用“触碰次数”近似
 
@@ -37,7 +37,7 @@ tags: [存储基础系列]
 
 在 KV/LSM 场景里，一个非常典型的痛点是：**读一个不存在的 key**。
 
-如果没有 Bloom Filter，你往往需要：
+如果没有 Bloom Filter，往往需要：
 
 - 查 memtable
 - 再查多层 SST（每层可能多个文件）
@@ -58,7 +58,7 @@ Bloom Filter 的作用：
 
 ![Bloom Filter：参数与假阳性如何影响“白跑一趟”](/images/diagrams/bloom-filter-sizing.svg)
 
-### 2.1 你真正需要记住的一句话
+### 2.1 核心要点一句话
 
 Bloom Filter 对读放大最直接的贡献是：**把大量“负查”挡在内存里**，避免它们把读路径拖进多层多文件的 IO 地狱。
 
@@ -99,7 +99,7 @@ p ≈ 0.6185^10 ≈ 0.008  （约 0.8%）
 
 - **OS Page Cache**：文件系统层面的缓存，默认就有（读文件受益很大）。
 - **Block Cache**：比如 RocksDB 的 block cache，缓存压缩后的 data block / index block。
-- **应用级缓存**：你在服务端自己做的 key/value 缓存（通常在业务层或代理层）。
+- **应用级缓存**：在服务端实现的 key/value 缓存（通常在业务层或代理层）。
 
 常见误区：
 

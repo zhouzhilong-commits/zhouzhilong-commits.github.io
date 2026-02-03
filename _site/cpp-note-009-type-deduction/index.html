@@ -1,0 +1,1134 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：类型推导：auto 与 decltype - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：类型推导：auto 与 decltype">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-009-type-deduction/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-009-type-deduction/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-09-10T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class="active"><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class=""><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：类型推导：auto 与 decltype">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="September 10, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：类型推导：auto 与 decltype
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  2 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-09-10T00:00:00+08:00">September 10, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>类型推导是 C++11 引入的重要特性，通过 <code class="language-plaintext highlighter-rouge">auto</code> 和 <code class="language-plaintext highlighter-rouge">decltype</code> 可以简化代码并提高灵活性。理解类型推导的规则和陷阱，是掌握现代 C++ 的关键。本文将从推导规则、使用场景、常见陷阱等多个维度深入解析类型推导，帮助读者全面理解这一重要特性。</p>
+
+<h2 id="1-auto-类型推导">1. auto 类型推导</h2>
+
+<h3 id="11-基本用法">1.1 基本用法</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// auto 推导变量类型</span>
+<span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>           <span class="c1">// int</span>
+<span class="k">auto</span> <span class="n">y</span> <span class="o">=</span> <span class="mf">3.14</span><span class="p">;</span>        <span class="c1">// double</span>
+<span class="k">auto</span> <span class="n">z</span> <span class="o">=</span> <span class="s">"hello"</span><span class="p">;</span>     <span class="c1">// const char*</span>
+
+<span class="c1">// 与引用</span>
+<span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="n">ref</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>        <span class="c1">// int&amp;</span>
+<span class="k">auto</span><span class="o">*</span> <span class="n">ptr</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">a</span><span class="p">;</span>       <span class="c1">// int*</span>
+</code></pre></div></div>
+
+<h3 id="12-auto-推导规则">1.2 auto 推导规则</h3>
+
+<p><code class="language-plaintext highlighter-rouge">auto</code> 遵循模板参数推导规则：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 值类型</span>
+<span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>        <span class="c1">// 推导为值类型（去除引用和 const）</span>
+
+<span class="c1">// 引用类型</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>       <span class="c1">// 推导为引用类型</span>
+
+<span class="c1">// 指针类型</span>
+<span class="k">auto</span><span class="o">*</span> <span class="n">x</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">value</span><span class="p">;</span>      <span class="c1">// 推导为指针类型</span>
+
+<span class="c1">// 通用引用（C++14）</span>
+<span class="k">auto</span><span class="o">&amp;&amp;</span> <span class="n">x</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>      <span class="c1">// 可能是左值引用或右值引用</span>
+</code></pre></div></div>
+
+<h3 id="13-auto-的优势">1.3 auto 的优势</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 简化复杂类型</span>
+<span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+
+<span class="c1">// 使用 auto 简化</span>
+<span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h2 id="2-decltype-类型推导">2. decltype 类型推导</h2>
+
+<h3 id="21-基本用法">2.1 基本用法</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+<span class="k">decltype</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>     <span class="c1">// y 的类型是 int</span>
+
+<span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">ref</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+<span class="k">decltype</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>   <span class="c1">// z 的类型是 const int&amp;</span>
+</code></pre></div></div>
+
+<h3 id="22-decltype-的推导规则">2.2 decltype 的推导规则</h3>
+
+<p><code class="language-plaintext highlighter-rouge">decltype</code> 保留表达式的完整类型信息：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+<span class="kt">int</span><span class="o">&amp;</span> <span class="n">ref</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+
+<span class="k">decltype</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="n">a</span><span class="p">;</span>         <span class="c1">// int</span>
+<span class="k">decltype</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span> <span class="n">b</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>   <span class="c1">// int&amp;</span>
+<span class="k">decltype</span><span class="p">((</span><span class="n">x</span><span class="p">))</span> <span class="n">c</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>   <span class="c1">// int&amp;（注意双括号）</span>
+</code></pre></div></div>
+
+<h3 id="23-decltypeauto">2.3 decltype(auto)</h3>
+
+<p>C++14 引入了 <code class="language-plaintext highlighter-rouge">decltype(auto)</code>，结合两者的优势：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="k">decltype</span><span class="p">(</span><span class="k">auto</span><span class="p">)</span> <span class="n">func</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>  <span class="c1">// 保留返回类型</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="3-类型推导的应用场景">3. 类型推导的应用场景</h2>
+
+<h3 id="31-简化迭代器">3.1 简化迭代器</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">};</span>
+
+<span class="c1">// 传统方式</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="o">*</span><span class="n">it</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 使用 auto</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">vec</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">vec</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="o">*</span><span class="n">it</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 范围 for（C++11）</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">value</span> <span class="o">:</span> <span class="n">vec</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">value</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="32-lambda-表达式">3.2 Lambda 表达式</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">auto</span> <span class="n">lambda</span> <span class="o">=</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">lambda</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="33-函数返回类型推导c14">3.3 函数返回类型推导（C++14）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">auto</span> <span class="nf">add</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>  <span class="c1">// 返回类型推导为 int</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-类型推导的陷阱">4. 类型推导的陷阱</h2>
+
+<h3 id="41-auto-推导为值类型">4.1 auto 推导为值类型</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+
+<span class="c1">// 错误：auto 推导为值类型，会拷贝</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">value</span> <span class="o">:</span> <span class="n">vec</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>  <span class="c1">// 只修改拷贝，不影响原容器</span>
+<span class="p">}</span>
+
+<span class="c1">// 正确：使用引用</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">value</span> <span class="o">:</span> <span class="n">vec</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>  <span class="c1">// 修改原容器</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="42-auto-与初始化列表">4.2 auto 与初始化列表</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// auto 推导为 std::initializer_list</span>
+<span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>  <span class="c1">// std::initializer_list&lt;int&gt;</span>
+
+<span class="c1">// 如果需要 vector</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">y</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="43-auto-与代理类型">4.3 auto 与代理类型</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">vec</span> <span class="o">=</span> <span class="p">{</span><span class="nb">true</span><span class="p">,</span> <span class="nb">false</span><span class="p">,</span> <span class="nb">true</span><span class="p">};</span>
+
+<span class="c1">// 错误：auto 推导为代理类型</span>
+<span class="k">auto</span> <span class="n">value</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>  <span class="c1">// std::vector&lt;bool&gt;::reference</span>
+
+<span class="c1">// 正确：显式转换</span>
+<span class="kt">bool</span> <span class="n">value</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</code></pre></div></div>
+
+<h2 id="5-类型推导与模板">5. 类型推导与模板</h2>
+
+<h3 id="51-模板参数推导">5.1 模板参数推导</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="kt">void</span> <span class="nf">func</span><span class="p">(</span><span class="n">T</span> <span class="n">t</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// T 的推导规则与 auto 相同</span>
+<span class="p">}</span>
+
+<span class="n">func</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>        <span class="c1">// T 推导为 int</span>
+<span class="n">func</span><span class="p">(</span><span class="mf">3.14</span><span class="p">);</span>      <span class="c1">// T 推导为 double</span>
+</code></pre></div></div>
+
+<h3 id="52-完美转发">5.2 完美转发</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="k">auto</span> <span class="nf">forward_value</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="6-类型推导最佳实践">6. 类型推导最佳实践</h2>
+
+<h3 id="61-何时使用-auto">6.1 何时使用 auto</h3>
+
+<ul>
+  <li><strong>迭代器</strong>：简化迭代器类型</li>
+  <li><strong>Lambda</strong>：Lambda 表达式类型</li>
+  <li><strong>复杂类型</strong>：简化复杂嵌套类型</li>
+  <li><strong>范围 for</strong>：遍历容器</li>
+</ul>
+
+<h3 id="62-何时不使用-auto">6.2 何时不使用 auto</h3>
+
+<ul>
+  <li><strong>接口函数</strong>：明确返回类型更清晰</li>
+  <li><strong>需要特定类型</strong>：避免意外类型推导</li>
+  <li><strong>调试困难</strong>：类型不明确时</li>
+</ul>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>类型推导是现代 C++ 的重要特性，可以简化代码并提高灵活性。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">auto</code> 遵循模板参数推导规则</li>
+  <li><code class="language-plaintext highlighter-rouge">decltype</code> 保留表达式的完整类型信息</li>
+  <li><code class="language-plaintext highlighter-rouge">decltype(auto)</code> 结合两者优势</li>
+  <li>注意值类型和引用类型的区别</li>
+  <li>避免代理类型陷阱</li>
+</ul>
+
+<p>掌握类型推导，可以写出更简洁、更灵活的 C++ 代码。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

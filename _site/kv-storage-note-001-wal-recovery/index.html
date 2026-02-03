@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -891,12 +835,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文深入解析 TCP 重传机制：RTO（Retransmission Timeout）和 fast retransmit 的工作原理、性能影响和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -610,7 +554,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="网络笔记：TCP 重传：RTO 与 fast retransmit">
-    <meta itemprop="description" content="本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文深入解析 TCP 重传机制：RTO（Retransmission Timeout）和 fast retransmit 的工作原理、性能影响和工程实践。">
     <meta itemprop="datePublished" content="February 01, 2019">
     
 
@@ -624,7 +568,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -643,12 +587,13 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文深入解析 TCP 重传机制：RTO（Retransmission Timeout）和 fast retransmit 的工作原理、性能影响和工程实践。</p>
 
 <p><img src="/images/diagrams/tcp-retransmit-rto-fast.svg" alt="网络笔记：TCP 重传：RTO 与 fast retransmit" /></p>
-<h2 id="1-先把重传为什么会拖慢说清楚丢包--rtt-被放大">1. 先把“重传为什么会拖慢”说清楚：丢包 = RTT 被放大</h2>
 
-<p>TCP 的可靠性来自“丢了就重传”。问题在于：一旦发生丢包，你看到的往往不是“少丢几个包”这么简单，而是：</p>
+<h2 id="1-先把重传为什么会拖慢说清楚丢包--rtt-被放大">1. 先把”重传为什么会拖慢”说清楚：丢包 = RTT 被放大</h2>
+
+<p>TCP 的可靠性来自”丢了就重传”。问题在于：一旦发生丢包，看到的往往不是”少丢几个包”这么简单，而是：</p>
 
 <ul>
   <li><strong>吞吐下降</strong></li>
@@ -658,31 +603,186 @@
 
 <p>原因：重传会引入额外等待（检测丢包的时间 + 重传往返），并触发拥塞控制收缩窗口。</p>
 
-<h2 id="2-fast-retransmit-vs-rto哪个更伤">2. fast retransmit vs RTO：哪个更“伤”</h2>
+<h3 id="11-重传对性能的影响">1.1 重传对性能的影响</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[丢包] --&gt; B[检测丢包]
+  B --&gt; C[重传]
+  C --&gt; D[等待 ACK]
+  
+  D --&gt; E[额外延迟]
+  E --&gt; F[RTT 放大]
+  F --&gt; G[吞吐下降]
+  F --&gt; H[尾延迟上升]
+  
+  I[拥塞控制] --&gt; J[窗口收缩]
+  J --&gt; K[吞吐进一步下降]
+</code></pre>
+
+<h3 id="12-延迟放大示例">1.2 延迟放大示例</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Sender as Sender
+  participant Network as Network
+  participant Receiver as Receiver
+
+  Sender-&gt;&gt;Network: Packet 1
+  Sender-&gt;&gt;Network: Packet 2 (丢失)
+  Sender-&gt;&gt;Network: Packet 3
+  Sender-&gt;&gt;Network: Packet 4
+  
+  Network-&gt;&gt;Receiver: Packet 1
+  Network-&gt;&gt;Receiver: Packet 3
+  Network-&gt;&gt;Receiver: Packet 4
+  
+  Receiver-&gt;&gt;Sender: ACK 1
+  Receiver-&gt;&gt;Sender: ACK 1 (dup)
+  Receiver-&gt;&gt;Sender: ACK 1 (dup)
+  
+  Note over Sender: 检测到丢包
+  
+  Sender-&gt;&gt;Network: 重传 Packet 2
+  Network-&gt;&gt;Receiver: Packet 2
+  Receiver-&gt;&gt;Sender: ACK 4
+  
+  Note over Sender,Receiver: 总延迟 = 原始 RTT + 重传 RTT
+</code></pre>
+
+<h2 id="2-fast-retransmit-vs-rto哪个更伤">2. fast retransmit vs RTO：哪个更”伤”</h2>
 
 <ul>
-  <li><strong>fast retransmit</strong>：通过重复 ACK 快速判断丢包并重传，通常比等超时更快（代价更小）。</li>
-  <li><strong>RTO（Retransmission Timeout）</strong>：等到超时才重传，意味着至少要等一个超时时间，<strong>对尾延迟最致命</strong>。</li>
+  <li><strong>fast retransmit</strong>：通过重复 ACK 快速判断丢包并重传，通常比等超时更快（代价更小）</li>
+  <li><strong>RTO（Retransmission Timeout）</strong>：等到超时才重传，意味着至少要等一个超时时间，<strong>对尾延迟最致命</strong></li>
 </ul>
 
-<p>一句话：RTO 更像“被迫等了一次很长的红灯”，会直接把少量请求拉成巨大长尾。</p>
+<p>核心要点：RTO 更像”被迫等了一次很长的红灯”，会直接把少量请求拉成巨大长尾。</p>
+
+<h3 id="21-fast-retransmit-机制">2.1 Fast Retransmit 机制</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Sender as Sender
+  participant Receiver as Receiver
+
+  Sender-&gt;&gt;Receiver: Seq 1
+  Sender-&gt;&gt;Receiver: Seq 2 (丢失)
+  Sender-&gt;&gt;Receiver: Seq 3
+  Sender-&gt;&gt;Receiver: Seq 4
+  
+  Receiver-&gt;&gt;Sender: ACK 1
+  Receiver-&gt;&gt;Sender: ACK 1 (dup)
+  Receiver-&gt;&gt;Sender: ACK 1 (dup)
+  
+  Note over Sender: 收到 3 个重复 ACK
+  
+  Sender-&gt;&gt;Sender: Fast Retransmit
+  Sender-&gt;&gt;Receiver: 重传 Seq 2
+  
+  Note over Sender,Receiver: 快速重传，延迟小
+</code></pre>
+
+<h3 id="22-rto-机制">2.2 RTO 机制</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Sender as Sender
+  participant Timer as RTO Timer
+  participant Receiver as Receiver
+
+  Sender-&gt;&gt;Receiver: Seq 1
+  Sender-&gt;&gt;Receiver: Seq 2 (丢失)
+  Sender-&gt;&gt;Timer: 启动 RTO 定时器
+  
+  Receiver-&gt;&gt;Sender: ACK 1
+  
+  Note over Timer: 等待超时...
+  Timer-&gt;&gt;Timer: RTO 超时
+  
+  Sender-&gt;&gt;Sender: RTO 重传
+  Sender-&gt;&gt;Receiver: 重传 Seq 2
+  
+  Note over Sender,Receiver: 等待超时，延迟大
+</code></pre>
+
+<h3 id="23-性能对比">2.3 性能对比</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[丢包检测] --&gt; B[Fast Retransmit]
+  A --&gt; C[RTO]
+  
+  B --&gt; D[3 个 dup ACK]
+  D --&gt; E[延迟: ~1 RTT]
+  
+  C --&gt; F[超时等待]
+  F --&gt; G[延迟: RTO 时间]
+  
+  E --&gt; H[性能影响小]
+  G --&gt; I[性能影响大]
+  
+  J[典型 RTO] --&gt; K[200ms - 1s]
+  K --&gt; L[尾延迟显著上升]
+</code></pre>
 
 <h2 id="3-为什么-http2rpc-等会被放大传输层-hol--应用层重试">3. 为什么 HTTP/2、RPC 等会被放大：传输层 HoL + 应用层重试</h2>
 
 <p>丢包造成的影响经常被两层放大：</p>
 
 <ol>
-  <li><strong>传输层 HoL（按序交付）</strong>：丢了一段字节，后面的字节即使到了也不能交付（同连接内多请求一起受影响）。</li>
-  <li><strong>应用层超时/重试</strong>：请求慢 → 超时 → 重试 → 并发上升 → 队列更长 → 更慢（正反馈）。</li>
+  <li><strong>传输层 HoL（按序交付）</strong>：丢了一段字节，后面的字节即使到了也不能交付（同连接内多请求一起受影响）</li>
+  <li><strong>应用层超时/重试</strong>：请求慢 → 超时 → 重试 → 并发上升 → 队列更长 → 更慢（正反馈）</li>
 </ol>
 
-<p>所以你线上看到的常是：</p>
+<p>所以线上看到的常是：</p>
 
 <blockquote>
-  <p>丢包率看起来不高，但 P99 像坐过山车；随后重试把流量“自己打爆”。</p>
+  <p>丢包率看起来不高，但 P99 像坐过山车；随后重试把流量”自己打爆”。</p>
 </blockquote>
 
-<h2 id="4-你应该观测什么按优先级">4. 你应该观测什么（按优先级）</h2>
+<h3 id="31-head-of-line-blocking">3.1 Head-of-Line Blocking</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App1 as Request 1
+  participant App2 as Request 2
+  participant App3 as Request 3
+  participant TCP as TCP Connection
+  participant Network as Network
+
+  App1-&gt;&gt;TCP: Data 1
+  App2-&gt;&gt;TCP: Data 2
+  App3-&gt;&gt;TCP: Data 3
+  
+  TCP-&gt;&gt;Network: Packet 1 (丢失)
+  TCP-&gt;&gt;Network: Packet 2
+  TCP-&gt;&gt;Network: Packet 3
+  
+  Network-&gt;&gt;TCP: Packet 2
+  Network-&gt;&gt;TCP: Packet 3
+  
+  Note over TCP: 等待 Packet 1 重传
+  
+  TCP-&gt;&gt;TCP: 重传 Packet 1
+  Network-&gt;&gt;TCP: Packet 1
+  
+  TCP-&gt;&gt;App1: Deliver Data 1
+  TCP-&gt;&gt;App2: Deliver Data 2
+  TCP-&gt;&gt;App3: Deliver Data 3
+  
+  Note over App1,App3: 所有请求都被阻塞
+</code></pre>
+
+<h3 id="32-应用层重试放大">3.2 应用层重试放大</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[丢包] --&gt; B[请求延迟]
+  B --&gt; C[应用超时]
+  C --&gt; D[重试]
+  D --&gt; E[并发上升]
+  E --&gt; F[队列更长]
+  F --&gt; G[延迟更大]
+  G --&gt; C
+  
+  Note over A,G: 正反馈循环
+</code></pre>
+
+<h2 id="4-应当观测什么按优先级">4. 应当观测什么（按优先级）</h2>
 
 <ul>
   <li><strong>重传相关</strong>：retransmits、dupacks、RTO 次数、fast-retransmit 次数</li>
@@ -691,12 +791,47 @@
   <li><strong>应用层重试</strong>：重试率、超时率、额外 QPS 放大倍数</li>
 </ul>
 
-<h2 id="5-最小排障顺序线上-p99-抖动超时增多">5. 最小排障顺序（线上 P99 抖动/超时增多）</h2>
+<h3 id="41-观测指标">4.1 观测指标</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[TCP 重传观测] --&gt; B[重传次数]
+  A --&gt; C[重传类型]
+  A --&gt; D[RTT 分布]
+  A --&gt; E[应用层指标]
+  
+  B --&gt; F[retransmits]
+  B --&gt; G[RTO 次数]
+  
+  C --&gt; H[fast retransmit]
+  C --&gt; I[RTO retransmit]
+  
+  D --&gt; J[平均 RTT]
+  D --&gt; K[P99 RTT]
+  
+  E --&gt; L[重试率]
+  E --&gt; M[超时率]
+</code></pre>
+
+<h3 id="42-测量工具">4.2 测量工具</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 查看重传统计</span>
+ss <span class="nt">-i</span>
+
+<span class="c"># 使用 tcpdump 分析</span>
+tcpdump <span class="nt">-i</span> eth0 <span class="nt">-w</span> capture.pcap
+
+<span class="c"># 使用 wireshark 分析重传</span>
+
+<span class="c"># 应用层指标</span>
+<span class="c"># 重试率、超时率等</span>
+</code></pre></div></div>
+
+<h2 id="5-排障顺序线上-p99-抖动超时增多">5. 排障顺序（线上 P99 抖动/超时增多）</h2>
 
 <ol>
-  <li><strong>先确认是否丢包/重传上升</strong>：这是最常见根因（尤其是 RTO）。</li>
-  <li><strong>再看是否 bufferbloat/拥塞</strong>：队列时延上升会让 RTT 抖动，进而触发更多超时。</li>
-  <li><strong>检查连接复用策略</strong>：过度复用单连接会放大 HoL（尤其在丢包时）。</li>
+  <li><strong>先确认是否丢包/重传上升</strong>：这是最常见根因（尤其是 RTO）</li>
+  <li><strong>再看是否 bufferbloat/拥塞</strong>：队列时延上升会让 RTT 抖动，进而触发更多超时</li>
+  <li><strong>检查连接复用策略</strong>：过度复用单连接会放大 HoL（尤其在丢包时）</li>
   <li><strong>最后看应用层超时与重试</strong>：
     <ul>
       <li>超时是否过短（与真实 RTT 分布不匹配）？</li>
@@ -706,9 +841,119 @@
   </li>
 </ol>
 
-<h2 id="6-小结">6. 小结</h2>
+<h3 id="51-排障流程">5.1 排障流程</h3>
 
-<p>TCP 重传问题的工程化处理顺序很固定：先把“是不是丢包/重传”确认清楚，再判断“是不是队列/拥塞放大”，最后才去改应用层超时与重试策略。否则很容易在应用层“越救越糟”。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[P99 抖动/超时] --&gt; B{重传上升?}
+  B --&gt;|是| C{是 RTO?}
+  B --&gt;|否| D[其他问题]
+  
+  C --&gt;|是| E[RTO 问题严重]
+  C --&gt;|否| F[Fast Retransmit]
+  
+  E --&gt; G[检查 RTO 设置]
+  E --&gt; H[检查网络质量]
+  
+  F --&gt; I[检查丢包率]
+  
+  G --&gt; J{Bufferbloat?}
+  H --&gt; J
+  I --&gt; J
+  
+  J --&gt;|是| K[优化队列/拥塞控制]
+  J --&gt;|否| L[检查连接复用]
+  
+  L --&gt; M{过度复用?}
+  M --&gt;|是| N[优化连接策略]
+  M --&gt;|否| O[检查应用层重试]
+</code></pre>
+
+<h2 id="6-实际案例">6. 实际案例</h2>
+
+<h3 id="61-案例rto-导致的尾延迟问题">6.1 案例：RTO 导致的尾延迟问题</h3>
+
+<p><strong>问题</strong>：P99 延迟突然从 50ms 跳到 500ms</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>RTO 次数显著上升</li>
+  <li>RTO 时间约 200ms</li>
+  <li>丢包率只有 0.1%，但影响很大</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>优化网络质量（减少丢包）</li>
+  <li>调整 RTO 参数（更激进的初始值）</li>
+  <li>使用更好的拥塞控制算法</li>
+</ul>
+
+<p><strong>结果</strong>：P99 延迟降低到 80ms</p>
+
+<h3 id="62-案例hol-blocking-导致的性能问题">6.2 案例：HoL Blocking 导致的性能问题</h3>
+
+<p><strong>问题</strong>：HTTP/2 多路复用下，一个请求慢导致其他请求也慢</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>单连接多请求</li>
+  <li>丢包导致 HoL blocking</li>
+  <li>所有请求都被阻塞</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>使用 HTTP/3（基于 QUIC，无 HoL blocking）</li>
+  <li>或增加连接数</li>
+  <li>或优化请求优先级</li>
+</ul>
+
+<p><strong>结果</strong>：性能提升 30%</p>
+
+<h2 id="7-设计原则与最佳实践">7. 设计原则与最佳实践</h2>
+
+<h3 id="71-设计原则">7.1 设计原则</h3>
+
+<ol>
+  <li><strong>快速检测</strong>：优先使用 fast retransmit，避免 RTO</li>
+  <li><strong>合理超时</strong>：RTO 设置要匹配真实 RTT 分布</li>
+  <li><strong>减少 HoL</strong>：避免过度复用单连接</li>
+  <li><strong>智能重试</strong>：应用层重试要有退避和去重</li>
+</ol>
+
+<h3 id="72-最佳实践">7.2 最佳实践</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[TCP 重传最佳实践] --&gt; B[优化网络质量]
+  A --&gt; C[合理设置 RTO]
+  A --&gt; D[减少连接复用]
+  A --&gt; E[智能应用层重试]
+  
+  B --&gt; F[减少丢包]
+  C --&gt; G[快速检测]
+  D --&gt; H[减少 HoL]
+  E --&gt; I[避免放大]
+</code></pre>
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>TCP 重传问题的工程化处理顺序很固定：先把”是不是丢包/重传”确认清楚，再判断”是不是队列/拥塞放大”，最后才去改应用层超时与重试策略。否则很容易在应用层”越救越糟”。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>丢包会导致重传，重传会放大延迟</li>
+  <li>Fast retransmit 比 RTO 更快，影响更小</li>
+  <li>HoL blocking 会放大丢包影响</li>
+  <li>应用层重试可能形成正反馈循环</li>
+</ul>
+
+<p><strong>排障流程</strong>：</p>
+<ol>
+  <li>确认是否重传上升（特别是 RTO）</li>
+  <li>检查是否 bufferbloat/拥塞</li>
+  <li>检查连接复用策略</li>
+  <li>优化应用层超时与重试</li>
+</ol>
 
         
       </section>
@@ -750,12 +995,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

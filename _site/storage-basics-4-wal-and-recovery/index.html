@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
+  <meta property="og:description" content="本文是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储基础（4）：WAL、崩溃恢复与一致性">
-    <meta itemprop="description" content="这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
+    <meta itemprop="description" content="本文是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。">
     <meta itemprop="datePublished" content="April 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。</p>
+        <p>本文是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。</p>
 
 <p><img src="/images/diagrams/wal-recovery-flow.svg" alt="WAL + 恢复：最小闭环" /></p>
 
@@ -656,7 +600,7 @@
 
 <p>WAL 的核心价值是：<strong>把“崩溃后的状态”变成可推理的</strong>。</p>
 
-<p>没有 WAL，你往往会掉进这些坑：</p>
+<p>没有 WAL，往往会遇到这些坑：</p>
 
 <ul>
   <li>数据结构本身写入是“多处更新”的（例如 B+Tree 页、LSM 的元数据），崩溃时很难保证原子性</li>
@@ -665,7 +609,7 @@
 
 <p>WAL 把复杂问题简化为：<strong>只要日志可用，就可以重放</strong>（至少能恢复到某个一致点）。</p>
 
-<h2 id="2-一致性要先说清楚你要的是什么保证">2. 一致性要先说清楚：你要的是什么保证</h2>
+<h2 id="2-一致性要先说清楚需要的是什么保证">2. 一致性要先说清楚：需要的是什么保证</h2>
 
 <p>不同系统的目标不同，常见的保证有：</p>
 
@@ -681,7 +625,7 @@
 
 <p>很多线上事故的本质是：应用以为“写成功”了，但系统其实只做到了“写进了缓存”。</p>
 
-<p>你需要明确：</p>
+<p>需要明确：</p>
 
 <ul>
   <li><strong>ack before fsync</strong>：吞吐更高，但允许崩溃丢最近一段写入（窗口）</li>
@@ -714,7 +658,7 @@
 
 <h3 id="31-checkpoint截断点否则-wal-会无限长">3.1 Checkpoint/截断点：否则 WAL 会无限长</h3>
 
-<p>光有 WAL 还不够，你还需要一个“推进点”：</p>
+<p>光有 WAL 还不够，还需要一个“推进点”：</p>
 
 <ul>
   <li><strong>checkpoint</strong>：把内存状态/脏页/元数据推进到磁盘结构中</li>
@@ -730,9 +674,9 @@
 <div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>replay_time ≈ WAL_to_replay_bytes / replay_throughput
 </code></pre></div></div>
 
-<p>你要确保在“最坏情况下”（例如上次 checkpoint 后写入很多）恢复时间仍在可接受范围内，否则就要更频繁 checkpoint、加快回放路径、或者做快照/分段恢复。</p>
+<p>需要确保在“最坏情况下”（例如上次 checkpoint 后写入很多）恢复时间仍在可接受范围内，否则就要更频繁 checkpoint、加快回放路径、或者做快照/分段恢复。</p>
 
-<h2 id="4-fsync你到底落盘了吗">4. fsync：你到底“落盘”了吗</h2>
+<h2 id="4-fsync落盘了吗">4. fsync：“落盘”了吗</h2>
 
 <p>工程上最容易踩坑的是：</p>
 
@@ -743,7 +687,7 @@
 
 <p>因为写入可能只在 page cache 里，还没真正落到磁盘介质。</p>
 
-<p>所以你需要明确：</p>
+<p>所以需要明确：</p>
 
 <ul>
   <li>返回成功前是否要 fsync（强持久 vs 弱持久）</li>
@@ -828,12 +772,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

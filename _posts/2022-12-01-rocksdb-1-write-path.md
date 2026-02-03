@@ -5,7 +5,7 @@ series: rocksdb
 tags: [RocksDB]
 ---
 
-这篇作为 RocksDB 系列的第 1 篇，先把「一次 `Put()/Write()` 从 API 到落盘语义」讲清楚：**写入路径、确认点（durability）、以及写入抖动来自哪里**。后续再分别展开 SST、读路径与 compaction 调参。
+本文作为 RocksDB 系列的第 1 篇，先把「一次 `Put()/Write()` 从 API 到落盘语义」讲清楚：**写入路径、确认点（durability）、以及写入抖动来自哪里**。后续再分别展开 SST、读路径与 compaction 调参。
 
 ![RocksDB 写入路径（抽象版）](/images/diagrams/rocksdb-write-path.svg)
 
@@ -32,20 +32,20 @@ tags: [RocksDB]
 
 很多线上系统会做：`WriteOptions.sync=false` + group commit（更高吞吐），并接受一个小的崩溃丢数据窗口（由业务决定）。
 
-> 记住一句话：**“返回成功”到底意味着什么**，不是 RocksDB 帮你决定的，而是由你的 `WriteOptions` + 业务容忍度共同决定的。
+> 记住核心要点：**“返回成功”到底意味着什么**，不是 RocksDB 帮你决定的，而是由你的 `WriteOptions` + 业务容忍度共同决定的。
 
 ## 2. WAL：持久性与 group commit
 
 WAL 的存在让系统能在崩溃后通过重放恢复 MemTable 的状态。
 
-你在使用时会遇到的关键点：
+使用时会遇到的关键点：
 
 - `sync`/`fsync` 决定持久性强度（更强通常更慢）
 - **group commit** 可以把多次写合并成一次 fsync，降低尾延迟
 
 ![group commit：把多次 fsync 合并成一次](/images/diagrams/wal-group-commit-timeline.svg)
 
-### 2.1 你会在性能上看到什么
+### 2.1 会在性能上看到什么
 
 - **sync 打开**：平均延迟上升，尾延迟更敏感（更“跟磁盘走”）
 - **sync 关闭 + group commit**：吞吐更高，但崩溃窗口更大；高峰期仍可能被 flush/compaction 影响
@@ -70,13 +70,13 @@ MemTable 让写入先落在内存里，代价是：
 
 写入高峰时，MemTable 会不断转成 immutable，等待后台 flush。
 
-如果 flush 跟不上，你会看到：
+如果 flush 跟不上，可以看到：
 
 - immutable 数量上升
 - L0 文件数上升（读放大也会变差）
 - 最终触发 write stall / throttle（保护系统不崩）
 
-## 4. 写入抖动通常从哪里来（你该先盯什么）
+## 4. 写入抖动通常从哪里来（需要先盯什么）
 
 从“可解释的工程现象”出发，写入抖动最常见的来源是：
 
@@ -84,7 +84,7 @@ MemTable 让写入先落在内存里，代价是：
 - **flush 跟不上**：immutable 堆积，最终触发 stall/throttle。
 - **compaction 欠账**：L0/L1 堆积、后台重写占满 IO 带宽，写入被迫限速。
 
-## 5. 你可以关注的两个“核心指标” + 两个“更实用的信号”
+## 5. 可以关注的两个“核心指标” + 两个“更实用的信号”
 
 为了后面理解性能：
 
@@ -96,7 +96,7 @@ MemTable 让写入先落在内存里，代价是：
 - **write stall/throttle 次数**：是否在用“卡写”换稳定
 - **compaction backlog**：后台是否已经欠账（欠账越多，越容易抖）
 
-## 6. 一个最小排障顺序（遇到写入变慢/变抖时）
+## 6. 一个排障顺序（遇到写入变慢/变抖时）
 
 1. **先确认写入语义**：`sync` 到底开没开？是否有 group commit？业务能接受多大窗口？
 2. **再看是否“欠账”**：immutable/L0/compaction backlog 是否持续上升？

@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -778,7 +722,7 @@
   <li><strong>跳转到目标线程</strong>：恢复程序计数器，开始执行目标线程</li>
 </ol>
 
-<h2 id="3-什么时候会发生上下文切换你线上看到的大多数抖都从这里来">3. 什么时候会发生上下文切换（你线上看到的大多数“抖”都从这里来）</h2>
+<h2 id="3-什么时候会发生上下文切换线上看到的大多数抖都从这里来">3. 什么时候会发生上下文切换（线上看到的大多数“抖”都从这里来）</h2>
 
 <p>常见触发点：</p>
 
@@ -789,7 +733,7 @@
   <li><strong>中断/软中断</strong>：内核需要处理硬件事件（网络收包、磁盘完成等）</li>
 </ul>
 
-<p>工程直觉：<strong>上下文切换不是坏事，但“频繁且无收益的切换”会制造长尾</strong>。</p>
+<p>工程要点：<strong>上下文切换不是坏事，但“频繁且无收益的切换”会制造长尾</strong>。</p>
 
 <h2 id="4-为什么上下文切换贵不是保存寄存器而是工作集被打散">4. 为什么上下文切换“贵”：不是保存寄存器，而是“工作集被打散”</h2>
 
@@ -809,7 +753,7 @@
   <li>频繁切换把 CPU 变成“搬运工”而不是“干活”</li>
 </ul>
 
-<h2 id="5-你怎么判断系统是在干活还是在切换">5. 你怎么判断系统是“在干活”还是“在切换”</h2>
+<h2 id="5-如何判断系统是在干活还是在切换">5. 如何判断系统是“在干活”还是“在切换”</h2>
 
 <p>非常实用的观测信号：</p>
 
@@ -1047,12 +991,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：The Log-Structured Merge-Tree（O’Neil et al.）">
+  <meta property="og:description" content="  论文：The Log-Structured Merge-Tree（O’Neil et al., Acta Informatica 1996；在工程界常被视为 LSM 系统的源头之一）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">存储论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -535,6 +479,90 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -554,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="LSM-Tree：The Log-Structured Merge-Tree（论文笔记）">
-    <meta itemprop="description" content="  论文：The Log-Structured Merge-Tree（O’Neil et al.）">
+    <meta itemprop="description" content="  论文：The Log-Structured Merge-Tree（O’Neil et al., Acta Informatica 1996；在工程界常被视为 LSM 系统的源头之一）">
     <meta itemprop="datePublished" content="April 01, 2022">
     
 
@@ -568,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  6 分钟阅读
 	
 </p>
           
@@ -588,51 +616,726 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：The Log-Structured Merge-Tree（O’Neil et al.）</p>
+  <p>论文：The Log-Structured Merge-Tree（O’Neil et al., Acta Informatica 1996；在工程界常被视为 LSM 系统的源头之一）</p>
 </blockquote>
 
-<h2 id="1-论文要点写优化write-optimized">1. 论文要点：写优化（write-optimized）</h2>
+<p>LSM-Tree 的核心思想很简单：<strong>把随机写变成顺序写</strong>，把“必须排序/合并”的成本推到后台 compaction。真正难的是工程化：如何在吞吐、尾延迟、放大（读/写/空间）之间找到一个稳定点。</p>
 
-<p>LSM 的核心出发点：</p>
+<p>本文按“系统工程视角”梳理 LSM：组件如何协作、放大怎么来的、compaction 为什么是难点、以及现代系统（LevelDB/RocksDB/Bigtable family）围绕 LSM 做了哪些关键优化。</p>
 
-<ul>
-  <li>B+Tree 在随机写场景下会产生大量随机 IO（或随机写放大）</li>
-  <li>如果把写入先变成顺序写，再后台合并，就能显著提高写吞吐</li>
-</ul>
+<h2 id="1-lsm-为什么会出现随机写是系统性瓶颈">1. LSM 为什么会出现：随机写是系统性瓶颈</h2>
 
-<p>因此它属于典型的 <strong>写优化数据结构</strong>。</p>
+<h3 id="11-btree-的随机写成本">1.1 B+Tree 的随机写成本</h3>
 
-<h2 id="2-结构直觉c0--c1--c2">2. 结构直觉：C0 / C1 / C2…</h2>
-
-<p>论文里的经典描述是多级组件：</p>
+<p>在传统 B+Tree 上，小范围随机更新往往意味着：</p>
 
 <ul>
-  <li><strong>C0</strong>：内存组件（有序结构）</li>
-  <li><strong>C1、C2…</strong>：磁盘组件（分层有序文件）</li>
-  <li>写入先到 C0，后续按一定策略 merge 到更低层</li>
+  <li>需要定位到叶子页（随机读）</li>
+  <li>修改后可能触发页分裂/写放大</li>
+  <li>脏页刷盘会产生更多随机写</li>
 </ul>
 
-<p>你可以把它理解成“分层的有序 run”，后台持续做归并。</p>
+<p>如果存储介质是 HDD 或者写放大敏感的 SSD，随机写会被放大成系统性瓶颈。</p>
 
-<h2 id="3-代价读放大写放大空间放大">3. 代价：读放大、写放大、空间放大</h2>
+<h3 id="12-lsm-的一句话答案">1.2 LSM 的一句话答案</h3>
 
-<p>LSM 的收益是写吞吐；代价是三种放大：</p>
+<p><strong>前台只做顺序追加（log + memory），后台做归并排序（merge/compaction）。</strong></p>
+
+<pre><code class="language-mermaid">flowchart TD
+  W[Write] --&gt; WAL[WAL append]
+  WAL --&gt; MEM[MemTable (sorted)]
+  MEM --&gt;|flush| L0[L0 files (sorted runs)]
+  L0 --&gt;|compaction| L1[L1]
+  L1 --&gt;|compaction| L2[L2]
+  L2 --&gt;|...| Ln[Ln]
+
+  R[Read] --&gt; MEM
+  R --&gt; L0
+  R --&gt; L1
+  R --&gt; Ln
+</code></pre>
+
+<h2 id="2-基本结构内存组件--多层有序-run">2. 基本结构：内存组件 + 多层有序 run</h2>
+
+<p>把 LSM 拆成三个最关键的“前台/后台分工”：</p>
 
 <ul>
-  <li><strong>读放大（RA）</strong>：查询可能要触碰多个层级/文件</li>
-  <li><strong>写放大（WA）</strong>：后台合并会重写数据</li>
-  <li><strong>空间放大（SA）</strong>：多层共存、旧版本与 tombstone 直到合并后才回收</li>
+  <li><strong>WAL</strong>：保证持久性（崩溃恢复）</li>
+  <li><strong>MemTable</strong>：内存里的有序结构（跳表/红黑树等），承接写入并加速读</li>
+  <li><strong>SSTable / Sorted Run</strong>：磁盘上的不可变有序文件，按层组织</li>
 </ul>
 
-<p>现代系统（LevelDB/RocksDB 等）围绕这三者做了大量工程优化（Bloom filter、cache、compaction 策略等）。</p>
+<h3 id="21-key-在-lsm-里的排序键是什么">2.1 Key 在 LSM 里的排序键是什么</h3>
 
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
+<p>工程里常见的排序键不是纯 <code class="language-plaintext highlighter-rouge">user_key</code>，而是：</p>
 
 <ul>
-  <li>一旦工作负载是“写多 + 随机写多”，LSM 家族往往是自然选择</li>
-  <li>真正的难点在 compaction：它决定了系统的稳定性与成本</li>
+  <li><code class="language-plaintext highlighter-rouge">internal_key = (user_key, seq, type)</code></li>
 </ul>
 
+<p>其中 <code class="language-plaintext highlighter-rouge">seq</code> 单调递增，保证“同一个 user_key 的新版本排在旧版本前/后（取决于实现）”。</p>
+
+<p>这会直接决定：</p>
+
+<ul>
+  <li>点查如何找到“最新版本”</li>
+  <li>tombstone（删除标记）如何覆盖旧值</li>
+  <li>compaction 如何清理历史版本</li>
+</ul>
+
+<h3 id="22-典型读写路径直觉版">2.2 典型读写路径（直觉版）</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant E as Engine
+  participant WAL as WAL
+  participant M as MemTable
+  participant L as Levels
+
+  C-&gt;&gt;E: Put(key, value)
+  E-&gt;&gt;WAL: Append(record)
+  E-&gt;&gt;M: Insert(internal_key, value)
+  E--&gt;&gt;C: OK
+
+  C-&gt;&gt;E: Get(key)
+  E-&gt;&gt;M: Lookup(key)
+  alt Hit in MemTable
+    M--&gt;&gt;E: value
+  else Miss
+    E-&gt;&gt;L: Search runs (with filters/index)
+    L--&gt;&gt;E: value or NotFound
+  end
+  E--&gt;&gt;C: result
+</code></pre>
+
+<h2 id="3-三种放大ra--wa--sa">3. 三种放大：RA / WA / SA</h2>
+
+<p>LSM 的工程讨论最终都会落到三种放大：</p>
+
+<ul>
+  <li><strong>读放大（Read Amplification, RA）</strong>：一次读要碰多少层/多少文件/多少 block</li>
+  <li><strong>写放大（Write Amplification, WA）</strong>：写入 1B 用户数据，系统最终写了多少 B</li>
+  <li><strong>空间放大（Space Amplification, SA）</strong>：存 1B 有效数据需要占多少磁盘（多版本、tombstone、重复 run）</li>
+</ul>
+
+<h3 id="31-读放大ra来自哪里">3.1 读放大（RA）来自哪里</h3>
+
+<ul>
+  <li>多层文件：一个 key 可能出现在多个 level（旧版本尚未被 compaction 清掉）</li>
+  <li>多文件：每层多个 SSTable，需要定位候选文件</li>
+  <li>多 block：每个 SSTable 内部是 block 结构（index/filter/data），命中才读 data block</li>
+</ul>
+
+<p>现代系统用 <strong>Bloom / Ribbon filter + block cache + level metadata</strong> 把 RA 压下来。</p>
+
+<h3 id="32-写放大wa的本质">3.2 写放大（WA）的本质</h3>
+
+<p>写放大主要来自 compaction：数据被不断“搬家”合并。</p>
+
+<p>直觉上：</p>
+
+<ul>
+  <li><strong>tiering（按层堆叠）</strong>：写放大低，但读放大高</li>
+  <li><strong>leveling（层内不重叠）</strong>：读放大低，但写放大高</li>
+</ul>
+
+<h3 id="33-空间放大sa的本质">3.3 空间放大（SA）的本质</h3>
+
+<ul>
+  <li>多版本：旧版本在 compaction 前无法回收</li>
+  <li>tombstone：删除标记需要传播到足够低的层才能真正删除旧值</li>
+  <li>tiering 重叠：同层多个 run 重叠会带来更多冗余</li>
+</ul>
+
+<h2 id="4-compactionlsm-的心脏也是痛点">4. Compaction：LSM 的心脏也是痛点</h2>
+
+<h3 id="41-两个流派leveling-vs-tiering">4.1 两个流派：Leveling vs Tiering</h3>
+
+<h4 id="leveling分层且层内不重叠">Leveling（分层且层内不重叠）</h4>
+
+<ul>
+  <li>每层的 SSTable key range 互不重叠（或尽量不重叠）</li>
+  <li>点查：每层最多查 1 个文件 → <strong>RA 低</strong></li>
+  <li>Compaction：需要把上层数据 merge 进下层，并重写大量数据 → <strong>WA 高</strong></li>
+</ul>
+
+<h4 id="tiering层内多个-run-重叠">Tiering（层内多个 run 重叠）</h4>
+
+<ul>
+  <li>每层是多个不可变 run（堆叠）</li>
+  <li>写入更像“落盘就行” → <strong>WA 低</strong></li>
+  <li>点查：同层可能要查多个 run → <strong>RA 高</strong></li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Compaction family] --&gt; L[Leveling]
+  A --&gt; T[Tiering]
+
+  L --&gt; L1[Pros: low read amp]
+  L --&gt; L2[Cons: higher write amp]
+
+  T --&gt; T1[Pros: low write amp]
+  T --&gt; T2[Cons: higher read amp]
+</code></pre>
+
+<h3 id="42-典型分层参数大小倍数-t">4.2 典型分层参数：大小倍数 T</h3>
+
+<p>常见做法：每一层的容量按倍数增长：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">size(Lk) ≈ T * size(Lk-1)</code></li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">T</code>（比如 10）会影响：</p>
+
+<ul>
+  <li>compaction 频率</li>
+  <li>WA（数据搬家次数）</li>
+  <li>空间利用率</li>
+  <li>读路径（层数）</li>
+</ul>
+
+<h3 id="43-l0-的特殊性最容易引发抖动">4.3 L0 的特殊性：最容易引发抖动</h3>
+
+<p>很多实现把 flush 生成的 run 放到 L0。L0 的特点：</p>
+
+<ul>
+  <li>文件之间 <strong>可能重叠</strong>（range overlap）</li>
+  <li>点查可能要查多个 L0 文件</li>
+  <li>如果 L0 文件数量上升，会导致读放大显著上升、甚至触发 write stall</li>
+</ul>
+
+<p>典型策略：</p>
+
+<ul>
+  <li>控制 L0 文件数阈值</li>
+  <li>触发 L0→L1 compaction（把重叠变成更“规整”的结构）</li>
+</ul>
+
+<h3 id="44-compaction-的两个指标输入重叠与输出重写">4.4 Compaction 的两个指标：输入重叠与输出重写</h3>
+
+<p>Compaction 本质是多路 merge：</p>
+
+<ul>
+  <li>选输入：上层一个/多个文件 + 下层与其 key range 重叠的一组文件</li>
+  <li>归并输出：产生若干新文件，覆盖同一 key range</li>
+</ul>
+
+<p>代价主要来自：</p>
+
+<ul>
+  <li>读输入文件</li>
+  <li>写输出文件</li>
+  <li>额外的 CPU（比较/解码/校验/压缩）</li>
+</ul>
+
+<h3 id="45-tombstone-与-ttl删除为什么这么难">4.5 tombstone 与 TTL：删除为什么这么难</h3>
+
+<p>删除通常不是“立刻把磁盘数据删掉”，而是写入 tombstone：</p>
+
+<ul>
+  <li>tombstone 必须下沉到足够低的层，才能覆盖/清理所有旧版本</li>
+  <li>在此之前，读路径仍需要处理 tombstone 逻辑</li>
+</ul>
+
+<p>因此：</p>
+
+<ul>
+  <li>delete-heavy 工作负载会增加 compaction 压力</li>
+  <li>tombstone 的生命周期与 compaction 速度强相关</li>
+</ul>
+
+<h2 id="5-读路径工程化bloom--index--cache">5. 读路径工程化：Bloom / Index / Cache</h2>
+
+<h3 id="51-bloom-filter把负查变便宜">5.1 Bloom Filter：把“负查”变便宜</h3>
+
+<p>很多系统的读压力来自负查（key 不存在）。Bloom filter 让系统在读 data block 前快速判断：</p>
+
+<ul>
+  <li>如果 filter 说“不可能存在”，可以直接跳过该文件</li>
+</ul>
+
+<p>这对 LSM 很关键，因为同一个 key 可能要探测多个 run。</p>
+
+<h3 id="52-block-cache缓存的不是key-value而是block">5.2 Block Cache：缓存的不是“key-value”而是“block”</h3>
+
+<p>SSTable 内部是 block 结构：</p>
+
+<ul>
+  <li>data blocks（真正数据）</li>
+  <li>index blocks（定位 data block）</li>
+  <li>filter blocks（Bloom）</li>
+</ul>
+
+<p>缓存策略一般是：</p>
+
+<ul>
+  <li>cache data/index/filter blocks</li>
+  <li>热点 key 会被映射成热点 block</li>
+</ul>
+
+<h3 id="53-range-query-的难点">5.3 Range query 的难点</h3>
+
+<p>范围查询需要 merge 多个有序源：</p>
+
+<ul>
+  <li>MemTable iterator</li>
+  <li>L0 多个 run iterator</li>
+  <li>L1..Ln 每层最多一个（leveling）或多个（tiering）</li>
+</ul>
+
+<p>如果层间重叠多，range scan 的 CPU merge 成本会显著上升。</p>
+
+<h2 id="6-写路径工程化flushwalwrite-stall">6. 写路径工程化：Flush、WAL、Write Stall</h2>
+
+<h3 id="61-flush什么时候把-memtable-落盘">6.1 Flush：什么时候把 MemTable 落盘</h3>
+
+<p>常见触发条件：</p>
+
+<ul>
+  <li>MemTable 大小阈值</li>
+  <li>写入速率过高导致内存压力</li>
+  <li>手动/定时 flush</li>
+</ul>
+
+<p>Flush 产生新的 SSTable（通常到 L0）。</p>
+
+<h3 id="62-write-stall为什么后台会反过来卡前台">6.2 Write Stall：为什么“后台”会反过来卡“前台”</h3>
+
+<p>当 compaction 跑不过写入时，会出现：</p>
+
+<ul>
+  <li>L0 文件数增长</li>
+  <li>L0 读放大变大</li>
+  <li>compaction backlog 继续增长</li>
+</ul>
+
+<p>最终系统可能为了保护读延迟/磁盘空间，主动 <strong>stall writes</strong>。</p>
+
+<p>工程上经常需要：</p>
+
+<ul>
+  <li>增加 compaction 并发</li>
+  <li>调整 level size / T</li>
+  <li>调整 flush 速度与写入节流</li>
+</ul>
+
+<h2 id="7-一个可操作的lsm-直觉模型">7. 一个可操作的“LSM 直觉模型”</h2>
+
+<p>如果你只记一个模型，我建议记这个：</p>
+
+<ul>
+  <li>LSM 的前台写很快（顺序写 + 内存排序）</li>
+  <li>后台 compaction 决定系统的稳定性</li>
+  <li>三种放大互相牵制：压一个，往往会抬高另一个</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Compaction policy] --&gt; B[WA]
+  A --&gt; C[RA]
+  A --&gt; D[SA]
+
+  B --&gt; E[write throughput]
+  C --&gt; F[read latency]
+  D --&gt; G[disk cost]
+
+  E --&gt; H[stall risk]
+  F --&gt; H
+  G --&gt; H
+
+  H[stability] --&gt; A
+</code></pre>
+
+<h2 id="8-读完后的-takeaways">8. 读完后的 takeaways</h2>
+
+<ul>
+  <li>LSM 的“论文部分”很好理解，难点在 compaction 的工程实现与参数稳定性。</li>
+  <li><code class="language-plaintext highlighter-rouge">leveling</code> vs <code class="language-plaintext highlighter-rouge">tiering</code> 是最核心的设计分歧：读更稳还是写更省。</li>
+  <li>真实系统的性能拐点通常出现在：<strong>L0、compaction backlog、tombstone</strong>。</li>
+  <li>要把 LSM 写好，必须把：filter/cache、compaction、write stall 这三者闭环。</li>
+</ul>
+
+<hr />
+
+<p>下一步我会继续把“论文阅读 tab”剩下的短文补齐：</p>
+
+<ul>
+  <li>分布式系统：Chubby / MapReduce / Spanner</li>
+  <li>数据库：Silo / System R</li>
+</ul>
+
+<p>并保证 Mermaid 图都能稳定渲染（我们有 <code class="language-plaintext highlighter-rouge">npm run mermaid:audit</code> 做兜底）。</p>
+
+<h2 id="9-更定量的放大直觉工程可用版">9. 更定量的放大直觉（工程可用版）</h2>
+
+<p>这一节我们不追求严格推导（不同实现细节差异很大），但给出足够“能算、能比较、能解释”的近似。</p>
+
+<h3 id="91-层数与大小倍数-t">9.1 层数与大小倍数 T</h3>
+
+<p>如果最底层容量约为 <code class="language-plaintext highlighter-rouge">S_max</code>，MemTable+L0 规模约为 <code class="language-plaintext highlighter-rouge">S0</code>，并且每层按 <code class="language-plaintext highlighter-rouge">T</code> 倍增长，那么层数大致：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">L ≈ log_T(S_max / S0)</code></li>
+</ul>
+
+<p>层数越多：</p>
+
+<ul>
+  <li>metadata 管理复杂度更高</li>
+  <li>读路径要触碰更多层（但 leveling 下每层最多一个文件）</li>
+</ul>
+
+<h3 id="92-leveling-的-wa-直觉">9.2 Leveling 的 WA 直觉</h3>
+
+<p>在 leveling 中，一条数据会不断被“下推”到更低层。直觉上：</p>
+
+<ul>
+  <li>每进入下一层就会被重写一次</li>
+  <li>WA 与层数正相关</li>
+</ul>
+
+<p>因此 T 变大（层数变少）通常能降低“被反复搬家次数”，但会让单次 compaction 的重写范围变大、写抖动更明显。</p>
+
+<h3 id="93-tiering-的-ra-直觉">9.3 Tiering 的 RA 直觉</h3>
+
+<p>在 tiering 中，同层多个 run 重叠：</p>
+
+<ul>
+  <li>点查需要在同层探测多个 run（Bloom/filter 能帮你跳过部分）</li>
+  <li>最坏情况下，需要检查 <code class="language-plaintext highlighter-rouge">O(number_of_runs)</code></li>
+</ul>
+
+<p>因此 tiering 更依赖：</p>
+
+<ul>
+  <li>filter 的效果（负查性能）</li>
+  <li>合理控制 run 数（否则读退化）</li>
+</ul>
+
+<h2 id="10-compaction-选择picker真正决定系统稳不稳">10. Compaction 选择（picker）：真正决定“系统稳不稳”</h2>
+
+<p>在工程实现里，compaction 不只是“后台线程一直 merge”，而是：</p>
+
+<ul>
+  <li>什么时候 compaction</li>
+  <li>选哪一层</li>
+  <li>选哪些文件</li>
+  <li>输出切分成多大</li>
+</ul>
+
+<p>这些策略决定了：</p>
+
+<ul>
+  <li>backlog 是否能收敛</li>
+  <li>写放大/读放大的长期稳定点</li>
+  <li>是否出现周期性的 write stall（抖动）</li>
+</ul>
+
+<h3 id="101-常见触发信号">10.1 常见触发信号</h3>
+
+<ul>
+  <li>L0 文件数/总大小超过阈值</li>
+  <li>某层 size 超过目标 size</li>
+  <li>tombstone 比例过高（需要清理）</li>
+  <li>手动触发（运维/compact range）</li>
+</ul>
+
+<h3 id="102-优先压-l0几乎是共识">10.2 “优先压 L0”几乎是共识</h3>
+
+<p>原因很直接：</p>
+
+<ul>
+  <li>L0 重叠导致读放大增长最快</li>
+  <li>L0 backlog 会直接把写入推向 stall</li>
+</ul>
+
+<p>所以很多系统的 compaction 优先级类似：</p>
+
+<ul>
+  <li>先保证 L0 不爆</li>
+  <li>再按层级超标程度做平衡</li>
+</ul>
+
+<h2 id="11-输出文件大小吞吐-vs-tail-latency-的权衡">11. 输出文件大小：吞吐 vs tail latency 的权衡</h2>
+
+<p>输出文件越大：</p>
+
+<ul>
+  <li>compaction 更“批处理”，吞吐更好</li>
+  <li>但单次 compaction 的 IO 峰值更大，容易造成尾延迟抖动</li>
+</ul>
+
+<p>输出文件越小：</p>
+
+<ul>
+  <li>compaction 更平滑</li>
+  <li>但元数据变多、打开文件变多、读路径成本上升</li>
+</ul>
+
+<p>工程上通常需要结合：</p>
+
+<ul>
+  <li>磁盘带宽</li>
+  <li>CPU（压缩/校验）</li>
+  <li>workload 的 SLA</li>
+</ul>
+
+<h2 id="12-tombstonettl-的工程细节为什么会删不动">12. tombstone/TTL 的工程细节：为什么会“删不动”</h2>
+
+<p>删除在 LSM 里是“写一个 tombstone”。要真正删除旧值，需要 tombstone 覆盖到所有可能存在旧版本的层。</p>
+
+<h3 id="121-典型现象">12.1 典型现象</h3>
+
+<ul>
+  <li>delete-heavy 负载下，tombstone 积压</li>
+  <li>compaction backlog 变大</li>
+  <li>空间放大变高（旧版本迟迟不回收）</li>
+</ul>
+
+<h3 id="122-常见工程补救">12.2 常见工程补救</h3>
+
+<ul>
+  <li>更激进的 compaction（提高后台资源）</li>
+  <li>定期 compact range（但要注意抖动）</li>
+  <li>业务侧减少短周期 delete（尽量 TTL 到期合并回收）</li>
+</ul>
+
+<h2 id="13-range-scan什么时候会很贵">13. Range scan：什么时候会很贵</h2>
+
+<p>range scan 在 LSM 里本质是多路 merge iterator。</p>
+
+<h3 id="131-影响因素">13.1 影响因素</h3>
+
+<ul>
+  <li>L0 重叠越多 → merge 源越多</li>
+  <li>tiering 层 run 越多 → merge 源越多</li>
+  <li>key 分布越散 → cache 命中率越差</li>
+</ul>
+
+<h3 id="132-工程优化">13.2 工程优化</h3>
+
+<ul>
+  <li>尽量减少重叠（leveling / 控制 L0）</li>
+  <li>为 scan 优化 block cache 策略（scan-resistant cache）</li>
+  <li>数据局部性（prefix / clustering）</li>
+</ul>
+
+<h2 id="14-稳定性视角写放大不是最怕最怕抖动">14. 稳定性视角：写放大不是最怕，最怕“抖动”</h2>
+
+<p>很多系统实际的问题不是平均 WA，而是：</p>
+
+<ul>
+  <li>compaction 波峰波谷</li>
+  <li>write stall 周期性出现</li>
+  <li>tail latency 尖刺</li>
+</ul>
+
+<h3 id="141-一个朴素但好用的判断标准">14.1 一个朴素但好用的判断标准</h3>
+
+<ul>
+  <li>如果后台 compaction 平均速度长期 &lt; 前台写入速度，系统必然进入不可持续状态</li>
+  <li>所以调参的第一目标是让 compaction 有“余量”</li>
+</ul>
+
+<h2 id="15-读完后的补充-takeaways">15. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>LSM 的“最难点”是 compaction picker：它决定系统在长期运行下是否稳定。</li>
+  <li>想让系统稳，优先看：L0、backlog、tombstone、stall。</li>
+  <li>RA/WA/SA 是互相牵制的三角：做任何优化都要说清楚代价转移到了哪里。</li>
+</ul>
+
+<h2 id="16-现代-lsm-的几个硬工程点从论文到现实系统">16. 现代 LSM 的几个“硬工程点”（从论文到现实系统）</h2>
+
+<p>这部分不是论文原文，但能帮助你把 LSM 和 RocksDB/LevelDB/Bigtable family 对上号。</p>
+
+<h3 id="161-compaction-的资源隔离别让后台打爆前台">16.1 Compaction 的资源隔离：别让后台打爆前台</h3>
+
+<p>Compaction 会同时消耗：</p>
+
+<ul>
+  <li>磁盘带宽（读旧文件 + 写新文件）</li>
+  <li>CPU（压缩/校验/解码）</li>
+  <li>内存（iterator/merge buffer）</li>
+</ul>
+
+<p>工程上需要限制与隔离：</p>
+
+<ul>
+  <li>compaction 并发数</li>
+  <li>compaction IO rate limit</li>
+  <li>高优先级（flush/L0） vs 低优先级（deep compaction）</li>
+</ul>
+
+<p>否则会出现：</p>
+
+<ul>
+  <li>read tail latency 抖动</li>
+  <li>业务线程被 IO/CPU 抢占</li>
+</ul>
+
+<h3 id="162-写很快的错觉wal--memtable-只是前半程">16.2 “写很快”的错觉：WAL + memtable 只是前半程</h3>
+
+<p>很多人第一次 benchmark 会觉得 LSM 写入很快，但长期运行后会遇到：</p>
+
+<ul>
+  <li>compaction backlog 累积</li>
+  <li>L0 爆掉</li>
+  <li>stall</li>
+</ul>
+
+<p>所以写性能要看“稳态”而不是“冷启动”。</p>
+
+<h3 id="163-负载倾斜热点-key-会改变一切">16.3 负载倾斜：热点 key 会改变一切</h3>
+
+<p>如果某个 key 范围特别热：</p>
+
+<ul>
+  <li>对应的 SSTable block 更热</li>
+  <li>compaction 可能频繁触碰同一范围</li>
+</ul>
+
+<p>在分布式场景，还会引发：</p>
+
+<ul>
+  <li>range 热点导致某个 shard/region 过载</li>
+</ul>
+
+<h3 id="164-key-value-分离value-log是一种典型演进">16.4 Key-value 分离（value log）是一种典型演进</h3>
+
+<p>当 value 很大且更新频繁时：</p>
+
+<ul>
+  <li>compaction 反复搬大 value 会让 WA 极高</li>
+</ul>
+
+<p>一种演进是 key-value separation：</p>
+
+<ul>
+  <li>LSM 里只存 key + value pointer</li>
+  <li>value 存在 append-only value log</li>
+</ul>
+
+<p>代价是：</p>
+
+<ul>
+  <li>GC 复杂</li>
+  <li>读路径多一次跳转</li>
+</ul>
+
+<p>这也是“写放大”在工程上反向推动架构演进的例子。</p>
+
+<h3 id="165-压缩与校验cpuio-权衡点">16.5 压缩与校验：CPU/IO 权衡点</h3>
+
+<ul>
+  <li>强压缩：省 IO 但耗 CPU</li>
+  <li>弱压缩：耗 IO 但省 CPU</li>
+</ul>
+
+<p>真实系统需要根据：</p>
+
+<ul>
+  <li>CPU 余量</li>
+  <li>IO 带宽</li>
+  <li>读写比例</li>
+</ul>
+
+<p>动态选择压缩策略。</p>
+
+<h2 id="17-一个可复用的调参-checklist面向稳定性">17. 一个可复用的调参 checklist（面向稳定性）</h2>
+
+<p>如果你在真实系统里遇到 LSM 抖动，可以按这个顺序排查：</p>
+
+<ol>
+  <li><strong>L0 是否爆</strong>：L0 文件数/大小是否持续上升</li>
+  <li><strong>compaction backlog</strong>：后台是否长期追不上前台写入</li>
+  <li><strong>stall</strong>：是否发生写入被节流/暂停</li>
+  <li><strong>tombstone</strong>：是否 delete-heavy 导致清理压力过大</li>
+  <li><strong>cache 命中</strong>：负查是否被 filter 减少，热点 block 是否命中 cache</li>
+</ol>
+
+<p>每一步都对应明确的工程动作（提高 compaction 资源、调阈值、改 workload、加 cache/filter）。</p>
+
+<h2 id="18-再补一组常见问答把直觉讲透">18. 再补一组“常见问答”，把直觉讲透</h2>
+
+<h3 id="181-为什么-l0-经常是整个系统的开关">18.1 为什么 L0 经常是整个系统的开关</h3>
+
+<p>因为 L0 的重叠导致：</p>
+
+<ul>
+  <li>点查可能要碰多个文件</li>
+  <li>range scan merge 源数激增</li>
+  <li>filter/cache 的收益下降（需要探测更多候选）</li>
+</ul>
+
+<p>一旦 L0 积压，系统会进入“读慢 → compaction 更难推进 → 更积压 → stall”的恶性循环。</p>
+
+<h3 id="182-为什么-leveling-更适合读多写少">18.2 为什么 leveling 更适合读多写少</h3>
+
+<ul>
+  <li>leveling 让每层 key-range 尽量不重叠</li>
+  <li>点查时每层最多一个候选文件</li>
+</ul>
+
+<p>因此读放大更低、读延迟更稳。</p>
+
+<p>代价是写放大更高：数据会被反复下推重写。</p>
+
+<h3 id="183-为什么-tiering-更适合写多读少">18.3 为什么 tiering 更适合写多读少</h3>
+
+<ul>
+  <li>tiering 让写入更像“批量落盘”</li>
+  <li>低 WA、高写吞吐</li>
+</ul>
+
+<p>代价是读放大更高：需要在同层多个 run 中探测。</p>
+
+<h3 id="184-为什么-tombstone-会拖慢系统">18.4 为什么 tombstone 会拖慢系统</h3>
+
+<p>tombstone 本质上也是数据：</p>
+
+<ul>
+  <li>它会参与 compaction merge</li>
+  <li>它会影响读路径（需要判断 key 是否被删除）</li>
+</ul>
+
+<p>如果 delete-heavy：</p>
+
+<ul>
+  <li>tombstone 比例高</li>
+  <li>compaction 成本上升</li>
+  <li>空间回收变慢</li>
+</ul>
+
+<h3 id="185-为什么提高-compaction-并发不一定解决问题">18.5 为什么“提高 compaction 并发”不一定解决问题</h3>
+
+<p>因为瓶颈可能不在并发，而在：</p>
+
+<ul>
+  <li>磁盘带宽已经饱和</li>
+  <li>CPU（压缩/解码）已经成为瓶颈</li>
+  <li>写入速率本身超过系统可持续上限</li>
+</ul>
+
+<p>正确的目标是：让后台可持续吞吐 &gt; 前台写入吞吐，并且隔离对读延迟的影响。</p>
+
+<h2 id="19-小结把-lsm-当作后台持续归并的流水线">19. 小结：把 LSM 当作“后台持续归并”的流水线</h2>
+
+<p>如果把 LSM 看成一个流水线：</p>
+
+<ul>
+  <li>前台：顺序追加 + 内存有序</li>
+  <li>后台：持续归并（compaction）</li>
+</ul>
+
+<p>那系统调优的关键就是：</p>
+
+<ul>
+  <li>让归并流水线持续跑得动</li>
+  <li>且不影响前台 SLA</li>
+</ul>
+
+<p>这也是为什么 LSM 的工程实现比论文描述复杂得多。</p>
 
         
       </section>
@@ -674,12 +1377,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：线性一致性：从客户端视角理解」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="线性一致性（linearizability）这四个字经常被当成“强一致”的代名词，但工程里最重要的是：它是一个可以用客户端观察来定义、也可以被测试与反证的语义。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：线性一致性：从客户端视角理解">
-    <meta itemprop="description" content="本文围绕「一致性笔记：线性一致性：从客户端视角理解」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="线性一致性（linearizability）这四个字经常被当成“强一致”的代名词，但工程里最重要的是：它是一个可以用客户端观察来定义、也可以被测试与反证的语义。">
     <meta itemprop="datePublished" content="September 01, 2022">
     
 
@@ -652,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,20 +615,156 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：线性一致性：从客户端视角理解」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>线性一致性（linearizability）这四个字经常被当成“强一致”的代名词，但工程里最重要的是：<strong>它是一个可以用客户端观察来定义、也可以被测试与反证的语义</strong>。</p>
 
-<p><img src="/images/diagrams/consensus-linearizability-client.svg" alt="一致性笔记：线性一致性：从客户端视角理解" /></p>
-<h2 id="1-线性一致性的直觉像单机按时间排序">1. 线性一致性的直觉：像“单机按时间排序”</h2>
+<p>这篇从客户端视角讲清楚三件事：</p>
 
-<p>从客户端视角：所有操作看起来在某个全局时间线中依次发生。</p>
+<ul>
+  <li>线性一致性到底承诺什么</li>
+  <li>它和“顺序一致/最终一致”有什么不同</li>
+  <li>系统实现里哪些机制是在为线性一致服务</li>
+</ul>
 
-<h2 id="2-你为什么会关心">2. 你为什么会关心</h2>
+<h2 id="1-线性一致性承诺什么像单机一样并且尊重真实时间">1. 线性一致性承诺什么：像单机一样，并且尊重真实时间</h2>
 
-<p>涉及强读、交易、配置变更、幂等与去重时，语义边界非常关键。</p>
+<p>核心要点：</p>
 
-<h2 id="3-验证与排障">3. 验证与排障</h2>
+<ul>
+  <li>每个操作看起来都在某个时间点原子发生</li>
+  <li>且如果 A 在真实时间上先完成，再发生 B，那么全局顺序里 A 必须排在 B 前</li>
+</ul>
 
-<p>先把语义说清楚（读写承诺），再看实现是否满足（leader 路径、quorum、读屏障/lease）。</p>
+<pre><code class="language-mermaid">flowchart TD
+  L[Linearizability] --&gt; A[Atomic at a point]
+  L --&gt; R[Respects real-time order]
+</code></pre>
+
+<h2 id="2-用一个客户端历史来理解读必须看到已完成的写">2. 用一个客户端历史来理解：读必须看到“已完成的写”</h2>
+
+<p>考虑一个寄存器 <code class="language-plaintext highlighter-rouge">x</code> 初始为 0：</p>
+
+<ul>
+  <li>客户端1：写 x=1，并且收到了成功返回</li>
+  <li>客户端2：随后读 x</li>
+</ul>
+
+<p>在线性一致系统里：</p>
+
+<ul>
+  <li>读必须返回 1（不能返回 0）</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C1 as Client1
+  participant C2 as Client2
+  participant S as Service
+
+  C1-&gt;&gt;S: write(x=1)
+  S--&gt;&gt;C1: ok
+  C2-&gt;&gt;S: read(x)
+  S--&gt;&gt;C2: 1
+</code></pre>
+
+<p>如果看到 <code class="language-plaintext highlighter-rouge">C2</code> 读到了 0，那么语义就不是线性一致（除非你能证明读发生在写完成之前）。</p>
+
+<h2 id="3-线性一致-vs-顺序一致差别在真实时间">3. 线性一致 vs 顺序一致：差别在“真实时间”</h2>
+
+<p>顺序一致（sequential consistency）只要求：</p>
+
+<ul>
+  <li>存在某个全局顺序，让每个客户端自己的操作顺序保持不变</li>
+</ul>
+
+<p>但它不要求尊重真实时间的先后。</p>
+
+<p>工程要点：</p>
+
+<ul>
+  <li>线性一致更强、更直观</li>
+  <li>顺序一致更弱，但有时能换性能</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Consistency spectrum] --&gt; E[eventual]
+  A --&gt; C[causal]
+  A --&gt; S[sequential]
+  A --&gt; L[linearizable]
+
+  L --&gt; P1[stricter]
+  S --&gt; P2[may violate real-time order]
+</code></pre>
+
+<h2 id="4-系统怎么实现线性一致提交点--读屏障">4. 系统怎么实现线性一致：提交点 + 读屏障</h2>
+
+<p>线性一致通常离不开两个东西：</p>
+
+<ul>
+  <li><strong>明确的提交点</strong>：写成功返回之前，必须满足不会回滚（常见是多数派提交）</li>
+  <li><strong>读屏障</strong>：读必须确保自己不落后于已提交写（常见是 leader read + ReadIndex/lease）</li>
+</ul>
+
+<h3 id="41-写多数派提交是常见实现路径">4.1 写：多数派提交是常见实现路径</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L as Leader
+  participant R1 as Replica1
+  participant R2 as Replica2
+
+  C-&gt;&gt;L: write(cmd)
+  L-&gt;&gt;R1: replicate
+  L-&gt;&gt;R2: replicate
+  R1--&gt;&gt;L: ack
+  R2--&gt;&gt;L: ack
+  L--&gt;&gt;C: ok after quorum
+</code></pre>
+
+<h3 id="42-读readindex或等价机制">4.2 读：ReadIndex（或等价机制）</h3>
+
+<p>一种常见线性一致读路径：</p>
+
+<ul>
+  <li>leader 先确认自己仍是 leader（与多数派交互一次）</li>
+  <li>得到一个安全的 read index</li>
+  <li>再返回状态机在该 index 的状态</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L as Leader
+  participant Q as Quorum
+
+  C-&gt;&gt;L: read
+  L-&gt;&gt;Q: confirm leadership
+  Q--&gt;&gt;L: ok
+  L--&gt;&gt;C: return
+</code></pre>
+
+<p>不同系统会用不同名字实现同一件事：把读放到一个不会落后的“屏障”之后。</p>
+
+<h2 id="5-工程上最常见的误区">5. 工程上最常见的误区</h2>
+
+<ul>
+  <li><strong>“quorum 读写就线性一致”</strong>：不一定，缺少 leader 排序/提交规则/读屏障时仍会破。</li>
+  <li><strong>“只要读 leader 就线性一致”</strong>：不一定，如果 leader 可能是旧 leader（租约/选主边界不清）就会破。</li>
+  <li><strong>“线性一致读一定慢”</strong>：通常需要一次多数派确认，但可以用批量/流水线/lease 在一定假设下优化。</li>
+</ul>
+
+<h2 id="6-怎么验证不要靠感觉">6. 怎么验证：不要靠感觉</h2>
+
+<p>线性一致是可被反证的：只要你构造出一个违背真实时间顺序的历史，就能证明系统不满足。</p>
+
+<p>工程里常见方法：</p>
+
+<ul>
+  <li>对关键路径打点（写完成时间、读开始时间、读返回值）</li>
+  <li>采样生成 history</li>
+  <li>用线性一致检查器验证（Jepsen 类思路）</li>
+</ul>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>线性一致不是“强一致”这个模糊词，而是一条明确承诺：尊重真实时间顺序的单机直觉。它在实现上通常对应“写有明确提交点、读有屏障”，在工程上对应“可测、可反证”。</p>
 
         
       </section>
@@ -726,12 +806,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

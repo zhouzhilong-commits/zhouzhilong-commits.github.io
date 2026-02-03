@@ -20,19 +20,19 @@ date: 2025-07-22
 ```mermaid
 classDiagram
     class Locator {
-        -uint64_t _src
-        -Progress::Offset _minOffset
-        -MultiProgress _multiProgress
-        -string _userData
-        -bool _isLegacyLocator
-        +IsFasterThan(Locator, bool) LocatorCompareResult
-        +Update(Locator) void
-        +Serialize() string
-        +Deserialize(string) Status
-        +GetSrc() uint64_t
-        +GetMinOffset() Offset
-        +GetMultiProgress() MultiProgress
-        +GetUserData() string
+        - uint64_t _src
+        - Progress::Offset _minOffset
+        - MultiProgress _multiProgress
+        - string _userData
+        - bool _isLegacyLocator
+        + IsFasterThan()
+        + Update()
+        + Serialize()
+        + Deserialize()
+        + GetSrc()
+        + GetMinOffset()
+        + GetMultiProgress()
+        + GetUserData()
     }
     
     class LocatorCompareResult {
@@ -44,20 +44,20 @@ classDiagram
     }
     
     class DocInfo {
-        +int64_t timestamp
-        +uint32_t concurrentIdx
-        +uint16_t hashId
-        +uint8_t sourceIdx
+        + int64_t timestamp
+        + uint32_t concurrentIdx
+        + uint16_t hashId
+        + uint8_t sourceIdx
     }
     
     class Progress {
-        +uint32_t from
-        +uint32_t to
-        +Offset offset
+        + uint32_t from
+        + uint32_t to
+        + Offset offset
     }
     
     class MultiProgress {
-        +vector~ProgressVector~ _progresses
+        + vector_ProgressVector _progresses
     }
     
     Locator --> LocatorCompareResult : 返回
@@ -1136,30 +1136,30 @@ Status VersionCommitter::Commit(const TabletData& tabletData,
 ```mermaid
 classDiagram
     class Version {
-        -versionid_t _versionId
-        -map~uint64_t, Locator~ _locators
-        +GetLocator(uint64_t src) Locator
-        +SetLocator(uint64_t src, Locator) void
-        +GetAllLocators() map~uint64_t, Locator~
+        - versionid_t _versionId
+        - map_uint64_t_Locator _locators
+        + GetLocator()
+        + SetLocator()
+        + GetAllLocators()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan(Locator) LocatorCompareResult
-        +Update(Locator) void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
     }
     
     class TabletWriter {
-        -map~uint64_t, Locator~ _locators
-        +Build(Document) Status
-        +GetLocator(uint64_t src) Locator
+        - map_uint64_t_Locator _locators
+        + Build()
+        + GetLocator()
     }
     
     class Document {
-        +uint64_t _src
-        +DocInfo _docInfo
-        +GetLocator() Locator
+        + uint64_t _src
+        + DocInfo _docInfo
+        + GetLocator()
     }
     
     Version --> Locator : 包含多个
@@ -1515,25 +1515,25 @@ Locator 的内存优化，包括对象池、对象复用等。让我们通过类
 ```mermaid
 classDiagram
     class LocatorPool {
-        -queue~Locator*~ _pool
-        -mutex _mutex
-        +Get() Locator*
-        +Put(Locator*) void
-        +Clear() void
+        - queue_Locator _pool
+        - mutex _mutex
+        + Get()
+        + Put()
+        + Clear()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        -string _userData
-        +Reset() void
-        +Reuse() void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        - string _userData
+        + Reset()
+        + Reuse()
     }
     
     class ProgressPool {
-        -queue~ProgressVector*~ _pool
-        +Get() ProgressVector*
-        +Put(ProgressVector*) void
+        - queue_ProgressVector _pool
+        + Get()
+        + Put()
     }
     
     LocatorPool --> Locator : 管理
@@ -1605,11 +1605,11 @@ classDiagram
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan() LocatorCompareResult
-        +Update() void
-        +Serialize() string
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
+        + Serialize()
     }
     
     class Compatibility {

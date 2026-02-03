@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。">
+  <meta property="og:description" content="本文深入解析拥塞控制的核心概念，以及 CUBIC 和 BBR 两种算法的设计差异、适用场景和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -610,7 +554,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异">
-    <meta itemprop="description" content="本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。">
+    <meta itemprop="description" content="本文深入解析拥塞控制的核心概念，以及 CUBIC 和 BBR 两种算法的设计差异、适用场景和工程实践。">
     <meta itemprop="datePublished" content="April 01, 2019">
     
 
@@ -624,7 +568,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -643,12 +587,13 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。</p>
+        <p>本文深入解析拥塞控制的核心概念，以及 CUBIC 和 BBR 两种算法的设计差异、适用场景和工程实践。</p>
 
 <p><img src="/images/diagrams/tcp-cc-cubic-bbr.svg" alt="网络笔记：拥塞控制：CUBIC 与 BBR 的直觉差异" /></p>
-<h2 id="1-拥塞控制到底在控制什么吞吐延迟与排队">1. 拥塞控制到底在控制什么：吞吐、延迟与“排队”</h2>
 
-<p>网络里“慢”通常有两种本质：</p>
+<h2 id="1-拥塞控制到底在控制什么吞吐延迟与排队">1. 拥塞控制到底在控制什么：吞吐、延迟与”排队”</h2>
+
+<p>网络里”慢”通常有两种本质：</p>
 
 <ul>
   <li><strong>带宽不够</strong>：链路本身吞吐上不去</li>
@@ -657,9 +602,40 @@
 
 <p>拥塞控制做的事就是：在不把网络塞爆的前提下尽量吃到带宽，同时尽量避免形成巨大的排队。</p>
 
-<h2 id="2-cubic-的直觉更像以丢包为拥塞信号">2. CUBIC 的直觉：更像“以丢包为拥塞信号”</h2>
+<h3 id="11-拥塞控制的目标">1.1 拥塞控制的目标</h3>
 
-<p>工程上你可以把 CUBIC 理解为：</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[拥塞控制目标] --&gt; B[高吞吐]
+  A --&gt; C[低延迟]
+  A --&gt; D[公平性]
+  
+  B --&gt; E[尽量利用带宽]
+  C --&gt; F[避免排队]
+  D --&gt; G[多流公平共享]
+  
+  E --&gt; H[平衡点]
+  F --&gt; H
+  G --&gt; H
+</code></pre>
+
+<h3 id="12-拥塞的两个维度">1.2 拥塞的两个维度</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[网络拥塞] --&gt; B[带宽不足]
+  A --&gt; C[排队过多]
+  
+  B --&gt; D[吞吐上不去]
+  C --&gt; E[RTT 拉长]
+  
+  D --&gt; F[需要控制发送速率]
+  E --&gt; F
+  
+  F --&gt; G[拥塞控制算法]
+</code></pre>
+
+<h2 id="2-cubic-的要点更像以丢包为拥塞信号">2. CUBIC 的要点：更像”以丢包为拥塞信号”</h2>
+
+<p>工程上可以将 CUBIC 理解为：</p>
 
 <ul>
   <li>窗口会按某种增长曲线增加</li>
@@ -673,12 +649,57 @@
   <li>中间盒子/队列策略（是否容易触发丢包）</li>
 </ul>
 
-<h2 id="3-bbr-的直觉更像测带宽与-rtt用模型控制排队">3. BBR 的直觉：更像“测带宽与 RTT，用模型控制排队”</h2>
+<h3 id="21-cubic-的窗口增长曲线">2.1 CUBIC 的窗口增长曲线</h3>
+
+<pre><code class="language-mermaid">graph LR
+  A[窗口大小] --&gt; B[时间]
+  
+  C[丢包事件] --&gt; D[窗口减半]
+  D --&gt; E[慢启动]
+  E --&gt; F[拥塞避免]
+  F --&gt; G[CUBIC 增长]
+  
+  G --&gt; H[三次函数曲线]
+  H --&gt; I[快速恢复]
+  I --&gt; J[稳定增长]
+</code></pre>
+
+<h3 id="22-cubic-的工作机制">2.2 CUBIC 的工作机制</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Sender as Sender
+  participant Network as Network
+  participant Receiver as Receiver
+
+  Sender-&gt;&gt;Network: 增加发送窗口
+  Network-&gt;&gt;Network: 队列增长
+  Network-&gt;&gt;Network: 队列满，丢包
+  Network-&gt;&gt;Sender: 丢包信号
+  
+  Sender-&gt;&gt;Sender: 窗口减半
+  Sender-&gt;&gt;Sender: CUBIC 增长
+  
+  Note over Sender: 以丢包为拥塞信号
+</code></pre>
+
+<h3 id="23-cubic-的特点">2.3 CUBIC 的特点</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[CUBIC 特点] --&gt; B[以丢包为信号]
+  A --&gt; C[窗口快速恢复]
+  A --&gt; D[对丢包敏感]
+  
+  B --&gt; E[适合丢包网络]
+  C --&gt; F[快速利用带宽]
+  D --&gt; G[容易受中间盒子影响]
+</code></pre>
+
+<h2 id="3-bbr-的要点更像测带宽与-rtt用模型控制排队">3. BBR 的要点：更像”测带宽与 RTT，用模型控制排队”</h2>
 
 <p>BBR 的工程直觉是：</p>
 
 <ul>
-  <li>试图测到“可用带宽（BtlBw）”和“最小 RTT（RTprop）”</li>
+  <li>试图测到”可用带宽（BtlBw）”和”最小 RTT（RTprop）”</li>
   <li>用模型控制发送速率，让链路处于高利用率但不制造过多排队</li>
 </ul>
 
@@ -689,7 +710,116 @@
   <li>链路是否存在复杂的整形/队列策略（影响带宽估计）</li>
 </ul>
 
-<h2 id="4-线上你会看到什么同样吞吐不同延迟分布">4. 线上你会看到什么：同样吞吐，不同延迟分布</h2>
+<h3 id="31-bbr-的状态机">3.1 BBR 的状态机</h3>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+  [*] --&gt; Startup
+  Startup --&gt; Drain
+  Drain --&gt; ProbeBW
+  ProbeBW --&gt; ProbeRTT
+  ProbeRTT --&gt; ProbeBW
+  
+  Note right of Startup: 快速探测带宽
+  Note right of Drain: 排空队列
+  Note right of ProbeBW: 稳定发送
+  Note right of ProbeRTT: 更新最小 RTT
+</code></pre>
+
+<h3 id="32-bbr-的带宽与-rtt-估计">3.2 BBR 的带宽与 RTT 估计</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[BBR 估计] --&gt; B[带宽 BtlBw]
+  A --&gt; C[最小 RTT RTprop]
+  
+  B --&gt; D[发送速率 = BtlBw]
+  C --&gt; E[控制排队 = BtlBw * RTprop]
+  
+  D --&gt; F[高利用率]
+  E --&gt; G[低排队]
+  
+  F --&gt; H[BBR 目标]
+  G --&gt; H
+</code></pre>
+
+<h3 id="33-bbr-的特点">3.3 BBR 的特点</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[BBR 特点] --&gt; B[基于模型]
+  A --&gt; C[不依赖丢包]
+  A --&gt; D[控制排队]
+  
+  B --&gt; E[测量带宽和 RTT]
+  C --&gt; F[适合 bufferbloat 场景]
+  D --&gt; G[低延迟]
+</code></pre>
+
+<h2 id="4-cubic-vs-bbr核心差异">4. CUBIC vs BBR：核心差异</h2>
+
+<h3 id="41-拥塞信号">4.1 拥塞信号</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[拥塞信号] --&gt; B[CUBIC]
+  A --&gt; C[BBR]
+  
+  B --&gt; D[丢包/重传]
+  C --&gt; E[带宽/RTT 模型]
+  
+  D --&gt; F[被动响应]
+  E --&gt; G[主动控制]
+</code></pre>
+
+<h3 id="42-性能特征对比">4.2 性能特征对比</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>特征</th>
+      <th>CUBIC</th>
+      <th>BBR</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>拥塞信号</td>
+      <td>丢包</td>
+      <td>带宽/RTT</td>
+    </tr>
+    <tr>
+      <td>排队控制</td>
+      <td>被动</td>
+      <td>主动</td>
+    </tr>
+    <tr>
+      <td>延迟</td>
+      <td>可能高（bufferbloat）</td>
+      <td>通常低</td>
+    </tr>
+    <tr>
+      <td>吞吐</td>
+      <td>高</td>
+      <td>高</td>
+    </tr>
+    <tr>
+      <td>公平性</td>
+      <td>好</td>
+      <td>可能有问题</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="43-适用场景">4.3 适用场景</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[场景选择] --&gt; B{网络特征}
+  B --&gt;|丢包主导| C[CUBIC]
+  B --&gt;|排队主导| D[BBR]
+  B --&gt;|混合| E[根据测试选择]
+  
+  C --&gt; F[传统网络]
+  D --&gt; G[现代网络 bufferbloat]
+</code></pre>
+
+<h2 id="5-线上可以看到什么同样吞吐不同延迟分布">5. 线上可以看到什么：同样吞吐，不同延迟分布</h2>
 
 <p>常见体验差异：</p>
 
@@ -699,10 +829,23 @@
 </ul>
 
 <blockquote>
-  <p>工程上不要“迷信算法名字”，先看你的链路是否是 bufferbloat 主导，还是丢包主导。</p>
+  <p>工程上不要”迷信算法名字”，先看链路是否是 bufferbloat 主导，还是丢包主导。</p>
 </blockquote>
 
-<h2 id="5-你应该观测什么排障信号">5. 你应该观测什么（排障信号）</h2>
+<h3 id="51-性能对比示例">5.1 性能对比示例</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[相同吞吐] --&gt; B[CUBIC]
+  A --&gt; C[BBR]
+  
+  B --&gt; D[P99 延迟高]
+  C --&gt; E[P99 延迟低]
+  
+  D --&gt; F[排队多]
+  E --&gt; G[排队少]
+</code></pre>
+
+<h2 id="6-应当观测什么排障信号">6. 应当观测什么（排障信号）</h2>
 
 <ul>
   <li><strong>RTT 分布</strong>：尤其是 P95/P99 与最小 RTT 是否被污染</li>
@@ -711,7 +854,36 @@
   <li><strong>吞吐稳定性</strong>：是否存在明显的周期性抖动</li>
 </ul>
 
-<h2 id="6-最小排障顺序吞吐不稳延迟很差">6. 最小排障顺序（“吞吐不稳/延迟很差”）</h2>
+<h3 id="61-观测指标">6.1 观测指标</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[拥塞控制观测] --&gt; B[RTT 分布]
+  A --&gt; C[丢包/重传]
+  A --&gt; D[队列时延]
+  A --&gt; E[吞吐稳定性]
+  
+  B --&gt; F[最小 RTT vs 当前 RTT]
+  C --&gt; G[重传次数]
+  D --&gt; H[Bufferbloat 信号]
+  E --&gt; I[周期性抖动]
+</code></pre>
+
+<h3 id="62-测量工具">6.2 测量工具</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 查看 RTT</span>
+ss <span class="nt">-i</span>
+
+<span class="c"># 查看重传</span>
+ss <span class="nt">-i</span> | <span class="nb">grep </span>retrans
+
+<span class="c"># 使用 tc 模拟网络</span>
+tc qdisc add dev eth0 root netem delay 10ms
+
+<span class="c"># 使用 iperf 测试</span>
+iperf3 <span class="nt">-c</span> server <span class="nt">-t</span> 60
+</code></pre></div></div>
+
+<h2 id="7-排障顺序吞吐不稳延迟很差">7. 排障顺序（”吞吐不稳/延迟很差”）</h2>
 
 <ol>
   <li><strong>先判断是不是 bufferbloat</strong>：RTT 是否被排队拉长（最小 RTT vs 当前 RTT）</li>
@@ -720,9 +892,116 @@
   <li><strong>最后再比较 CUBIC vs BBR</strong>：同一链路同一 workload 下对比（用数据说话）</li>
 </ol>
 
-<h2 id="7-小结">7. 小结</h2>
+<h3 id="71-排障流程">7.1 排障流程</h3>
 
-<p>CUBIC 更像“以丢包为拥塞信号的窗口控制”，BBR 更像“用带宽/RTT 模型控制排队”。选型与排障的关键不是背原理，而是先识别你的链路是“丢包主导”还是“排队主导”，再决定用哪种控制策略更合适。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[吞吐不稳/延迟差] --&gt; B{Bufferbloat?}
+  B --&gt;|是| C[考虑 BBR]
+  B --&gt;|否| D{丢包多?}
+  
+  D --&gt;|是| E[考虑 CUBIC]
+  D --&gt;|否| F[检查其他问题]
+  
+  C --&gt; G[测试 BBR]
+  E --&gt; H[测试 CUBIC]
+  
+  G --&gt; I[对比性能]
+  H --&gt; I
+  
+  I --&gt; J[选择更合适的算法]
+</code></pre>
+
+<h2 id="8-实际案例">8. 实际案例</h2>
+
+<h3 id="81-案例bufferbloat-场景下的优化">8.1 案例：Bufferbloat 场景下的优化</h3>
+
+<p><strong>问题</strong>：P99 延迟高，但吞吐正常</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>最小 RTT = 10ms</li>
+  <li>当前 RTT = 100ms</li>
+  <li>说明有 90ms 的排队延迟</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>从 CUBIC 切换到 BBR</li>
+  <li>BBR 主动控制排队</li>
+</ul>
+
+<p><strong>结果</strong>：</p>
+<ul>
+  <li>P99 延迟从 100ms 降到 20ms</li>
+  <li>吞吐保持稳定</li>
+</ul>
+
+<h3 id="82-案例丢包场景下的选择">8.2 案例：丢包场景下的选择</h3>
+
+<p><strong>问题</strong>：网络丢包率高，BBR 性能差</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>丢包率 = 2%</li>
+  <li>BBR 对丢包不敏感，窗口不收缩</li>
+  <li>导致更多丢包</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>从 BBR 切换回 CUBIC</li>
+  <li>CUBIC 以丢包为信号，更合适</li>
+</ul>
+
+<p><strong>结果</strong>：</p>
+<ul>
+  <li>吞吐提升</li>
+  <li>延迟稳定</li>
+</ul>
+
+<h2 id="9-设计原则与最佳实践">9. 设计原则与最佳实践</h2>
+
+<h3 id="91-选择原则">9.1 选择原则</h3>
+
+<ol>
+  <li><strong>Bufferbloat 主导</strong>：选择 BBR</li>
+  <li><strong>丢包主导</strong>：选择 CUBIC</li>
+  <li><strong>混合场景</strong>：根据测试结果选择</li>
+</ol>
+
+<h3 id="92-最佳实践">9.2 最佳实践</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[拥塞控制最佳实践] --&gt; B[识别网络特征]
+  A --&gt; C[测试不同算法]
+  A --&gt; D[监控关键指标]
+  A --&gt; E[根据场景调整]
+  
+  B --&gt; F[Bufferbloat vs 丢包]
+  C --&gt; G[A/B 测试]
+  D --&gt; H[RTT/吞吐/延迟]
+  E --&gt; I[动态调整]
+</code></pre>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>CUBIC 更像”以丢包为拥塞信号的窗口控制”，BBR 更像”用带宽/RTT 模型控制排队”。选型与排障的关键不是背原理，而是先识别链路是”丢包主导”还是”排队主导”，再决定用哪种控制策略更合适。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>CUBIC 以丢包为拥塞信号，适合丢包主导的网络</li>
+  <li>BBR 基于带宽/RTT 模型，适合 bufferbloat 场景</li>
+  <li>选择算法要看网络特征，不是算法名字</li>
+  <li>通过测试和监控来选择最合适的算法</li>
+</ul>
+
+<p><strong>选型流程</strong>：</p>
+<ol>
+  <li>识别网络特征（bufferbloat vs 丢包）</li>
+  <li>测试不同算法</li>
+  <li>监控关键指标</li>
+  <li>选择最适合的算法</li>
+</ol>
 
         
       </section>
@@ -764,12 +1043,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

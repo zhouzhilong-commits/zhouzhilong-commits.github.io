@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：The Google File System（Ghemawat, Gobioff, Leung）">
+  <meta property="og:description" content="  论文：The Google File System（Ghemawat, Gobioff, Leung, SOSP 2003）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">存储论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -535,6 +479,90 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -554,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="GFS：The Google File System（论文笔记）">
-    <meta itemprop="description" content="  论文：The Google File System（Ghemawat, Gobioff, Leung）">
+    <meta itemprop="description" content="  论文：The Google File System（Ghemawat, Gobioff, Leung, SOSP 2003）">
     <meta itemprop="datePublished" content="March 01, 2022">
     
 
@@ -568,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  7 分钟阅读
 	
 </p>
           
@@ -588,67 +616,664 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：The Google File System（Ghemawat, Gobioff, Leung）</p>
+  <p>论文：The Google File System（Ghemawat, Gobioff, Leung, SOSP 2003）</p>
 </blockquote>
 
-<h2 id="1-问题背景为什么需要-gfs">1. 问题背景：为什么需要 GFS</h2>
-
-<p>GFS 的目标不是做一个“最通用”的 POSIX 文件系统，而是服务 Google 当时的典型工作负载：</p>
+<p>GFS 是 Google 为大规模离线/在线数据处理构建的分布式文件系统。它不是 POSIX 的“通用文件系统”，而是<strong>明确围绕工作负载做取舍</strong>：</p>
 
 <ul>
-  <li>大文件为主（GB 级）</li>
-  <li>追加写多、顺序读多</li>
-  <li>集群规模大、机器故障是常态</li>
+  <li><strong>超大文件</strong>（GB 级）为主</li>
+  <li><strong>追加写、顺序读</strong>为主（Log / Crawl / Index / MapReduce pipeline）</li>
+  <li><strong>机器故障是常态</strong>（mean-time-to-failure 低）</li>
 </ul>
 
-<p>因此它从一开始就把“容错 + 可扩展”放在第一位，而不是追求强一致的 POSIX 语义。</p>
+<p>理解 GFS 的关键，不是记住“Master + ChunkServer”，而是看清它用哪些机制把<strong>吞吐、扩展性、容错性</strong>做到可工程化。</p>
 
-<h2 id="2-核心设计master--chunkserver">2. 核心设计：Master + ChunkServer</h2>
+<h2 id="1-设计目标与工作负载假设">1. 设计目标与工作负载假设</h2>
 
-<p>GFS 把文件切成固定大小的 <strong>chunk</strong>（典型 64MB）：</p>
+<h3 id="11-为什么不做-posix">1.1 为什么不做 POSIX</h3>
+
+<p>GFS 放弃/弱化了一些 POSIX 语义（比如强一致的细粒度写）来换取系统整体的可扩展性与吞吐。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[目标] --&gt; B[高吞吐顺序读写]
+  A --&gt; C[容错与自恢复]
+  A --&gt; D[易扩展到上千台机器]
+  A --&gt; E[简单可运维]
+
+  F[取舍] --&gt; G[弱化 POSIX 语义]
+  F --&gt; H[写入以 append 为主]
+  F --&gt; I[单 Master 但仅走控制面]
+
+  B --&gt; B1[大块 chunk, pipeline]
+  C --&gt; C1[多副本, re-replication]
+  D --&gt; D1[元数据集中, 数据分散]
+</code></pre>
+
+<h3 id="12-工作负载对设计的直接影响">1.2 工作负载对设计的直接影响</h3>
 
 <ul>
-  <li><strong>Master</strong>：管理元数据（文件→chunk 映射、chunk 位置信息、租约等）</li>
-  <li><strong>ChunkServer</strong>：存 chunk 数据（一个 chunk 多副本）</li>
+  <li><strong>大 chunk</strong>（典型 64MB）：降低元数据量，提升顺序 IO 效率。</li>
+  <li><strong>追加写（record append）</strong>：把 offset 分配放到系统端，允许并发追加。</li>
+  <li><strong>批处理场景多</strong>：更关注吞吐而不是尾延迟。</li>
 </ul>
 
-<p>这样做的好处：</p>
+<h2 id="2-核心抽象file--chunk--replica">2. 核心抽象：File → Chunk → Replica</h2>
+
+<p>GFS 把文件切分成固定大小的 chunk；每个 chunk 以 chunk handle 标识，并在多个 ChunkServer 上保存副本。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  F[File] --&gt;|split| C0[Chunk 0]
+  F --&gt; C1[Chunk 1]
+  F --&gt; C2[Chunk 2]
+
+  C1 --&gt; R1[(Replica @ CS-A)]
+  C1 --&gt; R2[(Replica @ CS-B)]
+  C1 --&gt; R3[(Replica @ CS-C)]
+
+  M[Master] --&gt;|metadata| Meta[namespace / file-&gt;chunk / chunk locations]
+</code></pre>
+
+<p><strong>关键点</strong>：Master 维护的是“<strong>映射关系</strong>”与“<strong>位置索引</strong>”，但<strong>数据面</strong>（chunk data）直接由客户端与 ChunkServer 交互。</p>
+
+<h2 id="3-系统架构master--chunkserver--client">3. 系统架构：Master / ChunkServer / Client</h2>
+
+<h3 id="31-三方职责">3.1 三方职责</h3>
+
+<pre><code class="language-mermaid">classDiagram
+  class Master {
+    + NamespaceOps()
+    + ChunkMetadata()
+    + LeaseManagement()
+    + GarbageCollection()
+    + ReReplication()
+  }
+
+  class ChunkServer {
+    + StoreChunks()
+    + ReadChunk()
+    + WriteChunk()
+    + AppendChunk()
+    + ReportToMaster()
+  }
+
+  class Client {
+    + Read()
+    + Write()
+    + RecordAppend()
+    + CacheLocations()
+  }
+
+  Client --&gt; Master : control (lookup)
+  Client --&gt; ChunkServer : data path
+  ChunkServer --&gt; Master : heartbeat / report
+</code></pre>
+
+<h3 id="32-关键原则控制面集中数据面分散">3.2 关键原则：控制面集中、数据面分散</h3>
 
 <ul>
-  <li>chunk 大 → 元数据规模更可控，顺序 IO 更友好</li>
-  <li>chunk 可多副本 → 容错更简单</li>
+  <li><strong>元数据</strong>集中在 Master：简化一致性与管理。</li>
+  <li><strong>数据</strong>分散在 ChunkServer：吞吐可扩展。</li>
+  <li><strong>Client cache</strong>：减少频繁查 Master。</li>
 </ul>
 
-<h2 id="3-一致性租约lease与-primary">3. 一致性：租约（lease）与 primary</h2>
+<h2 id="4-元数据与一致性master-如何靠谱">4. 元数据与一致性：Master 如何“靠谱”</h2>
 
-<p>GFS 用 <strong>lease</strong> 让某个副本在一段时间内成为该 chunk 的 <strong>primary</strong>：</p>
+<h3 id="41-master-的元数据结构">4.1 Master 的元数据结构</h3>
+
+<p>Master 维护三类信息：</p>
 
 <ul>
-  <li>客户端先向 master 查询 chunk 副本位置 + primary</li>
-  <li>写入时，primary 决定写入顺序并协调其他副本</li>
+  <li><strong>namespace</strong>：目录树、文件名到文件的映射</li>
+  <li><strong>file → chunk handles</strong>：文件由哪些 chunk 构成</li>
+  <li><strong>chunk → replica locations + version</strong>：每个 chunk 的副本在哪些 ChunkServer</li>
 </ul>
 
-<p>这种“chunk 级 primary”既能提供一定的一致性控制，也能把写协调限制在单个 chunk 的范围内。</p>
+<p>这些信息大多在内存中，以提升性能；持久化通过 operation log / checkpoint。</p>
 
-<h2 id="4-典型优化record-append">4. 典型优化：Record Append</h2>
+<h3 id="42-为什么单-master-不成为瓶颈">4.2 为什么单 Master 不成为瓶颈</h3>
 
-<p>GFS 里非常经典的是 <strong>record append</strong>（多客户端追加）：</p>
+<p>论文的核心论据：<strong>数据面不经过 Master</strong>，而且 client 有缓存，Master 主要处理：</p>
 
 <ul>
-  <li>客户端不指定具体 offset，由 primary 选择落点</li>
-  <li>可能出现“重复记录/空洞”，但上层应用可容忍并做去重</li>
+  <li>文件/目录操作（频率低）</li>
+  <li>chunk 位置查询（可缓存）</li>
+  <li>lease 管理（每个 chunk 的 lease 有时效）</li>
 </ul>
 
-<p>这是一种典型的“为吞吐与简化系统设计，弱化语义”的工程取舍。</p>
+<p>瓶颈主要来自“元数据热点”，而不是 chunk 读写吞吐。</p>
 
-<h2 id="5-读完后的-takeaways">5. 读完后的 takeaways</h2>
+<h2 id="5-读路径client-直连-chunkserver">5. 读路径：Client 直连 ChunkServer</h2>
+
+<h3 id="51-读流程">5.1 读流程</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant M as Master
+  participant S as ChunkServer
+
+  C-&gt;&gt;M: Lookup(file, chunkIndex)
+  M--&gt;&gt;C: (chunkHandle, replicaLocations)
+  C-&gt;&gt;C: Cache locations
+  C-&gt;&gt;S: Read(chunkHandle, offset, len)
+  S--&gt;&gt;C: Data
+</code></pre>
+
+<h3 id="52-读路径关键优化点">5.2 读路径关键优化点</h3>
 
 <ul>
-  <li>面向工作负载设计：<strong>不追求 POSIX</strong> 反而能把系统做稳做大</li>
-  <li>大 chunk + 多副本 + master 元数据：结构清晰、易于容错</li>
-  <li>record append 是把“复杂度”推给应用的经典例子（但在特定场景非常有效）</li>
+  <li><strong>位置缓存</strong>：同一个 chunk 的多次读不用每次问 Master。</li>
+  <li><strong>就近副本</strong>：client 选择网络拓扑上更近的副本。</li>
+  <li><strong>大 chunk + 顺序读</strong>：极大减少 random seek。</li>
 </ul>
 
+<h2 id="6-写路径lease--primary-串行化-mutation">6. 写路径：Lease + Primary 串行化 mutation</h2>
+
+<p>GFS 写的难点是：同一个 chunk 有多个副本，如何保证副本间的 mutation 顺序一致。</p>
+
+<h3 id="61-leaseprimary-的核心直觉">6.1 Lease/Primary 的核心直觉</h3>
+
+<ul>
+  <li>对每个 chunk，Master 在一段时间内把某个副本指定为 <strong>primary</strong>。</li>
+  <li>primary 决定 mutation order（对该 chunk 的写/append/修改顺序）。</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  M[Master] --&gt;|grant lease| P[Primary replica]
+  M --&gt;|replica list| S2[Secondary]
+  M --&gt; S3[Secondary]
+
+  C[Client] --&gt;|push data| P
+  C --&gt;|push data| S2
+  C --&gt;|push data| S3
+
+  C --&gt;|mutation request| P
+  P --&gt;|ordered mutation| S2
+  P --&gt;|ordered mutation| S3
+</code></pre>
+
+<h3 id="62-写流程data-flow-vs-control-flow-分离">6.2 写流程（data flow vs control flow 分离）</h3>
+
+<p>GFS 把写分成两段：</p>
+
+<ol>
+  <li><strong>数据推送</strong>：Client 把 data pipeline 推到所有副本（primary + secondaries）。</li>
+  <li><strong>控制命令</strong>：Client 向 primary 发 mutation；primary 排序后下发给 secondaries。</li>
+</ol>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant M as Master
+  participant P as Primary
+  participant S as Secondary
+
+  C-&gt;&gt;M: Lookup(chunk)
+  M--&gt;&gt;C: (P, [S...], lease)
+
+  Note over C,S: Step1: push data (pipeline)
+  C-&gt;&gt;P: PushData(data)
+  P-&gt;&gt;S: ForwardData(data)
+
+  Note over C,S: Step2: mutation control
+  C-&gt;&gt;P: Write(offset, dataId)
+  P-&gt;&gt;P: Assign mutation order
+  P-&gt;&gt;S: ApplyMutation(order, offset, dataId)
+  S--&gt;&gt;P: Ack
+  P--&gt;&gt;C: Ack
+</code></pre>
+
+<h3 id="63-写的一致性语义论文里最容易被忽略的点">6.3 写的一致性语义（论文里最容易被忽略的点）</h3>
+
+<p>GFS 提供的不是“像数据库一样的强一致事务语义”，它提供的是：</p>
+
+<ul>
+  <li><strong>chunk 内 mutation 顺序一致</strong>（由 primary 串行化）</li>
+  <li>但在并发写/失败情况下，会出现 <strong>inconsistent / undefined regions</strong>（尤其 record append）</li>
+</ul>
+
+<p>对于 Google 的应用（MapReduce、日志等）是可接受的，因为应用可以容忍重复记录、用校验/去重处理。</p>
+
+<h2 id="7-record-append为并发追加而生">7. Record Append：为并发追加而生</h2>
+
+<h3 id="71-record-append-的接口语义">7.1 record append 的接口语义</h3>
+
+<p>传统 write 需要 client 指定 offset；record append 让系统决定落点：</p>
+
+<ul>
+  <li>client 发起 append(data)</li>
+  <li>primary 选择一个 offset 写入</li>
+  <li>返回 offset 给 client</li>
+</ul>
+
+<h3 id="72-为什么它是系统级优化">7.2 为什么它是“系统级优化”</h3>
+
+<p>核心动机：多个 client 并发往同一文件尾部追加，client 自己分配 offset 会有复杂的竞争与重试。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C1 as Client1
+  participant C2 as Client2
+  participant P as Primary
+  participant S as Secondary
+
+  C1-&gt;&gt;P: RecordAppend(data1)
+  C2-&gt;&gt;P: RecordAppend(data2)
+  P-&gt;&gt;P: Choose offset for data1
+  P-&gt;&gt;S: ApplyAppend(offset1, data1)
+  P-&gt;&gt;P: Choose offset for data2
+  P-&gt;&gt;S: ApplyAppend(offset2, data2)
+  P--&gt;&gt;C1: Ack(offset1)
+  P--&gt;&gt;C2: Ack(offset2)
+</code></pre>
+
+<h3 id="73-代价重复与空洞">7.3 代价：重复与空洞</h3>
+
+<p>在失败重试、主备切换等情况下：</p>
+
+<ul>
+  <li>可能出现 <strong>重复记录</strong>（at-least-once append）</li>
+  <li>可能出现 <strong>空洞/填充</strong>（padding）</li>
+</ul>
+
+<p>应用需要用 record 自身的校验和/唯一 id 去重。</p>
+
+<h2 id="8-容错故障检测重复制校验">8. 容错：故障检测、重复制、校验</h2>
+
+<h3 id="81-chunkserver-故障是常态">8.1 ChunkServer 故障是常态</h3>
+
+<p>GFS 假设：</p>
+
+<ul>
+  <li>节点会挂</li>
+  <li>磁盘会坏</li>
+  <li>网络会抖</li>
+</ul>
+
+<p>因此系统必须“<strong>自动发现并自愈</strong>”。</p>
+
+<h3 id="82-心跳与状态汇报">8.2 心跳与状态汇报</h3>
+
+<p>ChunkServer 周期性向 Master 心跳，汇报：</p>
+
+<ul>
+  <li>自己持有哪些 chunk（以及版本）</li>
+  <li>剩余磁盘、负载信息</li>
+</ul>
+
+<p>Master 借此做：</p>
+
+<ul>
+  <li>re-replication</li>
+  <li>rebalancing</li>
+  <li>garbage collection</li>
+</ul>
+
+<h3 id="83-chunk-校验">8.3 Chunk 校验</h3>
+
+<p>GFS 对 chunk 进行校验（checksum）来发现 silent corruption。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  R[Read request] --&gt; A[Read block]
+  A --&gt; B[Verify checksum]
+  B --&gt;|ok| C[Return data]
+  B --&gt;|bad| D[Report to Master]
+  D --&gt; E[Read from another replica]
+</code></pre>
+
+<h3 id="84-re-replication重复制">8.4 Re-replication（重复制）</h3>
+
+<p>当 Master 发现某个 chunk 副本数不足时，会选择新的 ChunkServer，安排从现有健康副本复制过去。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant M as Master
+  participant S1 as Source CS
+  participant S2 as Target CS
+
+  M-&gt;&gt;M: Detect under-replicated chunk
+  M-&gt;&gt;S2: CreateReplica(chunk)
+  M-&gt;&gt;S1: CopyChunkTo(S2)
+  S1-&gt;&gt;S2: Transfer data
+  S2--&gt;&gt;M: Report replica ready
+</code></pre>
+
+<h2 id="9-master-的持久化与恢复">9. Master 的持久化与恢复</h2>
+
+<h3 id="91-operation-log--checkpoint">9.1 Operation Log + Checkpoint</h3>
+
+<p>Master 的元数据主要在内存中；持久化依赖：</p>
+
+<ul>
+  <li><strong>operation log</strong>：记录所有元数据变更（append-only）</li>
+  <li><strong>checkpoint</strong>：周期性把内存状态快照化，缩短恢复时 log replay 时间</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  Op[Metadata op] --&gt; L[Op log append]
+  L --&gt; M[In-memory apply]
+  M --&gt;|periodic| CP[Checkpoint]
+  CP --&gt;|restart| Replay[Replay log after checkpoint]
+</code></pre>
+
+<h3 id="92-为什么这样足够">9.2 为什么这样足够</h3>
+
+<ul>
+  <li>Master 的操作频率相对低（相比数据面）</li>
+  <li>log 是顺序写，开销可控</li>
+  <li>重启时 replay + checkpoint 可以恢复一致状态</li>
+</ul>
+
+<h2 id="10-版本号与-stale-replica">10. 版本号与 stale replica</h2>
+
+<p>当 primary 崩溃/lease 过期后，可能出现“旧副本”（stale replica）。</p>
+
+<p>GFS 通过 <strong>chunk version number</strong> 来识别与回收 stale replica：</p>
+
+<ul>
+  <li>Master 在 lease 变更等时机提升 version</li>
+  <li>不匹配 version 的副本被认为是 stale，后续会被 GC</li>
+</ul>
+
+<h2 id="11-性能与热点gfs-的工程细节">11. 性能与热点：GFS 的工程细节</h2>
+
+<h3 id="111-大-chunk-的好处与坏处">11.1 大 chunk 的好处与坏处</h3>
+
+<ul>
+  <li>好处：元数据更少、顺序 IO 更好、client cache 命中更高</li>
+  <li>坏处：小文件浪费、单 chunk 热点更明显</li>
+</ul>
+
+<h3 id="112-典型热点单文件尾部-append">11.2 典型热点：单文件尾部 append</h3>
+
+<p>record append 会把写集中到某个 chunk 的 primary。</p>
+
+<p>GFS 的策略是：</p>
+
+<ul>
+  <li>让应用接受“追加不强一致”</li>
+  <li>通过分片/多个文件/多路 pipeline 缓解热点</li>
+</ul>
+
+<h2 id="12-读完后的-takeaways更工程化的总结">12. 读完后的 takeaways（更工程化的总结）</h2>
+
+<ul>
+  <li><strong>控制面/数据面分离</strong>是 GFS 最核心的扩展性来源。</li>
+  <li><strong>lease + primary</strong> 把一致性问题收敛到 chunk 粒度，并且只在写路径上付出代价。</li>
+  <li><strong>record append</strong> 是一个典型“为吞吐牺牲语义”的系统设计：把复杂性转移给应用，用幂等/去重闭环。</li>
+  <li><strong>自动化运维能力</strong>（checksum、re-replication、GC）是把系统做大的关键，而不是 API。</li>
+</ul>
+
+<hr />
+
+<p>如果愿意，我会在下一步把 <code class="language-plaintext highlighter-rouge">LSM-Tree</code> 也按同样标准扩展：给出更系统的放大分析（RA/WA/SA）、compaction 两大流派（leveling vs tiering）、以及现代系统如何围绕这些点做工程优化。</p>
+
+<h2 id="13-gfs-一致性语义把弱语义说清楚">13. GFS 一致性语义：把“弱语义”说清楚</h2>
+
+<p>GFS 经常被误解成“强一致文件系统”。实际上论文花了不少篇幅解释它的<strong>一致性语义</strong>，尤其是在并发写与故障场景下。</p>
+
+<h3 id="131-mutationregion-与文件一致性">13.1 mutation、region 与文件一致性</h3>
+
+<p>对于某个文件的某个 region（范围），在不同情况下可分为：</p>
+
+<ul>
+  <li><strong>consistent</strong>：所有客户端看到相同数据</li>
+  <li><strong>defined</strong>：不仅一致，而且数据来自某次成功的 mutation</li>
+  <li><strong>inconsistent</strong>：不同客户端可能看到不同数据</li>
+  <li><strong>undefined</strong>：数据内容不确定（可能混杂多次 mutation、padding）</li>
+</ul>
+
+<p>要点：</p>
+
+<ul>
+  <li>普通 write（client 指定 offset）如果成功，通常能得到更“defined”的语义</li>
+  <li>record append 在并发/失败下更容易出现重复与 padding，从而更容易让应用需要“去重/校验”闭环</li>
+</ul>
+
+<h3 id="132-为什么-google-能接受">13.2 为什么 Google 能接受</h3>
+
+<p>GFS 服务的主要应用（MapReduce pipeline、日志）通常具备：</p>
+
+<ul>
+  <li>幂等处理、可重算</li>
+  <li>record 自带 checksum/unique id</li>
+  <li>允许 at-least-once 的追加语义</li>
+</ul>
+
+<p>因此“系统语义弱一些”换“吞吐、可扩展、容错更简单”是划算的工程选择。</p>
+
+<h2 id="14-写入细节为什么要把-data-flow-与-control-flow-分开">14. 写入细节：为什么要把 data flow 与 control flow 分开</h2>
+
+<p>前面我们给了两阶段写入流程，这里强调它的工程目的：</p>
+
+<ul>
+  <li><strong>data flow</strong>：把大块数据尽量用 pipeline 送到所有副本，避免多次从 client 重发</li>
+  <li><strong>control flow</strong>：把 mutation 顺序与一致性只交给 primary 处理</li>
+</ul>
+
+<h3 id="141-pipeline-的直觉">14.1 pipeline 的直觉</h3>
+
+<pre><code class="language-mermaid">flowchart LR
+  C[Client] --&gt; P[Primary]
+  P --&gt; S2[Secondary]
+  S2 --&gt; S3[Secondary]
+
+  C -. control .-&gt; P
+  P -. control .-&gt; S2
+  P -. control .-&gt; S3
+</code></pre>
+
+<ul>
+  <li>数据顺着链路流动，带宽利用更好</li>
+  <li>控制消息可以并行或更小，减少 client 端复杂度</li>
+</ul>
+
+<h2 id="15-chunk-version如何识别并清理-stale-replica">15. Chunk version：如何识别并清理 stale replica</h2>
+
+<p>stale replica 的根源：</p>
+
+<ul>
+  <li>primary crash / lease 过期</li>
+  <li>某些副本没跟上最新 mutation</li>
+</ul>
+
+<p>GFS 用 <strong>chunk version number</strong> 解决：</p>
+
+<ul>
+  <li>Master 维护每个 chunk 的 version</li>
+  <li>在关键时刻（例如 lease 变更）提升 version</li>
+  <li>版本落后的 replica 被标记为 stale，后续被回收（GC）</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant M as Master
+  participant A as Replica A
+  participant B as Replica B
+
+  Note over M: lease change / reconfiguration
+  M-&gt;&gt;M: bump chunk version v := v+1
+  M-&gt;&gt;A: notify new version v
+  Note over B: B missed update
+  M-&gt;&gt;M: detect B has old version
+  M--&gt;&gt;M: mark B stale
+</code></pre>
+
+<h2 id="16-元数据操作namespace快照删除与垃圾回收">16. 元数据操作：namespace、快照、删除与垃圾回收</h2>
+
+<h3 id="161-namespace-操作为什么必须强一致">16.1 namespace 操作为什么必须强一致</h3>
+
+<ul>
+  <li>create/delete/rename 等会影响“文件名到 chunk 集”的映射</li>
+  <li>如果不强一致，会导致严重的数据不可达或重复</li>
+</ul>
+
+<p>因此这些操作通常由 Master 串行处理，并写入 operation log。</p>
+
+<h3 id="162-删除为什么不是立即删除">16.2 删除为什么不是立即删除</h3>
+
+<p>大规模系统里，立即删除会带来：</p>
+
+<ul>
+  <li>并发读写的复杂性</li>
+  <li>元数据与 chunk 实体的一致性处理成本</li>
+</ul>
+
+<p>GFS 采用“标记删除 + 延迟 GC”：</p>
+
+<ul>
+  <li>先从 namespace 移除</li>
+  <li>chunk 实体留一段时间</li>
+  <li>后台回收无引用 chunk</li>
+</ul>
+
+<h2 id="17-负载均衡与-rebalancing系统长期稳定的关键">17. 负载均衡与 rebalancing：系统长期稳定的关键</h2>
+
+<h3 id="171-为什么需要-rebalancing">17.1 为什么需要 rebalancing</h3>
+
+<p>随着时间推移：</p>
+
+<ul>
+  <li>新文件写入可能集中到某些 ChunkServer</li>
+  <li>某些机器加入/退出</li>
+  <li>某些 rack 热点</li>
+</ul>
+
+<p>Master 需要根据：</p>
+
+<ul>
+  <li>磁盘占用</li>
+  <li>负载</li>
+  <li>网络拓扑</li>
+</ul>
+
+<p>把 chunk 在集群内迁移，保持整体均衡。</p>
+
+<h3 id="172-re-replication-vs-rebalancing">17.2 re-replication vs rebalancing</h3>
+
+<ul>
+  <li><strong>re-replication</strong>：副本数不足 → 补副本（容错优先）</li>
+  <li><strong>rebalancing</strong>：副本数够但分布不佳 → 迁移（性能/均衡优先）</li>
+</ul>
+
+<h2 id="18-master-的可用性这篇论文时代背景的取舍">18. Master 的可用性：这篇论文“时代背景”的取舍</h2>
+
+<p>SOSP 2003 的 GFS 论文里，Master 仍是单点，但：</p>
+
+<ul>
+  <li>Master crash 影响的是“控制面”</li>
+  <li>数据面 chunk 仍在</li>
+  <li>Master 通过 checkpoint + log replay 可以恢复</li>
+</ul>
+
+<p>后续 GFS 的演进与后继者（Colossus 等）在 Master HA 上做了更多工程增强。</p>
+
+<h2 id="19-这篇论文对你今天的启发">19. 这篇论文对你今天的启发</h2>
+
+<ul>
+  <li><strong>分离控制面与数据面</strong>是大规模存储/计算系统的核心套路。</li>
+  <li>当你看到“语义弱化”的设计（record append），要问：应用能否提供幂等/校验闭环。</li>
+  <li>“可运维能力”往往比 API 更决定系统能不能做大：checksum、re-replication、GC、rebalancing。</li>
+</ul>
+
+<h2 id="20-更细的写失败场景gfs-如何收敛到可解释语义">20. 更细的写失败场景：GFS 如何收敛到可解释语义</h2>
+
+<p>GFS 写路径里最容易“讲不清楚”的部分，是失败与重试如何影响文件 region 的语义。这里补一份更工程化的视角。</p>
+
+<h3 id="201-失败发生在哪一步">20.1 失败发生在哪一步</h3>
+
+<p>以两阶段写为例：</p>
+
+<p>1) push data：数据沿 pipeline 到达所有副本
+2) mutation：primary 排序并让 secondaries apply</p>
+
+<p>失败可能发生在：</p>
+
+<ul>
+  <li>push data 过程中某个副本不可达</li>
+  <li>mutation apply 过程中某个副本 apply 失败</li>
+  <li>primary 自身崩溃（lease 过期/切主）</li>
+</ul>
+
+<h3 id="202-为什么-record-append-更容易出现重复">20.2 为什么 record append 更容易出现重复</h3>
+
+<p>record append 的设计目标是“并发追加仍可用”，因此它倾向于提供 at-least-once 的语义：</p>
+
+<ul>
+  <li>client 可能重试</li>
+  <li>primary 可能为同一条记录选择新的 offset</li>
+</ul>
+
+<p>最终结果：</p>
+
+<ul>
+  <li>记录可能重复（应用用 id 去重）</li>
+  <li>chunk 尾部可能有 padding（应用扫描时跳过）</li>
+</ul>
+
+<h2 id="21-snapshot复制写时copy-on-write的工程动机">21. Snapshot：复制写时（copy-on-write）的工程动机</h2>
+
+<p>论文里提到快照（snapshot）对某些场景很有用：</p>
+
+<ul>
+  <li>快速复制大型文件/目录树</li>
+  <li>作为 pipeline 的输入版本</li>
+</ul>
+
+<p>常见实现要点：</p>
+
+<ul>
+  <li>snapshot 不立即复制 chunk 数据</li>
+  <li>只复制元数据指针</li>
+  <li>后续写入触发 copy-on-write</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Create snapshot] --&gt; M1[Copy metadata]
+  M1 --&gt; P1[Point to same chunks]
+  P1 --&gt; W[Later write]
+  W --&gt; COW[Copy-on-write]
+  COW --&gt; N[New chunk for modified region]
+</code></pre>
+
+<h2 id="22-读校验与损坏修复checksum-的闭环">22. 读校验与损坏修复：checksum 的闭环</h2>
+
+<p>checksum 的价值是把“silent corruption”变成可检测事件：</p>
+
+<ul>
+  <li>读时验证 checksum</li>
+  <li>发现损坏立刻从其他 replica 读</li>
+  <li>上报 Master</li>
+  <li>Master 触发 re-replication 替换坏副本</li>
+</ul>
+
+<p>这套闭环非常关键：否则大规模系统里“静默位翻转”会长期污染数据。</p>
+
+<h2 id="23-为什么大-chunk64mb能显著降低-master-压力">23. 为什么大 chunk（64MB）能显著降低 Master 压力</h2>
+
+<p>粗略估算：</p>
+
+<ul>
+  <li>chunk 越大，文件被切成的 chunk 数越少</li>
+  <li>file→chunk 的映射条目越少</li>
+  <li>chunk location 元数据更少</li>
+</ul>
+
+<p>代价也很明显：</p>
+
+<ul>
+  <li>小文件浪费</li>
+  <li>热点更集中</li>
+</ul>
+
+<p>但 GFS 的 workload 假设让这个 trade-off 成立（大文件为主）。</p>
+
+<h2 id="24-小结把弱语义--强运维组合成可用系统">24. 小结：把“弱语义 + 强运维”组合成可用系统</h2>
+
+<p>把 GFS 的设计压缩成核心要点：</p>
+
+<ul>
+  <li><strong>语义上允许某些不完美（尤其 append）</strong></li>
+  <li><strong>运维上必须做到强自愈（checksum、re-replication、GC、rebalancing）</strong></li>
+</ul>
+
+<p>这也是很多大规模系统（存储/计算）的通用工程模式。</p>
 
         
       </section>
@@ -690,12 +1315,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。">
+  <meta property="og:description" content="本文是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡">
-    <meta itemprop="description" content="这篇是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。">
+    <meta itemprop="description" content="本文是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。">
     <meta itemprop="datePublished" content="May 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。</p>
+        <p>本文是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。</p>
 
 <p><img src="/images/diagrams/btree-vs-lsm-overview.svg" alt="B+Tree vs LSM：选型速览" /></p>
 
@@ -768,7 +712,7 @@
 
 <h3 id="41-选型不要忘了工程形态">4.1 选型不要忘了“工程形态”</h3>
 
-<p>最后提醒一个经常被忽略的维度：你更偏向哪种工程形态？</p>
+<p>最后提醒一个经常被忽略的维度：更偏向哪种工程形态？</p>
 
 <ul>
   <li><strong>更像数据库（事务/多索引/复杂查询）</strong>：B+Tree 家族更自然</li>
@@ -820,12 +764,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

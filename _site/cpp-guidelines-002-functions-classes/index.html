@@ -1,0 +1,1476 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ Core Guidelines 阅读笔记（2）：函数与类设计 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ Core Guidelines 阅读笔记（2）：函数与类设计">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-guidelines-002-functions-classes/">
+  <meta property="og:url" content="http://localhost:4000/cpp-guidelines-002-functions-classes/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2024-02-10T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class=""><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class=""><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class="active"><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ Core Guidelines 阅读笔记（2）：函数与类设计">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="February 10, 2024">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ Core Guidelines 阅读笔记（2）：函数与类设计
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  6 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2024-02-10T00:00:00+08:00">February 10, 2024</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>本文是 C++ Core Guidelines 阅读笔记的第二篇，重点讨论函数设计和类设计的规范。良好的函数和类设计是写出高质量 C++ 代码的基础。</p>
+
+<h2 id="1-函数设计规范">1. 函数设计规范</h2>
+
+<p>函数是程序的基本构建块，良好的函数设计是高质量代码的基础。</p>
+
+<h3 id="11-函数应该简短">1.1 函数应该简短</h3>
+
+<p>函数应该足够短，能够一眼理解其功能：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：简短函数</span>
+<span class="kt">bool</span> <span class="nf">is_valid_email</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">email</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">email</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="sc">'@'</span><span class="p">)</span> <span class="o">!=</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span> <span class="o">&amp;&amp;</span>
+           <span class="n">email</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="sc">'.'</span><span class="p">)</span> <span class="o">!=</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：过长函数（超过 50 行）</span>
+<span class="kt">void</span> <span class="n">process_order</span><span class="p">(</span><span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 100+ 行代码，难以理解和维护</span>
+    <span class="c1">// 包含多个职责，难以测试</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="12-函数应该做一件事">1.2 函数应该做一件事</h3>
+
+<p>单一职责原则适用于函数设计：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：单一职责</span>
+<span class="kt">void</span> <span class="nf">validate_user</span><span class="p">(</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">save_user</span><span class="p">(</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">notify_user</span><span class="p">(</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">);</span>
+
+<span class="c1">// 不好：做多件事</span>
+<span class="kt">void</span> <span class="nf">validate_and_save_user</span><span class="p">(</span><span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">validate_user</span><span class="p">(</span><span class="n">user</span><span class="p">);</span>  <span class="c1">// 职责 1</span>
+    <span class="n">save_user</span><span class="p">(</span><span class="n">user</span><span class="p">);</span>      <span class="c1">// 职责 2</span>
+    <span class="n">notify_user</span><span class="p">(</span><span class="n">user</span><span class="p">);</span>    <span class="c1">// 职责 3</span>
+    <span class="c1">// 违反单一职责，难以测试和维护</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="13-函数参数数量">1.3 函数参数数量</h3>
+
+<p>函数参数应该尽可能少，通常不超过 3 个：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：参数少（1-3 个）</span>
+<span class="kt">void</span> <span class="nf">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">Point</span><span class="o">&amp;</span> <span class="n">center</span><span class="p">,</span> <span class="kt">double</span> <span class="n">radius</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">,</span> <span class="kt">int</span> <span class="n">z</span><span class="p">);</span>  <span class="c1">// 3 个参数，可接受</span>
+
+<span class="c1">// 不好：参数太多</span>
+<span class="kt">void</span> <span class="nf">draw_shape</span><span class="p">(</span><span class="kt">double</span> <span class="n">x</span><span class="p">,</span> <span class="kt">double</span> <span class="n">y</span><span class="p">,</span> <span class="kt">double</span> <span class="n">w</span><span class="p">,</span> <span class="kt">double</span> <span class="n">h</span><span class="p">,</span> 
+                <span class="n">Color</span> <span class="n">c</span><span class="p">,</span> <span class="n">Style</span> <span class="n">s</span><span class="p">,</span> <span class="kt">int</span> <span class="n">z</span><span class="p">);</span>  <span class="c1">// 7 个参数，太多</span>
+</code></pre></div></div>
+
+<h3 id="14-使用结构体传递多个参数">1.4 使用结构体传递多个参数</h3>
+
+<p>当参数较多时，使用结构体封装：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：使用结构体</span>
+<span class="k">struct</span> <span class="nc">DrawParams</span> <span class="p">{</span>
+    <span class="n">Point</span> <span class="n">center</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">radius</span><span class="p">;</span>
+    <span class="n">Color</span> <span class="n">color</span><span class="p">;</span>
+    <span class="n">Style</span> <span class="n">style</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">z_order</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">void</span> <span class="n">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">DrawParams</span><span class="o">&amp;</span> <span class="n">params</span><span class="p">);</span>
+<span class="c1">// 使用：DrawParams params{center, 10.0, Color::Red, Style::Solid, 0};</span>
+<span class="c1">//       draw_circle(params);</span>
+
+<span class="c1">// 不好：多个参数</span>
+<span class="kt">void</span> <span class="n">draw_circle</span><span class="p">(</span><span class="kt">double</span> <span class="n">x</span><span class="p">,</span> <span class="kt">double</span> <span class="n">y</span><span class="p">,</span> <span class="kt">double</span> <span class="n">r</span><span class="p">,</span> <span class="n">Color</span> <span class="n">c</span><span class="p">,</span> <span class="n">Style</span> <span class="n">s</span><span class="p">,</span> <span class="kt">int</span> <span class="n">z</span><span class="p">);</span>
+<span class="c1">// 使用：draw_circle(10, 20, 5.0, Color::Red, Style::Solid, 0);</span>
+<span class="c1">//      容易传错参数顺序</span>
+</code></pre></div></div>
+
+<h2 id="2-函数参数传递">2. 函数参数传递</h2>
+
+<h3 id="21-参数传递规则">2.1 参数传递规则</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 小对象（&lt; 3 words）：值传递</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">double</span> <span class="n">y</span><span class="p">);</span>
+
+<span class="c1">// 大对象：const 引用传递</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">vec</span><span class="p">);</span>
+
+<span class="c1">// 需要修改：非 const 引用传递</span>
+<span class="kt">void</span> <span class="nf">modify</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">vec</span><span class="p">);</span>
+
+<span class="c1">// 移动语义：右值引用传递</span>
+<span class="kt">void</span> <span class="nf">take_ownership</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;&amp;</span> <span class="n">vec</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="22-避免输出参数">2.2 避免输出参数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：返回值</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">compute_result</span><span class="p">();</span>
+
+<span class="c1">// 不好：输出参数</span>
+<span class="kt">void</span> <span class="nf">compute_result</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">out</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="23-使用默认参数">2.3 使用默认参数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：默认参数</span>
+<span class="kt">void</span> <span class="nf">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">Point</span><span class="o">&amp;</span> <span class="n">center</span><span class="p">,</span> <span class="kt">double</span> <span class="n">radius</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+                 <span class="n">Color</span> <span class="n">color</span> <span class="o">=</span> <span class="n">Color</span><span class="o">::</span><span class="n">Black</span><span class="p">);</span>
+
+<span class="c1">// 不好：函数重载（如果只是参数不同）</span>
+<span class="kt">void</span> <span class="nf">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">Point</span><span class="o">&amp;</span> <span class="n">center</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">Point</span><span class="o">&amp;</span> <span class="n">center</span><span class="p">,</span> <span class="kt">double</span> <span class="n">radius</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">draw_circle</span><span class="p">(</span><span class="k">const</span> <span class="n">Point</span><span class="o">&amp;</span> <span class="n">center</span><span class="p">,</span> <span class="kt">double</span> <span class="n">radius</span><span class="p">,</span> <span class="n">Color</span> <span class="n">color</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="3-类设计原则">3. 类设计原则</h2>
+
+<p>类是面向对象编程的核心，良好的类设计遵循特定的原则。</p>
+
+<h3 id="31-类应该表示一个概念">3.1 类应该表示一个概念</h3>
+
+<p>类应该表示一个清晰的概念或实体：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：表示一个概念</span>
+<span class="k">class</span> <span class="nc">Circle</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">Point</span> <span class="n">center_</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">radius_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">draw</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">area</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">circumference</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="c1">// 所有操作都与 Circle 概念相关</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：不表示一个概念</span>
+<span class="k">class</span> <span class="nc">Utility</span> <span class="p">{</span>  <span class="c1">// 工具类，没有明确概念</span>
+<span class="nl">public:</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="n">func1</span><span class="p">();</span>  <span class="c1">// 功能 1</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="n">func2</span><span class="p">();</span>  <span class="c1">// 功能 2</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="n">func3</span><span class="p">();</span>  <span class="c1">// 功能 3</span>
+    <span class="c1">// 没有统一的概念，只是函数的集合</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="32-保持类小而专注">3.2 保持类小而专注</h3>
+
+<p>类应该小而专注，遵循单一职责原则：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：小而专注</span>
+<span class="k">class</span> <span class="nc">FileReader</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">read</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">path</span><span class="p">);</span>
+    <span class="c1">// 只负责读取文件</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">FileWriter</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">write</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">path</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">content</span><span class="p">);</span>
+    <span class="c1">// 只负责写入文件</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：类太大</span>
+<span class="k">class</span> <span class="nc">FileManager</span> <span class="p">{</span>  <span class="c1">// 包含太多功能</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">read</span><span class="p">();</span>      <span class="c1">// 职责 1：读取</span>
+    <span class="kt">void</span> <span class="n">write</span><span class="p">();</span>     <span class="c1">// 职责 2：写入</span>
+    <span class="kt">void</span> <span class="n">compress</span><span class="p">();</span>  <span class="c1">// 职责 3：压缩</span>
+    <span class="kt">void</span> <span class="n">encrypt</span><span class="p">();</span>   <span class="c1">// 职责 4：加密</span>
+    <span class="kt">void</span> <span class="n">delete_file</span><span class="p">();</span>  <span class="c1">// 职责 5：删除</span>
+    <span class="c1">// 违反单一职责原则</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="33-使用组合而非继承">3.3 使用组合而非继承</h3>
+
+<p>优先使用组合而非继承，除非是真正的 is-a 关系：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：组合</span>
+<span class="k">class</span> <span class="nc">Car</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">Engine</span> <span class="n">engine_</span><span class="p">;</span>      <span class="c1">// 组合：Car has an Engine</span>
+    <span class="n">Wheel</span> <span class="n">wheels_</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>    <span class="c1">// 组合：Car has Wheels</span>
+    <span class="n">Transmission</span> <span class="n">transmission_</span><span class="p">;</span>  <span class="c1">// 组合：Car has a Transmission</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：不必要的继承</span>
+<span class="k">class</span> <span class="nc">Car</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Vehicle</span> <span class="p">{</span>  <span class="c1">// 如果不是真正的 is-a 关系</span>
+    <span class="c1">// 继承会带来不必要的耦合</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="34-类的职责划分">3.4 类的职责划分</h3>
+
+<h2 id="4-数据封装">4. 数据封装</h2>
+
+<h3 id="41-数据应该是私有的">4.1 数据应该是私有的</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：数据私有</span>
+<span class="k">class</span> <span class="nc">Point</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">double</span> <span class="n">x_</span><span class="p">,</span> <span class="n">y_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">double</span> <span class="n">x</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">x_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">double</span> <span class="n">y</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">y_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">set_x</span><span class="p">(</span><span class="kt">double</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="n">x_</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">set_y</span><span class="p">(</span><span class="kt">double</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span> <span class="n">y_</span> <span class="o">=</span> <span class="n">y</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：数据公有</span>
+<span class="k">class</span> <span class="nc">Point</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">double</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">;</span>  <span class="c1">// 公有数据</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="42-提供访问器">4.2 提供访问器</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：提供访问器</span>
+<span class="k">class</span> <span class="nc">User</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">name_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">set_name</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span> <span class="n">name_</span> <span class="o">=</span> <span class="n">name</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="5-构造函数">5. 构造函数</h2>
+
+<h3 id="51-使用构造函数初始化列表">5.1 使用构造函数初始化列表</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：初始化列表</span>
+<span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span> <span class="n">value_</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">MyClass</span><span class="p">(</span><span class="kt">int</span> <span class="n">v</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">n</span><span class="p">)</span> 
+        <span class="o">:</span> <span class="n">value_</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">name_</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="p">{}</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：在构造函数体内赋值</span>
+<span class="n">MyClass</span><span class="p">(</span><span class="kt">int</span> <span class="n">v</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">value_</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>  <span class="c1">// 先默认构造，再赋值</span>
+    <span class="n">name_</span> <span class="o">=</span> <span class="n">n</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="52-使用--default-和--delete">5.2 使用 = default 和 = delete</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">MyClass</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>  <span class="c1">// 使用默认构造函数</span>
+    <span class="n">MyClass</span><span class="p">(</span><span class="k">const</span> <span class="n">MyClass</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>  <span class="c1">// 禁止拷贝</span>
+    <span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">MyClass</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">MyClass</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>  <span class="c1">// 允许移动</span>
+    <span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="6-析构函数">6. 析构函数</h2>
+
+<h3 id="61-基类应该有虚析构函数">6.1 基类应该有虚析构函数</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：虚析构函数</span>
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：非虚析构函数</span>
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{}</span>  <span class="c1">// 如果 Base 会被继承，应该是虚的</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="62-析构函数应该简单">6.2 析构函数应该简单</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：简单析构函数</span>
+<span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">resource_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="o">~</span><span class="n">MyClass</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>  <span class="c1">// 自动清理</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：复杂析构函数</span>
+<span class="o">~</span><span class="n">MyClass</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 大量清理逻辑</span>
+    <span class="c1">// 可能抛出异常</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="7-运算符重载">7. 运算符重载</h2>
+
+<h3 id="71-保持语义一致性">7.1 保持语义一致性</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：语义一致</span>
+<span class="k">class</span> <span class="nc">Complex</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">Complex</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">+=</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="c1">// 通常实现为：</span>
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Complex</span> <span class="n">result</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="n">result</span> <span class="o">+=</span> <span class="n">b</span><span class="p">;</span>  <span class="c1">// 复用 +=</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="72-避免过度重载">7.2 避免过度重载</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：只重载有意义的运算符</span>
+<span class="k">class</span> <span class="nc">Vector</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Vector</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Vector</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+    <span class="n">Vector</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">+=</span><span class="p">(</span><span class="k">const</span> <span class="n">Vector</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：重载不常用的运算符</span>
+<span class="n">Vector</span> <span class="k">operator</span><span class="o">%</span><span class="p">(</span><span class="k">const</span> <span class="n">Vector</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>  <span class="c1">// % 对向量没有意义</span>
+</code></pre></div></div>
+
+<h2 id="8-继承设计">8. 继承设计</h2>
+
+<h3 id="81-使用-public-继承表示-is-a-关系">8.1 使用 public 继承表示 is-a 关系</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：is-a 关系</span>
+<span class="k">class</span> <span class="nc">Circle</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Shape</span> <span class="p">{</span>
+    <span class="c1">// Circle is a Shape</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：不是 is-a 关系</span>
+<span class="k">class</span> <span class="nc">Stack</span> <span class="o">:</span> <span class="k">public</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="p">{</span>  <span class="c1">// Stack is not a vector</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="82-避免深继承层次">8.2 避免深继承层次</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：浅继承层次</span>
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{};</span>
+<span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{};</span>
+
+<span class="c1">// 不好：深继承层次</span>
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{};</span>
+<span class="k">class</span> <span class="nc">Derived1</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{};</span>
+<span class="k">class</span> <span class="nc">Derived2</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Derived1</span> <span class="p">{};</span>
+<span class="k">class</span> <span class="nc">Derived3</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Derived2</span> <span class="p">{};</span>  <span class="c1">// 太深</span>
+</code></pre></div></div>
+
+<h2 id="9-接口设计">9. 接口设计</h2>
+
+<h3 id="91-接口应该稳定">9.1 接口应该稳定</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：稳定接口</span>
+<span class="k">class</span> <span class="nc">Database</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">connect</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">disconnect</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">virtual</span> <span class="o">~</span><span class="n">Database</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：频繁变化的接口</span>
+<span class="k">class</span> <span class="nc">Database</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">connect_v2</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 版本号在接口中</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="92-使用抽象接口">9.2 使用抽象接口</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：抽象接口</span>
+<span class="k">class</span> <span class="nc">Drawable</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">draw</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">virtual</span> <span class="o">~</span><span class="n">Drawable</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：具体实现</span>
+<span class="k">class</span> <span class="nc">Circle</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">draw</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="c1">// 具体实现</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="11-实际工程案例">11. 实际工程案例</h2>
+
+<h3 id="111-案例函数重构">11.1 案例：函数重构</h3>
+
+<p><strong>问题</strong>：函数过长，难以维护</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始代码：100+ 行</span>
+<span class="kt">void</span> <span class="nf">process_order</span><span class="p">(</span><span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 验证订单</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">order</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span>
+    <span class="c1">// 计算价格</span>
+    <span class="c1">// 应用折扣</span>
+    <span class="c1">// 更新库存</span>
+    <span class="c1">// 发送通知</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：拆分为多个小函数</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进代码：每个函数职责单一</span>
+<span class="kt">void</span> <span class="nf">validate_order</span><span class="p">(</span><span class="k">const</span> <span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">);</span>
+<span class="n">Price</span> <span class="nf">calculate_price</span><span class="p">(</span><span class="k">const</span> <span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">apply_discount</span><span class="p">(</span><span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">update_inventory</span><span class="p">(</span><span class="k">const</span> <span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">send_notification</span><span class="p">(</span><span class="k">const</span> <span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">);</span>
+
+<span class="kt">void</span> <span class="nf">process_order</span><span class="p">(</span><span class="n">Order</span><span class="o">&amp;</span> <span class="n">order</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">validate_order</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+    <span class="n">calculate_price</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+    <span class="n">apply_discount</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+    <span class="n">update_inventory</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+    <span class="n">send_notification</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="112-案例类设计改进">11.2 案例：类设计改进</h3>
+
+<p><strong>问题</strong>：类太大，职责不清</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始设计：God Object</span>
+<span class="k">class</span> <span class="nc">UserManager</span> <span class="p">{</span>
+    <span class="c1">// 用户管理</span>
+    <span class="c1">// 权限管理</span>
+    <span class="c1">// 通知管理</span>
+    <span class="c1">// 日志管理</span>
+    <span class="c1">// ...</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：拆分为多个小类</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进设计：职责分离</span>
+<span class="k">class</span> <span class="nc">User</span> <span class="p">{</span>
+    <span class="c1">// 用户数据和行为</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">PermissionManager</span> <span class="p">{</span>
+    <span class="c1">// 权限管理</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">NotificationService</span> <span class="p">{</span>
+    <span class="c1">// 通知服务</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Logger</span> <span class="p">{</span>
+    <span class="c1">// 日志管理</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="12-设计模式应用">12. 设计模式应用</h2>
+
+<h3 id="121-策略模式">12.1 策略模式</h3>
+
+<h3 id="122-模板方法模式">12.2 模板方法模式</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 模板方法模式</span>
+<span class="k">class</span> <span class="nc">Algorithm</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">run</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">step1</span><span class="p">();</span>
+        <span class="n">step2</span><span class="p">();</span>  <span class="c1">// 虚函数，子类可以重写</span>
+        <span class="n">step3</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="nl">protected:</span>
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">step2</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="nl">private:</span>
+    <span class="kt">void</span> <span class="n">step1</span><span class="p">()</span> <span class="p">{}</span>
+    <span class="kt">void</span> <span class="n">step3</span><span class="p">()</span> <span class="p">{}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="13-性能考虑">13. 性能考虑</h2>
+
+<h3 id="131-函数调用开销">13.1 函数调用开销</h3>
+
+<h3 id="132-类设计对性能的影响">13.2 类设计对性能的影响</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：数据局部性好</span>
+<span class="k">class</span> <span class="nc">Point</span> <span class="p">{</span>
+    <span class="kt">double</span> <span class="n">x_</span><span class="p">,</span> <span class="n">y_</span><span class="p">;</span>  <span class="c1">// 数据紧凑</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：数据分散</span>
+<span class="k">class</span> <span class="nc">Point</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">x_</span><span class="p">;</span>  <span class="c1">// 间接访问</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">y_</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="14-最佳实践检查清单">14. 最佳实践检查清单</h2>
+
+<h3 id="141-函数设计检查清单">14.1 函数设计检查清单</h3>
+
+<ol>
+  <li><strong>函数简短</strong>：&lt; 50 行</li>
+  <li><strong>单一职责</strong>：只做一件事</li>
+  <li><strong>参数少</strong>：&lt; 4 个参数</li>
+  <li><strong>命名清晰</strong>：表达意图</li>
+  <li><strong>无副作用</strong>：纯函数更好</li>
+  <li><strong>异常安全</strong>：正确处理异常</li>
+</ol>
+
+<h3 id="142-类设计检查清单">14.2 类设计检查清单</h3>
+
+<ol>
+  <li><strong>表示一个概念</strong>：有明确的语义</li>
+  <li><strong>小而专注</strong>：&lt; 500 行</li>
+  <li><strong>单一职责</strong>：只负责一件事</li>
+  <li><strong>数据私有</strong>：封装数据</li>
+  <li><strong>接口稳定</strong>：避免频繁变化</li>
+  <li><strong>使用组合</strong>：优先组合而非继承</li>
+</ol>
+
+<h2 id="15-小结">15. 小结</h2>
+
+<p>函数和类的设计应该遵循单一职责、小而专注的原则。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li><strong>函数设计</strong>：简短、单一职责、参数少、使用结构体传递多个参数</li>
+  <li><strong>参数传递</strong>：根据对象大小和用途选择传递方式</li>
+  <li><strong>类设计</strong>：表示一个概念、小而专注、使用组合</li>
+  <li><strong>数据封装</strong>：数据私有、提供访问器</li>
+  <li><strong>构造函数</strong>：使用初始化列表、= default/= delete</li>
+  <li><strong>析构函数</strong>：基类虚析构、简单实现</li>
+  <li><strong>运算符重载</strong>：保持语义一致性、避免过度重载</li>
+  <li><strong>继承设计</strong>：public 继承表示 is-a、避免深层次</li>
+  <li><strong>接口设计</strong>：稳定、抽象接口</li>
+</ul>
+
+<p>遵循这些规范，可以设计出更清晰、更易维护的 C++ 代码。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -33,35 +33,35 @@ IndexLib 的版本管理包括以下核心概念：
 ```mermaid
 classDiagram
     class Version {
-        -versionid_t _versionId
-        -vector~SegmentInVersion~ _segments
-        -Locator _locator
-        -int64_t _timestamp
-        -bool _sealed
-        +GetVersionId() versionid_t
-        +AddSegment(segmentid_t, schemaid_t) void
-        +SetLocator(Locator) void
-        +IncVersionId() void
+        - versionid_t _versionId
+        - vector_SegmentInVersion _segments
+        - Locator _locator
+        - int64_t _timestamp
+        - bool _sealed
+        + GetVersionId()
+        + AddSegment()
+        + SetLocator()
+        + IncVersionId()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        -string _userData
-        +IsFasterThan(Locator) LocatorCompareResult
-        +Update(Locator) void
-        +Serialize() string
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        - string _userData
+        + IsFasterThan()
+        + Update()
+        + Serialize()
     }
     
     class VersionCommitter {
-        +Commit(TabletData, Schema, CommitOptions) VersionMeta
-        +CreateFence() Status
-        +WriteVersion(Version) Status
+        + Commit()
+        + CreateFence()
+        + WriteVersion()
     }
     
     class VersionLoader {
-        +Load(IndexRoot, versionid_t) Version
-        +Validate(Version) Status
+        + Load()
+        + Validate()
     }
     
     Version --> Locator : 包含

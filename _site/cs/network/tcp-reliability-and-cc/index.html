@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -684,9 +628,9 @@
 
 <p>拥塞控制就是在“尽量快”和“别把网络打爆”之间做动态平衡。</p>
 
-<h2 id="3-一个最有用的直觉窗口window是节流阀">3. 一个最有用的直觉：窗口（window）是节流阀</h2>
+<h2 id="3-一个最有用的要点窗口window是节流阀">3. 一个最有用的要点：窗口（window）是节流阀</h2>
 
-<p>你可以把发送窗口理解成：</p>
+<p>可以将发送窗口理解成：</p>
 
 <ul>
   <li><strong>对端能力（rwnd）</strong>：接收端来不来得及收</li>
@@ -697,7 +641,7 @@
 
 <h3 id="31-关键结论吞吐由在途数据量决定">3.1 关键结论：吞吐由“在途数据量”决定</h3>
 
-<p>你可以用一句工程直觉理解吞吐上限：</p>
+<p>可以用一句工程直觉理解吞吐上限：</p>
 
 <blockquote>
   <p>吞吐 (\approx) 在途数据量 / RTT</p>
@@ -705,7 +649,7 @@
 
 <p>而“在途数据量”受窗口（min(rwnd, cwnd)）限制。</p>
 
-<h2 id="4-你在线上会遇到的-3-类问题以及它们分别像什么">4. 你在线上会遇到的 3 类问题（以及它们分别像什么）</h2>
+<h2 id="4-线上会遇到的-3-类问题以及它们分别像什么">4. 线上会遇到的 3 类问题（以及它们分别像什么）</h2>
 
 <h3 id="41-丢包主导重传多rto-多p99-像过山车">4.1 丢包主导：重传多、RTO 多、P99 像过山车</h3>
 
@@ -729,7 +673,7 @@
   <li>应用层处理不过来，反压到网络</li>
 </ul>
 
-<h2 id="5-你应该观测什么建议优先级">5. 你应该观测什么（建议优先级）</h2>
+<h2 id="5-应当观测什么建议优先级">5. 应当观测什么（建议优先级）</h2>
 
 <ol>
   <li><strong>RTT 分布</strong>：最小 RTT vs 当前 RTT（判断是否排队）</li>
@@ -738,7 +682,7 @@
   <li><strong>应用层超时/重试</strong>：是否进入“正反馈放大”？</li>
 </ol>
 
-<h2 id="6-最小排障顺序tcp-变慢抖动">6. 最小排障顺序（TCP 变慢/抖动）</h2>
+<h2 id="6-排障顺序tcp-变慢抖动">6. 排障顺序（TCP 变慢/抖动）</h2>
 
 <ol>
   <li><strong>先判定是丢包主导还是排队主导</strong>：看重传与 RTT 分布</li>
@@ -937,12 +881,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

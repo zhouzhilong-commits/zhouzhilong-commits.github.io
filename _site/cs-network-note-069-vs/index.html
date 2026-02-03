@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇把“四层 vs 七层负载均衡”讲清楚一个核心差异：看不看得懂请求。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。">
+  <meta property="og:description" content="本文深入解析四层（L4）和七层（L7）负载均衡的工作原理、适用场景、性能特征和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -610,7 +554,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="网络笔记：负载均衡：四层 vs 七层">
-    <meta itemprop="description" content="这篇把“四层 vs 七层负载均衡”讲清楚一个核心差异：看不看得懂请求。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。">
+    <meta itemprop="description" content="本文深入解析四层（L4）和七层（L7）负载均衡的工作原理、适用场景、性能特征和工程实践。">
     <meta itemprop="datePublished" content="May 01, 2019">
     
 
@@ -624,7 +568,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
           
@@ -643,13 +587,15 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇把“四层 vs 七层负载均衡”讲清楚一个核心差异：<strong>看不看得懂请求</strong>。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。</p>
+        <p>本文深入解析四层（L4）和七层（L7）负载均衡的工作原理、适用场景、性能特征和工程实践。</p>
+
+<p>本文把”四层 vs 七层负载均衡”讲清楚一个核心差异：<strong>看不看得懂请求</strong>。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。</p>
 
 <p><img src="/images/diagrams/l4-vs-l7-load-balancing.svg" alt="四层 vs 七层：看不看得懂请求" /></p>
 
 <h2 id="1-l4传输层负载均衡以连接为单位">1. L4（传输层）负载均衡：以连接为单位</h2>
 
-<p>你可以把它理解为“高性能转发器”：</p>
+<p>可以将它理解为”高性能转发器”：</p>
 
 <ul>
   <li>主要依据：IP/Port/Protocol（五元组）、连接状态</li>
@@ -657,6 +603,53 @@
 </ul>
 
 <p>优点：吞吐高、延迟低、实现相对简单；缺点：不理解请求内容，难以做细粒度治理。</p>
+
+<h3 id="11-l4-的工作原理">1.1 L4 的工作原理</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Client] --&gt; B[L4 Load Balancer]
+  B --&gt; C[Backend 1]
+  B --&gt; D[Backend 2]
+  B --&gt; E[Backend 3]
+  
+  B --&gt; F[基于五元组]
+  F --&gt; G[IP + Port + Protocol]
+  
+  B --&gt; H[连接级转发]
+  H --&gt; I[高性能]
+</code></pre>
+
+<h3 id="12-l4-的转发机制">1.2 L4 的转发机制</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L4 as L4 Load Balancer
+  participant B as Backend
+
+  C-&gt;&gt;L4: TCP SYN
+  L4-&gt;&gt;L4: 选择 Backend (基于五元组)
+  L4-&gt;&gt;B: 转发 SYN
+  B--&gt;&gt;L4: SYN-ACK
+  L4--&gt;&gt;C: 转发 SYN-ACK
+  C-&gt;&gt;L4: ACK
+  L4-&gt;&gt;B: 转发 ACK
+  
+  Note over C,B: 建立连接后，后续数据包直接转发
+</code></pre>
+
+<h3 id="13-l4-的调度算法">1.3 L4 的调度算法</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[L4 调度算法] --&gt; B[轮询 Round Robin]
+  A --&gt; C[加权轮询 Weighted RR]
+  A --&gt; D[最少连接 Least Connections]
+  A --&gt; E[源 IP 哈希 Source IP Hash]
+  
+  B --&gt; F[简单公平]
+  C --&gt; G[考虑权重]
+  D --&gt; H[负载均衡]
+  E --&gt; I[会话保持]
+</code></pre>
 
 <h2 id="2-l7应用层负载均衡以请求为单位">2. L7（应用层）负载均衡：以请求为单位</h2>
 
@@ -669,7 +662,131 @@
 
 <p>代价：需要解析协议、通常还会承担 TLS 终止，CPU/内存开销更大，配置也更复杂。</p>
 
-<h2 id="3-选择建议非常工程化">3. 选择建议（非常工程化）</h2>
+<h3 id="21-l7-的工作原理">2.1 L7 的工作原理</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Client] --&gt; B[L7 Load Balancer]
+  B --&gt; C[解析 HTTP/gRPC]
+  B --&gt; D[路由决策]
+  D --&gt; E[Backend 1]
+  D --&gt; F[Backend 2]
+  D --&gt; G[Backend 3]
+  
+  B --&gt; H[基于请求内容]
+  H --&gt; I[Host/Path/Header]
+</code></pre>
+
+<h3 id="22-l7-的请求处理流程">2.2 L7 的请求处理流程</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L7 as L7 Load Balancer
+  participant B as Backend
+
+  C-&gt;&gt;L7: HTTP Request
+  L7-&gt;&gt;L7: 解析请求
+  L7-&gt;&gt;L7: 路由决策 (基于 Host/Path)
+  L7-&gt;&gt;B: 转发请求
+  B--&gt;&gt;L7: HTTP Response
+  L7--&gt;&gt;C: 转发响应
+  
+  Note over L7: 每个请求都经过解析和路由
+</code></pre>
+
+<h3 id="23-l7-的路由能力">2.3 L7 的路由能力</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[L7 路由能力] --&gt; B[基于 Host]
+  A --&gt; C[基于 Path]
+  A --&gt; D[基于 Header]
+  A --&gt; E[基于 Cookie]
+  
+  B --&gt; F[多域名路由]
+  C --&gt; G[路径路由]
+  D --&gt; H[灰度发布]
+  E --&gt; I[会话保持]
+</code></pre>
+
+<h2 id="3-l4-vs-l7核心差异对比">3. L4 vs L7：核心差异对比</h2>
+
+<h3 id="31-功能对比">3.1 功能对比</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>特性</th>
+      <th>L4</th>
+      <th>L7</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>转发粒度</td>
+      <td>连接级</td>
+      <td>请求级</td>
+    </tr>
+    <tr>
+      <td>协议理解</td>
+      <td>无</td>
+      <td>HTTP/gRPC</td>
+    </tr>
+    <tr>
+      <td>路由能力</td>
+      <td>简单（五元组）</td>
+      <td>复杂（请求内容）</td>
+    </tr>
+    <tr>
+      <td>性能</td>
+      <td>高吞吐、低延迟</td>
+      <td>相对较低</td>
+    </tr>
+    <tr>
+      <td>CPU 开销</td>
+      <td>低</td>
+      <td>高（解析协议）</td>
+    </tr>
+    <tr>
+      <td>配置复杂度</td>
+      <td>简单</td>
+      <td>复杂</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="32-性能对比">3.2 性能对比</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[负载均衡性能] --&gt; B[L4]
+  A --&gt; C[L7]
+  
+  B --&gt; D[高吞吐]
+  B --&gt; E[低延迟]
+  B --&gt; F[低 CPU]
+  
+  C --&gt; G[中等吞吐]
+  C --&gt; H[中等延迟]
+  C --&gt; I[高 CPU]
+  
+  D --&gt; J[适合高并发]
+  G --&gt; K[适合复杂路由]
+</code></pre>
+
+<h3 id="33-适用场景对比">3.3 适用场景对比</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[场景选择] --&gt; B{需要协议理解?}
+  B --&gt;|否| C[L4]
+  B --&gt;|是| D{需要复杂路由?}
+  
+  D --&gt;|否| E[L4 或 L7]
+  D --&gt;|是| F[L7]
+  
+  C --&gt; G[高性能转发]
+  E --&gt; H[简单路由]
+  F --&gt; I[复杂治理]
+</code></pre>
+
+<h2 id="4-选择建议非常工程化">4. 选择建议（非常工程化）</h2>
 
 <ul>
   <li><strong>追求极致转发性能、协议无关</strong>：优先 L4</li>
@@ -677,7 +794,38 @@
   <li><strong>大型系统常见组合</strong>：入口 L7（治理）+ 内部 L4（高性能转发/连接层面）</li>
 </ul>
 
-<h2 id="4-排查清单线上常用">4. 排查清单（线上常用）</h2>
+<h3 id="41-架构组合">4.1 架构组合</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[用户] --&gt; B[L7 入口]
+  B --&gt; C[路由/鉴权/限流]
+  C --&gt; D[L4 内部]
+  D --&gt; E[高性能转发]
+  E --&gt; F[Backend]
+  
+  B --&gt; G[治理能力]
+  D --&gt; H[转发性能]
+</code></pre>
+
+<h3 id="42-选型决策树">4.2 选型决策树</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[负载均衡选型] --&gt; B{需要协议理解?}
+  B --&gt;|否| C[选择 L4]
+  B --&gt;|是| D{需要复杂路由?}
+  
+  D --&gt;|否| E{需要 TLS 终止?}
+  E --&gt;|是| F[选择 L7]
+  E --&gt;|否| G[L4 或 L7]
+  
+  D --&gt;|是| H[选择 L7]
+  
+  C --&gt; I[高性能转发]
+  F --&gt; J[TLS 终止]
+  H --&gt; K[复杂治理]
+</code></pre>
+
+<h2 id="5-排查清单线上常用">5. 排查清单（线上常用）</h2>
 
 <ol>
   <li><strong>瓶颈在哪</strong>：L7 是否 CPU 打满（TLS/解析）？L4 是否在 conntrack/NAT 上吃资源？</li>
@@ -686,10 +834,126 @@
   <li><strong>超时与重试</strong>：是否因重试导致流量放大（尤其 L7 更常见）？</li>
 </ol>
 
-<h2 id="5-小结">5. 小结</h2>
+<h3 id="51-排障流程">5.1 排障流程</h3>
 
-<p>L4 强在“快”，L7 强在“懂”。选型时优先按业务需要的“治理能力”来定，再用架构组合把性能与能力同时拿到。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[负载均衡问题] --&gt; B{性能问题?}
+  B --&gt;|是| C{CPU 高?}
+  B --&gt;|否| D{连接/请求堆积?}
+  
+  C --&gt;|是| E{L7?}
+  E --&gt;|是| F[TLS/解析瓶颈]
+  E --&gt;|否| G[conntrack/NAT 瓶颈]
+  
+  D --&gt;|连接堆积| H[L4 连接问题]
+  D --&gt;|请求堆积| I[L7 请求问题]
+  
+  F --&gt; J[优化 TLS/解析]
+  G --&gt; K[优化 conntrack]
+  H --&gt; L[优化连接管理]
+  I --&gt; M[优化请求处理]
+</code></pre>
 
+<h3 id="52-常见问题">5.2 常见问题</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[常见问题] --&gt; B[健康检查不准确]
+  A --&gt; C[超时设置不当]
+  A --&gt; D[重试放大流量]
+  A --&gt; E[连接/请求堆积]
+  
+  B --&gt; F[流量打到坏实例]
+  C --&gt; G[请求超时]
+  D --&gt; H[流量放大]
+  E --&gt; I[性能下降]
+</code></pre>
+
+<h2 id="6-实际案例">6. 实际案例</h2>
+
+<h3 id="61-案例l7-cpu-瓶颈">6.1 案例：L7 CPU 瓶颈</h3>
+
+<p><strong>问题</strong>：L7 负载均衡器 CPU 占用高</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>TLS 终止占用大量 CPU</li>
+  <li>HTTP 解析开销大</li>
+  <li>单核热点</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>使用硬件加速（TLS offload）</li>
+  <li>优化 HTTP 解析</li>
+  <li>增加实例数</li>
+</ul>
+
+<p><strong>结果</strong>：CPU 占用降低 60%</p>
+
+<h3 id="62-案例l4-连接数限制">6.2 案例：L4 连接数限制</h3>
+
+<p><strong>问题</strong>：L4 负载均衡器连接数达到上限</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>conntrack 表满</li>
+  <li>连接保持时间长</li>
+  <li>连接复用不足</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>增加 conntrack 表大小</li>
+  <li>优化连接保持时间</li>
+  <li>提高连接复用率</li>
+</ul>
+
+<p><strong>结果</strong>：连接数上限提升 3 倍</p>
+
+<h2 id="7-设计原则与最佳实践">7. 设计原则与最佳实践</h2>
+
+<h3 id="71-设计原则">7.1 设计原则</h3>
+
+<ol>
+  <li><strong>性能优先</strong>：L4 用于高性能转发</li>
+  <li><strong>功能优先</strong>：L7 用于复杂治理</li>
+  <li><strong>组合使用</strong>：入口 L7 + 内部 L4</li>
+</ol>
+
+<h3 id="72-最佳实践">7.2 最佳实践</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[负载均衡最佳实践] --&gt; B[合理选型]
+  A --&gt; C[健康检查]
+  A --&gt; D[超时设置]
+  A --&gt; E[监控告警]
+  
+  B --&gt; F[L4 高性能]
+  B --&gt; G[L7 复杂治理]
+  
+  C --&gt; H[准确及时]
+  D --&gt; I[合理配置]
+  E --&gt; J[及时发现问题]
+</code></pre>
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>L4 强在”快”，L7 强在”懂”。选型时优先按业务需要的”治理能力”来定，再用架构组合把性能与能力同时拿到。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>L4 基于连接/五元组转发，性能高但功能简单</li>
+  <li>L7 基于请求内容路由，功能强但性能相对较低</li>
+  <li>大型系统通常组合使用：入口 L7 + 内部 L4</li>
+  <li>排障时区分连接问题和请求问题</li>
+</ul>
+
+<p><strong>选型建议</strong>：</p>
+<ol>
+  <li>追求极致性能 → L4</li>
+  <li>需要复杂路由/治理 → L7</li>
+  <li>大型系统 → L7 入口 + L4 内部</li>
+</ol>
 
         
       </section>
@@ -731,12 +995,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

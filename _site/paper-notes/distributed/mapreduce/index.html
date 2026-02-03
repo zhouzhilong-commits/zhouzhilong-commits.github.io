@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：MapReduce: Simplified Data Processing on Large Clusters">
+  <meta property="og:description" content="  论文：MapReduce: Simplified Data Processing on Large Clusters（Dean &amp; Ghemawat, OSDI 2004）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">分布式系统论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,104 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="MapReduce：Simplified Data Processing（论文笔记）">
-    <meta itemprop="description" content="  论文：MapReduce: Simplified Data Processing on Large Clusters">
+    <meta itemprop="description" content="  论文：MapReduce: Simplified Data Processing on Large Clusters（Dean &amp; Ghemawat, OSDI 2004）">
     <meta itemprop="datePublished" content="February 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -574,49 +616,355 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：MapReduce: Simplified Data Processing on Large Clusters</p>
+  <p>论文：MapReduce: Simplified Data Processing on Large Clusters（Dean &amp; Ghemawat, OSDI 2004）</p>
 </blockquote>
 
-<h2 id="1-mapreduce-提供什么抽象">1. MapReduce 提供什么抽象</h2>
-
-<p>把大规模数据处理抽象成两个函数：</p>
+<p>MapReduce 把“在大集群上做大规模数据处理”的复杂度分离成两部分：</p>
 
 <ul>
-  <li><strong>Map</strong>：把输入拆成一堆 (k, v)</li>
-  <li><strong>Reduce</strong>：按 key 聚合处理</li>
+  <li>业务只写两个函数：<code class="language-plaintext highlighter-rouge">map</code> 与 <code class="language-plaintext highlighter-rouge">reduce</code></li>
+  <li>系统负责：分片、调度、shuffle、排序、容错、重试、数据本地性</li>
 </ul>
 
-<p>框架负责：</p>
+<p>这篇论文经典的原因不是 API，而是它给了一整套<strong>工程闭环</strong>：</p>
 
 <ul>
-  <li>分片与调度</li>
-  <li>shuffle（按 key 重新分区、传输、排序）</li>
-  <li>容错（失败重试）</li>
+  <li>如何把 job 拆成 task</li>
+  <li>如何把中间结果从 map 侧高效送到 reduce 侧</li>
+  <li>如何在“机器会挂”的前提下继续跑完</li>
 </ul>
 
-<h2 id="2-为什么它经典">2. 为什么它经典</h2>
+<h2 id="1-模型map--reduce">1. 模型：Map / Reduce</h2>
 
-<p>它把“分布式系统复杂度”从业务代码里剥离出来，让：</p>
+<h3 id="11-计算抽象">1.1 计算抽象</h3>
 
 <ul>
-  <li>业务只写 map/reduce 逻辑</li>
-  <li>系统负责并行、容错与数据流动</li>
+  <li><code class="language-plaintext highlighter-rouge">map(k1, v1) -&gt; list(k2, v2)</code></li>
+  <li><code class="language-plaintext highlighter-rouge">reduce(k2, list(v2)) -&gt; list(v3)</code></li>
 </ul>
 
-<p>后来很多系统都受其影响（Spark、Flink 等在模型上演进）。</p>
+<pre><code class="language-mermaid">flowchart TD
+  In[Input files] --&gt; Split[Split into M shards]
+  Split --&gt; Map[Map tasks]
+  Map --&gt; Part[Partition by key into R buckets]
+  Part --&gt; Shuffle[Shuffle to reducers]
+  Shuffle --&gt; Reduce[Reduce tasks]
+  Reduce --&gt; Out[Output files]
+</code></pre>
 
-<h2 id="3-容错直觉">3. 容错直觉</h2>
+<h3 id="12-为什么这个抽象足够强">1.2 为什么这个抽象足够强</h3>
+
+<p>很多离线计算可以重写为：</p>
 
 <ul>
-  <li>任务是可重试的（deterministic 更好）</li>
-  <li>中间结果可重算/可落盘</li>
-  <li>调度器能在故障机器上重新跑任务</li>
+  <li>先做局部映射（map）</li>
+  <li>再按 key 聚合（reduce）</li>
 </ul>
 
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
+<p>例如：倒排索引、日志统计、WordCount、Join 的某些变体。</p>
 
-<p>MapReduce 的价值不只是 API，而是完整的“工程闭环”：调度 + 数据流 + 容错。</p>
+<h2 id="2-系统架构master--worker">2. 系统架构：Master / Worker</h2>
 
+<p>MapReduce 系统一般是一个 master + 大量 worker：</p>
+
+<ul>
+  <li><strong>master</strong>：负责调度、任务状态、容错决策</li>
+  <li><strong>worker</strong>：执行 map/reduce task</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant M as Master
+  participant W1 as Worker
+  participant W2 as Worker
+
+  M-&gt;&gt;W1: Assign MapTask #i
+  M-&gt;&gt;W2: Assign MapTask #j
+  W1--&gt;&gt;M: Report progress
+  W2--&gt;&gt;M: Report progress
+
+  M-&gt;&gt;W1: Assign ReduceTask #k
+  W1--&gt;&gt;M: Done
+</code></pre>
+
+<h2 id="3-数据路径的关键shuffle">3. 数据路径的关键：Shuffle</h2>
+
+<p>Shuffle 是 MapReduce 的核心代价：网络 + 排序 + 磁盘 IO。</p>
+
+<h3 id="31-map-端产生中间结果">3.1 Map 端产生中间结果</h3>
+
+<p>map task 会把输出按 <code class="language-plaintext highlighter-rouge">partition(key) -&gt; [0..R-1]</code> 分桶，并写到本地磁盘。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  MapTask[Map task] --&gt; Buf[In-memory buffer]
+  Buf --&gt; Spill[Spill to local disk]
+  Spill --&gt; Merge[Merge spills]
+  Merge --&gt; Buckets[R partitions files]
+</code></pre>
+
+<h3 id="32-reduce-端拉取中间结果">3.2 Reduce 端拉取中间结果</h3>
+
+<p>reduce task 会从所有 map worker 拉取属于自己 partition 的数据。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant R as Reducer
+  participant M1 as MapWorker1
+  participant M2 as MapWorker2
+
+  R-&gt;&gt;M1: Fetch(partition=r)
+  M1--&gt;&gt;R: data chunk
+  R-&gt;&gt;M2: Fetch(partition=r)
+  M2--&gt;&gt;R: data chunk
+  R-&gt;&gt;R: Merge + Sort by key
+  R-&gt;&gt;R: Reduce()
+</code></pre>
+
+<h3 id="33-为什么要在-reduce-端排序">3.3 为什么要在 reduce 端排序</h3>
+
+<p>排序让 reduce 端能：</p>
+
+<ul>
+  <li>一次扫描处理同一个 key 的所有 value</li>
+  <li>降低内存压力（流式聚合）</li>
+</ul>
+
+<h2 id="4-容错失败是常态重试是策略">4. 容错：失败是常态，重试是策略</h2>
+
+<h3 id="41-task-级重试">4.1 task 级重试</h3>
+
+<p>MapReduce 的容错依赖一个关键假设：task 是<strong>确定性的/可重算的</strong>（或至少可接受重复）。</p>
+
+<ul>
+  <li>worker crash → master 把该 worker 上的未完成 task 重新调度</li>
+  <li>map 输出在 worker 本地盘上 → worker 挂了输出就丢了，需要重跑 map</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  Fail[Worker failure] --&gt; Detect[Master detects timeout]
+  Detect --&gt; Resched[Reschedule tasks]
+  Resched --&gt; Rerun[Re-run map/reduce]
+  Rerun --&gt; Done[Job completes]
+</code></pre>
+
+<h3 id="42-reduce-的重试与输出一致性">4.2 reduce 的重试与输出一致性</h3>
+
+<p>reduce 输出写到 GFS（或类似分布式文件系统），通常是：</p>
+
+<ul>
+  <li>写到临时文件</li>
+  <li>完成后原子 rename 到最终名字</li>
+</ul>
+
+<p>这样 reduce task 重试不会产生“半写”文件污染。</p>
+
+<h2 id="5-性能关键数据本地性与-straggler">5. 性能关键：数据本地性与 straggler</h2>
+
+<h3 id="51-数据本地性locality">5.1 数据本地性（locality）</h3>
+
+<p>如果输入数据在 GFS 上，master 倾向把 map task 调度到：</p>
+
+<ul>
+  <li>有该 chunk 副本的 worker（node-local / rack-local）</li>
+</ul>
+
+<p>这样把网络流量降到最低。</p>
+
+<h3 id="52-straggler拖尾任务">5.2 straggler（拖尾任务）</h3>
+
+<p>集群里常见现象：</p>
+
+<ul>
+  <li>少数 task 比其他 task 慢很多（机器慢、磁盘抖、网络差）</li>
+  <li>最后几个 task 决定 job 完成时间</li>
+</ul>
+
+<p>MapReduce 用 <strong>backup tasks</strong> 缓解：</p>
+
+<ul>
+  <li>当 job 接近尾声，对剩余慢 task 启动备份副本</li>
+  <li>谁先完成就用谁，另一个取消</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant M as Master
+  participant Wslow as Slow worker
+  participant Wfast as Fast worker
+
+  M-&gt;&gt;Wslow: Run task T
+  Note over M: Near completion, detect straggler
+  M-&gt;&gt;Wfast: Run backup of task T
+  Wfast--&gt;&gt;M: Done
+  M--&gt;&gt;Wslow: Cancel
+</code></pre>
+
+<h2 id="6-工程可调点partitioner--combiner">6. 工程可调点：partitioner / combiner</h2>
+
+<h3 id="61-partitioner">6.1 partitioner</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">partition(key) -&gt; reduce_id</code></li>
+  <li>影响：负载均衡（避免某个 reduce 变热点）</li>
+</ul>
+
+<h3 id="62-combiner">6.2 combiner</h3>
+
+<p>combiner 在 map 端先做一次局部聚合，减少 shuffle 流量。</p>
+
+<p>例如 WordCount：</p>
+
+<ul>
+  <li>map 输出 (word, 1)</li>
+  <li>combiner 在本地先合并成 (word, count)</li>
+</ul>
+
+<h2 id="7-mapreduce-的局限与演进">7. MapReduce 的局限与演进</h2>
+
+<h3 id="71-局限">7.1 局限</h3>
+
+<ul>
+  <li>只适合批处理</li>
+  <li>每个 stage 之间落盘成本高</li>
+  <li>迭代计算效率低</li>
+</ul>
+
+<h3 id="72-演进方向">7.2 演进方向</h3>
+
+<ul>
+  <li>Spark：以内存为中心，减少落盘</li>
+  <li>Flink：更流式、更低延迟</li>
+</ul>
+
+<p>但 MapReduce 的调度、shuffle、容错思想仍然是基础。</p>
+
+<h2 id="8-读完后的-takeaways">8. 读完后的 takeaways</h2>
+
+<ul>
+  <li>MapReduce 的价值是“<strong>工程闭环</strong>”：调度 + shuffle + 容错 + 本地性。</li>
+  <li>抽象简单，但系统把复杂度吃掉了；这也是它能规模化推广的原因。</li>
+  <li>真正决定性能的往往是：shuffle、straggler、数据倾斜。</li>
+</ul>
+
+<h2 id="9-更细的-shuffle为什么它决定了-mapreduce-的上限">9. 更细的 Shuffle：为什么它决定了 MapReduce 的上限</h2>
+
+<p>很多 job 的瓶颈不是 map 或 reduce 逻辑本身，而是 shuffle：</p>
+
+<ul>
+  <li>网络（跨机器传输）</li>
+  <li>排序/归并（CPU）</li>
+  <li>落盘与读取（磁盘 IO）</li>
+</ul>
+
+<h3 id="91-map-端buffer--spill--merge">9.1 Map 端：buffer → spill → merge</h3>
+
+<p>一个更贴近实现的管线：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  M[Map output] --&gt; B[In-mem buffer]
+  B --&gt;|threshold| S1[Spill #1]
+  B --&gt;|threshold| S2[Spill #2]
+  S1 --&gt; MG[Merge spills]
+  S2 --&gt; MG
+  MG --&gt; P[Partition files (R buckets)]
+</code></pre>
+
+<ul>
+  <li>buffer 满了就 spill 成有序段</li>
+  <li>多次 spill 需要 merge，减少文件数</li>
+  <li>最终按 partition 生成 reducer 可拉取的文件</li>
+</ul>
+
+<h3 id="92-reduce-端fetch--merge--sort--reduce">9.2 Reduce 端：fetch → merge → sort → reduce</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  F[Fetch from all mappers] --&gt; MM[Multi-way merge]
+  MM --&gt; SO[Sort by key]
+  SO --&gt; RD[Reduce]
+  RD --&gt; OUT[Write output]
+</code></pre>
+
+<p>实际系统通常会：</p>
+
+<ul>
+  <li>边拉取边 merge（pipeline）</li>
+  <li>采用外部排序（外排）处理大于内存的数据</li>
+</ul>
+
+<h2 id="10-数据倾斜skewmapreduce-的常见灾难源">10. 数据倾斜（skew）：MapReduce 的常见“灾难源”</h2>
+
+<h3 id="101-skew-的表现">10.1 skew 的表现</h3>
+
+<ul>
+  <li>某个 key 占据了大量数据</li>
+  <li>某个 reduce partition 变成热点</li>
+  <li>job 尾部被一个 reducer 拖死</li>
+</ul>
+
+<h3 id="102-常见缓解方法">10.2 常见缓解方法</h3>
+
+<ul>
+  <li><strong>更好的 partitioner</strong>：避免简单 hash 导致极端热点落到同一 reducer</li>
+  <li><strong>salting / key splitting</strong>：把热 key 拆成多份（例如 <code class="language-plaintext highlighter-rouge">key#i</code>），reduce 端再合并</li>
+  <li><strong>两阶段聚合</strong>：先局部聚合再全局聚合</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Map as Map
+  participant R1 as Reducer hot
+  participant R2 as Reducer normal
+
+  Map--&gt;&gt;R1: huge key=K
+  Map--&gt;&gt;R2: small keys
+  Note over R1: straggler due to skew
+</code></pre>
+
+<h2 id="11-容错边界exactly-once-不是系统默认提供的">11. 容错边界：exactly-once 不是系统默认提供的</h2>
+
+<p>MapReduce 的容错核心是假设：</p>
+
+<ul>
+  <li>task 可以重跑</li>
+  <li>输出写到临时文件并原子 rename</li>
+</ul>
+
+<p>这通常保证：</p>
+
+<ul>
+  <li><strong>文件级别</strong>不会出现“半写污染”</li>
+</ul>
+
+<p>但对业务逻辑来说，是否 exactly-once 取决于：</p>
+
+<ul>
+  <li>map/reduce 是否幂等</li>
+  <li>下游消费是否能去重</li>
+</ul>
+
+<p><strong>工程经验</strong>：在 MapReduce 生态里，幂等/去重往往是应用必须承担的一部分。</p>
+
+<h2 id="12-实战-checklist如何判断-mapreduce-job-慢在哪里">12. 实战 checklist：如何判断 MapReduce job 慢在哪里</h2>
+
+<ol>
+  <li><strong>map 慢</strong>：输入读取/解析成本高？数据本地性差？</li>
+  <li><strong>shuffle 慢</strong>：网络带宽不足？spill 太多？排序太重？</li>
+  <li><strong>reduce 慢</strong>：数据倾斜？单 key 过大？</li>
+  <li><strong>尾部慢</strong>：straggler？backup tasks 配置？</li>
+</ol>
+
+<p>每项都能对应到具体优化：</p>
+
+<ul>
+  <li>提高 combiner 的有效性</li>
+  <li>调 partitioner</li>
+  <li>控 spill/merge 参数</li>
+  <li>解决 skew</li>
+</ul>
+
+<h2 id="13-读完后的补充-takeaways">13. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>MapReduce 的“工程价值”集中体现在 shuffle 与容错设计。</li>
+  <li>数据倾斜是最常见的性能杀手，必须通过 partition/两阶段聚合等手段主动处理。</li>
+  <li>exactly-once 往往需要应用配合（幂等/去重），系统只保证“可重试且输出不污染”。</li>
+</ul>
 
         
       </section>
@@ -658,12 +1006,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

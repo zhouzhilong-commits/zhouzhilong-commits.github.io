@@ -267,66 +267,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -477,8 +421,6 @@
       
       
       
-      
-        <li><a href="https://github.com/zhouzhilong-commits"><i class="fab fa-fw fa-github" aria-hidden="true"></i> Github</a></li>
       
       
       
@@ -646,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="16"
+    data-total-pages="19"
     data-current-page="7"
   
 >
@@ -673,105 +615,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/paper-notes/storage/lsm-tree/" rel="permalink">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：The Log-Structured Merge-Tree（O’Neil et al.）</p>
-</blockquote>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/consensus-note-011-post/" rel="permalink">一致性笔记：复制延迟：尾延迟如何影响提交点
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/storage-basics-3-lsm-and-compaction/" rel="permalink">存储基础（3）：LSM、Compaction 与写放大
+        <a href="/consensus-note-046-joint-consensus/" rel="permalink">一致性笔记：成员变更：joint consensus 的必要性
 </a>
       
     </h2>
@@ -788,12 +632,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-07-01T00:00:00+08:00">July 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>成员变更（reconfiguration）是强一致系统里最容易“看起来只是改个列表”，但实际上非常危险的操作。</p>
 
 </p>
     
@@ -819,7 +663,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-note-051-bloom-ribbon-filter/" rel="permalink">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本
+        <a href="/storage-note-001-ssd-ftl/" rel="permalink">存储笔记：SSD 写放大与 FTL：为什么随机写更贵
 </a>
       
     </h2>
@@ -836,12 +680,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
 
 </p>
     
@@ -867,7 +711,55 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/paper-notes/databases/system-r-access-path-selection/" rel="permalink">System R：Access Path Selection（论文笔记）
+        <a href="/consensus-note-032-post/" rel="permalink">一致性笔记：快照与日志截断：减少恢复时间
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/storage-basics-5-btree-vs-lsm/" rel="permalink">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡
 </a>
       
     </h2>
@@ -884,14 +776,60 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：Access Path Selection in a Relational Database Management System（System R）</p>
-</blockquote>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" rel="permalink">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：</p>
 
 </p>
     
@@ -978,7 +916,7 @@
     
 
     
-      <li><a href="/page16/">16</a></li>
+      <li><a href="/page19/">19</a></li>
     
 
     
@@ -1030,12 +968,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

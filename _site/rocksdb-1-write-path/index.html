@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇作为 RocksDB 系列的第 1 篇，先把「一次 Put()/Write() 从 API 到落盘语义」讲清楚：写入路径、确认点（durability）、以及写入抖动来自哪里。后续再分别展开 SST、读路径与 compaction 调参。">
+  <meta property="og:description" content="本文作为 RocksDB 系列的第 1 篇，先把「一次 Put()/Write() 从 API 到落盘语义」讲清楚：写入路径、确认点（durability）、以及写入抖动来自哪里。后续再分别展开 SST、读路径与 compaction 调参。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="RocksDB（1）：写入链路（WAL + MemTable）">
-    <meta itemprop="description" content="这篇作为 RocksDB 系列的第 1 篇，先把「一次 Put()/Write() 从 API 到落盘语义」讲清楚：写入路径、确认点（durability）、以及写入抖动来自哪里。后续再分别展开 SST、读路径与 compaction 调参。">
+    <meta itemprop="description" content="本文作为 RocksDB 系列的第 1 篇，先把「一次 Put()/Write() 从 API 到落盘语义」讲清楚：写入路径、确认点（durability）、以及写入抖动来自哪里。后续再分别展开 SST、读路径与 compaction 调参。">
     <meta itemprop="datePublished" content="December 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇作为 RocksDB 系列的第 1 篇，先把「一次 <code class="language-plaintext highlighter-rouge">Put()/Write()</code> 从 API 到落盘语义」讲清楚：<strong>写入路径、确认点（durability）、以及写入抖动来自哪里</strong>。后续再分别展开 SST、读路径与 compaction 调参。</p>
+        <p>本文作为 RocksDB 系列的第 1 篇，先把「一次 <code class="language-plaintext highlighter-rouge">Put()/Write()</code> 从 API 到落盘语义」讲清楚：<strong>写入路径、确认点（durability）、以及写入抖动来自哪里</strong>。后续再分别展开 SST、读路径与 compaction 调参。</p>
 
 <p><img src="/images/diagrams/rocksdb-write-path.svg" alt="RocksDB 写入路径（抽象版）" /></p>
 
@@ -663,14 +607,14 @@
 <p>很多线上系统会做：<code class="language-plaintext highlighter-rouge">WriteOptions.sync=false</code> + group commit（更高吞吐），并接受一个小的崩溃丢数据窗口（由业务决定）。</p>
 
 <blockquote>
-  <p>记住一句话：<strong>“返回成功”到底意味着什么</strong>，不是 RocksDB 帮你决定的，而是由你的 <code class="language-plaintext highlighter-rouge">WriteOptions</code> + 业务容忍度共同决定的。</p>
+  <p>记住核心要点：<strong>“返回成功”到底意味着什么</strong>，不是 RocksDB 帮你决定的，而是由你的 <code class="language-plaintext highlighter-rouge">WriteOptions</code> + 业务容忍度共同决定的。</p>
 </blockquote>
 
 <h2 id="2-wal持久性与-group-commit">2. WAL：持久性与 group commit</h2>
 
 <p>WAL 的存在让系统能在崩溃后通过重放恢复 MemTable 的状态。</p>
 
-<p>你在使用时会遇到的关键点：</p>
+<p>使用时会遇到的关键点：</p>
 
 <ul>
   <li><code class="language-plaintext highlighter-rouge">sync</code>/<code class="language-plaintext highlighter-rouge">fsync</code> 决定持久性强度（更强通常更慢）</li>
@@ -679,7 +623,7 @@
 
 <p><img src="/images/diagrams/wal-group-commit-timeline.svg" alt="group commit：把多次 fsync 合并成一次" /></p>
 
-<h3 id="21-你会在性能上看到什么">2.1 你会在性能上看到什么</h3>
+<h3 id="21-会在性能上看到什么">2.1 会在性能上看到什么</h3>
 
 <ul>
   <li><strong>sync 打开</strong>：平均延迟上升，尾延迟更敏感（更“跟磁盘走”）</li>
@@ -719,7 +663,7 @@
 
 <p>写入高峰时，MemTable 会不断转成 immutable，等待后台 flush。</p>
 
-<p>如果 flush 跟不上，你会看到：</p>
+<p>如果 flush 跟不上，可以看到：</p>
 
 <ul>
   <li>immutable 数量上升</li>
@@ -727,7 +671,7 @@
   <li>最终触发 write stall / throttle（保护系统不崩）</li>
 </ul>
 
-<h2 id="4-写入抖动通常从哪里来你该先盯什么">4. 写入抖动通常从哪里来（你该先盯什么）</h2>
+<h2 id="4-写入抖动通常从哪里来需要先盯什么">4. 写入抖动通常从哪里来（需要先盯什么）</h2>
 
 <p>从“可解释的工程现象”出发，写入抖动最常见的来源是：</p>
 
@@ -737,7 +681,7 @@
   <li><strong>compaction 欠账</strong>：L0/L1 堆积、后台重写占满 IO 带宽，写入被迫限速。</li>
 </ul>
 
-<h2 id="5-你可以关注的两个核心指标--两个更实用的信号">5. 你可以关注的两个“核心指标” + 两个“更实用的信号”</h2>
+<h2 id="5-可以关注的两个核心指标--两个更实用的信号">5. 可以关注的两个“核心指标” + 两个“更实用的信号”</h2>
 
 <p>为了后面理解性能：</p>
 
@@ -753,7 +697,7 @@
   <li><strong>compaction backlog</strong>：后台是否已经欠账（欠账越多，越容易抖）</li>
 </ul>
 
-<h2 id="6-一个最小排障顺序遇到写入变慢变抖时">6. 一个最小排障顺序（遇到写入变慢/变抖时）</h2>
+<h2 id="6-一个排障顺序遇到写入变慢变抖时">6. 一个排障顺序（遇到写入变慢/变抖时）</h2>
 
 <ol>
   <li><strong>先确认写入语义</strong>：<code class="language-plaintext highlighter-rouge">sync</code> 到底开没开？是否有 group commit？业务能接受多大窗口？</li>
@@ -804,12 +748,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

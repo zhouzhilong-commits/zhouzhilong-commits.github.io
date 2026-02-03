@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -610,7 +554,7 @@
 
 
   
-	  2 分钟阅读
+	  6 分钟阅读
 	
 </p>
           
@@ -704,7 +648,39 @@
   <li><strong>性能提升</strong>：对于长指令序列，性能提升显著</li>
 </ul>
 
-<h3 id="33-流水线的冒险hazard">3.3 流水线的冒险（Hazard）</h3>
+<h3 id="33-流水线的执行示例">3.3 流水线的执行示例</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant IF as IF Stage
+  participant ID as ID Stage
+  participant EX as EX Stage
+  participant MEM as MEM Stage
+  participant WB as WB Stage
+
+  Note over IF,WB: 周期 1
+  IF-&gt;&gt;ID: Inst 1
+  ID-&gt;&gt;EX: Inst 1
+  EX-&gt;&gt;MEM: Inst 1
+  MEM-&gt;&gt;WB: Inst 1
+  
+  Note over IF,WB: 周期 2
+  IF-&gt;&gt;ID: Inst 2
+  ID-&gt;&gt;EX: Inst 2
+  EX-&gt;&gt;MEM: Inst 2
+  MEM-&gt;&gt;WB: Inst 2
+  WB-&gt;&gt;WB: Inst 1 完成
+  
+  Note over IF,WB: 周期 3
+  IF-&gt;&gt;ID: Inst 3
+  ID-&gt;&gt;EX: Inst 3
+  EX-&gt;&gt;MEM: Inst 3
+  MEM-&gt;&gt;WB: Inst 3
+  WB-&gt;&gt;WB: Inst 2 完成
+  
+  Note over IF,WB: 理想情况：每个周期完成一条指令
+</code></pre>
+
+<h3 id="34-流水线的冒险hazard">3.4 流水线的冒险（Hazard）</h3>
 
 <p>流水线面临三种冒险：</p>
 
@@ -713,6 +689,70 @@
   <li><strong>控制冒险</strong>：分支指令改变程序流程</li>
   <li><strong>结构冒险</strong>：多个指令竞争同一资源</li>
 </ol>
+
+<h4 id="341-数据冒险">3.4.1 数据冒险</h4>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant I1 as Inst 1: ADD R1, R2, R3
+  participant I2 as Inst 2: SUB R4, R1, R5
+  
+  Note over I1,I2: 数据冒险：I2 依赖 I1 的结果
+  
+  I1-&gt;&gt;I1: EX 阶段计算 R1
+  I2-&gt;&gt;I2: ID 阶段需要 R1
+  
+  Note over I1,I2: 需要等待或转发（Forwarding）
+</code></pre>
+
+<p><strong>解决方案</strong>：</p>
+<ul>
+  <li><strong>数据转发（Forwarding）</strong>：将 EX 阶段的结果直接转发给需要它的指令</li>
+  <li><strong>流水线停顿（Stall）</strong>：插入 NOP 指令等待数据准备好</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[数据冒险] --&gt; B{可以转发?}
+  B --&gt;|是| C[使用 Forwarding]
+  B --&gt;|否| D[插入 Stall]
+  
+  C --&gt; E[无性能损失]
+  D --&gt; F[性能损失: 1-2周期]
+</code></pre>
+
+<h4 id="342-控制冒险">3.4.2 控制冒险</h4>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant I1 as Inst 1: BEQ R1, R2, Label
+  participant I2 as Inst 2: ADD R3, R4, R5
+  participant I3 as Inst 3: Label: SUB R6, R7, R8
+  
+  Note over I1,I3: 控制冒险：不知道跳转到哪里
+  
+  I1-&gt;&gt;I1: EX 阶段确定跳转
+  I2-&gt;&gt;I2: 已经取指（可能错误）
+  
+  Note over I1,I3: 需要清空流水线或分支预测
+</code></pre>
+
+<p><strong>解决方案</strong>：</p>
+<ul>
+  <li><strong>分支预测</strong>：预测分支方向，提前取指</li>
+  <li><strong>延迟槽（Delay Slot）</strong>：在分支指令后插入总是执行的指令</li>
+  <li><strong>流水线清空</strong>：预测错误时清空流水线</li>
+</ul>
+
+<h4 id="343-结构冒险">3.4.3 结构冒险</h4>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[结构冒险] --&gt; B[资源竞争]
+  B --&gt; C[内存访问冲突]
+  B --&gt; D[寄存器文件冲突]
+  B --&gt; E[功能单元冲突]
+  
+  C --&gt; F[需要等待]
+  D --&gt; F
+  E --&gt; F
+</code></pre>
 
 <h2 id="4-分支预测的深入分析">4. 分支预测的深入分析</h2>
 
@@ -755,6 +795,54 @@
     </ul>
   </li>
 </ol>
+
+<h4 id="421-2-bit-预测器状态机">4.2.1 2-bit 预测器状态机</h4>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+  [*] --&gt; Strongly_Not_Taken
+  Strongly_Not_Taken --&gt; Weakly_Not_Taken: Taken
+  Weakly_Not_Taken --&gt; Strongly_Taken: Taken
+  Weakly_Not_Taken --&gt; Strongly_Not_Taken: Not Taken
+  Strongly_Taken --&gt; Weakly_Taken: Not Taken
+  Weakly_Taken --&gt; Strongly_Not_Taken: Not Taken
+  Strongly_Taken --&gt; Strongly_Taken: Taken
+  
+  note right of Strongly_Not_Taken: 预测 Not Taken
+  note right of Weakly_Not_Taken: 预测 Not Taken
+  note right of Weakly_Taken: 预测 Taken
+  note right of Strongly_Taken: 预测 Taken
+</code></pre>
+
+<h4 id="422-分支目标缓冲btb">4.2.2 分支目标缓冲（BTB）</h4>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[分支指令] --&gt; B{BTB 命中?}
+  B --&gt;|是| C[使用缓存的目标地址]
+  B --&gt;|否| D[计算目标地址]
+  
+  C --&gt; E[快速跳转]
+  D --&gt; F[更新 BTB]
+  F --&gt; G[正常跳转]
+  
+  E --&gt; H[性能好]
+  G --&gt; I[性能中]
+</code></pre>
+
+<h4 id="423-全局历史预测器">4.2.3 全局历史预测器</h4>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[分支指令] --&gt; B[全局历史寄存器 GHR]
+  B --&gt; C[组合 PC 和 GHR]
+  C --&gt; D[索引预测表]
+  D --&gt; E[获取预测结果]
+  
+  E --&gt; F{预测正确?}
+  F --&gt;|是| G[更新 GHR]
+  F --&gt;|否| H[更新 GHR 和预测表]
+  
+  G --&gt; I[继续执行]
+  H --&gt; J[清空流水线]
+</code></pre>
 
 <h3 id="43-分支预测的性能影响">4.3 分支预测的性能影响</h3>
 
@@ -812,7 +900,58 @@
 <span class="p">}</span>
 </code></pre></div></div>
 
-<h2 id="6-性能分析与优化">6. 性能分析与优化</h2>
+<h2 id="6-流水线清空的详细流程">6. 流水线清空的详细流程</h2>
+
+<h3 id="61-分支预测错误的处理">6.1 分支预测错误的处理</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant IF as IF Stage
+  participant ID as ID Stage
+  participant EX as EX Stage
+  participant Pipeline as Pipeline Control
+  
+  Note over IF,EX: 周期 1-3: 正常执行
+  IF-&gt;&gt;ID: Inst 1
+  ID-&gt;&gt;EX: Inst 1
+  
+  Note over IF,EX: 周期 4: 分支指令进入 EX
+  IF-&gt;&gt;ID: Branch Inst
+  ID-&gt;&gt;EX: Branch Inst
+  EX-&gt;&gt;EX: 计算分支条件
+  
+  Note over IF,EX: 周期 5: 发现预测错误
+  EX-&gt;&gt;Pipeline: 预测错误信号
+  Pipeline-&gt;&gt;IF: 清空流水线
+  Pipeline-&gt;&gt;ID: 清空流水线
+  Pipeline-&gt;&gt;EX: 清空流水线
+  
+  Note over IF,EX: 周期 6: 重新取指
+  IF-&gt;&gt;ID: 正确的目标指令
+</code></pre>
+
+<h3 id="62-清空流水线的代价">6.2 清空流水线的代价</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[分支预测错误] --&gt; B[检测错误]
+  B --&gt; C[清空流水线]
+  C --&gt; D[重新取指]
+  
+  D --&gt; E[性能损失]
+  E --&gt; F[损失 = 流水线深度]
+  
+  F --&gt; G[5级流水线: 5周期]
+  F --&gt; H[10级流水线: 10周期]
+  F --&gt; I[20级流水线: 20周期]
+</code></pre>
+
+<p><strong>关键点</strong>：</p>
+<ul>
+  <li>流水线越深，预测错误的代价越大</li>
+  <li>现代 CPU 通常有 10-20 级流水线</li>
+  <li>预测准确率对性能至关重要</li>
+</ul>
+
+<h2 id="7-性能分析与优化">7. 性能分析与优化</h2>
 
 <h3 id="61-分支预测的性能指标">6.1 分支预测的性能指标</h3>
 
@@ -847,7 +986,61 @@
   </li>
 </ol>
 
-<h2 id="7-设计模式与架构原则">7. 设计模式与架构原则</h2>
+<h3 id="71-实际性能测试案例">7.1 实际性能测试案例</h3>
+
+<h4 id="711-可预测分支-vs-随机分支">7.1.1 可预测分支 vs 随机分支</h4>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 可预测分支：数据有序</span>
+<span class="kt">int</span> <span class="nf">sum_sorted</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 数据有序，分支可预测</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">sum</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 随机分支：数据无序</span>
+<span class="kt">int</span> <span class="n">sum_random</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 数据无序，分支不可预测</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">sum</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>性能对比</strong>（n=10M）：</p>
+<ul>
+  <li>可预测分支：~50ms</li>
+  <li>随机分支：~150ms</li>
+</ul>
+
+<p>差异主要来自分支预测错误率：</p>
+<ul>
+  <li>可预测分支：错误率 &lt; 5%</li>
+  <li>随机分支：错误率 &gt; 50%</li>
+</ul>
+
+<h4 id="712-减少分支的优化">7.1.2 减少分支的优化</h4>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[原始代码] --&gt; B[有分支]
+  B --&gt; C[分支预测可能错误]
+  C --&gt; D[性能差]
+  
+  E[优化代码] --&gt; F[无分支]
+  F --&gt; G[使用位运算/查表]
+  G --&gt; H[性能好]
+  
+  D --&gt; I[性能提升: 2-3倍]
+  H --&gt; I
+</code></pre>
+
+<h2 id="8-设计模式与架构原则">8. 设计模式与架构原则</h2>
 
 <h3 id="71-设计模式视角">7.1 设计模式视角</h3>
 
@@ -942,12 +1135,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

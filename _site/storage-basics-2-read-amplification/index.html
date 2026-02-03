@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：读放大（Read Amplification）、布隆过滤器（Bloom Filter）、以及 缓存（Cache / Page Cache / Block Cache）。它们本质上都在回答一个问题：“我为一次读取，付出了多少额外成本？”">
+  <meta property="og:description" content="本文是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：读放大（Read Amplification）、布隆过滤器（Bloom Filter）、以及 缓存（Cache / Page Cache / Block Cache）。它们本质上都在回答一个问题：“我为一次读取，付出了多少额外成本？”">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储基础（2）：读放大、布隆过滤器与缓存">
-    <meta itemprop="description" content="这篇是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：读放大（Read Amplification）、布隆过滤器（Bloom Filter）、以及 缓存（Cache / Page Cache / Block Cache）。它们本质上都在回答一个问题：“我为一次读取，付出了多少额外成本？”">
+    <meta itemprop="description" content="本文是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：读放大（Read Amplification）、布隆过滤器（Bloom Filter）、以及 缓存（Cache / Page Cache / Block Cache）。它们本质上都在回答一个问题：“我为一次读取，付出了多少额外成本？”">
     <meta itemprop="datePublished" content="February 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：<strong>读放大（Read Amplification）</strong>、<strong>布隆过滤器（Bloom Filter）</strong>、以及 <strong>缓存（Cache / Page Cache / Block Cache）</strong>。它们本质上都在回答一个问题：<em>“我为一次读取，付出了多少额外成本？”</em></p>
+        <p>本文是「存储基础系列」的第 2 篇，聊三个经常一起出现的概念：<strong>读放大（Read Amplification）</strong>、<strong>布隆过滤器（Bloom Filter）</strong>、以及 <strong>缓存（Cache / Page Cache / Block Cache）</strong>。它们本质上都在回答一个问题：<em>“我为一次读取，付出了多少额外成本？”</em></p>
 
 <p><img src="/images/diagrams/read-amplification-bloom-cache.svg" alt="读放大如何被 Bloom + Cache 降下来（以 LSM/RocksDB 为例）" /></p>
 
@@ -650,7 +594,7 @@
   <li><strong>远端存储</strong>：对象存储/网络盘，每次读的固定开销更高，放大更明显。</li>
 </ul>
 
-<p>衡量方式没有唯一标准，但你可以用“为完成一次查询需要触碰多少个数据块/文件”来直觉理解。</p>
+<p>衡量方式没有唯一标准，但可以用“为完成一次查询需要触碰多少个数据块/文件”来直觉理解。</p>
 
 <h3 id="11-更工程化的度量用触碰次数近似">1.1 更工程化的度量：用“触碰次数”近似</h3>
 
@@ -667,7 +611,7 @@
 
 <p>在 KV/LSM 场景里，一个非常典型的痛点是：<strong>读一个不存在的 key</strong>。</p>
 
-<p>如果没有 Bloom Filter，你往往需要：</p>
+<p>如果没有 Bloom Filter，往往需要：</p>
 
 <ul>
   <li>查 memtable</li>
@@ -697,7 +641,7 @@
 
 <p><img src="/images/diagrams/bloom-filter-sizing.svg" alt="Bloom Filter：参数与假阳性如何影响“白跑一趟”" /></p>
 
-<h3 id="21-你真正需要记住的一句话">2.1 你真正需要记住的一句话</h3>
+<h3 id="21-核心要点一句话">2.1 核心要点一句话</h3>
 
 <p>Bloom Filter 对读放大最直接的贡献是：<strong>把大量“负查”挡在内存里</strong>，避免它们把读路径拖进多层多文件的 IO 地狱。</p>
 
@@ -741,7 +685,7 @@
 <ul>
   <li><strong>OS Page Cache</strong>：文件系统层面的缓存，默认就有（读文件受益很大）。</li>
   <li><strong>Block Cache</strong>：比如 RocksDB 的 block cache，缓存压缩后的 data block / index block。</li>
-  <li><strong>应用级缓存</strong>：你在服务端自己做的 key/value 缓存（通常在业务层或代理层）。</li>
+  <li><strong>应用级缓存</strong>：在服务端实现的 key/value 缓存（通常在业务层或代理层）。</li>
 </ul>
 
 <p>常见误区：</p>
@@ -842,12 +786,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

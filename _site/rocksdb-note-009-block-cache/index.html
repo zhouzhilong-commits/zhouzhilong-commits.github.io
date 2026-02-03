@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -670,7 +614,7 @@
 </ul>
 
 <blockquote>
-  <p>经验：你追求的通常不是最高平均命中率，而是<strong>稳定的 data block 命中</strong>（尤其热点表/热点 key-range）。</p>
+  <p>经验：追求的通常不是最高平均命中率，而是<strong>稳定的 data block 命中</strong>（尤其热点表/热点 key-range）。</p>
 </blockquote>
 
 <h2 id="3-机制拆解为什么会发生因果链">3. 机制拆解：为什么会发生（因果链）</h2>
@@ -702,7 +646,7 @@
 
 <h3 id="31-为什么命中率不低但还是慢最常见的坑">3.1 为什么“命中率不低”但还是慢（最常见的坑）</h3>
 
-<p>你需要区分三种命中率：</p>
+<p>需要区分三种命中率：</p>
 
 <ul>
   <li><strong>Block cache hit rate（总体）</strong>：可能被 index/filter 撑高</li>
@@ -718,7 +662,7 @@
 
 <ul>
   <li><strong>Block cache vs MemTable</strong>：cache 太大挤压 memtable，会更频繁 flush/compaction，反而把读写都拖慢。</li>
-  <li><strong>Cache vs OS page cache</strong>：你同时拥有文件系统 page cache；两者叠加可能浪费内存，也可能互补（取决于压缩/读形态）。</li>
+  <li><strong>Cache vs OS page cache</strong>：同时拥有文件系统 page cache；两者叠加可能浪费内存，也可能互补（取决于压缩/读形态）。</li>
   <li><strong>范围扫描污染</strong>：scan 很容易把热点挤出 cache，需要隔离（例如 scan 不进 cache / scan 专用策略）。</li>
   <li><strong>压缩与 CPU</strong>：cache 命中能省解压；但如果 CPU 已经满，miss 会更致命。</li>
 </ul>
@@ -749,7 +693,7 @@
   <li>在 <strong>memtable / cache / compaction</strong> 之间做整体预算</li>
 </ul>
 
-<p>下一步如果你愿意，我们可以把这篇继续补到“更硬核”的程度：加入 RocksDB 常用统计项（tickers/histograms）的对照表，以及一个按 workload 估算 cache size 的示例（从工作集和 block 大小推算）。</p>
+<p>下一步如果愿意，我们可以把本文继续补到“更硬核”的程度：加入 RocksDB 常用统计项（tickers/histograms）的对照表，以及一个按 workload 估算 cache size 的示例（从工作集和 block 大小推算）。</p>
 
 
         
@@ -792,12 +736,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

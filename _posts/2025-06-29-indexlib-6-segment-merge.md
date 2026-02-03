@@ -64,41 +64,41 @@ Segment 合并包括以下核心组件，它们协同工作完成合并任务。
 classDiagram
     class MergeStrategy {
         <<interface>>
-        +GetName() string
-        +CreateMergePlan(IndexTaskContext) MergePlan
+        + GetName()
+        + CreateMergePlan()
     }
     
     class OptimizeMergeStrategy {
-        -OptimizeMergeParams _params
-        +CreateMergePlan(IndexTaskContext) MergePlan
+        - OptimizeMergeParams _params
+        + CreateMergePlan()
     }
     
     class MergePlan {
-        -vector~SegmentMergePlan~ _mergePlan
-        -Version _targetVersion
-        +AddMergePlan(SegmentMergePlan) void
-        +GetTargetVersion() Version
+        - vector_SegmentMergePlan _mergePlan
+        - Version _targetVersion
+        + AddMergePlan()
+        + GetTargetVersion()
     }
     
     class SegmentMergePlan {
-        -vector~segmentid_t~ _srcSegments
-        -segmentid_t _targetSegment
-        +AddSrcSegment(segmentid_t) void
-        +SetTargetSegment(segmentid_t) void
+        - vector_segmentid_t _srcSegments
+        - segmentid_t _targetSegment
+        + AddSrcSegment()
+        + SetTargetSegment()
     }
     
     class VersionMerger {
-        -ITabletMergeController _controller
-        -IIndexTaskPlanCreator _planCreator
-        +ExecuteTask(Version, taskType, taskName, params) future
-        +Run() future
+        - ITabletMergeController _controller
+        - IIndexTaskPlanCreator _planCreator
+        + ExecuteTask()
+        + Run()
     }
     
     class IndexMergeOperation {
-        -vector~Segment~ _srcSegments
-        -Segment _targetSegment
-        +Execute() Status
-        +MergeIndex() Status
+        - vector_Segment _srcSegments
+        - Segment _targetSegment
+        + Execute()
+        + MergeIndex()
     }
     
     MergeStrategy <|-- OptimizeMergeStrategy : 实现

@@ -261,66 +261,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -473,7 +417,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  5 分钟阅读
 	
 </p>
     
@@ -485,7 +429,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：分支预测失败：流水线 flush 的代价」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析分支预测失败导致的流水线 flush 机制、性能影响和优化方法。</p>
 
 </p>
     
@@ -519,7 +463,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
     
@@ -531,7 +475,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「网络笔记：超时与重试：为什么会放大流量」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析超时与重试机制如何导致流量放大，以及如何通过合理的策略避免这一问题。</p>
 
 </p>
     
@@ -565,7 +509,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -577,7 +521,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：内存屏障：为什么需要 fence」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析内存屏障（fence）的必要性、工作原理、常见场景和工程实践。</p>
 
 </p>
     
@@ -611,7 +555,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
     
@@ -623,7 +567,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇把“四层 vs 七层负载均衡”讲清楚一个核心差异：<strong>看不看得懂请求</strong>。L4 看连接/五元组；L7 看 HTTP/gRPC 等应用协议，因此能做更复杂的路由与治理，但也更贵、更复杂。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析四层（L4）和七层（L7）负载均衡的工作原理、适用场景、性能特征和工程实践。</p>
 
 </p>
     
@@ -657,7 +601,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -669,7 +613,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>SIMD（Single Instruction, Multiple Data）的直觉很简单：<strong>一次指令处理一组数据</strong>，理论吞吐可能成倍提升。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 SIMD（Single Instruction, Multiple Data）的工作原理、适用场景、性能边界和工程实践。</p>
 
 </p>
     
@@ -703,7 +647,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -715,7 +659,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>你在线上遇到的很多“抖动”，最后会落到一句话：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 Linux CFS（Completely Fair Scheduler）的工作原理、vruntime 机制、调度策略和工程实践。</p>
 
 </p>
     
@@ -749,7 +693,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -761,7 +705,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「拥塞控制：CUBIC 与 BBR 的直觉差异」做一次工程化梳理：先解释拥塞控制到底在“控制什么”，再讲 CUBIC/BBR 分别依赖什么信号，最后给一套线上排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析拥塞控制的核心概念，以及 CUBIC 和 BBR 两种算法的设计差异、适用场景和工程实践。</p>
 
 </p>
     
@@ -795,7 +739,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  6 分钟阅读
 	
 </p>
     
@@ -807,7 +751,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲一套最常用、也最容易落地的“性能诊断直觉”：当你看到 <strong>IPC 低</strong>，不要先怀疑“CPU 太慢”，而是先问一句：<strong>流水线在等什么？</strong></p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析性能诊断的核心指标：IPC、cache miss 和 branch miss，以及它们之间的关系和诊断方法。</p>
 
 </p>
     
@@ -841,7 +785,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -853,7 +797,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 io_uring 的设计原理、工作机制、适用场景和工程实践。</p>
 
 </p>
     
@@ -887,7 +831,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -899,7 +843,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「TLS 握手：延迟优化与会话复用」做一次工程化梳理：先把 TLS 在做什么说清楚，再解释握手为什么会慢、怎么把连接“复用起来”，最后给一套排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 TLS 握手的工作原理、延迟来源、会话复用机制和工程优化实践。</p>
 
 </p>
     
@@ -933,7 +877,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -945,7 +889,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「计算机组成笔记：Cache line：伪共享与性能抖动」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 Cache line 的工作原理、伪共享（false sharing）的机制与影响，以及工程实践中的定位与优化方法。</p>
 
 </p>
     
@@ -979,7 +923,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -991,7 +935,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「网络笔记：TCP 重传：RTO 与 fast retransmit」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 TCP 重传机制：RTO（Retransmission Timeout）和 fast retransmit 的工作原理、性能影响和工程实践。</p>
 
 </p>
     
@@ -1025,7 +969,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
     
@@ -1037,7 +981,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>HTTP/2 解决的是 HTTP/1.1 的两个痛点：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析 HTTP/2 的核心特性：多路复用、流控、头部压缩，以及传输层队头阻塞问题。</p>
 
 </p>
     
@@ -1078,7 +1022,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1090,7 +1034,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：脑裂：什么时候会发生，怎么避免」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>脑裂（split brain）的本质不是“网络断了”，而是：</p>
 
 </p>
     
@@ -1124,7 +1068,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1136,7 +1080,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：线性一致性：从客户端视角理解」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>线性一致性（linearizability）这四个字经常被当成“强一致”的代名词，但工程里最重要的是：<strong>它是一个可以用客户端观察来定义、也可以被测试与反证的语义</strong>。</p>
 
 </p>
     
@@ -1170,7 +1114,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1182,7 +1126,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：日志复制：matchIndex 与提交规则」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇把 Raft 实现里两个最常见、也最容易误用的 index 讲清楚：</p>
 
 </p>
     
@@ -1216,7 +1160,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1228,7 +1172,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：成员变更：joint consensus 的必要性」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>成员变更（reconfiguration）是强一致系统里最容易“看起来只是改个列表”，但实际上非常危险的操作。</p>
 
 </p>
     
@@ -1262,7 +1206,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1274,7 +1218,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：快照与日志截断：减少恢复时间」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：</p>
 
 </p>
     
@@ -1308,7 +1252,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1320,7 +1264,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇解决一个工程上最常见的困惑：</p>
 
 </p>
     
@@ -1344,7 +1288,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-note-018-quorum/" rel="permalink">一致性笔记：Quorum 的直觉：读写多数派为什么能工作
+        <a href="/consensus-note-018-quorum/" rel="permalink">一致性笔记：Quorum 的要点：读写多数派为什么能工作
 </a>
       
     </h2>
@@ -1354,7 +1298,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
@@ -1366,7 +1310,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：Quorum 的直觉：读写多数派为什么能工作」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕“读写多数派（quorum）为什么能工作”做一次工程化梳理：不背公式也能理解它的安全性来源，能把它落到系统实现与排障上。</p>
 
 </p>
     
@@ -1412,7 +1356,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：Leader 选举：租约（lease）与心跳」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「一致性笔记：Leader 选举：租约（lease）与心跳」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1465,7 +1409,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1511,7 +1455,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「存储笔记：写入合并（merge）与写扩散：从日志到段」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储笔记：写入合并（merge）与写扩散：从日志到段」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1557,7 +1501,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
 
 </p>
     
@@ -1603,7 +1547,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1695,7 +1639,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1741,7 +1685,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -1787,7 +1731,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>你在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
 
 </p>
     
@@ -1833,7 +1777,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：</p>
 
 </p>
     
@@ -1879,7 +1823,7 @@
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -2056,12 +2000,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

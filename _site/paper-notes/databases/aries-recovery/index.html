@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks">
+  <meta property="og:description" content="  论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks（Mohan et al., ACM TODS 1992）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">数据库论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,62 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -521,6 +521,48 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="ARIES：Recovery Algorithm（论文笔记）">
-    <meta itemprop="description" content="  论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks">
+    <meta itemprop="description" content="  论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks（Mohan et al., ACM TODS 1992）">
     <meta itemprop="datePublished" content="January 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  7 分钟阅读
 	
 </p>
           
@@ -574,48 +616,845 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks</p>
+  <p>论文：ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks（Mohan et al., ACM TODS 1992）</p>
 </blockquote>
 
-<h2 id="1-aries-解决什么">1. ARIES 解决什么</h2>
+<p>ARIES 是 IBM 开发的数据库崩溃恢复算法，是现代数据库恢复机制的基础。本文深入解析 ARIES 的核心思想、三阶段恢复流程和工程实践。</p>
 
-<p>数据库崩溃恢复要同时满足：</p>
+<h2 id="1-崩溃恢复的挑战">1. 崩溃恢复的挑战</h2>
+
+<h3 id="11-恢复需要满足的-acid-属性">1.1 恢复需要满足的 ACID 属性</h3>
+
+<p>数据库崩溃恢复必须同时满足 ACID 属性的要求：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[ACID属性] --&gt; B[Durability&lt;br/&gt;持久性]
+    A --&gt; C[Atomicity&lt;br/&gt;原子性]
+    A --&gt; D[Consistency&lt;br/&gt;一致性]
+    A --&gt; E[Isolation&lt;br/&gt;隔离性]
+    
+    B --&gt; B1[已提交事务的数据不丢失]
+    B1 --&gt; B2[即使系统崩溃也能恢复]
+    
+    C --&gt; C1[事务要么全部提交要么全部回滚]
+    C1 --&gt; C2[不能出现部分写入]
+    
+    D --&gt; D1[数据库约束始终满足]
+    D1 --&gt; D2[恢复后数据一致]
+    
+    E --&gt; E1[并发事务互不干扰]
+    E1 --&gt; E2[恢复不影响隔离性]
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#e8f5e9
+    style E fill:#f3e5f5
+</code></pre>
+
+<p><strong>恢复的核心挑战</strong>：</p>
+
+<ol>
+  <li><strong>持久性（Durability）</strong>
+    <ul>
+      <li>已提交事务的数据必须持久化</li>
+      <li>即使系统崩溃，已提交的数据也不能丢失</li>
+      <li>需要将数据写入非易失性存储（磁盘）</li>
+    </ul>
+  </li>
+  <li><strong>原子性（Atomicity）</strong>
+    <ul>
+      <li>事务要么全部提交，要么全部回滚</li>
+      <li>不能出现部分写入的情况</li>
+      <li>崩溃时未提交的事务必须回滚</li>
+    </ul>
+  </li>
+  <li><strong>性能要求</strong>
+    <ul>
+      <li>恢复时间要尽可能短</li>
+      <li>日志量要尽可能少</li>
+      <li>实现复杂度要可控</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="12-传统恢复方法的问题">1.2 传统恢复方法的问题</h3>
+
+<p>在 ARIES 之前，数据库恢复方法存在以下问题：</p>
+
+<p><strong>Steal/No-Force 策略的挑战</strong>：</p>
 
 <ul>
-  <li><strong>已提交不丢</strong>（durability）</li>
-  <li><strong>未提交不“半写”</strong>（atomicity）</li>
-  <li>支持并发控制、细粒度锁、甚至部分回滚</li>
+  <li><strong>Steal</strong>：允许将未提交事务的脏页写回磁盘（提高性能）</li>
+  <li><strong>No-Force</strong>：提交时不必强制写回所有脏页（提高性能）</li>
+  <li><strong>问题</strong>：崩溃后需要区分哪些是已提交的，哪些是未提交的</li>
 </ul>
 
-<h2 id="2-三个关键词">2. 三个关键词</h2>
+<p><strong>传统方法的局限性</strong>：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[传统恢复方法] --&gt; B[Shadow Paging]
+    A --&gt; C[Simple WAL]
+    
+    B --&gt; B1[需要复制整个页]
+    B1 --&gt; B2[空间开销大]
+    B2 --&gt; B3[不支持并发]
+    
+    C --&gt; C1[日志量大]
+    C1 --&gt; C2[恢复时间长]
+    C2 --&gt; C3[不支持部分回滚]
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+</code></pre>
+
+<p><strong>ARIES 的创新</strong>：</p>
 
 <ul>
-  <li><strong>WAL（Write-Ahead Logging）</strong>：先写日志再落数据页</li>
-  <li><strong>LSN</strong>：日志序号，贯穿页与日志记录的关联</li>
-  <li><strong>redo/undo 分离</strong>：能在 crash 后精确重做与撤销</li>
+  <li><strong>页级 LSN</strong>：每个页记录最后应用的日志序号</li>
+  <li><strong>Redo/Undo 分离</strong>：精确控制重做和撤销的范围</li>
+  <li><strong>Fuzzy Checkpoint</strong>：支持增量检查点，减少恢复时间</li>
+  <li><strong>部分回滚</strong>：支持事务的部分回滚，提高灵活性</li>
 </ul>
 
-<h2 id="3-恢复三阶段直觉版">3. 恢复三阶段（直觉版）</h2>
+<h2 id="2-aries-的核心机制">2. ARIES 的核心机制</h2>
+
+<h3 id="21-walwrite-ahead-logging">2.1 WAL：Write-Ahead Logging</h3>
+
+<p>WAL 是 ARIES 的基础，所有修改必须先写日志再写数据页：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Txn as Transaction
+    participant Buffer as Buffer Pool
+    participant Log as WAL
+    participant Disk as Disk
+    
+    Txn-&gt;&gt;Buffer: 修改数据页
+    Buffer-&gt;&gt;Log: 写入日志记录
+    Log-&gt;&gt;Disk: 刷新日志到磁盘
+    Disk--&gt;&gt;Log: Success
+    Log--&gt;&gt;Buffer: Success
+    Buffer-&gt;&gt;Buffer: 标记页为脏页
+    
+    Note over Buffer,Disk: 数据页可以延迟写入磁盘
+    
+</code></pre>
+
+<p><strong>WAL 的优势</strong>：</p>
 
 <ul>
-  <li><strong>Analysis</strong>：重建事务表/脏页表（知道“可能需要做什么”）</li>
-  <li><strong>Redo</strong>：从某个点开始重放，把系统推进到崩溃前的状态</li>
-  <li><strong>Undo</strong>：撤销未提交事务（用补偿日志 CLR）</li>
+  <li><strong>持久性保证</strong>：日志先写磁盘，即使数据页丢失也能恢复</li>
+  <li><strong>顺序写入</strong>：日志是顺序写入，性能高</li>
+  <li><strong>原子性保证</strong>：通过日志可以精确恢复或回滚</li>
 </ul>
 
-<h2 id="4-为什么它经典">4. 为什么它经典</h2>
+<p><strong>WAL 的写入规则</strong>：</p>
 
-<p>很多现代存储引擎（或其变体）都在用类似思想：</p>
+<ol>
+  <li><strong>日志先行</strong>：修改数据页前必须先写日志</li>
+  <li><strong>强制刷新</strong>：提交事务前必须将日志刷新到磁盘</li>
+  <li><strong>顺序写入</strong>：日志必须按顺序写入，不能跳跃</li>
+</ol>
+
+<h3 id="22-lsnlog-sequence-number">2.2 LSN：Log Sequence Number</h3>
+
+<p>LSN 是日志序号，贯穿页与日志记录的关联：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class LogRecord {
+        + LSN lsn
+        + TransactionID transId
+        + PageID pageId
+        + LogType type
+        + Data oldValue
+        + Data newValue
+        + LSN prevLSN
+    }
+    
+    class Page {
+        + PageID pageId
+        + LSN pageLSN
+        + Data data
+    }
+    
+    class Transaction {
+        + TransactionID transId
+        + LSN lastLSN
+        + Status status
+    }
+    
+    LogRecord --&gt; Page : pageLSN指向最后应用的日志
+    LogRecord --&gt; Transaction : 属于某个事务
+    Transaction --&gt; LogRecord : 维护lastLSN
+</code></pre>
+
+<p><strong>LSN 的作用</strong>：</p>
+
+<ol>
+  <li><strong>页级 LSN（PageLSN）</strong>
+    <ul>
+      <li>每个数据页记录最后应用的日志序号</li>
+      <li>用于判断页是否需要 Redo</li>
+      <li>如果 <code class="language-plaintext highlighter-rouge">PageLSN &lt; LogLSN</code>，说明页需要 Redo</li>
+    </ul>
+  </li>
+  <li><strong>事务级 LSN（LastLSN）</strong>
+    <ul>
+      <li>每个事务记录最后写入的日志序号</li>
+      <li>用于构建事务的日志链</li>
+      <li>支持部分回滚和完整回滚</li>
+    </ul>
+  </li>
+  <li><strong>日志链</strong>
+    <ul>
+      <li>通过 <code class="language-plaintext highlighter-rouge">prevLSN</code> 字段构建事务的日志链</li>
+      <li>支持从最新日志回溯到事务开始</li>
+      <li>用于 Undo 操作</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>LSN 的分配规则</strong>：</p>
 
 <ul>
-  <li>页级 LSN</li>
-  <li>redo/undo</li>
-  <li>fuzzy checkpoint</li>
+  <li><strong>单调递增</strong>：LSN 全局单调递增，保证顺序</li>
+  <li><strong>唯一性</strong>：每个日志记录有唯一的 LSN</li>
+  <li><strong>持久化</strong>：LSN 写入日志和页，保证可恢复</li>
 </ul>
 
-<h2 id="5-读完后的-takeaways">5. 读完后的 takeaways</h2>
+<h3 id="23-redoundo-分离">2.3 Redo/Undo 分离</h3>
 
-<p>恢复设计的核心不是“能恢复”，而是 <strong>恢复时间、日志量、实现复杂度</strong> 的平衡。</p>
+<p>ARIES 的核心创新是 Redo 和 Undo 的分离：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[日志记录] --&gt; B[Redo信息]
+    A --&gt; C[Undo信息]
+    
+    B --&gt; B1[如何重做操作]
+    B1 --&gt; B2[newValue]
+    B2 --&gt; B3[用于恢复已提交事务]
+    
+    C --&gt; C1[如何撤销操作]
+    C1 --&gt; C2[oldValue]
+    C2 --&gt; C3[用于回滚未提交事务]
+    
+    D[恢复阶段] --&gt; E[Redo阶段]
+    D --&gt; F[Undo阶段]
+    
+    E --&gt; E1[重放所有日志]
+    E1 --&gt; E2[恢复到崩溃前状态]
+    
+    F --&gt; F1[撤销未提交事务]
+    F1 --&gt; F2[写CLR补偿日志]
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style F fill:#f3e5f5
+</code></pre>
+
+<p><strong>Redo 的特点</strong>：</p>
+
+<ul>
+  <li><strong>幂等性</strong>：Redo 操作是幂等的，可以重复执行</li>
+  <li><strong>条件执行</strong>：只有当 <code class="language-plaintext highlighter-rouge">PageLSN &lt; LogLSN</code> 时才执行 Redo</li>
+  <li><strong>恢复已提交</strong>：用于恢复已提交但未刷盘的修改</li>
+</ul>
+
+<p><strong>Undo 的特点</strong>：</p>
+
+<ul>
+  <li><strong>补偿日志（CLR）</strong>：Undo 时写入补偿日志，记录撤销操作</li>
+  <li><strong>可重复撤销</strong>：如果 Undo 过程中再次崩溃，可以继续 Undo</li>
+  <li><strong>撤销未提交</strong>：用于撤销未提交事务的修改</li>
+</ul>
+
+<h2 id="3-aries-三阶段恢复">3. ARIES 三阶段恢复</h2>
+
+<h3 id="31-analysis-阶段重建状态">3.1 Analysis 阶段：重建状态</h3>
+
+<p>Analysis 阶段的目标是重建崩溃时的系统状态：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Analysis阶段] --&gt; B[扫描日志]
+    B --&gt; C[重建事务表]
+    B --&gt; D[重建脏页表]
+    B --&gt; E[确定Redo起点]
+    
+    C --&gt; C1[活跃事务列表]
+    C1 --&gt; C2[每个事务的lastLSN]
+    
+    D --&gt; D1[脏页列表]
+    D1 --&gt; D2[每个页的recLSN]
+    
+    E --&gt; E1[从最小recLSN开始Redo]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#e8f5e9
+    style E fill:#f3e5f5
+</code></pre>
+
+<p><strong>Analysis 阶段的流程</strong>：</p>
+
+<ol>
+  <li><strong>从 Checkpoint 开始扫描</strong>
+    <ul>
+      <li>从最近的 Checkpoint 开始扫描日志</li>
+      <li>Checkpoint 记录了事务表和脏页表的快照</li>
+    </ul>
+  </li>
+  <li><strong>重建事务表（Transaction Table）</strong>
+    <ul>
+      <li>遇到 <code class="language-plaintext highlighter-rouge">BEGIN</code> 日志：添加事务到事务表</li>
+      <li>遇到 <code class="language-plaintext highlighter-rouge">COMMIT</code> 日志：标记事务为已提交</li>
+      <li>遇到 <code class="language-plaintext highlighter-rouge">ABORT</code> 日志：标记事务为回滚中</li>
+      <li>更新每个事务的 <code class="language-plaintext highlighter-rouge">lastLSN</code></li>
+    </ul>
+  </li>
+  <li><strong>重建脏页表（Dirty Page Table）</strong>
+    <ul>
+      <li>遇到 <code class="language-plaintext highlighter-rouge">UPDATE</code> 日志：如果页不在脏页表中，添加并记录 <code class="language-plaintext highlighter-rouge">recLSN</code></li>
+      <li><code class="language-plaintext highlighter-rouge">recLSN</code>：页第一次变脏时的 LSN</li>
+      <li>用于确定 Redo 的起点</li>
+    </ul>
+  </li>
+  <li><strong>确定 Redo 起点</strong>
+    <ul>
+      <li>Redo 起点 = min(所有脏页的 recLSN, Checkpoint 的 LSN)</li>
+      <li>从这个点开始 Redo，保证所有脏页都能恢复</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>事务表和脏页表的结构</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class TransactionTable {
+        + map_TransID_TransEntry entries
+        + AddTransaction()
+        + UpdateLastLSN()
+        + MarkCommitted()
+    }
+    
+    class TransEntry {
+        + TransactionID transId
+        + LSN lastLSN
+        + Status status
+    }
+    
+    class DirtyPageTable {
+        + map_PageID_PageEntry entries
+        + AddPage()
+        + GetRecLSN()
+    }
+    
+    class PageEntry {
+        + PageID pageId
+        + LSN recLSN
+    }
+    
+    TransactionTable --&gt; TransEntry : 包含
+    DirtyPageTable --&gt; PageEntry : 包含
+</code></pre>
+
+<h3 id="32-redo-阶段恢复到崩溃前状态">3.2 Redo 阶段：恢复到崩溃前状态</h3>
+
+<p>Redo 阶段的目标是将系统恢复到崩溃前的状态：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Recovery as Recovery Manager
+    participant Log as Log File
+    participant Buffer as Buffer Pool
+    participant Disk as Disk
+    
+    Recovery-&gt;&gt;Log: 从Redo起点开始扫描
+    Log--&gt;&gt;Recovery: LogRecord
+    
+    loop 遍历每个日志记录
+        Recovery-&gt;&gt;Recovery: 检查日志类型
+        alt 是UPDATE日志
+            Recovery-&gt;&gt;Buffer: 检查页的PageLSN
+            alt PageLSN &lt; LogLSN
+                Recovery-&gt;&gt;Buffer: 执行Redo操作
+                Buffer-&gt;&gt;Buffer: 更新PageLSN
+                Buffer-&gt;&gt;Disk: 写回页（可选）
+            else PageLSN &gt;= LogLSN
+                Recovery-&gt;&gt;Recovery: 跳过（已应用）
+            end
+        end
+    end
+    
+    Recovery-&gt;&gt;Recovery: Redo完成
+    
+</code></pre>
+
+<p><strong>Redo 阶段的规则</strong>：</p>
+
+<ol>
+  <li><strong>条件 Redo</strong>
+    <ul>
+      <li>只有当 <code class="language-plaintext highlighter-rouge">PageLSN &lt; LogLSN</code> 时才执行 Redo</li>
+      <li>如果 <code class="language-plaintext highlighter-rouge">PageLSN &gt;= LogLSN</code>，说明页已经应用了该日志，跳过</li>
+    </ul>
+  </li>
+  <li><strong>幂等性</strong>
+    <ul>
+      <li>Redo 操作是幂等的，可以重复执行</li>
+      <li>即使重复 Redo 也不会出错</li>
+    </ul>
+  </li>
+  <li><strong>不区分事务状态</strong>
+    <ul>
+      <li>Redo 阶段不区分事务是否已提交</li>
+      <li>所有日志都重放，恢复到崩溃前的物理状态</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>Redo 的优化</strong>：</p>
+
+<ul>
+  <li><strong>批量 Redo</strong>：可以批量读取日志，提高效率</li>
+  <li><strong>并行 Redo</strong>：不同页的 Redo 可以并行执行</li>
+  <li><strong>延迟写回</strong>：Redo 后的页可以延迟写回磁盘</li>
+</ul>
+
+<h3 id="33-undo-阶段撤销未提交事务">3.3 Undo 阶段：撤销未提交事务</h3>
+
+<p>Undo 阶段的目标是撤销所有未提交事务的修改：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Undo阶段] --&gt; B[遍历未提交事务]
+    B --&gt; C[从lastLSN开始]
+    C --&gt; D[沿prevLSN回溯]
+    D --&gt; E[执行Undo操作]
+    E --&gt; F[写CLR补偿日志]
+    F --&gt; G[更新页的PageLSN]
+    G --&gt; H{还有日志?}
+    H --&gt;|是| D
+    H --&gt;|否| I[事务Undo完成]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+    style F fill:#e8f5e9
+</code></pre>
+
+<p><strong>Undo 阶段的流程</strong>：</p>
+
+<ol>
+  <li><strong>遍历未提交事务</strong>
+    <ul>
+      <li>从 Analysis 阶段构建的事务表中获取未提交事务</li>
+      <li>按 <code class="language-plaintext highlighter-rouge">lastLSN</code> 从大到小排序（最新的先撤销）</li>
+    </ul>
+  </li>
+  <li><strong>沿日志链回溯</strong>
+    <ul>
+      <li>从事务的 <code class="language-plaintext highlighter-rouge">lastLSN</code> 开始</li>
+      <li>通过 <code class="language-plaintext highlighter-rouge">prevLSN</code> 字段回溯到事务开始</li>
+      <li>对每个日志记录执行 Undo</li>
+    </ul>
+  </li>
+  <li><strong>执行 Undo 操作</strong>
+    <ul>
+      <li>读取日志记录的 <code class="language-plaintext highlighter-rouge">oldValue</code></li>
+      <li>将页恢复到修改前的状态</li>
+      <li>更新页的 <code class="language-plaintext highlighter-rouge">PageLSN</code></li>
+    </ul>
+  </li>
+  <li><strong>写 CLR（Compensation Log Record）</strong>
+    <ul>
+      <li>记录撤销操作，写入补偿日志</li>
+      <li>CLR 包含 <code class="language-plaintext highlighter-rouge">undoNextLSN</code>，指向下一个要撤销的日志</li>
+      <li>如果 Undo 过程中再次崩溃，可以从 CLR 继续</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>CLR 的作用</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class LogRecord {
+        + LSN lsn
+        + LogType type
+        + Data oldValue
+        + Data newValue
+    }
+    
+    class CLR {
+        + LSN lsn
+        + LSN undoNextLSN
+        + Data oldValue
+        + Data newValue
+    }
+    
+    LogRecord &lt;|-- CLR : 继承
+</code></pre>
+
+<p><strong>CLR 的优势</strong>：</p>
+
+<ul>
+  <li><strong>可重复撤销</strong>：如果 Undo 过程中崩溃，可以从 CLR 继续</li>
+  <li><strong>避免重复撤销</strong>：CLR 标记已经撤销的操作</li>
+  <li><strong>支持部分回滚</strong>：可以只撤销事务的一部分</li>
+</ul>
+
+<h2 id="4-fuzzy-checkpoint">4. Fuzzy Checkpoint</h2>
+
+<h3 id="41-checkpoint-的作用">4.1 Checkpoint 的作用</h3>
+
+<p>Checkpoint 是系统状态的快照，用于减少恢复时间：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Checkpoint] --&gt; B[记录事务表]
+    A --&gt; C[记录脏页表]
+    A --&gt; D[记录LSN]
+    
+    B --&gt; B1[活跃事务列表]
+    C --&gt; C1[脏页及其recLSN]
+    D --&gt; D1[Checkpoint LSN]
+    
+    E[恢复时] --&gt; F[从Checkpoint开始]
+    F --&gt; G[减少日志扫描范围]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+</code></pre>
+
+<p><strong>Checkpoint 的类型</strong>：</p>
+
+<ol>
+  <li><strong>Fuzzy Checkpoint（模糊检查点）</strong>
+    <ul>
+      <li>不停止系统运行</li>
+      <li>记录当前状态，允许继续写入</li>
+      <li>ARIES 采用的方式</li>
+    </ul>
+  </li>
+  <li><strong>Sharp Checkpoint（清晰检查点）</strong>
+    <ul>
+      <li>停止所有写入</li>
+      <li>等待所有脏页刷盘</li>
+      <li>恢复简单但影响性能</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="42-fuzzy-checkpoint-的实现">4.2 Fuzzy Checkpoint 的实现</h3>
+
+<p>Fuzzy Checkpoint 允许在系统运行时进行：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Checkpoint as Checkpoint Manager
+    participant Buffer as Buffer Pool
+    participant Log as Log File
+    
+    Checkpoint-&gt;&gt;Log: 写入BEGIN_CHECKPOINT
+    Checkpoint-&gt;&gt;Checkpoint: 记录事务表快照
+    Checkpoint-&gt;&gt;Checkpoint: 记录脏页表快照
+    Checkpoint-&gt;&gt;Log: 写入END_CHECKPOINT
+    Checkpoint-&gt;&gt;Log: 刷新日志到磁盘
+    
+    Note over Checkpoint,Log: 系统继续正常运行
+    
+</code></pre>
+
+<p><strong>Fuzzy Checkpoint 的流程</strong>：</p>
+
+<ol>
+  <li><strong>写入 BEGIN_CHECKPOINT</strong>
+    <ul>
+      <li>标记 Checkpoint 开始</li>
+      <li>记录当前 LSN</li>
+    </ul>
+  </li>
+  <li><strong>记录状态快照</strong>
+    <ul>
+      <li>记录事务表（活跃事务及其 lastLSN）</li>
+      <li>记录脏页表（脏页及其 recLSN）</li>
+      <li>不要求脏页刷盘</li>
+    </ul>
+  </li>
+  <li><strong>写入 END_CHECKPOINT</strong>
+    <ul>
+      <li>标记 Checkpoint 结束</li>
+      <li>将状态信息写入日志</li>
+    </ul>
+  </li>
+  <li><strong>刷新日志</strong>
+    <ul>
+      <li>确保 Checkpoint 信息持久化</li>
+      <li>系统继续正常运行</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>Fuzzy Checkpoint 的优势</strong>：</p>
+
+<ul>
+  <li><strong>不阻塞写入</strong>：Checkpoint 过程中系统继续服务</li>
+  <li><strong>减少恢复时间</strong>：只需从 Checkpoint 开始扫描日志</li>
+  <li><strong>提高可用性</strong>：不影响系统性能</li>
+</ul>
+
+<h2 id="5-部分回滚partial-rollback">5. 部分回滚（Partial Rollback）</h2>
+
+<h3 id="51-部分回滚的需求">5.1 部分回滚的需求</h3>
+
+<p>部分回滚允许事务回滚到某个保存点（Savepoint）：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[事务执行] --&gt; B[Savepoint 1]
+    B --&gt; C[操作1]
+    C --&gt; D[操作2]
+    D --&gt; E[Savepoint 2]
+    E --&gt; F[操作3]
+    F --&gt; G[操作4]
+    
+    H[部分回滚] --&gt; I[回滚到Savepoint 2]
+    I --&gt; J[撤销操作3和4]
+    J --&gt; K[保留操作1和2]
+    
+    style A fill:#e3f2fd
+    style H fill:#fff3e0
+    style I fill:#e8f5e9
+</code></pre>
+
+<p><strong>部分回滚的应用场景</strong>：</p>
+
+<ul>
+  <li><strong>错误处理</strong>：遇到错误时回滚到保存点，继续执行</li>
+  <li><strong>嵌套事务</strong>：支持子事务的回滚</li>
+  <li><strong>灵活控制</strong>：提供更细粒度的事务控制</li>
+</ul>
+
+<h3 id="52-部分回滚的实现">5.2 部分回滚的实现</h3>
+
+<p>部分回滚通过保存点和日志链实现：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Txn as Transaction
+    participant Log as Log File
+    participant Buffer as Buffer Pool
+    
+    Txn-&gt;&gt;Log: 写入SAVEPOINT日志
+    Txn-&gt;&gt;Txn: 记录savepointLSN
+    Txn-&gt;&gt;Buffer: 执行操作
+    Buffer-&gt;&gt;Log: 写入UPDATE日志
+    
+    Txn-&gt;&gt;Txn: 决定部分回滚
+    Txn-&gt;&gt;Txn: 从lastLSN回溯到savepointLSN
+    Txn-&gt;&gt;Buffer: 执行Undo操作
+    Buffer-&gt;&gt;Log: 写入CLR
+    Txn-&gt;&gt;Txn: 更新lastLSN为savepointLSN
+    
+</code></pre>
+
+<p><strong>部分回滚的步骤</strong>：</p>
+
+<ol>
+  <li><strong>创建保存点</strong>
+    <ul>
+      <li>写入 <code class="language-plaintext highlighter-rouge">SAVEPOINT</code> 日志记录</li>
+      <li>记录保存点的 LSN</li>
+    </ul>
+  </li>
+  <li><strong>执行操作</strong>
+    <ul>
+      <li>继续执行事务操作</li>
+      <li>所有操作都记录在日志中</li>
+    </ul>
+  </li>
+  <li><strong>部分回滚</strong>
+    <ul>
+      <li>从当前 <code class="language-plaintext highlighter-rouge">lastLSN</code> 回溯到保存点的 LSN</li>
+      <li>对每个日志记录执行 Undo</li>
+      <li>写入 CLR 记录撤销操作</li>
+      <li>更新事务的 <code class="language-plaintext highlighter-rouge">lastLSN</code> 为保存点的 LSN</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="6-aries-的工程实践">6. ARIES 的工程实践</h2>
+
+<h3 id="61-日志格式设计">6.1 日志格式设计</h3>
+
+<p>ARIES 的日志记录包含以下信息：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class LogRecord {
+        + LSN lsn
+        + TransactionID transId
+        + LogType type
+        + PageID pageId
+        + LSN prevLSN
+        + Data oldValue
+        + Data newValue
+        + LSN undoNextLSN
+    }
+    
+    class LogType {
+        &lt;&lt;enumeration&gt;&gt;
+        BEGIN
+        UPDATE
+        COMMIT
+        ABORT
+        CLR
+        CHECKPOINT
+    }
+    
+    LogRecord --&gt; LogType : 使用
+</code></pre>
+
+<p><strong>日志记录的关键字段</strong>：</p>
+
+<ul>
+  <li><strong>lsn</strong>：日志序号，全局唯一</li>
+  <li><strong>transId</strong>：事务 ID，标识所属事务</li>
+  <li><strong>type</strong>：日志类型（BEGIN、UPDATE、COMMIT 等）</li>
+  <li><strong>pageId</strong>：修改的页 ID</li>
+  <li><strong>prevLSN</strong>：事务前一个日志的 LSN，构建日志链</li>
+  <li><strong>oldValue/newValue</strong>：修改前后的值，用于 Redo/Undo</li>
+  <li><strong>undoNextLSN</strong>：CLR 中指向下一个要撤销的日志</li>
+</ul>
+
+<h3 id="62-性能优化">6.2 性能优化</h3>
+
+<p>ARIES 的优化策略：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[性能优化] --&gt; B[批量日志写入]
+    A --&gt; C[并行恢复]
+    A --&gt; D[增量Checkpoint]
+    A --&gt; E[日志压缩]
+    
+    B --&gt; B1[减少IO次数]
+    C --&gt; C2[多线程恢复]
+    D --&gt; D1[只记录变化]
+    E --&gt; E1[减少日志量]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
+
+<p><strong>关键优化技术</strong>：</p>
+
+<ol>
+  <li><strong>批量日志写入</strong>
+    <ul>
+      <li>将多个日志记录批量写入</li>
+      <li>减少磁盘 IO 次数</li>
+      <li>提高写入吞吐量</li>
+    </ul>
+  </li>
+  <li><strong>并行恢复</strong>
+    <ul>
+      <li>Redo 阶段可以并行处理不同页</li>
+      <li>Undo 阶段可以并行处理不同事务</li>
+      <li>提高恢复速度</li>
+    </ul>
+  </li>
+  <li><strong>增量 Checkpoint</strong>
+    <ul>
+      <li>只记录自上次 Checkpoint 以来的变化</li>
+      <li>减少 Checkpoint 的开销</li>
+      <li>提高系统可用性</li>
+    </ul>
+  </li>
+  <li><strong>日志压缩</strong>
+    <ul>
+      <li>合并多个小日志记录</li>
+      <li>减少日志量</li>
+      <li>降低存储成本</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="7-aries-的影响">7. ARIES 的影响</h2>
+
+<h3 id="71-对现代数据库的影响">7.1 对现代数据库的影响</h3>
+
+<p>ARIES 的设计思想被广泛采用：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[ARIES] --&gt; B[商业数据库]
+    A --&gt; C[开源数据库]
+    A --&gt; D[存储引擎]
+    
+    B --&gt; B1[IBM DB2]
+    B --&gt; B2[Oracle]
+    B --&gt; B3[SQL Server]
+    
+    C --&gt; C1[PostgreSQL]
+    C --&gt; C2[MySQL InnoDB]
+    
+    D --&gt; D1[RocksDB]
+    D --&gt; D2[WiredTiger]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
+
+<p><strong>ARIES 的核心贡献</strong>：</p>
+
+<ul>
+  <li><strong>页级 LSN</strong>：成为现代数据库的标准设计</li>
+  <li><strong>Redo/Undo 分离</strong>：提供了灵活的恢复机制</li>
+  <li><strong>Fuzzy Checkpoint</strong>：平衡了性能和恢复时间</li>
+  <li><strong>部分回滚</strong>：提供了更细粒度的事务控制</li>
+</ul>
+
+<h3 id="72-设计原则总结">7.2 设计原则总结</h3>
+
+<p>ARIES 的成功体现了几个重要的设计原则：</p>
+
+<ol>
+  <li><strong>幂等性设计</strong>
+    <ul>
+      <li>Redo 操作是幂等的，可以安全重复执行</li>
+      <li>简化了恢复逻辑，提高了可靠性</li>
+    </ul>
+  </li>
+  <li><strong>状态可重建</strong>
+    <ul>
+      <li>通过日志可以完全重建系统状态</li>
+      <li>不依赖内存状态，支持完全恢复</li>
+    </ul>
+  </li>
+  <li><strong>性能与可靠性平衡</strong>
+    <ul>
+      <li>Fuzzy Checkpoint 减少恢复时间</li>
+      <li>条件 Redo 避免不必要的操作</li>
+      <li>在性能和可靠性之间找到平衡</li>
+    </ul>
+  </li>
+  <li><strong>工程化实现</strong>
+    <ul>
+      <li>考虑了实际系统的复杂性</li>
+      <li>支持并发、细粒度锁等高级特性</li>
+      <li>提供了完整的恢复方案</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="8-总结">8. 总结</h2>
+
+<p>ARIES 是数据库恢复算法的经典设计，其核心思想包括：</p>
+
+<ul>
+  <li><strong>WAL 机制</strong>：先写日志再写数据，保证持久性</li>
+  <li><strong>LSN 关联</strong>：通过 LSN 关联页和日志，支持精确恢复</li>
+  <li><strong>Redo/Undo 分离</strong>：分别处理已提交和未提交事务</li>
+  <li><strong>三阶段恢复</strong>：Analysis、Redo、Undo 三个阶段各司其职</li>
+  <li><strong>Fuzzy Checkpoint</strong>：支持增量检查点，减少恢复时间</li>
+  <li><strong>部分回滚</strong>：支持保存点和部分回滚，提供灵活控制</li>
+</ul>
+
+<p>ARIES 的设计思想影响了大量现代数据库系统，成为数据库恢复机制的标准参考。理解 ARIES 的设计原理，有助于理解现代数据库系统的恢复机制和工程实践。</p>
 
 
         
@@ -658,12 +1497,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
+  <meta property="og:description" content="本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储笔记：tombstone 与空间回收：为什么删除不等于释放">
-    <meta itemprop="description" content="这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
+    <meta itemprop="description" content="本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，Delete 并不等于空间立刻释放。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。">
     <meta itemprop="datePublished" content="November 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+        <p>本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
 
 <p><img src="/images/diagrams/tombstone-compaction-lifecycle.svg" alt="tombstone 生命周期：删除可见 ≠ 空间回收" /></p>
 
@@ -649,7 +593,7 @@
   <li>旧版本要等到 compaction 把它合并淘汰（或者 GC 回收）才会真正释放空间</li>
 </ul>
 
-<p>所以“删除多 + compaction 跟不上”时，你会观察到：<strong>盘持续增长、写放大上升、读放大也可能变差</strong>。</p>
+<p>所以“删除多 + compaction 跟不上”时，会观察到：<strong>盘持续增长、写放大上升、读放大也可能变差</strong>。</p>
 
 <h2 id="3-什么时候空间会真正回收">3. 什么时候空间会真正回收</h2>
 
@@ -662,7 +606,7 @@
 
 <p>不同实现会有不同的“删标回收规则”，但共同点是：<strong>回收是异步的</strong>。</p>
 
-<h2 id="4-排查清单你该看什么">4. 排查清单（你该看什么）</h2>
+<h2 id="4-排查清单需要看什么">4. 排查清单（需要看什么）</h2>
 
 <ol>
   <li><strong>删除比例</strong>：写入里 delete/overwrite 的占比是否变高？</li>
@@ -716,12 +660,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

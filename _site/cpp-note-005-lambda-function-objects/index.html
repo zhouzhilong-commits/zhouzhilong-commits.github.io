@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -558,6 +502,202 @@
         
 
         <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class=""><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class=""><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
       
 
       
@@ -1466,12 +1606,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

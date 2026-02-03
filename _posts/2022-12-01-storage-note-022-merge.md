@@ -10,7 +10,7 @@ redirect_from:
   - /storage-note-078-merge/
 ---
 
-本文围绕「存储笔记：写入合并（merge）与写扩散：从日志到段」做一次**工程化**的梳理：先定义语义/模型，再给出可观测信号与排障顺序。
+本文是「存储笔记：写入合并（merge）与写扩散：从日志到段」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。
 
 ![存储笔记：写入合并（merge）与写扩散：从日志到段](/images/diagrams/storage-write-merge-log-to-segment.svg)
 ## 1. 写入合并的目标

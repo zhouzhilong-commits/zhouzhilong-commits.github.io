@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：">
+  <meta property="og:description" content="在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量">
-    <meta itemprop="description" content="你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：">
+    <meta itemprop="description" content="在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：">
     <meta itemprop="datePublished" content="May 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>你在 RocksDB 写入链路里，最容易遇到两类“看似突然”的现象：</p>
+        <p>在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：</p>
 
 <ul>
   <li>写入延迟开始抖（P99 上升）</li>
@@ -648,7 +592,7 @@
 
 <ul>
   <li><strong>memtable</strong>：内存中的写入缓冲（通常是有序结构），写入先落这里。</li>
-  <li><strong>write buffer</strong>：你可以把它理解成 memtable 占用的预算（受 <code class="language-plaintext highlighter-rouge">write_buffer_size</code>、memtable 数量等影响）。</li>
+  <li><strong>write buffer</strong>：可以将它理解成 memtable 占用的预算（受 <code class="language-plaintext highlighter-rouge">write_buffer_size</code>、memtable 数量等影响）。</li>
   <li><strong>flush</strong>：把 immutable memtable 持久化为 SST 文件（通常落到 <strong>L0</strong>）。</li>
   <li><strong>L0</strong>：RocksDB 分层里的第 0 层，文件之间可能重叠，读放大敏感，也容易引发后续 compaction 压力。</li>
 </ul>
@@ -683,7 +627,7 @@
   <li><strong>L0 太多</strong>：compaction 跟不上（且 L0 对读放大影响大）。</li>
 </ul>
 
-<h2 id="4-你应该看哪些指标从最有用的开始">4. 你应该看哪些指标（从最有用的开始）</h2>
+<h2 id="4-应当看哪些指标从最有用的开始">4. 应当看哪些指标（从最有用的开始）</h2>
 
 <p>建议优先盯这几类“因果链中间量”：</p>
 
@@ -708,7 +652,7 @@
   <li>主要瓶颈是 <strong>IO</strong> 还是 <strong>CPU（压缩/校验）</strong>？</li>
 </ul>
 
-<h3 id="51-flush-跟不上你在攒-immutable">5.1 flush 跟不上：你在“攒 immutable”</h3>
+<h3 id="51-flush-跟不上在攒-immutable">5.1 flush 跟不上：在”攒 immutable”</h3>
 
 <p>常见策略：</p>
 
@@ -718,7 +662,7 @@
   <li>避免让后台任务与前台争抢同一块 IO（尤其是在 compaction 也很重时）</li>
 </ul>
 
-<h3 id="52-compaction-跟不上你在攒-l0">5.2 compaction 跟不上：你在“攒 L0”</h3>
+<h3 id="52-compaction-跟不上在攒-l0">5.2 compaction 跟不上：在”攒 L0”</h3>
 
 <p>常见策略：</p>
 
@@ -743,7 +687,7 @@
   <li><strong>只提升 compaction 能力</strong>观察 L0 与 P99 的变化</li>
 </ol>
 
-<p>你会很快知道：到底是 flush 还是 compaction 主导欠账。</p>
+<p>会很快知道：到底是 flush 还是 compaction 主导欠账。</p>
 
 <h2 id="7-最小排障清单线上写入变慢变抖">7. 最小排障清单（线上写入变慢/变抖）</h2>
 
@@ -799,12 +743,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

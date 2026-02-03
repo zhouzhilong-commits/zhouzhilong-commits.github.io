@@ -1,0 +1,1395 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ Core Guidelines 阅读笔记（3）：资源管理 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ Core Guidelines 阅读笔记（3）：资源管理">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-guidelines-003-resource-management/">
+  <meta property="og:url" content="http://localhost:4000/cpp-guidelines-003-resource-management/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2024-03-15T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class=""><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class=""><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class="active"><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ Core Guidelines 阅读笔记（3）：资源管理">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="March 15, 2024">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ Core Guidelines 阅读笔记（3）：资源管理
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2024-03-15T00:00:00+08:00">March 15, 2024</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>资源管理是 C++ 编程的核心问题。本文是 C++ Core Guidelines 阅读笔记的第三篇，重点讨论内存、文件、锁等资源的正确管理方式。</p>
+
+<h2 id="1-资源管理原则">1. 资源管理原则</h2>
+
+<p>资源管理是 C++ 编程的核心挑战。C++ Core Guidelines 强调使用 RAII 自动管理所有资源。</p>
+
+<h3 id="11-使用-raii">1.1 使用 RAII</h3>
+
+<p>所有资源都应该通过对象管理，利用对象的生命周期自动管理资源：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：RAII</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+    <span class="c1">// 临界区代码</span>
+    <span class="c1">// 即使抛出异常，锁也会自动释放</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：手动管理</span>
+<span class="n">mtx</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>
+<span class="c1">// 如果这里抛出异常，锁不会被释放</span>
+<span class="n">risky_operation</span><span class="p">();</span>
+<span class="n">mtx</span><span class="p">.</span><span class="n">unlock</span><span class="p">();</span>  <span class="c1">// 永远不会执行</span>
+</code></pre></div></div>
+
+<h3 id="12-资源获取即初始化">1.2 资源获取即初始化</h3>
+
+<p>资源应该在构造函数中获取，在析构函数中释放：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：在构造函数中获取资源</span>
+<span class="k">class</span> <span class="nc">FileHandle</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">file_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">FileHandle</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">)</span> <span class="o">:</span> <span class="n">file_</span><span class="p">(</span><span class="n">fopen</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">"r"</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"Failed to open file"</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="o">~</span><span class="n">FileHandle</span><span class="p">()</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fclose</span><span class="p">(</span><span class="n">file_</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 禁止拷贝，允许移动</span>
+    <span class="n">FileHandle</span><span class="p">(</span><span class="k">const</span> <span class="n">FileHandle</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">FileHandle</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">FileHandle</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">=</span> <span class="k">delete</span><span class="p">;</span>
+    <span class="n">FileHandle</span><span class="p">(</span><span class="n">FileHandle</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="o">:</span> <span class="n">file_</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">file_</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">other</span><span class="p">.</span><span class="n">file_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 不好：在构造函数外获取资源</span>
+<span class="k">class</span> <span class="nc">FileHandle</span> <span class="p">{</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">file_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">FileHandle</span><span class="p">()</span> <span class="o">:</span> <span class="n">file_</span><span class="p">(</span><span class="nb">nullptr</span><span class="p">)</span> <span class="p">{}</span>
+    <span class="kt">void</span> <span class="n">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">)</span> <span class="p">{</span> <span class="n">file_</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span> <span class="p">}</span>
+    <span class="c1">// 容易忘记调用 open</span>
+    <span class="c1">// 如果忘记调用 open，file_ 是 nullptr，使用会出错</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="13-raii-的优势">1.3 RAII 的优势</h3>
+
+<h2 id="2-内存管理">2. 内存管理</h2>
+
+<p>内存是最常见的资源，C++ Core Guidelines 强烈推荐使用智能指针管理内存。</p>
+
+<h3 id="21-使用智能指针">2.1 使用智能指针</h3>
+
+<p>智能指针通过 RAII 自动管理内存：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：智能指针</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">resource</span> <span class="o">=</span> <span class="n">create_resource</span><span class="p">();</span>
+<span class="c1">// 自动管理，无需手动 delete</span>
+
+<span class="c1">// 不好：原始指针</span>
+<span class="n">Resource</span><span class="o">*</span> <span class="n">resource</span> <span class="o">=</span> <span class="n">create_resource</span><span class="p">();</span>
+<span class="c1">// 需要手动 delete</span>
+<span class="k">delete</span> <span class="n">resource</span><span class="p">;</span>  <span class="c1">// 容易忘记或重复删除</span>
+</code></pre></div></div>
+
+<h3 id="22-避免-newdelete">2.2 避免 new/delete</h3>
+
+<p>直接使用 new/delete 容易出错，应该使用 make_unique/make_shared：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：使用 make_unique/make_shared</span>
+<span class="k">auto</span> <span class="n">ptr1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">ptr2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+
+<span class="c1">// 不好：直接使用 new</span>
+<span class="k">auto</span> <span class="n">ptr1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">(</span><span class="k">new</span> <span class="nf">MyClass</span><span class="p">(</span><span class="n">args</span><span class="p">));</span>
+<span class="c1">// 问题：如果 new 成功但 make_unique 失败，内存泄漏</span>
+
+<span class="k">auto</span> <span class="n">ptr2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MyClass</span><span class="o">&gt;</span><span class="p">(</span><span class="k">new</span> <span class="nf">MyClass</span><span class="p">(</span><span class="n">args</span><span class="p">));</span>
+<span class="c1">// 问题：两次内存分配（对象 + 控制块）</span>
+</code></pre></div></div>
+
+<h3 id="23-避免内存泄漏">2.3 避免内存泄漏</h3>
+
+<p>内存泄漏是常见问题，使用智能指针可以完全避免：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：自动管理</span>
+<span class="kt">void</span> <span class="nf">process</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">data</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>  <span class="c1">// 自动清理，无泄漏</span>
+    <span class="p">}</span>
+    <span class="n">risky_operation</span><span class="p">();</span>  <span class="c1">// 即使抛出异常也自动清理</span>
+    <span class="c1">// data 自动析构</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：可能泄漏</span>
+<span class="kt">void</span> <span class="n">process</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Data</span><span class="o">*</span> <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Data</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>  <span class="c1">// 泄漏：data 没有被删除</span>
+    <span class="p">}</span>
+    <span class="n">risky_operation</span><span class="p">();</span>  <span class="c1">// 如果抛出异常，data 泄漏</span>
+    <span class="k">delete</span> <span class="n">data</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="24-循环引用问题">2.4 循环引用问题</h3>
+
+<p>使用 shared_ptr 时需要注意循环引用：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 问题：循环引用</span>
+<span class="k">struct</span> <span class="nc">Node</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">prev</span><span class="p">;</span>  <span class="c1">// 循环引用</span>
+<span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">n1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">auto</span> <span class="n">n2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">n1</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">n2</span><span class="p">;</span>
+<span class="n">n2</span><span class="o">-&gt;</span><span class="n">prev</span> <span class="o">=</span> <span class="n">n1</span><span class="p">;</span>  <span class="c1">// 循环引用，内存泄漏</span>
+
+<span class="c1">// 解决：使用 weak_ptr</span>
+<span class="k">struct</span> <span class="nc">Node</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">weak_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">prev</span><span class="p">;</span>  <span class="c1">// 打破循环</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="3-所有权管理">3. 所有权管理</h2>
+
+<h3 id="31-明确所有权">3.1 明确所有权</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：明确所有权</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Resource</span><span class="o">&gt;</span> <span class="n">create_resource</span><span class="p">();</span>  <span class="c1">// 返回所有权</span>
+
+<span class="kt">void</span> <span class="nf">process</span><span class="p">(</span><span class="k">const</span> <span class="n">Resource</span><span class="o">&amp;</span> <span class="n">r</span><span class="p">);</span>  <span class="c1">// 不拥有，只观察</span>
+
+<span class="c1">// 不好：所有权不明确</span>
+<span class="n">Resource</span><span class="o">*</span> <span class="nf">create_resource</span><span class="p">();</span>  <span class="c1">// 谁负责删除？</span>
+</code></pre></div></div>
+
+<h3 id="32-使用-unique_ptr-表示独占所有权">3.2 使用 unique_ptr 表示独占所有权</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：独占所有权</span>
+<span class="k">class</span> <span class="nc">Container</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">Container</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">)</span> <span class="o">:</span> <span class="n">data_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="p">{}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="33-使用-shared_ptr-表示共享所有权">3.3 使用 shared_ptr 表示共享所有权</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：共享所有权</span>
+<span class="k">class</span> <span class="nc">Node</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">set_next</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">next</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">next_</span> <span class="o">=</span> <span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="4-文件管理">4. 文件管理</h2>
+
+<h3 id="41-使用-raii-管理文件">4.1 使用 RAII 管理文件</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：RAII 文件管理</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">file</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="p">.</span><span class="n">is_open</span><span class="p">())</span> <span class="p">{</span>
+        <span class="c1">// 使用文件</span>
+    <span class="p">}</span>
+    <span class="c1">// 自动关闭</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：手动管理</span>
+<span class="kt">FILE</span><span class="o">*</span> <span class="n">file</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
+<span class="c1">// 如果忘记 fclose，文件句柄泄漏</span>
+<span class="n">fclose</span><span class="p">(</span><span class="n">file</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="42-使用标准库流">4.2 使用标准库流</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：标准库流</span>
+<span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="nf">file</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">line</span><span class="p">;</span>
+<span class="k">while</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：C 风格文件操作</span>
+<span class="kt">FILE</span><span class="o">*</span> <span class="n">file</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
+<span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">1024</span><span class="p">];</span>
+<span class="k">while</span> <span class="p">(</span><span class="n">fgets</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">),</span> <span class="n">file</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">fclose</span><span class="p">(</span><span class="n">file</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="5-锁管理">5. 锁管理</h2>
+
+<h3 id="51-使用-lock_guard">5.1 使用 lock_guard</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：lock_guard</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+    <span class="c1">// 临界区</span>
+<span class="p">}</span>
+
+<span class="c1">// 不好：手动锁定</span>
+<span class="n">mtx</span><span class="p">.</span><span class="n">lock</span><span class="p">();</span>
+<span class="c1">// 临界区</span>
+<span class="n">mtx</span><span class="p">.</span><span class="n">unlock</span><span class="p">();</span>  <span class="c1">// 如果抛出异常，不会解锁</span>
+</code></pre></div></div>
+
+<h3 id="52-使用-unique_lock-需要时">5.2 使用 unique_lock 需要时</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：需要条件变量时使用 unique_lock</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+<span class="n">cv</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="p">[]{</span> <span class="k">return</span> <span class="n">ready</span><span class="p">;</span> <span class="p">});</span>
+
+<span class="c1">// 简单锁定使用 lock_guard</span>
+<span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lock</span><span class="p">(</span><span class="n">mtx</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="6-容器管理">6. 容器管理</h2>
+
+<h3 id="61-使用标准库容器">6.1 使用标准库容器</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：标准库容器自动管理内存</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">// 不好：手动管理数组</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">arr</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
+<span class="c1">// 需要手动 delete[]</span>
+<span class="k">delete</span><span class="p">[]</span> <span class="n">arr</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="62-预分配空间">6.2 预分配空间</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：预分配空间</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
+<span class="n">vec</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">1000</span><span class="p">);</span>  <span class="c1">// 避免多次重新分配</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="7-异常安全">7. 异常安全</h2>
+
+<h3 id="71-保证基本异常安全">7.1 保证基本异常安全</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：基本异常安全</span>
+<span class="k">class</span> <span class="nc">Container</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">data_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">add</span><span class="p">(</span><span class="kt">int</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">data_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>  <span class="c1">// 如果失败，状态不变</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="72-保证强异常安全">7.2 保证强异常安全</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的：强异常安全</span>
+<span class="kt">void</span> <span class="nf">update_data</span><span class="p">(</span><span class="n">Data</span><span class="o">&amp;</span> <span class="n">data</span><span class="p">,</span> <span class="k">const</span> <span class="n">Data</span><span class="o">&amp;</span> <span class="n">new_data</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Data</span> <span class="n">backup</span> <span class="o">=</span> <span class="n">data</span><span class="p">;</span>  <span class="c1">// 先备份</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">new_data</span><span class="p">;</span>  <span class="c1">// 如果失败，恢复备份</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">backup</span><span class="p">;</span>
+        <span class="k">throw</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="8-资源泄漏检查">8. 资源泄漏检查</h2>
+
+<h3 id="81-使用工具检查">8.1 使用工具检查</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 使用 AddressSanitizer 检查内存泄漏</span>
+<span class="c1">// 编译时添加 -fsanitize=address</span>
+
+<span class="c1">// 使用 Valgrind 检查</span>
+<span class="c1">// valgrind --leak-check=full ./program</span>
+</code></pre></div></div>
+
+<h3 id="82-代码审查">8.2 代码审查</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 检查清单：</span>
+<span class="c1">// 1. 所有 new 都有对应的 delete？</span>
+<span class="c1">// 2. 所有资源获取都有对应的释放？</span>
+<span class="c1">// 3. 异常路径是否也释放资源？</span>
+</code></pre></div></div>
+
+<h2 id="9-最佳实践">9. 最佳实践</h2>
+
+<h3 id="91-资源管理检查清单">9.1 资源管理检查清单</h3>
+
+<ol>
+  <li><strong>所有资源都用 RAII 管理</strong></li>
+  <li><strong>使用智能指针而非原始指针</strong></li>
+  <li><strong>避免 new/delete，使用 make_unique/make_shared</strong></li>
+  <li><strong>明确所有权：unique_ptr vs shared_ptr</strong></li>
+  <li><strong>使用标准库容器和流</strong></li>
+</ol>
+
+<h3 id="92-常见错误">9.2 常见错误</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 错误 1：忘记释放资源</span>
+<span class="kt">void</span> <span class="nf">bad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Resource</span><span class="o">*</span> <span class="n">r</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Resource</span><span class="p">();</span>
+    <span class="c1">// 忘记 delete</span>
+<span class="p">}</span>
+
+<span class="c1">// 错误 2：异常时资源泄漏</span>
+<span class="kt">void</span> <span class="n">bad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Resource</span><span class="o">*</span> <span class="n">r</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Resource</span><span class="p">();</span>
+    <span class="n">risky_operation</span><span class="p">();</span>  <span class="c1">// 如果抛出异常，r 泄漏</span>
+    <span class="k">delete</span> <span class="n">r</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 错误 3：重复释放</span>
+<span class="kt">void</span> <span class="n">bad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Resource</span><span class="o">*</span> <span class="n">r</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Resource</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">r</span><span class="p">;</span>
+    <span class="k">delete</span> <span class="n">r</span><span class="p">;</span>  <span class="c1">// 未定义行为</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="11-实际工程案例">11. 实际工程案例</h2>
+
+<h3 id="111-案例内存泄漏修复">11.1 案例：内存泄漏修复</h3>
+
+<p><strong>问题</strong>：原始指针导致内存泄漏</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始代码：内存泄漏</span>
+<span class="kt">void</span> <span class="nf">process_data</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Data</span><span class="o">*</span> <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Data</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">some_condition</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>  <span class="c1">// 泄漏</span>
+    <span class="p">}</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+    <span class="k">delete</span> <span class="n">data</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：使用智能指针</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进代码：自动管理</span>
+<span class="kt">void</span> <span class="nf">process_data</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">data</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">Data</span><span class="o">&gt;</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">some_condition</span><span class="p">())</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>  <span class="c1">// 自动清理</span>
+    <span class="p">}</span>
+    <span class="n">process</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+    <span class="c1">// 自动清理</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="112-案例文件句柄管理">11.2 案例：文件句柄管理</h3>
+
+<p><strong>问题</strong>：手动管理文件句柄，容易泄漏</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 原始代码：容易出错</span>
+<span class="kt">void</span> <span class="nf">read_file</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">FILE</span><span class="o">*</span> <span class="n">f</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">"r"</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">f</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+    <span class="c1">// 如果这里抛出异常，文件不会关闭</span>
+    <span class="n">process_file</span><span class="p">(</span><span class="n">f</span><span class="p">);</span>
+    <span class="n">fclose</span><span class="p">(</span><span class="n">f</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>改进</strong>：使用 RAII</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 改进代码：自动管理</span>
+<span class="kt">void</span> <span class="nf">read_file</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">FileHandle</span> <span class="n">f</span><span class="p">(</span><span class="n">path</span><span class="p">);</span>  <span class="c1">// 自动打开</span>
+    <span class="c1">// 即使抛出异常，文件也会自动关闭</span>
+    <span class="n">process_file</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+    <span class="c1">// 自动关闭</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="12-资源管理设计模式">12. 资源管理设计模式</h2>
+
+<h3 id="121-raii-模式">12.1 RAII 模式</h3>
+
+<h3 id="122-所有权模式">12.2 所有权模式</h3>
+
+<h2 id="13-性能考虑">13. 性能考虑</h2>
+
+<h3 id="131-智能指针的性能">13.1 智能指针的性能</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 性能对比</span>
+<span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p1</span><span class="p">;</span>  <span class="c1">// 开销：一个指针（8 字节）</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p2</span><span class="p">;</span>  <span class="c1">// 开销：两个指针 + 控制块（约 32 字节）</span>
+
+<span class="c1">// unique_ptr：零开销，与原始指针性能相同</span>
+<span class="c1">// shared_ptr：有引用计数开销，但提供共享所有权</span>
+</code></pre></div></div>
+
+<h3 id="132-资源管理的性能影响">13.2 资源管理的性能影响</h3>
+
+<h2 id="14-最佳实践检查清单">14. 最佳实践检查清单</h2>
+
+<h3 id="141-资源管理检查清单">14.1 资源管理检查清单</h3>
+
+<ol>
+  <li><strong>所有资源都用 RAII 管理</strong></li>
+  <li><strong>使用智能指针而非原始指针</strong></li>
+  <li><strong>避免 new/delete，使用 make_unique/make_shared</strong></li>
+  <li><strong>明确所有权：unique_ptr vs shared_ptr</strong></li>
+  <li><strong>使用标准库容器和流</strong></li>
+  <li><strong>使用 lock_guard 管理锁</strong></li>
+  <li><strong>保证异常安全</strong></li>
+  <li><strong>使用工具检查资源泄漏</strong></li>
+</ol>
+
+<h3 id="142-常见错误与解决方案">14.2 常见错误与解决方案</h3>
+
+<h2 id="15-小结">15. 小结</h2>
+
+<p>资源管理是 C++ 编程的核心，应该始终使用 RAII 和智能指针。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li><strong>RAII 原则</strong>：资源获取即初始化，资源释放即析构</li>
+  <li><strong>智能指针</strong>：使用 unique_ptr 和 shared_ptr 管理内存</li>
+  <li><strong>避免 new/delete</strong>：使用 make_unique 和 make_shared</li>
+  <li><strong>明确所有权</strong>：通过类型系统表达所有权语义</li>
+  <li><strong>标准库容器</strong>：使用 vector、string 等自动管理内存</li>
+  <li><strong>锁管理</strong>：使用 lock_guard 和 unique_lock</li>
+  <li><strong>异常安全</strong>：RAII 保证异常时资源也能释放</li>
+  <li><strong>工具检查</strong>：使用 AddressSanitizer、Valgrind 检查泄漏</li>
+</ul>
+
+<p>遵循这些规范，可以完全避免资源泄漏和内存错误。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

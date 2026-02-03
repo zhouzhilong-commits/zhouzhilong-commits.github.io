@@ -95,24 +95,24 @@ RAII 类的设计遵循特定的模式，让我们通过类图来理解：
 ```mermaid
 classDiagram
     class RAIIWrapper {
-        -Resource* resource_
-        +RAIIWrapper() 获取资源
+        - Resource* resource_
+        + RAIIWrapper()
         +~RAIIWrapper() 释放资源
-        +get() Resource*
-        +release() Resource*
+        + get()
+        + release()
     }
     
     class FileHandle {
-        -FILE* file_
-        +FileHandle(filename, mode)
+        - FILE* file_
+        + FileHandle()
         +~FileHandle()
-        +get() FILE*
-        +close() void
+        + get()
+        + close()
     }
     
     class LockGuard {
-        -Mutex* mutex_
-        +LockGuard(mutex)
+        - Mutex* mutex_
+        + LockGuard()
         +~LockGuard()
     }
     

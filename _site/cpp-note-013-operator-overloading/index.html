@@ -1,0 +1,1232 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>C++ 笔记：运算符重载：自定义类型的行为 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="C++ 笔记：运算符重载：自定义类型的行为">
+
+
+  <link rel="canonical" href="http://localhost:4000/cpp-note-013-operator-overloading/">
+  <meta property="og:url" content="http://localhost:4000/cpp-note-013-operator-overloading/">
+
+
+
+  <meta property="og:description" content="前言">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-11-20T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">C++ 系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-001-raii-resource-management/" class=""><span class="nav__sub-title">C++ 笔记：RAII 与资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" class=""><span class="nav__sub-title">C++ 笔记：移动语义与完美转发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-003-template-metaprogramming/" class=""><span class="nav__sub-title">C++ 笔记：模板元编程基础</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-004-smart-pointers/" class=""><span class="nav__sub-title">C++ 笔记：智能指针：unique_ptr 与 shared_ptr</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-005-lambda-function-objects/" class=""><span class="nav__sub-title">C++ 笔记：Lambda 表达式与函数对象</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-006-exception-safety/" class=""><span class="nav__sub-title">C++ 笔记：异常安全与异常规范</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-007-concurrency-basics/" class=""><span class="nav__sub-title">C++ 笔记：并发编程基础：线程与同步</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-008-stl-containers/" class=""><span class="nav__sub-title">C++ 笔记：STL 容器：选择与性能</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-009-type-deduction/" class=""><span class="nav__sub-title">C++ 笔记：类型推导：auto 与 decltype</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-010-variadic-templates/" class=""><span class="nav__sub-title">C++ 笔记：可变参数模板：参数包展开与折叠表达式</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-011-iterators-algorithms/" class=""><span class="nav__sub-title">C++ 笔记：迭代器与算法：STL 算法库的使用</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-012-polymorphism-virtual/" class=""><span class="nav__sub-title">C++ 笔记：多态与虚函数：运行时类型识别</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-013-operator-overloading/" class="active"><span class="nav__sub-title">C++ 笔记：运算符重载：自定义类型的行为</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-note-014-const-correctness/" class=""><span class="nav__sub-title">C++ 笔记：const 正确性与 mutable：不可变性的设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-001-philosophy-interfaces/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（1）：哲学与接口设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-002-functions-classes/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（2）：函数与类设计</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-003-resource-management/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（3）：资源管理</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-004-expressions-statements/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（4）：表达式与语句</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-005-performance-concurrency/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（5）：性能与并发</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cpp-guidelines-006-templates-error-handling/" class=""><span class="nav__sub-title">C++ Core Guidelines 阅读笔记（6）：模板与错误处理</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="C++ 笔记：运算符重载：自定义类型的行为">
+    <meta itemprop="description" content="前言">
+    <meta itemprop="datePublished" content="November 20, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">C++ 笔记：运算符重载：自定义类型的行为
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  3 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-11-20T00:00:00+08:00">November 20, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <h2 id="前言">前言</h2>
+
+<p>运算符重载允许为自定义类型定义运算符的行为，使代码更直观、更易读。理解运算符重载的规则、最佳实践和常见陷阱，是写出优雅 C++ 代码的关键。本文将从重载规则、实现方式、常见模式等多个维度深入解析运算符重载，帮助读者全面理解这一重要特性。</p>
+
+<h2 id="1-为什么需要运算符重载">1. 为什么需要运算符重载</h2>
+
+<h3 id="11-使代码更直观">1.1 使代码更直观</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 没有运算符重载</span>
+<span class="n">Complex</span> <span class="nf">a</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+<span class="n">Complex</span> <span class="nf">b</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+<span class="n">Complex</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>  <span class="c1">// 不够直观</span>
+
+<span class="c1">// 有运算符重载</span>
+<span class="n">Complex</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>  <span class="c1">// 更直观</span>
+</code></pre></div></div>
+
+<h3 id="12-与标准库类型一致">1.2 与标准库类型一致</h3>
+
+<p>标准库大量使用运算符重载：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">"hello"</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s2</span> <span class="o">=</span> <span class="s">"world"</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s3</span> <span class="o">=</span> <span class="n">s1</span> <span class="o">+</span> <span class="n">s2</span><span class="p">;</span>  <span class="c1">// 运算符重载</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v1</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+<span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">v1</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>  <span class="c1">// 运算符重载</span>
+</code></pre></div></div>
+
+<h2 id="2-可重载的运算符">2. 可重载的运算符</h2>
+
+<h3 id="21-可以重载的运算符">2.1 可以重载的运算符</h3>
+
+<p>大部分运算符可以重载，但以下不能：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">.</code>（成员访问）</li>
+  <li><code class="language-plaintext highlighter-rouge">.*</code>（成员指针访问）</li>
+  <li><code class="language-plaintext highlighter-rouge">::</code>（作用域解析）</li>
+  <li><code class="language-plaintext highlighter-rouge">?:</code>（三元运算符）</li>
+  <li><code class="language-plaintext highlighter-rouge">sizeof</code></li>
+  <li><code class="language-plaintext highlighter-rouge">typeid</code></li>
+</ul>
+
+<h3 id="22-运算符分类">2.2 运算符分类</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 算术运算符</span>
+<span class="o">+</span> <span class="o">-</span> <span class="o">*</span> <span class="o">/</span> <span class="o">%</span> 
+
+<span class="c1">// 关系运算符</span>
+<span class="o">==</span> <span class="o">!=</span> <span class="o">&lt;</span> <span class="o">&gt;</span> <span class="o">&lt;=</span> <span class="o">&gt;=</span>
+
+<span class="c1">// 逻辑运算符</span>
+<span class="o">&amp;&amp;</span> <span class="o">||</span> <span class="o">!</span>
+
+<span class="c1">// 赋值运算符</span>
+<span class="o">=</span> <span class="o">+=</span> <span class="o">-=</span> <span class="o">*=</span> <span class="o">/=</span>
+
+<span class="c1">// 下标运算符</span>
+<span class="p">[]</span>
+
+<span class="c1">// 函数调用运算符</span>
+<span class="p">()</span>
+
+<span class="c1">// 类型转换运算符</span>
+<span class="k">operator</span> <span class="n">Type</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h2 id="3-成员函数-vs-友元函数">3. 成员函数 vs 友元函数</h2>
+
+<h3 id="31-成员函数重载">3.1 成员函数重载</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Complex</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">double</span> <span class="n">real_</span><span class="p">,</span> <span class="n">imag_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">Complex</span><span class="p">(</span><span class="n">real_</span> <span class="o">+</span> <span class="n">other</span><span class="p">.</span><span class="n">real_</span><span class="p">,</span> <span class="n">imag_</span> <span class="o">+</span> <span class="n">other</span><span class="p">.</span><span class="n">imag_</span><span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="n">Complex</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">+=</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">real_</span> <span class="o">+=</span> <span class="n">other</span><span class="p">.</span><span class="n">real_</span><span class="p">;</span>
+        <span class="n">imag_</span> <span class="o">+=</span> <span class="n">other</span><span class="p">.</span><span class="n">imag_</span><span class="p">;</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="32-友元函数重载">3.2 友元函数重载</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Complex</span> <span class="p">{</span>
+    <span class="k">friend</span> <span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+    <span class="k">friend</span> <span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&lt;&lt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">os</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">c</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">Complex</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">real_</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">real_</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">imag_</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">imag_</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&lt;&lt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">os</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">c</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">os</span> <span class="o">&lt;&lt;</span> <span class="n">c</span><span class="p">.</span><span class="n">real_</span> <span class="o">&lt;&lt;</span> <span class="s">"+"</span> <span class="o">&lt;&lt;</span> <span class="n">c</span><span class="p">.</span><span class="n">imag_</span> <span class="o">&lt;&lt;</span> <span class="s">"i"</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">os</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="4-常见运算符重载">4. 常见运算符重载</h2>
+
+<h3 id="41-赋值运算符">4.1 赋值运算符</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MyClass</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="c1">// 拷贝赋值</span>
+    <span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">MyClass</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>
+            <span class="n">size_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">;</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="p">[</span><span class="n">size_</span><span class="p">];</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">,</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">+</span> <span class="n">size_</span><span class="p">,</span> <span class="n">data_</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// 移动赋值（C++11）</span>
+    <span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">delete</span><span class="p">[]</span> <span class="n">data_</span><span class="p">;</span>
+            <span class="n">data_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">data_</span><span class="p">;</span>
+            <span class="n">size_</span> <span class="o">=</span> <span class="n">other</span><span class="p">.</span><span class="n">size_</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">data_</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+            <span class="n">other</span><span class="p">.</span><span class="n">size_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="42-下标运算符">4.2 下标运算符</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Array</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">data_</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">size_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">int</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span><span class="kt">size_t</span> <span class="n">index</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">data_</span><span class="p">[</span><span class="n">index</span><span class="p">];</span>
+    <span class="p">}</span>
+    
+    <span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span><span class="kt">size_t</span> <span class="n">index</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">data_</span><span class="p">[</span><span class="n">index</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="43-函数调用运算符">4.3 函数调用运算符</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Functor</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">int</span> <span class="k">operator</span><span class="p">()(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 使用</span>
+<span class="n">Functor</span> <span class="n">f</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>  <span class="c1">// 调用 operator()</span>
+</code></pre></div></div>
+
+<h3 id="44-类型转换运算符">4.4 类型转换运算符</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Rational</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span> <span class="n">num_</span><span class="p">,</span> <span class="n">den_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="k">operator</span> <span class="kt">double</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">num_</span><span class="p">)</span> <span class="o">/</span> <span class="n">den_</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="k">explicit</span> <span class="k">operator</span> <span class="kt">bool</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>  <span class="c1">// explicit 避免意外转换</span>
+        <span class="k">return</span> <span class="n">num_</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="5-运算符重载规则">5. 运算符重载规则</h2>
+
+<h3 id="51-保持语义一致性">5.1 保持语义一致性</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 好的设计：+ 和 += 语义一致</span>
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+<span class="n">Complex</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">+=</span><span class="p">(</span><span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// 通常实现为：</span>
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Complex</span> <span class="n">result</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="n">result</span> <span class="o">+=</span> <span class="n">b</span><span class="p">;</span>  <span class="c1">// 复用 +=</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="52-返回类型">5.2 返回类型</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 赋值运算符返回引用</span>
+<span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">MyClass</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">);</span>
+
+<span class="c1">// 算术运算符返回新对象</span>
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// 关系运算符返回 bool</span>
+<span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="6-常见陷阱">6. 常见陷阱</h2>
+
+<h3 id="61-自赋值检查">6.1 自赋值检查</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">MyClass</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="o">!=</span> <span class="o">&amp;</span><span class="n">other</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 必须检查</span>
+        <span class="c1">// 赋值逻辑</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="62-const-正确性">6.2 const 正确性</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Array</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">int</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span><span class="kt">size_t</span> <span class="n">index</span><span class="p">);</span>        <span class="c1">// 非 const 版本</span>
+    <span class="k">const</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span><span class="kt">size_t</span> <span class="n">index</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>  <span class="c1">// const 版本</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="63-避免过度重载">6.3 避免过度重载</h3>
+
+<p>不要重载不常用的运算符，保持代码可读性。</p>
+
+<h2 id="7-实际应用">7. 实际应用</h2>
+
+<h3 id="71-智能指针">7.1 智能指针</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">T</span><span class="p">&gt;</span>
+<span class="k">class</span> <span class="nc">SmartPtr</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="n">T</span><span class="o">*</span> <span class="n">ptr_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="n">T</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="o">*</span><span class="n">ptr_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="n">T</span><span class="o">*</span> <span class="k">operator</span><span class="o">-&gt;</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ptr_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">explicit</span> <span class="k">operator</span> <span class="kt">bool</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ptr_</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="72-迭代器">7.2 迭代器</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Iterator</span> <span class="p">{</span>
+<span class="nl">private:</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">ptr_</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">int</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="o">*</span><span class="n">ptr_</span><span class="p">;</span> <span class="p">}</span>
+    <span class="n">Iterator</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">++</span><span class="p">()</span> <span class="p">{</span> <span class="o">++</span><span class="n">ptr_</span><span class="p">;</span> <span class="k">return</span> <span class="o">*</span><span class="k">this</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">bool</span> <span class="k">operator</span><span class="o">!=</span><span class="p">(</span><span class="k">const</span> <span class="n">Iterator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">ptr_</span> <span class="o">!=</span> <span class="n">other</span><span class="p">.</span><span class="n">ptr_</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="8-最佳实践">8. 最佳实践</h2>
+
+<h3 id="81-遵循惯例">8.1 遵循惯例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 算术运算符通常返回新对象</span>
+<span class="n">Complex</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// 复合赋值运算符返回引用</span>
+<span class="n">Complex</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">+=</span><span class="p">(</span><span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// 关系运算符返回 bool</span>
+<span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">Complex</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="82-使用-noexcept">8.2 使用 noexcept</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 移动操作应该标记 noexcept</span>
+<span class="n">MyClass</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">MyClass</span><span class="o">&amp;&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>运算符重载使自定义类型可以像内置类型一样使用，提高代码可读性。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>保持运算符语义一致性</li>
+  <li>正确实现拷贝和移动赋值</li>
+  <li>注意 const 正确性</li>
+  <li>避免过度重载</li>
+  <li>遵循 C++ 惯例</li>
+</ul>
+
+<p>掌握运算符重载，可以设计出更直观、更易用的 C++ 类型。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

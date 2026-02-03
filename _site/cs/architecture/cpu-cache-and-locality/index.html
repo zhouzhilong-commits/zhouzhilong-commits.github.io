@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -610,7 +554,7 @@
 
 
   
-	  3 分钟阅读
+	  6 分钟阅读
 	
 </p>
           
@@ -884,7 +828,167 @@ Cache 的目标是：把“可能马上要用的数据”放在更快的层级�
   </li>
 </ol>
 
-<h2 id="8-设计模式与架构原则">8. 设计模式与架构原则</h2>
+<h3 id="73-cache-访问流程">7.3 Cache 访问流程</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant CPU as CPU
+  participant L1 as L1 Cache
+  participant L2 as L2 Cache
+  participant L3 as L3 Cache
+  participant Mem as Memory
+
+  CPU-&gt;&gt;L1: 访问地址
+  L1-&gt;&gt;L1: 查找 Cache
+  
+  alt L1 Hit
+    L1--&gt;&gt;CPU: 返回数据 (1-3周期)
+  else L1 Miss
+    L1-&gt;&gt;L2: 查找 Cache
+    alt L2 Hit
+      L2--&gt;&gt;L1: 返回数据
+      L1--&gt;&gt;CPU: 返回数据 (10-20周期)
+    else L2 Miss
+      L2-&gt;&gt;L3: 查找 Cache
+      alt L3 Hit
+        L3--&gt;&gt;L2: 返回数据
+        L2--&gt;&gt;L1: 返回数据
+        L1--&gt;&gt;CPU: 返回数据 (40-75周期)
+      else L3 Miss
+        L3-&gt;&gt;Mem: 访问内存
+        Mem--&gt;&gt;L3: 返回数据
+        L3--&gt;&gt;L2: 更新 Cache
+        L2--&gt;&gt;L1: 更新 Cache
+        L1--&gt;&gt;CPU: 返回数据 (100-300周期)
+      end
+    end
+  end
+</code></pre>
+
+<h3 id="74-amat-计算">7.4 AMAT 计算</h3>
+
+<p>平均内存访问时间（AMAT）的计算公式：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>AMAT = Hit Time + Miss Rate × Miss Penalty
+</code></pre></div></div>
+
+<p>对于多级 Cache：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>AMAT = L1 Hit Time + L1 Miss Rate × (L2 Hit Time + L2 Miss Rate × (L3 Hit Time + L3 Miss Rate × Memory Access Time))
+</code></pre></div></div>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[AMAT 计算] --&gt; B[L1 Hit Time]
+  A --&gt; C[L1 Miss Rate]
+  A --&gt; D[Miss Penalty]
+  
+  C --&gt; E[L2 Hit Time]
+  C --&gt; F[L2 Miss Rate]
+  F --&gt; G[L3 Hit Time]
+  F --&gt; H[L3 Miss Rate]
+  H --&gt; I[Memory Access Time]
+  
+  B --&gt; J[总延迟]
+  E --&gt; J
+  G --&gt; J
+  I --&gt; J
+</code></pre>
+
+<h3 id="75-性能优化示例">7.5 性能优化示例</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 优化前：随机访问，Cache 不友好</span>
+<span class="kt">void</span> <span class="nf">process_random</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">data</span><span class="p">,</span> <span class="kt">int</span><span class="o">*</span> <span class="n">indices</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">process</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="n">i</span><span class="p">]]);</span>  <span class="c1">// 随机访问，Cache miss 率高</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 优化后：排序索引，提高局部性</span>
+<span class="kt">void</span> <span class="n">process_optimized</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">data</span><span class="p">,</span> <span class="kt">int</span><span class="o">*</span> <span class="n">indices</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 按索引排序，提高空间局部性</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">indices</span> <span class="o">+</span> <span class="n">n</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">process</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="n">i</span><span class="p">]]);</span>  <span class="c1">// 顺序访问，Cache 友好</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="8-实际性能测试案例">8. 实际性能测试案例</h2>
+
+<h3 id="81-顺序访问-vs-随机访问">8.1 顺序访问 vs 随机访问</h3>
+
+<p>测试不同访问模式对性能的影响：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 顺序访问测试</span>
+<span class="kt">void</span> <span class="nf">test_sequential_access</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sum</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 随机访问测试</span>
+<span class="kt">void</span> <span class="n">test_random_access</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span><span class="o">*</span> <span class="n">indices</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">sum</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>性能对比</strong>（n=1M，数组大小 4MB）：</p>
+<ul>
+  <li>顺序访问：~10ms</li>
+  <li>随机访问：~50ms</li>
+</ul>
+
+<p>差异主要来自 Cache miss 率：</p>
+<ul>
+  <li>顺序访问：Cache miss 率 &lt; 1%</li>
+  <li>随机访问：Cache miss 率 &gt; 50%</li>
+</ul>
+
+<h3 id="82-数据结构选择的影响">8.2 数据结构选择的影响</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[数据结构选择] --&gt; B[数组]
+  A --&gt; C[链表]
+  A --&gt; D[树]
+  
+  B --&gt; E[顺序访问]
+  E --&gt; F[Cache 友好]
+  F --&gt; G[性能好]
+  
+  C --&gt; H[随机访问]
+  H --&gt; I[Cache 不友好]
+  I --&gt; J[性能差]
+  
+  D --&gt; K[部分顺序]
+  K --&gt; L[中等性能]
+</code></pre>
+
+<h3 id="83-false-sharing-性能影响">8.3 False Sharing 性能影响</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 测试 False Sharing 的影响</span>
+<span class="k">struct</span> <span class="nc">Counter</span> <span class="p">{</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">count1</span><span class="p">;</span>  <span class="c1">// 分离到不同 Cache line</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">count2</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">void</span> <span class="n">test_false_sharing</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Counter</span> <span class="n">c</span><span class="p">;</span>
+    <span class="c1">// 两个线程分别写 count1 和 count2</span>
+    <span class="c1">// 如果不在同一 Cache line，性能好</span>
+    <span class="c1">// 如果在同一 Cache line，性能差（Cache line 乒乓）</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>性能影响</strong>：</p>
+<ul>
+  <li>无 False Sharing：吞吐 ~100M ops/s</li>
+  <li>有 False Sharing：吞吐 ~10M ops/s</li>
+</ul>
+
+<h2 id="9-设计模式与架构原则">9. 设计模式与架构原则</h2>
 
 <h3 id="81-设计模式视角">8.1 设计模式视角</h3>
 
@@ -980,12 +1084,42 @@ Cache 的目标是：把“可能马上要用的数据”放在更快的层级�
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

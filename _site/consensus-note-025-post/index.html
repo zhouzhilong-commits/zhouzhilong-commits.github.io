@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：脑裂：什么时候会发生，怎么避免」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="脑裂（split brain）的本质不是“网络断了”，而是：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：脑裂：什么时候会发生，怎么避免">
-    <meta itemprop="description" content="本文围绕「一致性笔记：脑裂：什么时候会发生，怎么避免」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="脑裂（split brain）的本质不是“网络断了”，而是：">
     <meta itemprop="datePublished" content="October 01, 2022">
     
 
@@ -652,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,24 +615,152 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：脑裂：什么时候会发生，怎么避免」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-<p><img src="/images/diagrams/consensus-split-brain.svg" alt="一致性笔记：脑裂：什么时候会发生，怎么避免" /></p>
-<h2 id="1-脑裂是什么同一时刻出现两个主">1. 脑裂是什么：同一时刻出现两个“主”</h2>
-
-<p>常见根因：网络分区 + 错误的主选举/租约边界/仲裁缺失。</p>
-
-<h2 id="2-工程上怎么避免">2. 工程上怎么避免</h2>
+        <p>脑裂（split brain）的本质不是“网络断了”，而是：</p>
 
 <ul>
-  <li>明确仲裁：quorum/多数派/外部仲裁</li>
-  <li>明确 lease 边界与时钟假设</li>
-  <li>降低误判：心跳与超时要结合 RTT 分布</li>
+  <li>同一时刻出现两个都认为自己有写权限的主（leader/primary）</li>
+  <li>并且两边都对外承诺成功</li>
 </ul>
 
-<h2 id="3-观测与排障">3. 观测与排障</h2>
+<p>只要发生这件事，会遇到最难处理的后果：双写、数据分叉、回滚与人工对账。</p>
 
-<p>优先看：选主频率、心跳 RTT 分布、分区事件（丢包/重传/抖动），以及是否出现双写迹象。</p>
+<h2 id="1-脑裂的必要条件双主--双写">1. 脑裂的必要条件：双主 + 双写</h2>
+
+<p>通常需要同时满足：</p>
+
+<ul>
+  <li>网络分区或强抖动（让集群对“谁活着”产生不同判断）</li>
+  <li>仲裁机制缺失或边界不严（两边都能形成“有效主”）</li>
+  <li>写路径允许对外 ack</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  P[Partition or jitter] --&gt; E[Different views]
+  E --&gt; A[Arbitration broken]
+  A --&gt; D[Double leader]
+  D --&gt; W[Double write]
+</code></pre>
+
+<h2 id="2-最常见的成因">2. 最常见的成因</h2>
+
+<h3 id="21-网络分区--超时误判">2.1 网络分区 + 超时误判</h3>
+
+<ul>
+  <li>心跳超时参数小于网络尾延迟</li>
+  <li>follower 误判 leader 不可达</li>
+  <li>触发选主抖动，甚至双主</li>
+</ul>
+
+<h3 id="22-时钟与租约边界不清">2.2 时钟与租约边界不清</h3>
+
+<p>如果使用 lease 来优化读写：</p>
+
+<ul>
+  <li>时钟漂移、GC pause、网络抖动会侵蚀 lease 边界</li>
+  <li>旧 leader 可能在 lease 不确定时仍继续对外写</li>
+</ul>
+
+<h3 id="23-异步复制主备尤其是没有-fencing">2.3 异步复制主备（尤其是没有 fencing）</h3>
+
+<p>主备切换时如果没有明确的 fencing token：</p>
+
+<ul>
+  <li>旧 primary 可能“复活”继续写</li>
+  <li>新 primary 也在写</li>
+</ul>
+
+<h2 id="3-一张图看清楚没有仲裁的双主怎么出现">3. 一张图看清楚：没有仲裁的双主怎么出现</h2>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant A as NodeA
+  participant B as NodeB
+  participant C as NodeC
+
+  Note over A,C: Partition: A isolated from B,C
+
+  A-&gt;&gt;A: elect self as leader
+  B-&gt;&gt;B: elect self as leader (with C)
+
+  Note over A: accepts writes
+  Note over B: accepts writes
+</code></pre>
+
+<p>只要两边都能对外 ack，脑裂就不再是“可能”，而是“迟早”。</p>
+
+<h2 id="4-怎么避免仲裁quorum-fencing隔离">4. 怎么避免：仲裁（quorum）+ fencing（隔离）</h2>
+
+<h3 id="41-用多数派仲裁让双主不可能同时合法">4.1 用多数派仲裁：让双主不可能同时合法</h3>
+
+<ul>
+  <li>N=2f+1</li>
+  <li>leader 必须拿到多数派</li>
+  <li>写必须多数派提交</li>
+</ul>
+
+<p>这样网络分区时，只有一边能拿到多数派，另一边必须停写。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  Q[Quorum] --&gt; S[Single valid leader]
+  S --&gt; W[No double-commit]
+</code></pre>
+
+<h3 id="42-用-fencing-token让旧主即使还活着也写不进去">4.2 用 fencing token：让旧主即使“还活着”也写不进去</h3>
+
+<p>fencing token（也叫 epoch/term/generation）要点：</p>
+
+<ul>
+  <li>每次选主产生一个单调递增 token</li>
+  <li>任何写都必须带 token</li>
+  <li>资源侧（存储/执行器）拒绝旧 token 的写</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant L as Leader
+  participant F as Fencing store
+
+  L-&gt;&gt;F: acquire token t
+  F--&gt;&gt;L: token t
+  L-&gt;&gt;F: write data with token t
+  F--&gt;&gt;L: ok
+
+  Note over L,F: old leader with token t-1
+  L-&gt;&gt;F: write data with token t-1
+  F--&gt;&gt;L: reject
+</code></pre>
+
+<p>在 Raft 里，term 就天然是 fencing token；在主备系统里，通常需要额外实现。</p>
+
+<h2 id="5-工程上怎么降低误判">5. 工程上怎么降低误判</h2>
+
+<ul>
+  <li>选主超时要贴合真实 RTT 分布（看 P99/P999）</li>
+  <li>把 GC/IO 抢占当成网络一样的“不可用来源”</li>
+  <li>对 leader 变更做降噪（避免频繁抖动）</li>
+</ul>
+
+<h2 id="6-观测与排障先找是否存在双写迹象">6. 观测与排障：先找“是否存在双写迹象”</h2>
+
+<p>优先观测：</p>
+
+<ul>
+  <li>leader 变更频率（是否抖动）</li>
+  <li>quorum 确认路径的尾延迟</li>
+  <li>关键资源的 token/term 单调性（是否出现倒退写）</li>
+  <li>下游是否检测到重复写/冲突写（幂等键、版本冲突）</li>
+</ul>
+
+<p>排障顺序：</p>
+
+<ol>
+  <li>确认是否真的双主双写（日志/term/token）</li>
+  <li>定位触发源：网络分区、长 GC、磁盘抖动、超时误判</li>
+  <li>修仲裁边界：多数派/选主规则/提交点</li>
+  <li>补 fencing：让旧主写不进去</li>
+</ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>脑裂不是“网络不可靠”的锅，而是“仲裁与隔离边界不严”的必然结果。用多数派保证唯一合法主，用 fencing token 保证旧主写不进去，才能把脑裂从系统里移除。</p>
 
         
       </section>
@@ -730,12 +802,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

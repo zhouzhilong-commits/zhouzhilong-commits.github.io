@@ -36,7 +36,7 @@ redirect_from:
 - **工作集（working set）**：真正“频繁被读”的数据集合（不等于总数据量）。
 - **驱逐（eviction）**：cache 装不下工作集时就会频繁淘汰，导致“抖”。
 
-> 经验：你追求的通常不是最高平均命中率，而是**稳定的 data block 命中**（尤其热点表/热点 key-range）。
+> 经验：追求的通常不是最高平均命中率，而是**稳定的 data block 命中**（尤其热点表/热点 key-range）。
 
 ## 3. 机制拆解：为什么会发生（因果链）
 
@@ -56,7 +56,7 @@ redirect_from:
 
 ### 3.1 为什么“命中率不低”但还是慢（最常见的坑）
 
-你需要区分三种命中率：
+需要区分三种命中率：
 
 - **Block cache hit rate（总体）**：可能被 index/filter 撑高
 - **Data block hit rate（关键）**：决定大部分读 IO
@@ -69,7 +69,7 @@ redirect_from:
 把 cache 调大/调小，真正的权衡在这里：
 
 - **Block cache vs MemTable**：cache 太大挤压 memtable，会更频繁 flush/compaction，反而把读写都拖慢。
-- **Cache vs OS page cache**：你同时拥有文件系统 page cache；两者叠加可能浪费内存，也可能互补（取决于压缩/读形态）。
+- **Cache vs OS page cache**：同时拥有文件系统 page cache；两者叠加可能浪费内存，也可能互补（取决于压缩/读形态）。
 - **范围扫描污染**：scan 很容易把热点挤出 cache，需要隔离（例如 scan 不进 cache / scan 专用策略）。
 - **压缩与 CPU**：cache 命中能省解压；但如果 CPU 已经满，miss 会更致命。
 
@@ -92,5 +92,5 @@ Block Cache 的核心不是“把 hit rate 调到最高”，而是：
 - 让 **miss 的尾部成本** 可控（减少需要触碰的文件数/层数）
 - 在 **memtable / cache / compaction** 之间做整体预算
 
-下一步如果你愿意，我们可以把这篇继续补到“更硬核”的程度：加入 RocksDB 常用统计项（tickers/histograms）的对照表，以及一个按 workload 估算 cache size 的示例（从工作集和 block 大小推算）。
+下一步如果愿意，我们可以把本文继续补到“更硬核”的程度：加入 RocksDB 常用统计项（tickers/histograms）的对照表，以及一个按 workload 估算 cache size 的示例（从工作集和 block 大小推算）。
 

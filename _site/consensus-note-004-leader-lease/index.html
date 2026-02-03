@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：Leader 选举：租约（lease）与心跳」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文是「一致性笔记：Leader 选举：租约（lease）与心跳」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：Leader 选举：租约（lease）与心跳">
-    <meta itemprop="description" content="本文围绕「一致性笔记：Leader 选举：租约（lease）与心跳」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文是「一致性笔记：Leader 选举：租约（lease）与心跳」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
     <meta itemprop="datePublished" content="January 01, 2022">
     
 
@@ -671,7 +615,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：Leader 选举：租约（lease）与心跳」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文是「一致性笔记：Leader 选举：租约（lease）与心跳」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 <p><img src="/images/diagrams/leader-lease-timeline.svg" alt="一致性笔记：Leader 选举：租约（lease）与心跳" /></p>
 <h2 id="1-lease-的直觉">1. lease 的直觉</h2>
@@ -684,7 +628,88 @@
 
 <h2 id="3-排障顺序">3. 排障顺序</h2>
 
-<p>先确认你要的读语义（线性/顺序/最终），再看时钟漂移与 RTT 分布，最后决定是否使用 lease。</p>
+<p>先确认需要的读语义（线性/顺序/最终），再看时钟漂移与 RTT 分布，最后决定是否使用 lease。</p>
+
+<h2 id="4-先把语义讲清楚lease-到底在承诺什么">4. 先把语义讲清楚：lease 到底在“承诺”什么</h2>
+
+<p>lease 常被当作“优化”，但它本质上是一个<strong>安全边界</strong>：你必须先说清楚在 lease 有效期内，leader 对外承诺的是什么。</p>
+
+<p>常见三种读语义（从弱到强）：</p>
+
+<ul>
+  <li><strong>stale read</strong>：允许读旧（只要最终收敛）</li>
+  <li><strong>sequential read</strong>：单客户端看起来有序</li>
+  <li><strong>linearizable read</strong>：像单机一样，符合真实时间先后</li>
+</ul>
+
+<p>lease 最常见用途是：</p>
+
+<ul>
+  <li>在一段时间内，leader 能在不与多数派交互的情况下回答读（降低读延迟）</li>
+</ul>
+
+<p>但要达到 linearizable read，lease 需要更严格条件。</p>
+
+<h2 id="5-lease-的两类实现基于时钟-vs-基于消息确认">5. lease 的两类实现：基于时钟 vs 基于消息确认</h2>
+
+<h3 id="51-基于时钟的-leaseclock-based">5.1 基于时钟的 lease（clock-based）</h3>
+
+<p>leader 在拿到多数派确认后，认为自己在未来 <code class="language-plaintext highlighter-rouge">T</code> 时间内仍然是 leader。</p>
+
+<p>风险来自：</p>
+
+<ul>
+  <li><strong>时钟漂移</strong>：不同节点的物理时间不一致</li>
+  <li><strong>网络延迟尾部</strong>：多数派确认的 RTT 分布有长尾</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Clock-based lease] --&gt; B[Need bounded clock drift]
+  A --&gt; C[Need bounded RTT tail]
+  A --&gt; D[Otherwise split-brain risk]
+</code></pre>
+
+<h3 id="52-基于消息确认的-leasequorum-confirmed--readindex">5.2 基于消息确认的 lease（quorum-confirmed / ReadIndex）</h3>
+
+<p>更稳的方式是：</p>
+
+<ul>
+  <li>每次线性一致读前，让 leader 与多数派确认“我仍是 leader”（例如 ReadIndex/心跳确认）</li>
+</ul>
+
+<p>这会增加一次 RTT，但避免把安全性押在时钟上。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant L as Leader
+  participant Q as Quorum
+
+  C-&gt;&gt;L: read
+  L-&gt;&gt;Q: confirm leadership (heartbeat/ReadIndex)
+  Q--&gt;&gt;L: ok
+  L--&gt;&gt;C: return
+</code></pre>
+
+<h2 id="6-lease-的工程误区最容易踩的-3-个坑">6. lease 的工程误区：最容易踩的 3 个坑</h2>
+
+<ol>
+  <li><strong>把 lease 当成强一致的万能加速器</strong>：实际上你必须明确读语义，不然会“读到旧但你以为是新的”。</li>
+  <li><strong>忽略时钟漂移监控</strong>：clock-based lease 没有 drift 指标基本等于盲飞。</li>
+  <li><strong>忽略网络尾延迟</strong>：P99/P999 的 RTT 会直接侵蚀 lease 的安全边界。</li>
+</ol>
+
+<h2 id="7-可观测信号需要监控什么">7. 可观测信号：需要监控什么</h2>
+
+<ul>
+  <li><strong>clock drift</strong>：NTP/PTP 偏差、最大偏差上界</li>
+  <li><strong>RTT 分布</strong>：leader ↔ followers 的 P50/P95/P99</li>
+  <li><strong>leader 变更频率</strong>：频繁选主会让 lease 失去意义</li>
+  <li><strong>读路径模式</strong>：leader read / follower read / ReadIndex 的占比</li>
+</ul>
+
+<h2 id="8-总结">8. 总结</h2>
+
+<p>lease 不是“省一次共识”的小技巧，而是“把安全边界建立在时钟与网络可控性之上”的系统设计。先定义语义，再决定是否用它。</p>
 
         
       </section>
@@ -726,12 +751,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

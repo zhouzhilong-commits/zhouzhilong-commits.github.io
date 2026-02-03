@@ -9,7 +9,7 @@ redirect_from:
   - /rocksdb-note-072-bloom-ribbon-filter/
 ---
 
-本文围绕「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」做一次**工程化**的梳理：先定义语义/模型，再给出可观测信号与排障顺序。
+本文是「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。
 
 ![RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本](/images/diagrams/bloom-filter-sizing.svg)
 ## 1. 先把问题说清楚：Bloom/Ribbon 优化的是“负查”（negative lookup）
@@ -26,7 +26,7 @@ Bloom/Ribbon 的工程语义就是：
 
 ## 2. 三个关键量：bpk、假阳性、负查占比
 
-### 2.1 bits-per-key（bpk）：你愿意用多少空间换少跑腿
+### 2.1 bits-per-key（bpk）：愿意用多少空间换少跑腿
 
 bpk 越高：
 
@@ -71,14 +71,14 @@ Bloom 往往非常值钱。反之负查占比很低时，收益会更依赖整�
 2. **看 filter 命中是否有效**：负查时能否快速排除大部分 SST
 3. **看白跑 IO 是否下降**：cache miss 下的无效读盘是否减少
 
-## 5. 常见坑：为什么我开了 Bloom 还是慢
+## 5. 常见问题：为什么我开了 Bloom 还是慢
 
 1. **负查占比不高**：收益自然有限
 2. **cache miss 太多**：假阳性会更贵；甚至 filter 自己也不够热
 3. **结构性读放大太大**：文件数/层级太多，filter 也在为“查太多文件”付费
 4. **写入高峰期波动**：flush/compaction 重建与欠账会让读路径抖动
 
-## 6. 最小排障顺序
+## 6. 排障顺序
 
 1. **先看负查占比**：不存在 key 的比例是多少？
 2. **看 filter 是否“在内存里且有效”**：能否把 SST 直接排除？

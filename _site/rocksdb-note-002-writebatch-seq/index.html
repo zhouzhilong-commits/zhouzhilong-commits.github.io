@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,17 +582,17 @@
 
 <p><img src="/images/diagrams/rocksdb-writebatch-seq-atomicity.svg" alt="WriteBatch 与 seq：原子批次、可见性与确认点" /></p>
 
-<h2 id="1-你为什么会关心-writebatch--seq">1. 你为什么会关心 WriteBatch / seq</h2>
+<h2 id="1-为什么需要关注-writebatch--seq">1. 为什么需要关注 WriteBatch / seq</h2>
 
 <p>线上常见触发点：</p>
 
 <ul>
-  <li><strong>你想要“要么全写入、要么全不写入”</strong>：例如写一条主记录 + 两个索引更新；或者 Put 新值同时 Delete 旧 key。</li>
-  <li><strong>你遇到“读到了半套数据”</strong>：多 key 更新没有原子边界，读端在更新中间切入。</li>
-  <li><strong>你在 debug“乱序/覆盖”</strong>：同一个 key 连续写，多线程并发下到底谁赢？读到的是哪次写？</li>
+  <li><strong>需要“要么全写入、要么全不写入”</strong>：例如写一条主记录 + 两个索引更新；或者 Put 新值同时 Delete 旧 key。</li>
+  <li><strong>遇到“读到了半套数据”</strong>：多 key 更新没有原子边界，读端在更新中间切入。</li>
+  <li><strong>在调试“乱序/覆盖”</strong>：同一个 key 连续写，多线程并发下到底谁赢？读到的是哪次写？</li>
 </ul>
 
-<p>一句话：<strong>WriteBatch 提供“原子边界”，seq 提供“全局顺序”</strong>（以 DB 为单位）。</p>
+<p>核心要点：<strong>WriteBatch 提供“原子边界”，seq 提供“全局顺序”</strong>（以 DB 为单位）。</p>
 
 <h2 id="2-核心模型用-4-个概念把写入讲清楚">2. 核心模型：用 4 个概念把写入讲清楚</h2>
 
@@ -661,7 +605,7 @@
 
 <h2 id="3-机制拆解一次-writebatch-到底发生了什么高层">3. 机制拆解：一次 WriteBatch 到底发生了什么（高层）</h2>
 
-<p>你可以把它当成下面这个最短闭环：</p>
+<p>可以将它当成下面这个最短闭环：</p>
 
 <ol>
   <li><strong>给 batch 分配一个起始 seq</strong>（比如 <code class="language-plaintext highlighter-rouge">seq = S</code>）。</li>
@@ -684,7 +628,7 @@
   <p>注意：不同读 API（是否使用 snapshot）会影响你能得到的语义；不要把“单 key 读到新值”误当成“多 key 原子可见”。</p>
 </blockquote>
 
-<h2 id="4-你会在系统里看到的现象可观测信号">4. 你会在系统里看到的现象（可观测信号）</h2>
+<h2 id="4-会在系统里看到的现象可观测信号">4. 会在系统里看到的现象（可观测信号）</h2>
 
 <p>当 write path 出问题时，WriteBatch/seq 往往体现在这些地方：</p>
 
@@ -697,7 +641,7 @@
 <h2 id="5-工程建议怎么用好-writebatch">5. 工程建议：怎么用好 WriteBatch</h2>
 
 <ul>
-  <li><strong>把“逻辑事务”做成 batch</strong>：主记录 + 索引更新尽量同批（否则你要自己处理崩溃恢复/补偿）。</li>
+  <li><strong>把“逻辑事务”做成 batch</strong>：主记录 + 索引更新尽量同批（否则需要自己处理崩溃恢复/补偿）。</li>
   <li><strong>不要为了吞吐盲目变大</strong>：batch 过大可能拉高 P99（尤其当你开启 sync 或磁盘抖动时）。</li>
   <li><strong>明确一致性目标</strong>：
     <ul>
@@ -764,12 +708,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -698,44 +642,44 @@
 <pre><code class="language-mermaid">classDiagram
     class ITabletFactory {
         &lt;&lt;interface&gt;&gt;
-        +CreateTabletWriter(Schema) TabletWriter
-        +CreateTabletReader(Schema) TabletReader
-        +CreateMemSegment(SegmentMeta) MemSegment
-        +CreateDiskSegment(SegmentMeta) DiskSegment
+        + CreateTabletWriter()
+        + CreateTabletReader()
+        + CreateMemSegment()
+        + CreateDiskSegment()
     }
     
     class NormalTableFactory {
-        +CreateTabletWriter(Schema) NormalTabletWriter
-        +CreateTabletReader(Schema) NormalTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KVTableFactory {
-        +CreateTabletWriter(Schema) KVTabletWriter
-        +CreateTabletReader(Schema) KVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KKVTableFactory {
-        +CreateTabletWriter(Schema) KKVTabletWriter
-        +CreateTabletReader(Schema) KKVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        +Search(jsonQuery) Status
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        + Search()
     }
     
     class KVTabletReader {
-        -KVIndexReader _kvIndexReader
-        -PackAttributeFormatter _formatter
-        +Search(jsonQuery) Status
+        - KVIndexReader _kvIndexReader
+        - PackAttributeFormatter _formatter
+        + Search()
     }
     
     class KKVTabletReader {
-        -KKVReader _kkvReader
-        -KKVIterator _iterator
-        +Search(jsonQuery) Status
+        - KKVReader _kkvReader
+        - KKVIterator _iterator
+        + Search()
     }
     
     ITabletFactory &lt;|-- NormalTableFactory : 实现
@@ -806,29 +750,29 @@
 
 <pre><code class="language-mermaid">classDiagram
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        -SummaryReader _summaryReader
-        -DeletionMapReader _deletionMapReader
-        +Search(jsonQuery) Status
-        +GetMultiFieldIndexReader() MultiFieldIndexReader
-        +GetAttributeReader(attrName) AttributeReader
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        - SummaryReader _summaryReader
+        - DeletionMapReader _deletionMapReader
+        + Search()
+        + GetMultiFieldIndexReader()
+        + GetAttributeReader()
     }
     
     class MultiFieldIndexReader {
-        -map~string, InvertedIndexReader~ _indexReaders
-        +Search(Query) QueryResult
+        - map_string_InvertedIndexReader _indexReaders
+        + Search()
     }
     
     class AttributeReader {
-        -map~string, AttributeIndexReader~ _readers
-        +ReadAttribute(docId, attrName) AttributeValue
+        - map_string_AttributeIndexReader _readers
+        + ReadAttribute()
     }
     
     class PrimaryKeyReader {
-        -PrimaryKeyIndexReader _reader
-        +Lookup(pk) DocId
+        - PrimaryKeyIndexReader _reader
+        + Lookup()
     }
     
     NormalTabletReader --&gt; MultiFieldIndexReader : 包含
@@ -1443,12 +1387,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

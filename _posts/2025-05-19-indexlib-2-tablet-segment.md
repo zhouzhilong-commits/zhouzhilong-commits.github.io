@@ -16,44 +16,44 @@ Tablet 和 Segment 的组织关系是 IndexLib 索引机制的核心。让我们
 ```mermaid
 classDiagram
     class Tablet {
-        -TabletData _tabletData
-        -TabletSchema _schema
-        -TabletOptions _options
-        +Open() Status
-        +Build() Status
-        +Flush() Status
-        +GetTabletReader() TabletReader
+        - TabletData _tabletData
+        - TabletSchema _schema
+        - TabletOptions _options
+        + Open()
+        + Build()
+        + Flush()
+        + GetTabletReader()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
-        +CreateSlice(SegmentStatus) Slice
-        +GetSegment(segmentid_t) SegmentPtr
-        +GetSegmentWithBaseDocid(segmentid_t) pair
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
+        + CreateSlice()
+        + GetSegment()
+        + GetSegmentWithBaseDocid()
     }
     
     class Segment {
         <<abstract>>
-        #segmentid_t _segmentId
-        #SegmentStatus _status
-        +GetSegmentId() segmentid_t
-        +GetDocCount() uint64_t
-        +GetIndexer(type, name) IIndexer
+        # segmentid_t _segmentId
+        # SegmentStatus _status
+        + GetSegmentId()
+        + GetDocCount()
+        + GetIndexer()
     }
     
     class MemSegment {
-        -map~string, IIndexer~ _indexers
-        +Build(IDocumentBatch) Status
-        +NeedDump() bool
-        +CreateSegmentDumpItems() vector~DumpItem~
+        - map_string_IIndexer _indexers
+        + Build()
+        + NeedDump()
+        + CreateSegmentDumpItems()
     }
     
     class DiskSegment {
-        -map~string, IIndexer~ _indexers
-        +Open(MemoryQuotaController, OpenMode) Status
-        +GetIndexer(type, name) IIndexer
+        - map_string_IIndexer _indexers
+        + Open()
+        + GetIndexer()
     }
     
     Tablet --> TabletData : 管理
@@ -180,32 +180,32 @@ SegmentMeta 是 Segment 的元数据容器，包含了 Segment 的所有元信�
 ```mermaid
 classDiagram
     class SegmentMeta {
-        +segmentid_t segmentId
-        +Directory segmentDir
-        +SegmentInfo segmentInfo
-        +SegmentMetrics segmentMetrics
-        +ITabletSchema schema
-        +string lifecycle
+        + segmentid_t segmentId
+        + Directory segmentDir
+        + SegmentInfo segmentInfo
+        + SegmentMetrics segmentMetrics
+        + ITabletSchema schema
+        + string lifecycle
     }
     
     class SegmentInfo {
-        +uint64_t docCount
-        +int64_t timestamp
-        +schemaid_t schemaId
-        +Locator locator
-        +uint32_t shardId
-        +bool mergedSegment
+        + uint64_t docCount
+        + int64_t timestamp
+        + schemaid_t schemaId
+        + Locator locator
+        + uint32_t shardId
+        + bool mergedSegment
     }
     
     class Directory {
-        +CreateFileReader(path) FileReader
-        +CreateFileWriter(path) FileWriter
-        +ListDir() vector~string~
+        + CreateFileReader()
+        + CreateFileWriter()
+        + ListDir()
     }
     
     class SegmentMetrics {
-        +map~string, double~ metrics
-        +GetMetric(name) double
+        + map_string_double metrics
+        + GetMetric()
     }
     
     SegmentMeta --> SegmentInfo : 包含
@@ -289,7 +289,7 @@ graph TD
     H[查询请求] --> I[GlobalDocId]
     I --> J[定位Segment]
     J --> K[计算BaseDocId]
-    K --> L[LocalDocId = GlobalDocId - BaseDocId]
+    K --> L["LocalDocId equals GlobalDocId minus BaseDocId"]
     L --> M[在Segment内查询]
     
     style A fill:#e3f2fd

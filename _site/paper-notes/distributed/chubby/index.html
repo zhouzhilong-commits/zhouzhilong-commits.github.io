@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems">
+  <meta property="og:description" content="  论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems（Burrows, OSDI 2006）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">分布式系统论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,104 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="Chubby：A Lock Service（论文笔记）">
-    <meta itemprop="description" content="  论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems">
+    <meta itemprop="description" content="  论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems（Burrows, OSDI 2006）">
     <meta itemprop="datePublished" content="January 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  3 分钟阅读
 	
 </p>
           
@@ -574,51 +616,396 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems</p>
+  <p>论文：The Chubby Lock Service for Loosely-Coupled Distributed Systems（Burrows, OSDI 2006）</p>
 </blockquote>
 
-<h2 id="1-chubby-解决什么">1. Chubby 解决什么</h2>
-
-<p>在大规模分布式系统里，很多组件需要“少量强一致的协调状态”：</p>
+<p>Chubby 是 Google 内部的 <strong>强一致协调服务</strong>：提供分布式锁（lock）与小规模元数据存储（类似一个小型、强一致的文件系统 + watch）。它的定位非常明确：</p>
 
 <ul>
-  <li>主从选主</li>
-  <li>配置与成员管理</li>
-  <li>分布式锁（小规模、低频）</li>
+  <li>承载 <strong>少量、强一致</strong> 的协调状态（选主、配置、服务发现、分布式互斥等）</li>
+  <li>不承担大规模 KV / 元数据的全部（避免把大数据一致性化）</li>
 </ul>
 
-<p>Chubby 就是为这些需求提供一个 <strong>强一致的锁与小数据存储服务</strong>。</p>
-
-<h2 id="2-关键思想少量可靠强一致">2. 关键思想：少量、可靠、强一致</h2>
-
-<p>Chubby 的定位非常明确：</p>
+<p>这篇论文最值钱的不是“它用 Paxos”，而是把一个协调服务必须回答的工程问题讲清楚：</p>
 
 <ul>
-  <li>数据量小</li>
-  <li>强一致（背后依赖复制一致性协议）</li>
-  <li>面向协调场景，而不是作为大规模 KV/元数据存储的全部</li>
+  <li>session/lease 的语义与失效边界</li>
+  <li>client cache 与一致性（watch）怎么做</li>
+  <li>失败检测与误判怎么处理</li>
 </ul>
 
-<h2 id="3-为什么它经典">3. 为什么它经典</h2>
+<h2 id="1-chubby-解决什么把强一致的小状态抽出来">1. Chubby 解决什么：把“强一致的小状态”抽出来</h2>
 
-<p>它把一个很重要的工程模式讲得很清楚：</p>
+<p>在大规模系统里，大多数数据不需要强一致，但<strong>协调状态</strong>往往需要：</p>
+
+<ul>
+  <li>主从选主（谁是 leader）</li>
+  <li>配置发布（谁拿到最新配置）</li>
+  <li>成员管理（当前集群成员是谁）</li>
+  <li>分布式互斥（避免两个 writer 同时干活）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[大规模系统状态] --&gt; B[数据面: 大数据]
+  A --&gt; C[控制面: 小状态]
+
+  B --&gt; B1[吞吐优先]
+  B --&gt; B2[可分区/可最终一致]
+
+  C --&gt; C1[强一致优先]
+  C --&gt; C2[少量数据]
+  C --&gt; C3[协调/选主/配置]
+
+  C1 --&gt; D[Chubby]
+</code></pre>
+
+<p><strong>设计原则</strong>：把强一致的范围控制在“小状态”上，让系统整体可扩展。</p>
+
+<h2 id="2-对外抽象锁--小型文件系统--watch">2. 对外抽象：锁 + 小型文件系统 + watch</h2>
+
+<p>Chubby 暴露给客户端的是一个类似文件系统的命名空间（directories/files），以及对这些 node 的：</p>
+
+<ul>
+  <li><strong>锁</strong>（shared/exclusive）</li>
+  <li><strong>读写小文件</strong>（几 KB 量级）</li>
+  <li><strong>watch/notification</strong>（变化通知）</li>
+</ul>
+
+<h3 id="21-为什么用文件系统抽象">2.1 为什么用“文件系统抽象”</h3>
+
+<p>工程动机：</p>
+
+<ul>
+  <li>很多协调状态天然是“命名的”：<code class="language-plaintext highlighter-rouge">/service/foo/leader</code>、<code class="language-plaintext highlighter-rouge">/config/bar</code></li>
+  <li>文件/目录层级让权限管理与组织更自然</li>
+  <li>“读写小文件 + watch”可以覆盖大量场景（比仅锁更通用）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  FS[namespace] --&gt; D1[/]
+  D1 --&gt; D2[/ls]
+  D1 --&gt; D3[/config]
+  D1 --&gt; D4[/service]
+
+  D4 --&gt; S1[/service/foo]
+  S1 --&gt; L[/service/foo/leader]
+  S1 --&gt; M[/service/foo/members]
+</code></pre>
+
+<h3 id="22-常见用法选主leader-election">2.2 常见用法：选主（leader election）</h3>
+
+<p>典型模式：</p>
+
+<ul>
+  <li>所有候选者尝试获取同一把 <strong>exclusive lock</strong></li>
+  <li>获取成功者成为 leader</li>
+  <li>其他候选者 watch 锁或 leader 文件，等待变化</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant A as Candidate A
+  participant B as Candidate B
+  participant C as Chubby
+
+  A-&gt;&gt;C: AcquireExclusive(/service/foo/lock)
+  C--&gt;&gt;A: OK (A is leader)
+
+  B-&gt;&gt;C: AcquireExclusive(/service/foo/lock)
+  C--&gt;&gt;B: FAIL (locked)
+  B-&gt;&gt;C: Watch(/service/foo/lock)
+
+  Note over A,C: A crash / session expires
+  C--&gt;&gt;B: Notify(lock released)
+  B-&gt;&gt;C: AcquireExclusive(/service/foo/lock)
+  C--&gt;&gt;B: OK (B becomes leader)
+</code></pre>
+
+<h2 id="3-最核心的语义session--lease">3. 最核心的语义：session + lease</h2>
+
+<h3 id="31-session-是什么">3.1 session 是什么</h3>
+
+<p>Chubby client 与 service 建立一个 <strong>session</strong>，session 是 Chubby 语义边界的关键：</p>
+
+<ul>
+  <li>锁的持有与文件句柄有效性绑定到 session</li>
+  <li>当 session 失效，系统会释放该 session 持有的锁</li>
+</ul>
+
+<h3 id="32-lease-是什么">3.2 lease 是什么</h3>
+
+<p>Chubby 的 session 使用 <strong>lease</strong> 机制：</p>
+
+<ul>
+  <li>server 给 client 一个有效期 <code class="language-plaintext highlighter-rouge">T</code> 的 lease</li>
+  <li>client 需要在 lease 到期前续约</li>
+  <li>如果续约失败并超时，server 认为 client 已失效，释放其锁</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  C[Client] --&gt;|keepalive| S[Chubby server]
+  S --&gt;|grant lease T| C
+
+  C --&gt;|renew before expiry| S
+  S --&gt;|renew ok| C
+
+  C -. network partition .- S
+  S --&gt;|lease expires| R[Release locks]
+</code></pre>
+
+<h3 id="33-误判false-positive与安全边界">3.3 误判（false positive）与安全边界</h3>
+
+<p>工程现实：网络抖动会导致 client 短暂无法续约。</p>
+
+<p>Chubby 的策略是：</p>
+
+<ul>
+  <li>在 lease 失效后，server 才释放锁 → <strong>安全性优先</strong></li>
+  <li>client 一旦发现 lease 续约失败/不确定，必须进入 <strong>panic / stop serving</strong> 状态，避免“以为自己还是 leader”</li>
+</ul>
+
+<p>这就是协调服务最重要的一条：</p>
 
 <blockquote>
-  <p>“强一致的小状态”用专门服务托管，“大数据”交给吞吐型存储。</p>
+  <p>不能让应用在“不确定是否还持锁”的情况下继续执行。</p>
 </blockquote>
 
-<p>这也是后来 ZooKeeper/etcd 广泛使用的原因之一。</p>
+<h2 id="4-一致性cache--watch-怎么做到好用">4. 一致性：cache + watch 怎么做到“好用”</h2>
 
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
-
-<p>协调服务的难点往往不是 API，而是：</p>
+<p>Chubby 为了性能允许 client 缓存：</p>
 
 <ul>
-  <li>session/lease 的语义</li>
-  <li>client 缓存与 watch</li>
-  <li>故障恢复与误判</li>
+  <li>文件内容（小文件）</li>
+  <li>目录列表</li>
+  <li>lock 状态</li>
 </ul>
 
+<p>为了让缓存仍然“看起来一致”，Chubby 提供 <strong>watch/notification</strong>：</p>
+
+<ul>
+  <li>client 可以对某个 node 设置 watch</li>
+  <li>server 在状态变化时通知 client</li>
+  <li>client 收到通知后刷新缓存</li>
+</ul>
+
+<h3 id="41-watch-的工程语义">4.1 watch 的工程语义</h3>
+
+<p>关键点：watch 通知不是“可靠消息队列”，而是<strong>提示（hint）</strong>：</p>
+
+<ul>
+  <li>通知可能合并、丢失、重复</li>
+  <li>client 收到通知后必须 <strong>重新读</strong> 以获得真实状态</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Cl as Client
+  participant Sv as Chubby
+
+  Cl-&gt;&gt;Sv: Read(/config/x) + SetWatch
+  Sv--&gt;&gt;Cl: value=v1
+
+  Note over Sv: config changes
+  Sv--&gt;&gt;Cl: Notify(/config/x changed)
+  Cl-&gt;&gt;Sv: Read(/config/x)
+  Sv--&gt;&gt;Cl: value=v2
+</code></pre>
+
+<h3 id="42-为什么这是正确取舍">4.2 为什么这是正确取舍</h3>
+
+<ul>
+  <li>把“强一致”留给 <strong>读操作本身</strong></li>
+  <li>把“通知”做成轻量提示，提高可用性与性能</li>
+  <li>避免把 watch 变成复杂的可靠投递系统</li>
+</ul>
+
+<h2 id="5-内部实现复制与选主paxos">5. 内部实现：复制与选主（Paxos）</h2>
+
+<p>Chubby 的 server 侧通常是一个小集群（例如 5 个节点），对外表现为一个强一致服务。</p>
+
+<p>论文里 Chubby 使用 <strong>Paxos</strong>（或其工程变体）来实现复制一致性：</p>
+
+<ul>
+  <li>每次状态变更写入 replicated log</li>
+  <li>多数派提交后生效</li>
+  <li>读可以在 leader 上进行，保证线性一致（取决于读路径策略）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  L[Leader] --&gt;|propose| F1[Follower]
+  L --&gt;|propose| F2[Follower]
+  L --&gt;|propose| F3[Follower]
+
+  F1 --&gt;|ack| L
+  F2 --&gt;|ack| L
+
+  L --&gt;|commit| C[Apply to state machine]
+</code></pre>
+
+<p>Chubby 把自己实现成一个“复制状态机”：</p>
+
+<ul>
+  <li>日志是唯一真相（durable + replicated）</li>
+  <li>状态机是日志回放的结果</li>
+</ul>
+
+<h2 id="6-故障模型与恢复">6. 故障模型与恢复</h2>
+
+<h3 id="61-server-故障">6.1 server 故障</h3>
+
+<ul>
+  <li>少数副本故障：多数派仍可服务</li>
+  <li>leader 故障：触发新 leader 选举（Paxos 内部完成）</li>
+</ul>
+
+<h3 id="62-client-故障">6.2 client 故障</h3>
+
+<ul>
+  <li>client crash：session lease 续约停止 → server 释放锁</li>
+  <li>client 网络隔离：同样通过 lease 过期回收锁</li>
+</ul>
+
+<h3 id="63-典型坑gc权限命名">6.3 典型坑：GC/权限/命名</h3>
+
+<p>Chubby 的 namespace 需要：</p>
+
+<ul>
+  <li>ACL（访问控制）</li>
+  <li>资源清理（不再使用的 lock/file）</li>
+</ul>
+
+<p>工程上最好为每个服务规划好路径，并建立自动化清理策略。</p>
+
+<h2 id="7-chubby-vs-zookeeperetcd应当怎么对标">7. Chubby vs ZooKeeper/etcd：应当怎么对标</h2>
+
+<ul>
+  <li><strong>语义相近</strong>：都是“强一致小状态 + watch”</li>
+  <li><strong>核心难点相同</strong>：session/lease、watch 语义、误判处理</li>
+</ul>
+
+<p>区别更多来自 API 抽象与工程实现细节（例如 ZK 的 znode + ephemeral、etcd 的 lease + revision）。</p>
+
+<h2 id="8-读完后的-takeaways">8. 读完后的 takeaways</h2>
+
+<ul>
+  <li>Chubby 最关键的贡献是把“协调服务必须解决的工程语义”讲清楚：<strong>session/lease + cache/watch + failure handling</strong>。</li>
+  <li>watch 是 hint：通知不可靠，但读是强一致的；这让系统能“快且稳”。</li>
+  <li>协调服务不是数据面存储；把强一致范围控制在小状态，是可扩展系统的关键分层。</li>
+</ul>
+
+<h2 id="9-更细的-sessionlease-行为需要应用自我约束">9. 更细的 session/lease 行为：需要“应用自我约束”</h2>
+
+<p>Chubby 的安全性有一半来自协议，另一半来自<strong>应用在不确定时必须停下来</strong>。</p>
+
+<h3 id="91-lease-丢失时应用必须做什么">9.1 lease 丢失时应用必须做什么</h3>
+
+<p>当 client 发现：</p>
+
+<ul>
+  <li>续约失败</li>
+  <li>或者自己无法确认 lease 是否仍有效</li>
+</ul>
+
+<p>正确行为不是“继续工作”，而是：</p>
+
+<ul>
+  <li>进入 fail-stop（停止对外提供 leader 行为）</li>
+  <li>重新建立 session</li>
+  <li>重新竞争锁</li>
+</ul>
+
+<p>这就是避免“脑裂写”的关键。</p>
+
+<h3 id="92-典型反例把-lease-当成心跳">9.2 典型反例：把 lease 当成心跳</h3>
+
+<p>很多系统会把 lease 续约当作心跳。但 lease 语义比心跳更强：</p>
+
+<ul>
+  <li>失去 lease，意味着失去对某些资源的“排他权”</li>
+</ul>
+
+<p>所以一旦 lease 不确定，就必须停止对外宣称“我还是 leader”。</p>
+
+<h2 id="10-watch-的语义边界notification-不是事实">10. watch 的语义边界：notification 不是事实</h2>
+
+<h3 id="101-为什么-watch-必须是-hint">10.1 为什么 watch 必须是 hint</h3>
+
+<p>如果 watch 要做到“可靠投递 + 不丢不重”，系统会复杂很多：</p>
+
+<ul>
+  <li>需要 per-client 的可靠队列</li>
+  <li>需要持久化与重放</li>
+  <li>需要复杂的 backpressure</li>
+</ul>
+
+<p>Chubby 的选择是：</p>
+
+<ul>
+  <li>通知可能丢/合并/重复</li>
+  <li>但读取是强一致的</li>
+</ul>
+
+<p>因此 watch 的正确用法是：</p>
+
+<ul>
+  <li><strong>收到通知 → 重新读</strong></li>
+</ul>
+
+<h3 id="102-典型陷阱只靠通知更新本地状态">10.2 典型陷阱：只靠通知更新本地状态</h3>
+
+<p>如果把通知当成事实，而不 re-read：</p>
+
+<ul>
+  <li>可能错过一次更新</li>
+  <li>可能处理重复通知</li>
+  <li>可能产生错误的缓存状态</li>
+</ul>
+
+<h2 id="11-真实工程模式如何用-chubby-做选主">11. 真实工程模式：如何用 Chubby 做选主</h2>
+
+<p>这里给一个更工程化的 checklist：</p>
+
+<ul>
+  <li><strong>锁路径</strong>：<code class="language-plaintext highlighter-rouge">/service/foo/lock</code></li>
+  <li><strong>leader 信息路径</strong>：<code class="language-plaintext highlighter-rouge">/service/foo/leader</code>（写入 leader 的 address/epoch）</li>
+  <li><strong>成员信息路径</strong>：<code class="language-plaintext highlighter-rouge">/service/foo/members</code>（可选）</li>
+</ul>
+
+<p>leader 的职责：</p>
+
+<ul>
+  <li>持有 exclusive lock</li>
+  <li>定期写入 leader 文件（含 epoch/版本，便于其他组件判断“是不是新 leader”）</li>
+</ul>
+
+<p>follower 的职责：</p>
+
+<ul>
+  <li>watch lock 或 leader 文件</li>
+  <li>收到通知后 re-read 并尝试竞选</li>
+</ul>
+
+<h2 id="12-与-zookeeperetcd-的对照用来校准直觉">12. 与 ZooKeeper/etcd 的对照（用来校准直觉）</h2>
+
+<ul>
+  <li><strong>ephemeral node / lease</strong>：都是把“生存期”绑定到 session</li>
+  <li><strong>watch</strong>：都是 hint + 重新读取</li>
+  <li><strong>一致性协议</strong>：底层都是多数派复制（Paxos/Raft 等）</li>
+</ul>
+
+<p>差别更多是：</p>
+
+<ul>
+  <li>API 抽象</li>
+  <li>性能工程细节</li>
+  <li>对边界条件的处理方式</li>
+</ul>
+
+<h2 id="13-读完后的补充-takeaways">13. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>Chubby 的工程教训是：协调服务的 API 不难，难在语义边界（lease、watch、误判）。</li>
+  <li>任何依赖 Chubby 做选主的系统，都必须实现“失去 lease 立刻自我隔离”的逻辑。</li>
+  <li>watch = hint：永远用强一致读来校准本地状态。</li>
+</ul>
 
         
       </section>
@@ -660,12 +1047,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

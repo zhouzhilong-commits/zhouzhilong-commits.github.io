@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：日志复制：matchIndex 与提交规则」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="这篇把 Raft 实现里两个最常见、也最容易误用的 index 讲清楚：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：日志复制：matchIndex 与提交规则">
-    <meta itemprop="description" content="本文围绕「一致性笔记：日志复制：matchIndex 与提交规则」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="这篇把 Raft 实现里两个最常见、也最容易误用的 index 讲清楚：">
     <meta itemprop="datePublished" content="August 01, 2022">
     
 
@@ -652,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,68 +615,169 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：日志复制：matchIndex 与提交规则」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-<p><img src="/images/diagrams/raft-matchindex-commit.svg" alt="一致性笔记：日志复制：matchIndex 与提交规则" /></p>
-<h2 id="1-两个-index-的直觉一个看复制进度一个看对外承诺">1. 两个 index 的直觉：一个看“复制进度”，一个看“对外承诺”</h2>
+        <p>这篇把 Raft 实现里两个最常见、也最容易误用的 index 讲清楚：</p>
 
 <ul>
-  <li><strong>matchIndex（per follower）</strong>：leader 认为该 follower 已经复制到的最高日志 index。</li>
-  <li><strong>commitIndex（leader 维护）</strong>：已经被“多数派确认”的最高日志 index，可以对外承诺（可被状态机应用）。</li>
+  <li><code class="language-plaintext highlighter-rouge">matchIndex</code>（每个 follower 一份）：leader 认为该 follower 已经复制到的最高日志 index</li>
+  <li><code class="language-plaintext highlighter-rouge">commitIndex</code>（leader 一份）：系统已经可以对外承诺、并可应用到状态机的最高日志 index</li>
 </ul>
 
-<p>一句话：matchIndex 是“每个副本跟到哪”，commitIndex 是“系统能承诺到哪”。</p>
-
-<h2 id="2-为什么提交规则要看多数派安全性来自交集">2. 为什么提交规则要看多数派：安全性来自交集</h2>
-
-<p>当一个日志条目在多数派上复制完成，后续任何多数派一定有交集能“看到它”，因此它不会被未来的 leader 丢掉（在经典 Raft 语义下）。</p>
-
-<p>这也是为什么：</p>
+<p>核心结论：</p>
 
 <ul>
-  <li>写入延迟经常被 <strong>quorum 路径</strong> 的尾延迟主导</li>
-  <li>慢副本如果经常落入多数派路径，会放大 P99</li>
+  <li><code class="language-plaintext highlighter-rouge">matchIndex</code> 反映复制进度</li>
+  <li><code class="language-plaintext highlighter-rouge">commitIndex</code> 反映提交承诺</li>
+  <li><strong>从 matchIndex 推 commitIndex 的规则，决定了“不会回滚已确认写”</strong></li>
 </ul>
 
-<h2 id="3-线上最常见的现象慢副本如何制造长尾">3. 线上最常见的现象：慢副本如何制造长尾</h2>
+<h2 id="1-三个-index-的最小模型nextindex--matchindex--commitindex">1. 三个 index 的最小模型：nextIndex / matchIndex / commitIndex</h2>
 
-<p>你可能会看到：</p>
+<p>leader 通常会为每个 follower 维护：</p>
 
 <ul>
-  <li><strong>commitIndex 推进变慢</strong>：写入等待多数派复制完成。</li>
-  <li><strong>复制 backlog 变大</strong>：某些 follower 的 matchIndex 长期落后。</li>
-  <li><strong>选主抖动</strong>：复制慢 + 心跳超时，可能触发频繁选主（取决于实现与超时参数）。</li>
+  <li><code class="language-plaintext highlighter-rouge">nextIndex[f]</code>：下一次给 follower 发送的起始 index</li>
+  <li><code class="language-plaintext highlighter-rouge">matchIndex[f]</code>：已知 follower 已经匹配到的最高 index</li>
 </ul>
 
-<p>慢副本常见根因：</p>
+<p>leader 自己还有：</p>
 
 <ul>
-  <li>网络 RTT/丢包/重传（尾部抖动）</li>
-  <li>follower 磁盘抖动（fsync、队列化）</li>
-  <li>follower CPU/GC 抢占（压缩、后台任务、邻居噪声）</li>
+  <li><code class="language-plaintext highlighter-rouge">commitIndex</code>：已提交的最高 index</li>
 </ul>
 
-<h2 id="4-你应该观测什么从最有用的开始">4. 你应该观测什么（从最有用的开始）</h2>
+<pre><code class="language-mermaid">flowchart TD
+  L[Leader state] --&gt; N[nextIndex per follower]
+  L --&gt; M[matchIndex per follower]
+  L --&gt; C[commitIndex]
+
+  N --&gt; R1[controls retry position]
+  M --&gt; R2[reflects replication progress]
+  C --&gt; R3[controls apply and client ack]
+</code></pre>
+
+<h2 id="2-matchindex-是怎么来的appendentries-成功后推进">2. matchIndex 是怎么来的：AppendEntries 成功后推进</h2>
+
+<p>当 leader 给 follower 发 AppendEntries：</p>
 
 <ul>
-  <li><strong>per-follower matchIndex/backlog</strong>：谁在拖后腿？拖了多久？</li>
-  <li><strong>append/replicate 延迟分布</strong>：复制链路 P99 是否异常？</li>
-  <li><strong>leader commit latency</strong>：写入从提交到应用的端到端延迟（如果能打点）</li>
-  <li><strong>选主频率与原因</strong>：是否因心跳超时误判？</li>
+  <li>follower 接受并写入日志</li>
+  <li>返回成功</li>
 </ul>
 
-<h2 id="5-最小排障顺序">5. 最小排障顺序</h2>
+<p>leader 就可以更新：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">matchIndex[f] = lastReplicatedIndex</code></li>
+  <li><code class="language-plaintext highlighter-rouge">nextIndex[f] = matchIndex[f] + 1</code></li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant L as Leader
+  participant F as Follower
+
+  L-&gt;&gt;F: AppendEntries with prevIndex and prevTerm
+  F--&gt;&gt;L: Success
+  L-&gt;&gt;L: update matchIndex to lastIndex
+  L-&gt;&gt;L: update nextIndex to lastIndex plus 1
+</code></pre>
+
+<p>失败时（prevIndex/prevTerm 不匹配），leader 通常会回退 <code class="language-plaintext highlighter-rouge">nextIndex</code> 并重试，直到对齐日志前缀。</p>
+
+<h2 id="3-commitindex-怎么算多数派的共同进度">3. commitIndex 怎么算：多数派的“共同进度”</h2>
+
+<p>在多数派提交下，leader 想找到一个 index <code class="language-plaintext highlighter-rouge">i</code>，满足：</p>
+
+<ul>
+  <li>至少有多数派副本的 <code class="language-plaintext highlighter-rouge">matchIndex &gt;= i</code></li>
+</ul>
+
+<p>最直觉的计算方法：</p>
+
+<ul>
+  <li>把所有副本（含 leader 自己）的 matchIndex 收集起来</li>
+  <li>排序</li>
+  <li>取多数派位置的那个值</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Collect matchIndex] --&gt; B[Sort]
+  B --&gt; C[Pick quorum position]
+  C --&gt; D[Candidate commit index]
+</code></pre>
+
+<p>然后 leader 会尝试把 <code class="language-plaintext highlighter-rouge">commitIndex</code> 推到这个候选值，但还需要一个非常关键的安全约束（下一节）。</p>
+
+<h2 id="4-关键提交规则不要凭多数派提交旧-term-的日志">4. 关键提交规则：不要“凭多数派”提交旧 term 的日志</h2>
+
+<p>这是 Raft 实现里非常关键、也经常被忽略的一点：</p>
+
+<ul>
+  <li>leader 推进 commitIndex 时，通常只使用“当前 term 的 entry”作为锚点</li>
+</ul>
+
+<p>原因：</p>
+
+<ul>
+  <li>旧 term 的 entry 可能在一些 failover 组合下出现“多数派复制看似满足，但并不能保证 leader completeness”</li>
+  <li>用当前 term entry 作为锚点，能保证一旦它被多数派复制，leader 的日志前缀具备更强的安全性质</li>
+</ul>
+
+<p>工程上可以看到类似逻辑：</p>
+
+<ul>
+  <li>找到某个 <code class="language-plaintext highlighter-rouge">i</code>，它满足多数派 matchIndex</li>
+  <li>但只有当 <code class="language-plaintext highlighter-rouge">log[i].term == currentTerm</code> 时，才推进 commitIndex 到 i</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  I[candidate i] --&gt; Q[replicated to quorum]
+  Q --&gt; T{"log term equals currentTerm"}
+  T --&gt;|yes| C[advance commitIndex]
+  T --&gt;|no| H[wait for newer entry]
+</code></pre>
+
+<h2 id="5-线上现象为什么慢副本会把提交点拖死">5. 线上现象：为什么“慢副本”会把提交点拖死</h2>
+
+<p>可以看到两类典型指标：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">matchIndex</code> 分布拉开：某些 follower 长期落后</li>
+  <li><code class="language-plaintext highlighter-rouge">commitIndex</code> 推进变慢：写延迟变长</li>
+</ul>
+
+<p>原因很直接：</p>
+
+<ul>
+  <li>多数派提交把提交点绑定在“第 W 个 ack”的路径上</li>
+  <li>如果慢副本经常落入多数派集合，就会放大尾延迟</li>
+</ul>
+
+<h2 id="6-应当观测什么从最有用的开始">6. 应当观测什么（从最有用的开始）</h2>
+
+<ul>
+  <li>per-follower <code class="language-plaintext highlighter-rouge">matchIndex</code> 与 <code class="language-plaintext highlighter-rouge">nextIndex</code>（谁在落后）</li>
+  <li>follower backlog（欠账多少 entry / bytes）</li>
+  <li>AppendEntries 的 RTT 分布（P95/P99）</li>
+  <li>leader commit latency（从 append 到 apply 的端到端延迟，如果可打点）</li>
+  <li>leader 变更频率（频繁选主会进一步拖慢复制）</li>
+</ul>
+
+<h2 id="7-排障顺序">7. 排障顺序</h2>
 
 <ol>
-  <li><strong>先定位慢副本</strong>：按 follower 排序看 matchIndex/backlog（谁最慢，最重要）。</li>
-  <li><strong>再定位慢在哪一段</strong>：网络（RTT/重传）还是磁盘（fsync/队列）还是 CPU（抢占/GC）。</li>
-  <li><strong>看副本布局与多数派路径</strong>：是否经常把慢副本纳入多数派确认路径（跨域/跨 AZ 设计是否合理）。</li>
-  <li><strong>最后才谈限速与参数</strong>：在定位根因前调超时/窗口，往往只会把问题“挪走”。</li>
+  <li>找出落后 follower（matchIndex 最低且持续）</li>
+  <li>看落后原因：网络/磁盘/CPU/快照安装</li>
+  <li>看拓扑：是否跨域导致 RTT 尾部过大</li>
+  <li>再调整参数：超时、批量、窗口、限速</li>
 </ol>
 
-<h2 id="6-小结">6. 小结</h2>
+<h2 id="8-小结">8. 小结</h2>
 
-<p>matchIndex 让你看到“每个副本欠账多少”，commitIndex 决定“系统能承诺多少”。线上长尾优化的抓手通常就是：<strong>找出拖慢多数派确认的那条最慢链路</strong>，把它从“多数派路径”里移走或把它治好。</p>
+<ul>
+  <li>matchIndex 是“每个副本跟到哪”</li>
+  <li>commitIndex 是“系统能承诺到哪”</li>
+  <li>从 matchIndex 推 commitIndex 的规则（尤其“当前 term 锚点”）是安全性的关键</li>
+</ul>
 
         
       </section>
@@ -774,12 +819,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

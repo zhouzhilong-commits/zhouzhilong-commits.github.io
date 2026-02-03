@@ -7,7 +7,7 @@ date: 2021-03-15
 permalink: /kv-storage-1-core-concepts/
 ---
 
-这篇是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。
+本文是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。
 
 ## 1. 什么是KV存储
 

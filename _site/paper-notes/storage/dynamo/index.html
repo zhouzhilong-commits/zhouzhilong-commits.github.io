@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al.）">
+  <meta property="og:description" content="  论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al., SOSP 2007）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">存储论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -535,6 +479,90 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -554,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="Dynamo：Amazon’s Highly Available Key-value Store（论文笔记）">
-    <meta itemprop="description" content="  论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al.）">
+    <meta itemprop="description" content="  论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al., SOSP 2007）">
     <meta itemprop="datePublished" content="February 01, 2022">
     
 
@@ -568,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  8 分钟阅读
 	
 </p>
           
@@ -588,49 +616,783 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al.）</p>
+  <p>论文：Dynamo: Amazon’s Highly Available Key-value Store（DeCandia et al., SOSP 2007）</p>
 </blockquote>
 
-<h2 id="1-dynamo-解决什么问题">1. Dynamo 解决什么问题</h2>
+<p>Dynamo 是 Amazon 开发的高可用键值存储系统，为 Amazon 的电商平台提供存储服务。Dynamo 的设计哲学是优先保证可用性，在 CAP 定理中明确选择可用性（A）和分区容忍性（P），而牺牲强一致性（C）。本文深入解析 Dynamo 的架构设计、核心机制和工程实践。</p>
 
-<p>Dynamo 的核心目标是 <strong>高可用</strong>（availability）：</p>
+<h2 id="1-dynamo-的设计目标与挑战">1. Dynamo 的设计目标与挑战</h2>
 
-<ul>
-  <li>面向电商业务：购物车、会话等</li>
-  <li>更看重“服务不断”而不是强一致</li>
-</ul>
+<h3 id="11-业务需求高可用优先">1.1 业务需求：高可用优先</h3>
 
-<p>因此它的设计选择是：在 CAP 取舍中明显偏向 <strong>A</strong>（以及分区容忍 P）。</p>
+<p>Dynamo 面向 Amazon 的电商业务场景，核心需求是：</p>
 
-<h2 id="2-核心机制一览">2. 核心机制一览</h2>
+<pre><code class="language-mermaid">graph TD
+    A[业务场景] --&gt; B[购物车]
+    A --&gt; C[用户会话]
+    A --&gt; D[商品推荐]
+    A --&gt; E[用户偏好]
+    
+    B --&gt; B1[高可用要求]
+    B1 --&gt; B2[服务不能中断]
+    B2 --&gt; B3[数据丢失可容忍]
+    
+    C --&gt; C1[最终一致性可接受]
+    C1 --&gt; C2[短暂不一致不影响业务]
+    
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+</code></pre>
 
-<p>论文里最经典的一组组合拳：</p>
-
-<ul>
-  <li><strong>一致性哈希（consistent hashing）</strong>：做分片与节点扩缩容</li>
-  <li><strong>多副本</strong>：提高容错</li>
-  <li><strong>Quorum 读写（R/W/N）</strong>：用多数派交集提高一致性概率</li>
-  <li><strong>Vector clock</strong>：解决并发写的版本冲突（保留多个版本，由应用合并）</li>
-  <li><strong>Hinted handoff / Read repair</strong>：在故障与恢复中修复副本一致性</li>
-</ul>
-
-<h2 id="3-最终一致到底意味着什么">3. “最终一致”到底意味着什么</h2>
-
-<p>Dynamo 的关键点不是“放弃一致性”，而是把一致性问题显式化：</p>
-
-<ul>
-  <li>系统允许短时间内不一致</li>
-  <li>冲突会以多版本形式暴露给上层（vector clock）</li>
-  <li>上层用业务逻辑做合并（例如购物车合并）</li>
-</ul>
-
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
+<p><strong>业务特点</strong>：</p>
 
 <ul>
-  <li>很多分布式系统的实用技巧，Dynamo 都给出了工程化范式</li>
-  <li>不同业务对一致性/可用性的要求不同，系统设计必须服务业务目标</li>
+  <li><strong>高可用要求</strong>：电商平台需要 7x24 小时服务，任何中断都会造成巨大损失</li>
+  <li><strong>数据丢失可容忍</strong>：购物车数据丢失可以重建，用户会话可以重新登录</li>
+  <li><strong>最终一致性可接受</strong>：短暂的数据不一致不会影响用户体验</li>
+  <li><strong>读多写少</strong>：大部分操作是读取，写入相对较少</li>
 </ul>
 
+<h3 id="12-cap-定理的选择">1.2 CAP 定理的选择</h3>
+
+<p>Dynamo 在 CAP 定理中明确选择了可用性（A）和分区容忍性（P）：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[CAP定理] --&gt; B[一致性 C]
+    A --&gt; C[可用性 A]
+    A --&gt; D[分区容忍性 P]
+    
+    E[Dynamo的选择] --&gt; F[放弃强一致性]
+    E --&gt; G[优先可用性]
+    E --&gt; H[保证分区容忍]
+    
+    F --&gt; F1[允许短暂不一致]
+    F1 --&gt; F2[通过Vector Clock处理冲突]
+    
+    G --&gt; G1[服务始终可用]
+    G1 --&gt; G2[即使部分节点故障]
+    
+    H --&gt; H1[网络分区时继续服务]
+    H1 --&gt; H2[通过Quorum保证]
+    
+    style E fill:#e3f2fd
+    style F fill:#fff3e0
+    style G fill:#e8f5e9
+    style H fill:#f3e5f5
+</code></pre>
+
+<p><strong>设计权衡</strong>：</p>
+
+<ul>
+  <li><strong>放弃强一致性</strong>：不保证所有副本立即一致，允许短暂的不一致</li>
+  <li><strong>优先可用性</strong>：即使部分节点故障，系统仍然可以提供服务</li>
+  <li><strong>保证分区容忍</strong>：网络分区时，系统可以继续服务，不阻塞</li>
+</ul>
+
+<h3 id="13-系统设计目标">1.3 系统设计目标</h3>
+
+<p>Dynamo 的设计目标包括：</p>
+
+<ol>
+  <li><strong>高可用性</strong>：系统必须始终可用，即使部分节点故障</li>
+  <li><strong>可扩展性</strong>：支持水平扩展，可以动态添加或删除节点</li>
+  <li><strong>最终一致性</strong>：不保证强一致性，但保证最终一致性</li>
+  <li><strong>简单性</strong>：系统设计简单，易于理解和维护</li>
+</ol>
+
+<h2 id="2-核心机制一致性哈希">2. 核心机制：一致性哈希</h2>
+
+<h3 id="21-一致性哈希的原理">2.1 一致性哈希的原理</h3>
+
+<p>一致性哈希是 Dynamo 实现分片和负载均衡的核心机制：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[一致性哈希环] --&gt; B[节点映射到环上]
+    A --&gt; C[数据映射到环上]
+    
+    B --&gt; B1[节点A: 0-100]
+    B --&gt; B2[节点B: 100-200]
+    B --&gt; B3[节点C: 200-300]
+    
+    C --&gt; C1[Key1 → 50 → 节点A]
+    C --&gt; C2[Key2 → 150 → 节点B]
+    C --&gt; C3[Key3 → 250 → 节点C]
+    
+    D[节点加入] --&gt; D1[只影响相邻节点]
+    D1 --&gt; D2[数据迁移最小化]
+    
+    E[节点离开] --&gt; E1[数据迁移到后继节点]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#e8f5e9
+</code></pre>
+
+<p><strong>一致性哈希的优势</strong>：</p>
+
+<ul>
+  <li><strong>负载均衡</strong>：数据均匀分布在环上，负载相对均衡</li>
+  <li><strong>扩展性</strong>：节点加入或离开时，只影响相邻节点，数据迁移量小</li>
+  <li><strong>容错性</strong>：节点故障时，数据自动迁移到后继节点</li>
+</ul>
+
+<h3 id="22-虚拟节点virtual-nodes">2.2 虚拟节点（Virtual Nodes）</h3>
+
+<p>为了进一步提高负载均衡，Dynamo 使用虚拟节点：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[物理节点] --&gt; B[虚拟节点1]
+    A --&gt; C[虚拟节点2]
+    A --&gt; D[虚拟节点3]
+    
+    B --&gt; B1[哈希范围1]
+    C --&gt; C1[哈希范围2]
+    D --&gt; D1[哈希范围3]
+    
+    E[优势] --&gt; E1[更好的负载均衡]
+    E --&gt; E2[更平滑的扩展]
+    E --&gt; E3[更灵活的容量分配]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+</code></pre>
+
+<p><strong>虚拟节点的作用</strong>：</p>
+
+<ul>
+  <li><strong>提高负载均衡</strong>：一个物理节点对应多个虚拟节点，数据分布更均匀</li>
+  <li><strong>平滑扩展</strong>：节点加入或离开时，影响更分散，迁移更平滑</li>
+  <li><strong>灵活容量分配</strong>：可以根据节点容量分配不同数量的虚拟节点</li>
+</ul>
+
+<h3 id="23-数据定位流程">2.3 数据定位流程</h3>
+
+<p>Dynamo 的数据定位流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant Coordinator as Coordinator Node
+    participant Ring as Hash Ring
+    participant Replicas as Replica Nodes
+    
+    Client-&gt;&gt;Ring: Hash(key)
+    Ring--&gt;&gt;Client: Hash value
+    Client-&gt;&gt;Coordinator: 定位协调节点
+    Coordinator-&gt;&gt;Ring: 查找后继节点
+    Ring--&gt;&gt;Coordinator: N个后继节点
+    Coordinator-&gt;&gt;Replicas: 选择副本节点
+    Replicas--&gt;&gt;Coordinator: 副本节点列表
+    Coordinator--&gt;&gt;Client: 返回副本节点
+    
+</code></pre>
+
+<p><strong>定位步骤</strong>：</p>
+
+<ol>
+  <li><strong>计算哈希值</strong>：对 Key 进行哈希，得到哈希值</li>
+  <li><strong>定位协调节点</strong>：在哈希环上找到第一个大于等于哈希值的节点</li>
+  <li><strong>选择副本节点</strong>：从协调节点开始，选择 N 个后继节点作为副本</li>
+  <li><strong>返回节点列表</strong>：返回协调节点和副本节点列表</li>
+</ol>
+
+<h2 id="3-副本策略与-quorum-机制">3. 副本策略与 Quorum 机制</h2>
+
+<h3 id="31-多副本策略">3.1 多副本策略</h3>
+
+<p>Dynamo 使用多副本策略提高容错性：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[数据写入] --&gt; B[协调节点]
+    B --&gt; C[副本节点1]
+    B --&gt; D[副本节点2]
+    B --&gt; E[副本节点3]
+    
+    F[副本数量N] --&gt; F1[通常N=3]
+    F1 --&gt; F2[可配置]
+    
+    G[副本选择] --&gt; G1[从协调节点开始]
+    G1 --&gt; G2[选择N个后继节点]
+    G2 --&gt; G3[避免同一机架]
+    
+    style A fill:#e3f2fd
+    style F fill:#fff3e0
+    style G fill:#e8f5e9
+</code></pre>
+
+<p><strong>副本策略</strong>：</p>
+
+<ul>
+  <li><strong>副本数量</strong>：通常 N=3，可以配置</li>
+  <li><strong>副本选择</strong>：从协调节点开始，选择 N 个后继节点</li>
+  <li><strong>机架感知</strong>：尽量将副本分布在不同机架，提高容错性</li>
+</ul>
+
+<h3 id="32-quorum-读写机制">3.2 Quorum 读写机制</h3>
+
+<p>Dynamo 使用 Quorum 机制平衡一致性和可用性：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Quorum机制] --&gt; B[读操作 R]
+    A --&gt; C[写操作 W]
+    A --&gt; D[副本数量 N]
+    
+    B --&gt; B1[R个节点读取]
+    B1 --&gt; B2[返回最新版本]
+    
+    C --&gt; C1[W个节点写入]
+    C1 --&gt; C2[保证持久性]
+    
+    D --&gt; D1[通常N=3]
+    
+    E[Quorum条件] --&gt; E1[R + W &gt; N]
+    E1 --&gt; E2[保证读写的交集]
+    E2 --&gt; E3[至少一个最新副本]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+</code></pre>
+
+<p><strong>Quorum 规则</strong>：</p>
+
+<ul>
+  <li><strong>R + W &gt; N</strong>：保证读写操作的节点有交集，至少有一个节点同时参与读写</li>
+  <li><strong>R = W = (N+1)/2</strong>：典型的配置，平衡读写性能</li>
+  <li><strong>R = 1, W = N</strong>：写强一致，读弱一致（快速读取）</li>
+  <li><strong>R = N, W = 1</strong>：读强一致，写弱一致（快速写入）</li>
+</ul>
+
+<p><strong>Quorum 的优势</strong>：</p>
+
+<ul>
+  <li><strong>保证一致性</strong>：读写节点有交集，保证能读到最新写入</li>
+  <li><strong>提高可用性</strong>：不需要所有节点都可用，只要满足 Quorum 即可</li>
+  <li><strong>灵活配置</strong>：可以根据业务需求调整 R 和 W</li>
+</ul>
+
+<h3 id="33-读写流程">3.3 读写流程</h3>
+
+<p>Dynamo 的读写流程：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Client
+    participant Coordinator as Coordinator Node
+    participant Replica1 as Replica 1
+    participant Replica2 as Replica 2
+    participant Replica3 as Replica 3
+    
+    Note over Client,Replica3: 写操作流程
+    Client-&gt;&gt;Coordinator: Write(key, value)
+    Coordinator-&gt;&gt;Coordinator: 生成Vector Clock
+    Coordinator-&gt;&gt;Replica1: Write(key, value, vc)
+    Coordinator-&gt;&gt;Replica2: Write(key, value, vc)
+    Coordinator-&gt;&gt;Replica3: Write(key, value, vc)
+    Replica1--&gt;&gt;Coordinator: Success
+    Replica2--&gt;&gt;Coordinator: Success
+    Replica3--&gt;&gt;Coordinator: Success
+    Coordinator--&gt;&gt;Client: Success (W个节点写入成功)
+    
+    Note over Client,Replica3: 读操作流程
+    Client-&gt;&gt;Coordinator: Read(key)
+    Coordinator-&gt;&gt;Replica1: Read(key)
+    Coordinator-&gt;&gt;Replica2: Read(key)
+    Coordinator-&gt;&gt;Replica3: Read(key)
+    Replica1--&gt;&gt;Coordinator: (value1, vc1)
+    Replica2--&gt;&gt;Coordinator: (value2, vc2)
+    Replica3--&gt;&gt;Coordinator: (value3, vc3)
+    Coordinator-&gt;&gt;Coordinator: 合并版本（Vector Clock）
+    Coordinator--&gt;&gt;Client: (values, vector_clock)
+</code></pre>
+
+<p><strong>写操作流程</strong>：</p>
+
+<ol>
+  <li><strong>客户端请求</strong>：客户端向协调节点发送写请求</li>
+  <li><strong>生成版本</strong>：协调节点生成新的 Vector Clock</li>
+  <li><strong>并行写入</strong>：协调节点并行写入 W 个副本节点</li>
+  <li><strong>等待确认</strong>：等待 W 个节点写入成功</li>
+  <li><strong>返回成功</strong>：向客户端返回成功</li>
+</ol>
+
+<p><strong>读操作流程</strong>：</p>
+
+<ol>
+  <li><strong>客户端请求</strong>：客户端向协调节点发送读请求</li>
+  <li><strong>并行读取</strong>：协调节点并行从 R 个副本节点读取</li>
+  <li><strong>收集版本</strong>：收集所有返回的值和 Vector Clock</li>
+  <li><strong>合并版本</strong>：使用 Vector Clock 合并版本，处理冲突</li>
+  <li><strong>返回结果</strong>：返回合并后的值（可能包含多个版本）</li>
+</ol>
+
+<h2 id="4-vector-clock版本冲突处理">4. Vector Clock：版本冲突处理</h2>
+
+<h3 id="41-vector-clock-的原理">4.1 Vector Clock 的原理</h3>
+
+<p>Vector Clock 是 Dynamo 处理并发写入冲突的核心机制：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class VectorClock {
+        + map_NodeID_Timestamp clock
+        + Increment()
+        + Compare()
+        + Merge()
+    }
+    
+    class Version {
+        + VectorClock clock
+        + Value value
+        + IsConcurrent()
+    }
+    
+    VectorClock --&gt; Version : 包含
+    
+</code></pre>
+
+<p><strong>Vector Clock 的结构</strong>：</p>
+
+<ul>
+  <li><strong>节点ID → 时间戳</strong>：每个节点维护一个时间戳，记录该节点最后更新的时间</li>
+  <li><strong>版本比较</strong>：通过比较 Vector Clock 判断版本的先后关系</li>
+  <li><strong>冲突检测</strong>：如果两个版本的 Vector Clock 无法比较，说明存在并发冲突</li>
+</ul>
+
+<h3 id="42-vector-clock-的比较规则">4.2 Vector Clock 的比较规则</h3>
+
+<p>Vector Clock 的比较规则：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Vector Clock比较] --&gt; B[VC1 &lt; VC2]
+    A --&gt; C[VC1 &gt; VC2]
+    A --&gt; D[VC1 || VC2 并发]
+    
+    B --&gt; B1[VC1的所有时间戳 &lt;= VC2]
+    B1 --&gt; B2[且至少一个 &lt;]
+    B2 --&gt; B3[VC2是VC1的后继]
+    
+    C --&gt; C1[VC1的所有时间戳 &gt;= VC2]
+    C1 --&gt; C2[且至少一个 &gt;]
+    C2 --&gt; C3[VC1是VC2的后继]
+    
+    D --&gt; D1[既不是 &lt; 也不是 &gt;]
+    D1 --&gt; D2[存在并发写入]
+    D2 --&gt; D3[需要应用层合并]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+</code></pre>
+
+<p><strong>比较示例</strong>：</p>
+
+<ul>
+  <li><strong>VC1 = {A:1, B:2}，VC2 = {A:1, B:3}</strong>：VC1 &lt; VC2（B 的时间戳更大）</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>VC1 = {A:2, B:1}，VC2 = {A:1, B:2}</strong>：VC1</td>
+          <td> </td>
+          <td>VC2（并发，无法比较）</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><strong>VC1 = {A:1, B:1}，VC2 = {A:1, B:1, C:1}</strong>：VC1 &lt; VC2（VC2 包含更多节点）</li>
+</ul>
+
+<h3 id="43-版本合并与冲突解决">4.3 版本合并与冲突解决</h3>
+
+<p>Dynamo 使用 Vector Clock 进行版本合并：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Coordinator
+    participant Replica1 as Replica 1
+    participant Replica2 as Replica 2
+    participant Replica3 as Replica 3
+    participant Client
+    
+    Coordinator-&gt;&gt;Replica1: Read(key)
+    Coordinator-&gt;&gt;Replica2: Read(key)
+    Coordinator-&gt;&gt;Replica3: Read(key)
+    
+    Replica1--&gt;&gt;Coordinator: (value1, {A:1, B:2})
+    Replica2--&gt;&gt;Coordinator: (value2, {A:2, B:1})
+    Replica3--&gt;&gt;Coordinator: (value3, {A:1, B:2})
+    
+    Coordinator-&gt;&gt;Coordinator: 比较Vector Clock
+    Coordinator-&gt;&gt;Coordinator: value1和value3: {A:1, B:2}相同
+    Coordinator-&gt;&gt;Coordinator: value2: {A:2, B:1}并发
+    
+    Coordinator-&gt;&gt;Coordinator: 合并版本
+    Coordinator--&gt;&gt;Client: ([value1, value2], merged_vc)
+    
+    Note over Client: 应用层处理冲突
+</code></pre>
+
+<p><strong>版本合并策略</strong>：</p>
+
+<ol>
+  <li><strong>确定最新版本</strong>：比较所有 Vector Clock，找出最新的版本</li>
+  <li><strong>检测并发冲突</strong>：如果存在无法比较的版本，说明存在并发冲突</li>
+  <li><strong>保留所有版本</strong>：保留所有并发版本，返回给客户端</li>
+  <li><strong>应用层合并</strong>：由应用层根据业务逻辑合并冲突版本</li>
+</ol>
+
+<p><strong>冲突解决</strong>：</p>
+
+<ul>
+  <li><strong>系统层</strong>：Dynamo 只负责检测和保留冲突版本，不自动解决冲突</li>
+  <li><strong>应用层</strong>：应用层根据业务逻辑决定如何合并冲突（如购物车合并、最后写入获胜等）</li>
+</ul>
+
+<h2 id="5-故障处理机制">5. 故障处理机制</h2>
+
+<h3 id="51-hinted-handoff">5.1 Hinted Handoff</h3>
+
+<p>Hinted Handoff 是 Dynamo 处理临时故障的机制：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Coordinator
+    participant Replica1 as Replica 1 (正常)
+    participant Replica2 as Replica 2 (故障)
+    participant Replica3 as Replica 3 (正常)
+    participant HintNode as Hint Node
+    
+    Coordinator-&gt;&gt;Replica1: Write(key, value)
+    Coordinator-&gt;&gt;Replica2: Write(key, value)
+    Replica2--&gt;&gt;Coordinator: Timeout (故障)
+    Coordinator-&gt;&gt;HintNode: Write(key, value, hint)
+    HintNode--&gt;&gt;Coordinator: Success
+    Coordinator-&gt;&gt;Replica3: Write(key, value)
+    
+    Note over Replica2,HintNode: Replica2恢复后
+    Replica2-&gt;&gt;HintNode: 查询hint数据
+    HintNode--&gt;&gt;Replica2: 返回hint数据
+    Replica2-&gt;&gt;Replica2: 写入本地
+    Replica2-&gt;&gt;HintNode: 删除hint数据
+    
+</code></pre>
+
+<p><strong>Hinted Handoff 的流程</strong>：</p>
+
+<ol>
+  <li><strong>检测故障</strong>：协调节点检测到某个副本节点故障</li>
+  <li><strong>选择 Hint 节点</strong>：选择另一个节点作为 Hint 节点，临时存储数据</li>
+  <li><strong>写入 Hint</strong>：将数据写入 Hint 节点，标记为 Hint 数据</li>
+  <li><strong>节点恢复</strong>：故障节点恢复后，从 Hint 节点获取数据</li>
+  <li><strong>数据同步</strong>：将 Hint 数据写入本地，删除 Hint 节点上的数据</li>
+</ol>
+
+<p><strong>Hinted Handoff 的优势</strong>：</p>
+
+<ul>
+  <li><strong>提高可用性</strong>：即使部分节点故障，写入仍然可以成功</li>
+  <li><strong>自动恢复</strong>：节点恢复后自动同步数据，无需人工干预</li>
+  <li><strong>保证持久性</strong>：数据不会因为节点故障而丢失</li>
+</ul>
+
+<h3 id="52-read-repair">5.2 Read Repair</h3>
+
+<p>Read Repair 是 Dynamo 在读取时修复副本不一致的机制：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Coordinator
+    participant Replica1 as Replica 1
+    participant Replica2 as Replica 2
+    participant Replica3 as Replica 3
+    
+    Coordinator-&gt;&gt;Replica1: Read(key)
+    Coordinator-&gt;&gt;Replica2: Read(key)
+    Coordinator-&gt;&gt;Replica3: Read(key)
+    
+    Replica1--&gt;&gt;Coordinator: (value1, vc1)
+    Replica2--&gt;&gt;Coordinator: (value2, vc2)
+    Replica3--&gt;&gt;Coordinator: (value3, vc3)
+    
+    Coordinator-&gt;&gt;Coordinator: 比较版本
+    Coordinator-&gt;&gt;Coordinator: value1是最新版本
+    Coordinator-&gt;&gt;Coordinator: value2和value3是旧版本
+    
+    Coordinator-&gt;&gt;Replica2: Write(key, value1, vc1)
+    Coordinator-&gt;&gt;Replica3: Write(key, value1, vc1)
+    
+    Replica2--&gt;&gt;Coordinator: Success
+    Replica3--&gt;&gt;Coordinator: Success
+    
+    Coordinator--&gt;&gt;Coordinator: 副本已修复
+</code></pre>
+
+<p><strong>Read Repair 的流程</strong>：</p>
+
+<ol>
+  <li><strong>并行读取</strong>：从多个副本节点并行读取</li>
+  <li><strong>比较版本</strong>：比较所有返回的版本，找出最新版本</li>
+  <li><strong>检测不一致</strong>：如果发现某些副本的版本较旧，触发修复</li>
+  <li><strong>异步修复</strong>：异步将最新版本写入旧版本副本</li>
+  <li><strong>保证一致性</strong>：通过 Read Repair 逐步修复副本不一致</li>
+</ol>
+
+<p><strong>Read Repair 的优势</strong>：</p>
+
+<ul>
+  <li><strong>自动修复</strong>：在读取时自动检测和修复不一致</li>
+  <li><strong>无需额外开销</strong>：利用正常的读取操作进行修复</li>
+  <li><strong>逐步收敛</strong>：通过多次读取逐步修复所有副本</li>
+</ul>
+
+<h3 id="53-故障检测与恢复">5.3 故障检测与恢复</h3>
+
+<p>Dynamo 的故障检测机制：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[故障检测] --&gt; B[心跳机制]
+    A --&gt; C[超时检测]
+    A --&gt; D[故障标记]
+    
+    B --&gt; B1[节点定期发送心跳]
+    B1 --&gt; B2[其他节点接收心跳]
+    
+    C --&gt; C1[心跳超时]
+    C1 --&gt; C2[标记节点为故障]
+    
+    D --&gt; D1[故障节点不参与读写]
+    D1 --&gt; D2[使用Hint节点替代]
+    
+    E[故障恢复] --&gt; E1[节点重新上线]
+    E1 --&gt; E2[从Hint节点同步数据]
+    E2 --&gt; E3[重新加入集群]
+    
+    style A fill:#e3f2fd
+    style E fill:#fff3e0
+</code></pre>
+
+<p><strong>故障检测</strong>：</p>
+
+<ul>
+  <li><strong>心跳机制</strong>：节点定期发送心跳，其他节点接收心跳</li>
+  <li><strong>超时检测</strong>：如果心跳超时，标记节点为故障</li>
+  <li><strong>故障标记</strong>：故障节点不参与读写操作</li>
+</ul>
+
+<p><strong>故障恢复</strong>：</p>
+
+<ul>
+  <li><strong>节点上线</strong>：故障节点重新上线</li>
+  <li><strong>数据同步</strong>：从 Hint 节点同步数据</li>
+  <li><strong>重新加入</strong>：节点重新加入集群，恢复正常服务</li>
+</ul>
+
+<h2 id="6-成员管理与-gossip-协议">6. 成员管理与 Gossip 协议</h2>
+
+<h3 id="61-成员管理">6.1 成员管理</h3>
+
+<p>Dynamo 使用去中心化的成员管理：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[成员管理] --&gt; B[节点加入]
+    A --&gt; C[节点离开]
+    A --&gt; D[节点故障]
+    
+    B --&gt; B1[新节点加入环]
+    B1 --&gt; B2[分配虚拟节点]
+    B2 --&gt; B3[数据迁移]
+    
+    C --&gt; C1[节点主动离开]
+    C1 --&gt; C2[数据迁移到后继节点]
+    
+    D --&gt; D1[节点故障检测]
+    D1 --&gt; D2[使用Hint节点]
+    D2 --&gt; D3[节点恢复后同步]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
+
+<p><strong>成员管理的特点</strong>：</p>
+
+<ul>
+  <li><strong>去中心化</strong>：没有中心化的成员管理服务</li>
+  <li><strong>Gossip 协议</strong>：使用 Gossip 协议传播成员信息</li>
+  <li><strong>最终一致性</strong>：成员信息最终一致，但可能短暂不一致</li>
+</ul>
+
+<h3 id="62-gossip-协议">6.2 Gossip 协议</h3>
+
+<p>Gossip 协议用于传播成员信息和故障检测：</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Node1
+    participant Node2
+    participant Node3
+    participant Node4
+    
+    Note over Node1,Node4: 定期Gossip传播
+    Node1-&gt;&gt;Node2: Gossip(成员信息)
+    Node2-&gt;&gt;Node3: Gossip(成员信息)
+    Node3-&gt;&gt;Node4: Gossip(成员信息)
+    Node4-&gt;&gt;Node1: Gossip(成员信息)
+    
+    Note over Node1,Node4: 故障检测
+    Node1-&gt;&gt;Node2: 检测到Node3故障
+    Node2-&gt;&gt;Node3: Gossip(故障信息)
+    Node3-&gt;&gt;Node4: Gossip(故障信息)
+    Node4-&gt;&gt;Node1: Gossip(故障信息)
+    
+    Note over Node1,Node4: 最终所有节点知道故障
+</code></pre>
+
+<p><strong>Gossip 协议的特点</strong>：</p>
+
+<ul>
+  <li><strong>随机传播</strong>：节点随机选择其他节点传播信息</li>
+  <li><strong>指数传播</strong>：信息以指数速度传播到所有节点</li>
+  <li><strong>容错性</strong>：即使部分节点故障，信息仍能传播</li>
+  <li><strong>最终一致性</strong>：所有节点最终会收到相同的信息</li>
+</ul>
+
+<h2 id="7-性能优化">7. 性能优化</h2>
+
+<h3 id="71-负载均衡">7.1 负载均衡</h3>
+
+<p>Dynamo 的负载均衡策略：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[负载均衡] --&gt; B[虚拟节点]
+    A --&gt; C[数据迁移]
+    A --&gt; D[热点检测]
+    
+    B --&gt; B1[一个物理节点多个虚拟节点]
+    B1 --&gt; B2[数据分布更均匀]
+    
+    C --&gt; C1[节点加入时数据迁移]
+    C1 --&gt; C2[节点离开时数据迁移]
+    
+    D --&gt; D1[检测热点Key]
+    D1 --&gt; D2[动态调整副本分布]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
+
+<p><strong>负载均衡技术</strong>：</p>
+
+<ul>
+  <li><strong>虚拟节点</strong>：使用虚拟节点提高负载均衡</li>
+  <li><strong>数据迁移</strong>：节点加入或离开时平滑迁移数据</li>
+  <li><strong>热点检测</strong>：检测热点 Key，动态调整副本分布</li>
+</ul>
+
+<h3 id="72-缓存策略">7.2 缓存策略</h3>
+
+<p>Dynamo 使用多级缓存提高性能：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[客户端请求] --&gt; B[本地缓存]
+    B --&gt; C{缓存命中?}
+    C --&gt;|是| D[返回缓存数据]
+    C --&gt;|否| E[协调节点]
+    E --&gt; F[副本节点]
+    F --&gt; G[返回数据]
+    G --&gt; H[更新缓存]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style E fill:#e8f5e9
+</code></pre>
+
+<p><strong>缓存策略</strong>：</p>
+
+<ul>
+  <li><strong>客户端缓存</strong>：客户端缓存热点数据，减少网络请求</li>
+  <li><strong>协调节点缓存</strong>：协调节点缓存元数据，减少查找开销</li>
+  <li><strong>缓存失效</strong>：使用 TTL 或版本号控制缓存失效</li>
+</ul>
+
+<h2 id="8-dynamo-的影响与后续发展">8. Dynamo 的影响与后续发展</h2>
+
+<h3 id="81-对后续系统的影响">8.1 对后续系统的影响</h3>
+
+<p>Dynamo 的设计思想影响了大量后续系统：</p>
+
+<pre><code class="language-mermaid">graph TD
+    A[Dynamo] --&gt; B[Cassandra]
+    A --&gt; C[Riak]
+    A --&gt; D[Voldemort]
+    A --&gt; E[其他NoSQL系统]
+    
+    B --&gt; B1[去中心化设计]
+    B1 --&gt; B2[最终一致性]
+    
+    C --&gt; C1[分布式哈希]
+    C1 --&gt; C2[Gossip协议]
+    
+    D --&gt; D1[高可用设计]
+    
+    E --&gt; E1[一致性哈希]
+    E1 --&gt; E2[Vector Clock]
+    E2 --&gt; E3[Quorum机制]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
+
+<p><strong>影响范围</strong>：</p>
+
+<ul>
+  <li><strong>NoSQL 数据库</strong>：Cassandra、Riak 等系统都受到 Dynamo 的影响</li>
+  <li><strong>设计模式</strong>：一致性哈希、Vector Clock、Quorum 等成为分布式系统的标准模式</li>
+  <li><strong>工程实践</strong>：高可用、最终一致性等设计思想被广泛采用</li>
+</ul>
+
+<h3 id="82-设计原则总结">8.2 设计原则总结</h3>
+
+<p>Dynamo 的成功体现了几个重要的设计原则：</p>
+
+<ol>
+  <li><strong>业务驱动设计</strong>
+    <ul>
+      <li>根据业务需求选择 CAP 权衡</li>
+      <li>电商业务优先可用性，牺牲强一致性</li>
+    </ul>
+  </li>
+  <li><strong>去中心化架构</strong>
+    <ul>
+      <li>没有单点故障</li>
+      <li>使用 Gossip 协议实现去中心化</li>
+    </ul>
+  </li>
+  <li><strong>最终一致性</strong>
+    <ul>
+      <li>不追求强一致性，保证最终一致性</li>
+      <li>通过 Vector Clock 处理冲突</li>
+    </ul>
+  </li>
+  <li><strong>工程化实现</strong>
+    <ul>
+      <li>使用成熟的技术（一致性哈希、Quorum 等）</li>
+      <li>简单可靠，易于理解和维护</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="9-总结">9. 总结</h2>
+
+<p>Dynamo 是分布式存储系统的经典设计，其核心思想包括：</p>
+
+<ul>
+  <li><strong>高可用优先</strong>：在 CAP 定理中明确选择可用性和分区容忍性</li>
+  <li><strong>一致性哈希</strong>：实现分片和负载均衡，支持平滑扩展</li>
+  <li><strong>Quorum 机制</strong>：平衡一致性和可用性，灵活配置读写策略</li>
+  <li><strong>Vector Clock</strong>：处理并发写入冲突，保留多个版本由应用层合并</li>
+  <li><strong>故障处理</strong>：Hinted Handoff 和 Read Repair 保证高可用和最终一致性</li>
+  <li><strong>去中心化</strong>：使用 Gossip 协议实现去中心化的成员管理</li>
+</ul>
+
+<p>Dynamo 的设计思想影响了大量后续系统，成为分布式存储系统的经典参考。理解 Dynamo 的设计原理，有助于理解现代分布式存储系统的设计思路和工程实践。</p>
 
         
       </section>
@@ -672,12 +1434,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

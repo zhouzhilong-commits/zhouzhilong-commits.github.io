@@ -9,7 +9,7 @@ redirect_from:
   - /storage-note-015-tombstone/
   - /storage-note-043-tombstone/
 ---
-这篇讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，**Delete 并不等于空间立刻释放**。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。
+本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，**Delete 并不等于空间立刻释放**。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。
 
 ![tombstone 生命周期：删除可见 ≠ 空间回收](/images/diagrams/tombstone-compaction-lifecycle.svg)
 
@@ -25,7 +25,7 @@ redirect_from:
 - tombstone 只是覆盖在“更高层/更新的版本”上，让读看到删除
 - 旧版本要等到 compaction 把它合并淘汰（或者 GC 回收）才会真正释放空间
 
-所以“删除多 + compaction 跟不上”时，你会观察到：**盘持续增长、写放大上升、读放大也可能变差**。
+所以“删除多 + compaction 跟不上”时，会观察到：**盘持续增长、写放大上升、读放大也可能变差**。
 
 ## 3. 什么时候空间会真正回收
 
@@ -36,7 +36,7 @@ redirect_from:
 
 不同实现会有不同的“删标回收规则”，但共同点是：**回收是异步的**。
 
-## 4. 排查清单（你该看什么）
+## 4. 排查清单（需要看什么）
 
 1. **删除比例**：写入里 delete/overwrite 的占比是否变高？
 2. **compaction backlog**：pending bytes、L0 文件数、stall/throttle 是否上升？

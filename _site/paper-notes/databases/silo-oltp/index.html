@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（常被用来理解现代高性能 OLTP 的实现要点）">
+  <meta property="og:description" content="  论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（Tu et al., SOSP 2013）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">数据库论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,62 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -521,6 +521,48 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="Silo：High Performance OLTP（论文笔记）">
-    <meta itemprop="description" content="  论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（常被用来理解现代高性能 OLTP 的实现要点）">
+    <meta itemprop="description" content="  论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（Tu et al., SOSP 2013）">
     <meta itemprop="datePublished" content="February 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  2 分钟阅读
 	
 </p>
           
@@ -574,42 +616,283 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（常被用来理解现代高性能 OLTP 的实现要点）</p>
+  <p>论文：Silo: Exploiting Message Passing and Shared Memory for OLTP（Tu et al., SOSP 2013）</p>
 </blockquote>
 
-<h2 id="1-这篇论文的核心观点">1. 这篇论文的核心观点</h2>
+<p>Silo 常被用来理解“现代高性能 OLTP 引擎”的关键路径：在多核/NUMA 时代，真正的瓶颈往往不是算法，而是<strong>争用（contention）</strong>与<strong>缓存一致性开销（cache coherence）</strong>。</p>
 
-<p>在多核时代，传统“锁很多 + 共享数据结构争用大”的 OLTP 实现会被瓶颈卡死。
-Silo 的核心是把高并发下的关键路径做得更“无锁/低争用”。</p>
-
-<h2 id="2-两个抓手直觉版">2. 两个抓手（直觉版）</h2>
+<p>Silo 的主线是：</p>
 
 <ul>
-  <li><strong>乐观并发控制（OCC）</strong>：先执行，提交时验证冲突</li>
-  <li><strong>版本号/时间戳思路</strong>：用版本来判断读写是否冲突</li>
+  <li>用 <strong>OCC（Optimistic Concurrency Control）</strong> 把冲突处理集中在提交阶段</li>
+  <li>让读路径无锁/低开销</li>
+  <li>提交阶段用版本号/锁位进行验证与安装（install）</li>
 </ul>
 
-<p>（不同实现细节很多，但你读 Silo 的第一遍不必被细节淹没，先抓住“提交阶段验证”的主线）</p>
+<p>本文重点讲：Silo 的提交路径、版本/锁的组织、epoch 的作用、以及为什么它能跑得快。</p>
 
-<h2 id="3-为什么它经典">3. 为什么它经典</h2>
+<h2 id="1-问题背景多核时代的-oltp-痛点">1. 问题背景：多核时代的 OLTP 痛点</h2>
 
-<p>Silo 是很多现代引擎/研究的 baseline：</p>
+<h3 id="11-传统锁2pl在高并发下的成本">1.1 传统锁（2PL）在高并发下的成本</h3>
 
 <ul>
-  <li>体现“把争用挪到更可控的地方”的设计思想</li>
-  <li>很适合对比：2PL、MVCC、OCC 的不同权衡</li>
+  <li>锁表/锁队列本身会成为热点</li>
+  <li>临界区扩大导致并发度下降</li>
+  <li>cache line ping-pong（锁变量在不同核间来回）</li>
 </ul>
 
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
+<pre><code class="language-mermaid">flowchart TD
+  A[High concurrency] --&gt; B[Lock contention]
+  A --&gt; C[Cache coherence traffic]
+  A --&gt; D[NUMA remote access]
 
-<p>OLTP 的关键常常不是算法，而是：</p>
+  B --&gt; E[Throughput drops]
+  C --&gt; E
+  D --&gt; E
+</code></pre>
+
+<h3 id="12-silo-的策略">1.2 Silo 的策略</h3>
 
 <ul>
-  <li>数据结构是否有热点争用</li>
-  <li>cache line / NUMA 友好性</li>
-  <li>提交路径是否可并行</li>
+  <li><strong>读路径尽量不加锁</strong></li>
+  <li><strong>提交时再验证</strong>：如果冲突就 abort 重试</li>
 </ul>
 
+<p>这就是 OCC 的典型思路：把大多数“不会冲突”的事务跑快。</p>
+
+<h2 id="2-silo-的数据组织record--versionlock">2. Silo 的数据组织：record + version/lock</h2>
+
+<p>Silo 的每条记录通常包含：</p>
+
+<ul>
+  <li>value</li>
+  <li>一个 <code class="language-plaintext highlighter-rouge">TID</code>（transaction id / version word），同时编码：
+    <ul>
+      <li>版本号</li>
+      <li>lock bit（写锁）</li>
+    </ul>
+  </li>
+</ul>
+
+<pre><code class="language-mermaid">classDiagram
+  class Record {
+    + Key key
+    + Value value
+    + uint64 tid_word
+  }
+
+  class TIDWord {
+    + uint64 version
+    + bool locked
+    + bool latest
+  }
+
+  Record --&gt; TIDWord : encodes
+</code></pre>
+
+<h2 id="3-occ-三阶段execute--validate--commit">3. OCC 三阶段：execute / validate / commit</h2>
+
+<h3 id="31-execute执行阶段">3.1 Execute（执行阶段）</h3>
+
+<ul>
+  <li>读：直接读记录，拿到 value + tid</li>
+  <li>写：不直接写共享数据，先写到 <strong>write set</strong>（私有缓冲）</li>
+</ul>
+
+<h3 id="32-validate验证阶段">3.2 Validate（验证阶段）</h3>
+
+<p>验证要保证：事务读到的版本在提交时仍然有效。</p>
+
+<p>典型做法：</p>
+
+<ul>
+  <li>对 write set 的 key 按顺序加锁（避免死锁）</li>
+  <li>对 read set 检查版本是否变化（tid 是否仍匹配，且没有被锁）</li>
+</ul>
+
+<h3 id="33-commit提交阶段">3.3 Commit（提交阶段）</h3>
+
+<ul>
+  <li>安装 write set：写入新 value</li>
+  <li>更新 tid（版本号递增，清掉 lock bit）</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Tx as Transaction
+  participant DB as DB/Records
+
+  Note over Tx: Execute
+  Tx-&gt;&gt;DB: read(key) =&gt; (value, tid)
+  Tx-&gt;&gt;Tx: add to read_set
+  Tx-&gt;&gt;Tx: buffer writes in write_set
+
+  Note over Tx: Validate
+  Tx-&gt;&gt;Tx: lock write_set keys (ordered)
+  Tx-&gt;&gt;DB: check read_set tids unchanged
+
+  alt validation ok
+    Note over Tx: Commit
+    Tx-&gt;&gt;DB: install writes
+    Tx-&gt;&gt;DB: bump tid + unlock
+    Tx--&gt;&gt;Tx: success
+  else validation failed
+    Tx-&gt;&gt;Tx: abort + unlock
+  end
+</code></pre>
+
+<h2 id="4-epoch让-gc可见性更容易">4. Epoch：让 GC/可见性更容易</h2>
+
+<p>Silo 引入 <strong>epoch</strong>（粗粒度时间片）来做一些“全局推进”的事情，典型用途：</p>
+
+<ul>
+  <li>安全回收旧版本（如果有多版本/日志）</li>
+  <li>做 group commit / 日志刷盘节奏控制</li>
+</ul>
+
+<p>可以将 epoch 当成一个全局“阶段号”：</p>
+
+<ul>
+  <li>事务开始时读取当前 epoch</li>
+  <li>提交时把自己归属到某个 epoch</li>
+  <li>系统在 epoch 推进后做清理/刷盘</li>
+</ul>
+
+<p>（不同实现细节会有所差异，但 epoch 的价值是：减少细粒度同步）</p>
+
+<h2 id="5-为什么-silo-快热点与-cache-line">5. 为什么 Silo 快：热点与 cache line</h2>
+
+<h3 id="51-读路径无锁">5.1 读路径无锁</h3>
+
+<p>读路径不走锁表、不改共享状态，缓存友好。</p>
+
+<h3 id="52-写冲突集中在提交阶段">5.2 写冲突集中在提交阶段</h3>
+
+<ul>
+  <li>大多数事务只读或冲突概率低 → 走快路径</li>
+  <li>冲突事务 abort 重试，把复杂性交给概率</li>
+</ul>
+
+<h3 id="53-ordered-locking-降低死锁与抖动">5.3 ordered locking 降低死锁与抖动</h3>
+
+<p>对 write set 排序再加锁：</p>
+
+<ul>
+  <li>避免死锁</li>
+  <li>降低锁竞争的随机性</li>
+</ul>
+
+<h2 id="6-需要如何用-silo-的视角看-oltp">6. 需要如何用 Silo 的视角看 OLTP</h2>
+
+<ul>
+  <li>OLTP 的性能瓶颈很常见来自“共享元数据”（锁、队列、计数器），而不是表本身。</li>
+  <li>OCC 是一种“把一致性成本后置”的策略：吞吐很好，但在高冲突场景 abort 会变多。</li>
+  <li>NUMA/缓存一致性是现代 OLTP 的一等公民：数据结构布局与访问模式决定上限。</li>
+</ul>
+
+<h2 id="7-读完后的-takeaways">7. 读完后的 takeaways</h2>
+
+<ul>
+  <li>Silo 的主线是：<strong>读无锁 + 提交验证</strong>。</li>
+  <li>真正的关键路径在 validate/commit：锁 write set + 校验 read set + 安装写入。</li>
+  <li>想把 OLTP 做快，必须把“争用”当第一问题来设计。</li>
+</ul>
+
+<h2 id="8-冲突与-abortocc-的代价是冲突时重来">8. 冲突与 abort：OCC 的代价是“冲突时重来”</h2>
+
+<p>OCC 的快路径很快，但当热点很强时，abort 会成为主要开销。</p>
+
+<h3 id="81-热点下会发生什么">8.1 热点下会发生什么</h3>
+
+<ul>
+  <li>多个事务读写同一批 key</li>
+  <li>提交阶段争抢 write-set 锁</li>
+  <li>read-set 验证失败 → abort 重试</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  H[Hot keys] --&gt; C[High contention]
+  C --&gt; A[More aborts]
+  A --&gt; R[Retries]
+  R --&gt; L[Latency spikes]
+  R --&gt; T[Throughput drops]
+</code></pre>
+
+<h3 id="82-两个实用结论">8.2 两个实用结论</h3>
+
+<ul>
+  <li>OCC 更适合“冲突不高”的 OLTP 工作负载</li>
+  <li>如果业务天然热点（比如全局计数器），需要在应用/数据模型上拆热点，否则任何并发控制都难救</li>
+</ul>
+
+<h2 id="9-validatecommit-的更细要点为什么要-ordered-locking">9. validate/commit 的更细要点：为什么要 ordered locking</h2>
+
+<p>Silo 通常对 write-set 按 key 排序后加锁：</p>
+
+<ul>
+  <li>避免死锁</li>
+  <li>减少随机抖动</li>
+</ul>
+
+<p>同时验证 read-set：</p>
+
+<ul>
+  <li>版本号（tid）是否仍一致</li>
+  <li>期间是否被写锁锁住</li>
+</ul>
+
+<h3 id="91-一个更工程化的伪代码">9.1 一个更工程化的伪代码</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>execute:
+  read_set += (key, tid_seen)
+  write_set += (key, new_value)
+
+validate:
+  lock write_set keys in key order
+  for (key, tid_seen) in read_set:
+    if current_tid(key) != tid_seen or locked(current_tid(key)):
+      abort
+
+commit:
+  for (key, new_value) in write_set:
+    write value
+    bump tid + unlock
+</code></pre></div></div>
+
+<h2 id="10-与-2pl--mvcc-的对比用于校准取舍">10. 与 2PL / MVCC 的对比（用于校准取舍）</h2>
+
+<h3 id="101-2pl两阶段锁">10.1 2PL（两阶段锁）</h3>
+
+<ul>
+  <li>冲突时：等待（blocking）</li>
+  <li>优点：abort 少</li>
+  <li>缺点：锁争用、调度开销、cache line 抖动</li>
+</ul>
+
+<h3 id="102-mvcc">10.2 MVCC</h3>
+
+<ul>
+  <li>读通常无锁（读旧版本）</li>
+  <li>写需要维护版本链与回收（GC）</li>
+  <li>优点：读写并发更好</li>
+  <li>缺点：实现复杂、GC/版本管理成本</li>
+</ul>
+
+<h3 id="103-occsilo">10.3 OCC（Silo）</h3>
+
+<ul>
+  <li>读快</li>
+  <li>冲突在提交阶段爆发，abort 重试</li>
+</ul>
+
+<p><strong>工程选择</strong>：取决于 workload 的冲突特征与 SLA。</p>
+
+<h2 id="11-读完后的补充-takeaways">11. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>Silo 的核心不是“OCC 这个概念”，而是把关键路径做成对 cache/NUMA 更友好的实现。</li>
+  <li>想用好 OCC，必须关注热点与 abort 行为：冲突会把所有好处吃掉。</li>
+  <li>与 2PL/MVCC 的对比能帮助你判断：你的业务到底更适合等待、版本、还是重试。</li>
+</ul>
 
         
       </section>
@@ -651,12 +934,42 @@ Silo 的核心是把高并发下的关键路径做得更“无锁/低争用”�
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

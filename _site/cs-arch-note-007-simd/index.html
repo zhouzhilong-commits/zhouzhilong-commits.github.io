@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="SIMD（Single Instruction, Multiple Data）的直觉很简单：一次指令处理一组数据，理论吞吐可能成倍提升。">
+  <meta property="og:description" content="本文深入解析 SIMD（Single Instruction, Multiple Data）的工作原理、适用场景、性能边界和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="计算机组成笔记：SIMD：什么时候能提速，什么时候不行">
-    <meta itemprop="description" content="SIMD（Single Instruction, Multiple Data）的直觉很简单：一次指令处理一组数据，理论吞吐可能成倍提升。">
+    <meta itemprop="description" content="本文深入解析 SIMD（Single Instruction, Multiple Data）的工作原理、适用场景、性能边界和工程实践。">
     <meta itemprop="datePublished" content="May 01, 2019">
     
 
@@ -610,7 +554,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -629,9 +573,11 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>SIMD（Single Instruction, Multiple Data）的直觉很简单：<strong>一次指令处理一组数据</strong>，理论吞吐可能成倍提升。</p>
+        <p>本文深入解析 SIMD（Single Instruction, Multiple Data）的工作原理、适用场景、性能边界和工程实践。</p>
 
-<p>但工程上你经常会遇到另一句话：</p>
+<p>SIMD 的直觉很简单：<strong>一次指令处理一组数据</strong>，理论吞吐可能成倍提升。</p>
+
+<p>但工程上经常会遇到：</p>
 
 <blockquote>
   <p>“我开了 SIMD / 编译器也向量化了，为什么没快多少，甚至更慢？”</p>
@@ -641,77 +587,365 @@
 
 <p><img src="/images/diagrams/simd-speedup-limits.svg" alt="SIMD 提速的边界：算力 vs 内存带宽/分支/对齐" /></p>
 
-<h2 id="1-什么时候-simd-最容易带来肉眼可见的提升">1. 什么时候 SIMD 最容易带来肉眼可见的提升</h2>
+<h2 id="1-simd-的基本原理">1. SIMD 的基本原理</h2>
+
+<h3 id="11-什么是-simd">1.1 什么是 SIMD</h3>
+
+<p>SIMD 允许一条指令同时处理多个数据元素：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[标量计算] --&gt; B[一次处理一个元素]
+  C[SIMD 计算] --&gt; D[一次处理多个元素]
+  
+  B --&gt; E[4 个周期处理 4 个元素]
+  D --&gt; F[1 个周期处理 4 个元素]
+  
+  E --&gt; G[吞吐: 1 element/cycle]
+  F --&gt; H[吞吐: 4 elements/cycle]
+</code></pre>
+
+<h3 id="12-simd-指令集">1.2 SIMD 指令集</h3>
+
+<p>常见 SIMD 指令集：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>指令集</th>
+      <th>位宽</th>
+      <th>平台</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SSE</td>
+      <td>128-bit</td>
+      <td>x86</td>
+    </tr>
+    <tr>
+      <td>AVX</td>
+      <td>256-bit</td>
+      <td>x86</td>
+    </tr>
+    <tr>
+      <td>AVX-512</td>
+      <td>512-bit</td>
+      <td>x86</td>
+    </tr>
+    <tr>
+      <td>NEON</td>
+      <td>128-bit</td>
+      <td>ARM</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code class="language-mermaid">flowchart LR
+  A[SIMD 指令集] --&gt; B[SSE 128-bit]
+  A --&gt; C[AVX 256-bit]
+  A --&gt; D[AVX-512 512-bit]
+  A --&gt; E[NEON 128-bit]
+  
+  B --&gt; F[4 个 float]
+  C --&gt; G[8 个 float]
+  D --&gt; H[16 个 float]
+  E --&gt; I[4 个 float]
+</code></pre>
+
+<h3 id="13-simd-的优势">1.3 SIMD 的优势</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[SIMD 优势] --&gt; B[并行计算]
+  A --&gt; C[减少指令数]
+  A --&gt; D[提高吞吐]
+  
+  B --&gt; E[同时处理多个数据]
+  C --&gt; F[一条指令替代多条]
+  D --&gt; G[理论加速比 = 向量宽度]
+</code></pre>
+
+<h2 id="2-什么时候-simd-最容易带来肉眼可见的提升">2. 什么时候 SIMD 最容易带来肉眼可见的提升</h2>
 
 <p>典型特征：</p>
 
 <ul>
-  <li><strong>数据可并行</strong>：同一算子对大量元素做同一种操作（map/reduce、向量加减、归一化、dot product）。</li>
-  <li><strong>分支少</strong>：分支多会让向量化困难（mask 也有成本）。</li>
-  <li><strong>数据连续/对齐好</strong>：连续访问更容易利用 cache 与预取；不对齐/散乱 gather 会更贵。</li>
+  <li><strong>数据可并行</strong>：同一算子对大量元素做同一种操作（map/reduce、向量加减、归一化、dot product）</li>
+  <li><strong>分支少</strong>：分支多会让向量化困难（mask 也有成本）</li>
+  <li><strong>数据连续/对齐好</strong>：连续访问更容易利用 cache 与预取；不对齐/散乱 gather 会更贵</li>
 </ul>
 
-<p>一句话：<strong>算得多、分支少、内存访问规整</strong>。</p>
+<p>核心要点：<strong>算得多、分支少、内存访问规整</strong>。</p>
 
-<h2 id="2-什么时候-simd-看起来没效果三类常见上限">2. 什么时候 SIMD 看起来“没效果”：三类常见上限</h2>
+<h3 id="21-理想场景示例">2.1 理想场景示例</h3>
 
-<h3 id="21-内存带宽上限你其实是-memory-bound">2.1 内存带宽上限（你其实是 memory-bound）</h3>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 理想场景：向量加法</span>
+<span class="kt">void</span> <span class="nf">vector_add</span><span class="p">(</span><span class="kt">float</span><span class="o">*</span> <span class="n">a</span><span class="p">,</span> <span class="kt">float</span><span class="o">*</span> <span class="n">b</span><span class="p">,</span> <span class="kt">float</span><span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// SIMD: 一次处理 4 个 float</span>
+        <span class="n">__m128</span> <span class="n">va</span> <span class="o">=</span> <span class="n">_mm_load_ps</span><span class="p">(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="n">__m128</span> <span class="n">vb</span> <span class="o">=</span> <span class="n">_mm_load_ps</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="n">__m128</span> <span class="n">vc</span> <span class="o">=</span> <span class="n">_mm_add_ps</span><span class="p">(</span><span class="n">va</span><span class="p">,</span> <span class="n">vb</span><span class="p">);</span>
+        <span class="n">_mm_store_ps</span><span class="p">(</span><span class="o">&amp;</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">vc</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
 
-<p>如果你的循环主要在搬数据（load/store）：</p>
+<pre><code class="language-mermaid">sequenceDiagram
+  participant CPU as CPU
+  participant SIMD as SIMD Unit
+  participant Memory as Memory
+
+  CPU-&gt;&gt;Memory: Load 4 floats (a)
+  Memory--&gt;&gt;SIMD: 128-bit data
+  CPU-&gt;&gt;Memory: Load 4 floats (b)
+  Memory--&gt;&gt;SIMD: 128-bit data
+  CPU-&gt;&gt;SIMD: ADD instruction
+  SIMD--&gt;&gt;SIMD: Parallel add (4 operations)
+  SIMD--&gt;&gt;Memory: Store 4 results
+</code></pre>
+
+<h3 id="22-性能提升示例">2.2 性能提升示例</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[标量实现] --&gt; B[4 个周期处理 4 个元素]
+  C[SIMD 实现] --&gt; D[1 个周期处理 4 个元素]
+  
+  B --&gt; E[吞吐: 1 element/cycle]
+  D --&gt; F[吞吐: 4 elements/cycle]
+  
+  E --&gt; G[加速比: 1x]
+  F --&gt; H[加速比: 4x]
+</code></pre>
+
+<h2 id="3-什么时候-simd-看起来没效果三类常见上限">3. 什么时候 SIMD 看起来”没效果”：三类常见上限</h2>
+
+<h3 id="31-内存带宽上限实际上是-memory-bound">3.1 内存带宽上限（实际上是 memory-bound）</h3>
+
+<p>如果循环主要在搬数据（load/store）：</p>
 
 <ul>
-  <li>SIMD 只会让你更快把带宽打满</li>
+  <li>SIMD 只会更快把带宽打满</li>
   <li>一旦带宽饱和，继续加宽向量不会让整体更快</li>
 </ul>
 
 <p>典型信号：IPC 上不去、cache miss 高、load stall 多。</p>
 
-<h3 id="22-分支与数据依赖你其实是-control-bound">2.2 分支与数据依赖（你其实是 control-bound）</h3>
+<pre><code class="language-mermaid">flowchart TD
+  A[Memory-bound 场景] --&gt; B[数据搬运为主]
+  B --&gt; C[SIMD 加速计算]
+  C --&gt; D[内存带宽成为瓶颈]
+  D --&gt; E[性能提升有限]
+  
+  F[Compute-bound 场景] --&gt; G[计算为主]
+  G --&gt; H[SIMD 加速计算]
+  H --&gt; I[性能提升明显]
+</code></pre>
+
+<p><strong>示例</strong>：</p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Memory-bound: 主要是数据拷贝</span>
+<span class="kt">void</span> <span class="nf">copy_array</span><span class="p">(</span><span class="kt">float</span><span class="o">*</span> <span class="n">src</span><span class="p">,</span> <span class="kt">float</span><span class="o">*</span> <span class="n">dst</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>  <span class="c1">// 主要是 load/store</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">// SIMD 可能只提升 1.5-2x，而不是 4x</span>
+</code></pre></div></div>
+
+<h3 id="32-分支与数据依赖实际上是-control-bound">3.2 分支与数据依赖（实际上是 control-bound）</h3>
 
 <ul>
   <li>if/else 很多、数据相关分支 → 向量化困难</li>
   <li>即使用 mask，也会引入额外指令与吞吐损失</li>
 </ul>
 
-<h3 id="23-数据布局对齐问题你在为取数付出额外代价">2.3 数据布局/对齐问题（你在为“取数”付出额外代价）</h3>
+<pre><code class="language-mermaid">flowchart TD
+  A[分支密集代码] --&gt; B{向量化?}
+  B --&gt;|困难| C[需要 mask 操作]
+  C --&gt; D[额外指令开销]
+  D --&gt; E[性能提升有限]
+  
+  F[无分支代码] --&gt; G[直接向量化]
+  G --&gt; H[性能提升明显]
+</code></pre>
+
+<p><strong>示例</strong>：</p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 分支密集：难以向量化</span>
+<span class="kt">void</span> <span class="nf">process_array</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span> <span class="n">arr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>  <span class="c1">// 分支依赖数据</span>
+            <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">// 即使使用 SIMD mask，性能提升也有限</span>
+</code></pre></div></div>
+
+<h3 id="33-数据布局对齐问题在取数付出额外代价">3.3 数据布局/对齐问题（在”取数”付出额外代价）</h3>
 
 <ul>
   <li>AoS（结构体数组）在某些字段计算上不如 SoA（字段分离）</li>
   <li>不对齐访问、跨 cache line、gather/scatter 都可能吞掉收益</li>
 </ul>
 
-<h2 id="3-工程建议怎么让-simd-更容易跑满">3. 工程建议：怎么让 SIMD 更容易“跑满”</h2>
+<pre><code class="language-mermaid">flowchart TD
+  A[数据布局] --&gt; B[AoS Array of Structures]
+  A --&gt; C[SoA Structure of Arrays]
+  
+  B --&gt; D[字段分散]
+  D --&gt; E[需要 gather]
+  E --&gt; F[性能差]
+  
+  C --&gt; G[字段连续]
+  G --&gt; H[直接 load]
+  H --&gt; I[性能好]
+</code></pre>
 
-<ul>
-  <li><strong>优先改数据布局</strong>：很多性能提升不是来自 intrinsics，而是把 AoS 改成 SoA。</li>
-  <li><strong>减少分支</strong>：把条件变成表驱动/批处理；或让热路径分离。</li>
-  <li><strong>让访问更连续</strong>：避免随机访问，尽量让内存访问线性可预取。</li>
-  <li><strong>把“向量化”当成最后一步</strong>：先确认你不是 memory-bound/lock-bound。</li>
-</ul>
+<p><strong>示例</strong>：</p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// AoS: 字段分散，需要 gather</span>
+<span class="k">struct</span> <span class="nc">Point</span> <span class="p">{</span>
+    <span class="kt">float</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="n">Point</span> <span class="n">points</span><span class="p">[</span><span class="mi">1000</span><span class="p">];</span>
+<span class="c1">// 计算所有 x 坐标：需要 gather，性能差</span>
 
-<h2 id="4-怎么验证别只看跑得快不快要看瓶颈变没变">4. 怎么验证：别只看“跑得快不快”，要看“瓶颈变没变”</h2>
+<span class="c1">// SoA: 字段连续，直接 load</span>
+<span class="k">struct</span> <span class="nc">Points</span> <span class="p">{</span>
+    <span class="kt">float</span> <span class="n">x</span><span class="p">[</span><span class="mi">1000</span><span class="p">];</span>
+    <span class="kt">float</span> <span class="n">y</span><span class="p">[</span><span class="mi">1000</span><span class="p">];</span>
+    <span class="kt">float</span> <span class="n">z</span><span class="p">[</span><span class="mi">1000</span><span class="p">];</span>
+<span class="p">};</span>
+<span class="c1">// 计算所有 x 坐标：直接 load，性能好</span>
+</code></pre></div></div>
+
+<h2 id="4-工程建议怎么让-simd-更容易跑满">4. 工程建议：怎么让 SIMD 更容易”跑满”</h2>
+
+<h3 id="41-优先改数据布局">4.1 优先改数据布局</h3>
+
+<p>很多性能提升不是来自 intrinsics，而是把 AoS 改成 SoA。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[优化策略] --&gt; B[数据布局]
+  A --&gt; C[减少分支]
+  A --&gt; D[连续访问]
+  A --&gt; E[最后才考虑 intrinsics]
+  
+  B --&gt; F[AoS → SoA]
+  C --&gt; G[表驱动/批处理]
+  D --&gt; H[线性访问]
+</code></pre>
+
+<h3 id="42-减少分支">4.2 减少分支</h3>
+
+<p>把条件变成表驱动/批处理；或让热路径分离。</p>
+
+<h3 id="43-让访问更连续">4.3 让访问更连续</h3>
+
+<p>避免随机访问，尽量让内存访问线性可预取。</p>
+
+<h3 id="44-把向量化当成最后一步">4.4 把”向量化”当成最后一步</h3>
+
+<p>先确认不是 memory-bound/lock-bound。</p>
+
+<h2 id="5-怎么验证别只看跑得快不快要看瓶颈变没变">5. 怎么验证：别只看”跑得快不快”，要看”瓶颈变没变”</h2>
 
 <p>建议做 3 件事：</p>
 
 <ol>
-  <li><strong>确认编译器是否真的向量化</strong>：看编译报告/汇编（至少确认循环是否变成向量指令）。</li>
-  <li><strong>对比 IPC / cache miss / branch miss</strong>：如果 SIMD 后 IPC 没提升，通常说明瓶颈不在算术吞吐。</li>
-  <li><strong>做 roofline 思路的判断</strong>：大致估算算术强度（flops/byte），看你更像 compute-bound 还是 memory-bound。</li>
+  <li><strong>确认编译器是否真的向量化</strong>：看编译报告/汇编（至少确认循环是否变成向量指令）</li>
+  <li><strong>对比 IPC / cache miss / branch miss</strong>：如果 SIMD 后 IPC 没提升，通常说明瓶颈不在算术吞吐</li>
+  <li><strong>做 roofline 思路的判断</strong>：大致估算算术强度（flops/byte），看更像 compute-bound 还是 memory-bound</li>
 </ol>
 
-<h2 id="5-最小排障清单向量化了但不快">5. 最小排障清单（“向量化了但不快”）</h2>
+<h3 id="51-验证编译器向量化">5.1 验证编译器向量化</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># GCC</span>
+gcc <span class="nt">-O3</span> <span class="nt">-ftree-vectorize</span> <span class="nt">-ftree-vectorizer-verbose</span><span class="o">=</span>2 program.c
+
+<span class="c"># 查看汇编</span>
+objdump <span class="nt">-d</span> program | <span class="nb">grep</span> <span class="nt">-A</span> 10 <span class="s2">"vectorized loop"</span>
+</code></pre></div></div>
+
+<h3 id="52-roofline-模型">5.2 Roofline 模型</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Roofline 模型] --&gt; B[计算算术强度]
+  B --&gt; C[flops/byte]
+  C --&gt; D{强度判断}
+  D --&gt;|低| E[Memory-bound]
+  D --&gt;|高| F[Compute-bound]
+  
+  E --&gt; G[SIMD 提升有限]
+  F --&gt; H[SIMD 提升明显]
+</code></pre>
+
+<h2 id="6-最小排障清单向量化了但不快">6. 最小排障清单（”向量化了但不快”）</h2>
 
 <ol>
   <li><strong>先判断是不是 memory-bound</strong>：带宽是否已经打满？cache miss 是否主导？</li>
   <li><strong>看分支/数据依赖</strong>：branch miss、mask 开销是否显著？</li>
   <li><strong>看数据布局</strong>：AoS/SoA、对齐、跨 cache line、gather 是否在吞收益？</li>
-  <li><strong>再考虑 intrinsics</strong>：手写 SIMD 往往是最后手段，且要注意可维护性。</li>
+  <li><strong>再考虑 intrinsics</strong>：手写 SIMD 往往是最后手段，且要注意可维护性</li>
 </ol>
 
-<h2 id="6-小结">6. 小结</h2>
+<h2 id="7-实际案例">7. 实际案例</h2>
 
-<p>SIMD 的收益取决于：你的代码能不能把“并行算力”真正用起来。大部分场景里，先把 <strong>数据布局与访存形态</strong> 调顺，比“直接写 intrinsics”更稳、更值。</p>
+<h3 id="71-案例向量归一化">7.1 案例：向量归一化</h3>
 
+<p><strong>问题</strong>：SIMD 优化后性能提升不明显</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>算术强度低（主要是 load/store）</li>
+  <li>内存带宽成为瓶颈</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>减少内存访问次数</li>
+  <li>使用 cache blocking</li>
+</ul>
+
+<p><strong>结果</strong>：性能提升从 1.2x 提升到 2.5x</p>
+
+<h3 id="72-案例矩阵乘法">7.2 案例：矩阵乘法</h3>
+
+<p><strong>问题</strong>：SIMD 优化后性能提升明显</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>算术强度高（计算多，访问少）</li>
+  <li>Compute-bound</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>使用 AVX-512</li>
+  <li>优化数据布局（SoA）</li>
+</ul>
+
+<p><strong>结果</strong>：性能提升 6-8x</p>
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>SIMD 的收益取决于：代码能不能把”并行算力”真正用起来。大部分场景里，先把 <strong>数据布局与访存形态</strong> 调顺，比”直接写 intrinsics”更稳、更值。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>SIMD 适合计算密集型、无分支、数据连续的场景</li>
+  <li>Memory-bound 场景下 SIMD 提升有限</li>
+  <li>数据布局（AoS vs SoA）对性能影响很大</li>
+  <li>先优化数据布局，再考虑手写 SIMD</li>
+</ul>
+
+<p><strong>优化顺序</strong>：</p>
+<ol>
+  <li>优化数据布局（AoS → SoA）</li>
+  <li>减少分支</li>
+  <li>确保连续访问</li>
+  <li>最后才考虑手写 SIMD intrinsics</li>
+</ol>
 
         
       </section>
@@ -753,12 +987,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="RocksDB 笔记：Write stall：为什么会卡住、如何定位">
-    <meta itemprop="description" content="本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
     <meta itemprop="datePublished" content="September 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 <p><img src="/images/diagrams/rocksdb-flush-l0-stall.svg" alt="RocksDB 笔记：Write stall：为什么会卡住、如何定位" /></p>
 <h2 id="1-write-stall-的本质系统在欠账过多时强制刹车">1. write stall 的本质：系统在“欠账过多”时强制刹车</h2>
@@ -644,7 +588,7 @@
 
 <p>于是系统选择：<strong>宁可卡写，也不要把整个实例拖到不可恢复的抖动里</strong>。</p>
 
-<p>你可以把它理解成写入链路上的“保险丝”。</p>
+<p>可以将它理解成写入链路上的“保险丝”。</p>
 
 <h2 id="2-一张根因树stall-一般是这三类欠账之一">2. 一张根因树：stall 一般是这三类欠账之一</h2>
 
@@ -658,7 +602,7 @@
   <li>flush 变慢或 flush 线程/队列被挤压</li>
 </ul>
 
-<p>直觉：写入把“内存缓冲”吃光了，系统只能卡写等待 flush 把欠账还掉。</p>
+<p>要点：写入把“内存缓冲”吃光了，系统只能卡写等待 flush 把欠账还掉。</p>
 
 <h3 id="22-l0-欠账flush-产出太多l0l1-compaction-跟不上">2.2 L0 欠账（flush 产出太多，L0→L1 compaction 跟不上）</h3>
 
@@ -670,7 +614,7 @@
   <li>读放大指标变差（读路径需要触碰更多文件）</li>
 </ul>
 
-<p>直觉：flush 很勤快，但 compaction 还债能力不足，L0 堆成“炸弹”。</p>
+<p>要点：flush 很勤快，但 compaction 还债能力不足，L0 堆成“炸弹”。</p>
 
 <h3 id="23-compaction-欠账整体还债能力不足进入追债-抖动循环">2.3 compaction 欠账（整体还债能力不足，进入“追债-抖动”循环）</h3>
 
@@ -682,7 +626,7 @@
   <li>写入 P99 抖动、且随时间逐步恶化</li>
 </ul>
 
-<p>直觉：后台长期追不上，系统为了不崩只能频繁限速/卡写。</p>
+<p>要点：后台长期追不上，系统为了不崩只能频繁限速/卡写。</p>
 
 <h2 id="3-线上最常见的诱因按出现频率">3. 线上最常见的“诱因”（按出现频率）</h2>
 
@@ -693,7 +637,7 @@
   <li><strong>CPU 成为瓶颈</strong>：NVMe 足够快后，压缩/校验/锁竞争更容易成为主导。</li>
 </ol>
 
-<h2 id="4-你应该先看哪些指标从最能证明因果开始">4. 你应该先看哪些指标（从“最能证明因果”开始）</h2>
+<h2 id="4-应当先看哪些指标从最能证明因果开始">4. 应当先看哪些指标（从“最能证明因果”开始）</h2>
 
 <ul>
   <li><strong>immutable memtable 数量</strong>：是否持续上升？</li>
@@ -703,7 +647,7 @@
   <li><strong>stall/throttle 次数与持续时间</strong>：卡写是偶发还是长期？</li>
 </ul>
 
-<h2 id="5-最小排障顺序强烈建议按这个走">5. 最小排障顺序（强烈建议按这个走）</h2>
+<h2 id="5-排障顺序强烈建议按这个走">5. 排障顺序（强烈建议按这个走）</h2>
 
 <ol>
   <li><strong>先判定是哪类欠账</strong>：immutable 先堆？还是 L0/backlog 先堆？</li>
@@ -764,12 +708,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

@@ -9,7 +9,7 @@ redirect_from:
   - /rocksdb-note-023-memtable-immutable/
 ---
 
-本文围绕「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」做一次**工程化**的梳理：先定义语义/模型，再给出可观测信号与排障顺序。
+本文是「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。
 
 ![RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进](/images/diagrams/rocksdb-write-path.svg)
 
@@ -23,7 +23,7 @@ redirect_from:
 4. 后台 **flush** 把 immutable 落盘为 SST（通常先落到 **L0**）
 5. 后台 **compaction** 把 L0/L1… 逐步合并，控制读放大并回收空间
 
-一句话：**immutable 的数量就是你“写入欠账”的体感指标**。immutable 一直堆，就等于 flush 跟不上写入速度。
+核心要点：**immutable 的数量就是你“写入欠账”的体感指标**。immutable 一直堆，就等于 flush 跟不上写入速度。
 
 ## 2. MemTable 相关的 3 个“必须搞清楚”的问题
 
@@ -42,7 +42,7 @@ redirect_from:
 - **throttle**：还能写，但限速
 - **stall**：直接卡写（保护系统不崩）
 
-触发细节与版本/配置有关，但从排障角度你可以把它当成一个信号：
+触发细节与版本/配置有关，但从排障角度可以将它当成一个信号：
 
 > **如果 immutable 堆积到了触发保护的阈值，说明 flush/compaction 已经欠账到危险程度。**
 
@@ -57,7 +57,7 @@ flush 的输出通常是 L0 文件。L0 文件数上升会带来两个问题：
 
 > immutable ↑ → flush 频繁 → L0 文件 ↑ → compaction 欠账 ↑ → 写入抖动/卡写
 
-## 3. 你会在系统里看到什么：从最有用信号开始
+## 3. 会在系统里看到什么：从最有用信号开始
 
 建议优先看这些“中间量”，它们最能证明因果链：
 
@@ -85,5 +85,5 @@ flush 的输出通常是 L0 文件。L0 文件数上升会带来两个问题：
 
 ## 6. 和另外两篇的关系（建议联读）
 
-- 如果你看到 **L0 文件持续上升**，下一篇建议看：`rocksdb-note-065-flush-write-buffer-l0`
+- 如果看到 **L0 文件持续上升**，下一篇建议看：`rocksdb-note-065-flush-write-buffer-l0`
 - 如果你已经出现 **write stall**，建议看：`rocksdb-note-058-write-stall`

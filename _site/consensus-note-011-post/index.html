@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="这篇解决一个工程上最常见的困惑：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：复制延迟：尾延迟如何影响提交点">
-    <meta itemprop="description" content="本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="这篇解决一个工程上最常见的困惑：">
     <meta itemprop="datePublished" content="April 01, 2022">
     
 
@@ -652,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,27 +615,142 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：复制延迟：尾延迟如何影响提交点」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-<p><img src="/images/diagrams/note-generic-model-metrics.svg" alt="一致性笔记：复制延迟：尾延迟如何影响提交点" /></p>
-<h2 id="1-先把语义模型说清楚">1. 先把语义/模型说清楚</h2>
+        <p>这篇解决一个工程上最常见的困惑：</p>
 
 <ul>
-  <li>这件事的“成功”到底意味着什么？</li>
-  <li>哪些边界条件会让你看到反直觉现象？</li>
+  <li>“平均 RTT 还行，为什么写入延迟突然很高？”</li>
+  <li>“机器不满、CPU 不高，为什么系统还是慢？”</li>
 </ul>
 
-<h2 id="2-你应该先看哪些指标">2. 你应该先看哪些指标</h2>
+<p>很多时候，答案是：<strong>复制提交点被尾延迟（tail latency）支配</strong>。</p>
 
-<p>先找能证明因果的中间量（队列/欠账/命中率/重传率等），不要只看平均值。</p>
+<p>只要做了多数派/同步副本确认，就等于把“写成功”的定义绑定在“第 W 个 ack”的那条路径上。平均值会骗你，尾部才是事实。</p>
 
-<h2 id="3-最小排障顺序">3. 最小排障顺序</h2>
+<h2 id="1-先把提交点模型说清楚写到底在等谁">1. 先把提交点模型说清楚：写到底在等谁</h2>
+
+<p>用一个抽象模型表示一次写：</p>
+
+<ul>
+  <li>N 个副本</li>
+  <li>写需要 W 个副本确认才能 ack</li>
+</ul>
+
+<p>那么写延迟可以粗略理解为：</p>
+
+<ul>
+  <li><strong>第 W 快</strong>的副本 ack 时间</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  W[Write arrives] --&gt; A[Send to replicas]
+  A --&gt; Q[Wait for W acks]
+  Q --&gt; ACK[Ack to client]
+
+  Q --&gt; T[Latency dominated by W-th fastest ack]
+</code></pre>
+
+<h3 id="11-n3-的要点w2-为什么经常被第二快拖住">1.1 N=3 的要点：W=2 为什么经常被“第二快”拖住</h3>
+
+<p>当 N=3,W=2：</p>
+
+<ul>
+  <li>不是在等平均</li>
+  <li>在等“第二快”</li>
+</ul>
+
+<p>如果一个副本经常慢一点点，会看到 P99 延迟明显上升。</p>
+
+<h2 id="2-尾延迟从哪来网络磁盘cpu队列">2. 尾延迟从哪来：网络/磁盘/CPU/队列</h2>
+
+<p>尾延迟不是一个原因，是一组原因叠加的结果。常见来源：</p>
+
+<ul>
+  <li><strong>网络</strong>：跨 AZ/跨 Region RTT 抖动、丢包、重传、队列拥塞</li>
+  <li><strong>磁盘</strong>：fsync 抖动、写放大、后台 compaction/GC 争用 IO</li>
+  <li><strong>CPU</strong>：GC stop-the-world、抢占、热点锁</li>
+  <li><strong>队列</strong>：线程池排队、RPC 队列堆积、backpressure</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  T[Tail latency] --&gt; N[Network]
+  T --&gt; D[Disk]
+  T --&gt; C[CPU]
+  T --&gt; Q[Queueing]
+
+  N --&gt; N1[loss/retransmit]
+  N --&gt; N2[cross-AZ RTT]
+  D --&gt; D1[fsync spikes]
+  D --&gt; D2[background IO]
+  C --&gt; C1[GC pauses]
+  C --&gt; C2[lock contention]
+  Q --&gt; Q1[threadpool backlog]
+</code></pre>
+
+<h2 id="3-看起来没满但很慢尾延迟的典型症状">3. “看起来没满但很慢”：尾延迟的典型症状</h2>
+
+<h3 id="31-平均值正常p99p999-爆炸">3.1 平均值正常，P99/P999 爆炸</h3>
+
+<ul>
+  <li>平均 RTT 10ms</li>
+  <li>P99 RTT 200ms</li>
+</ul>
+
+<p>如果写提交依赖多数派，会频繁落到这些尾部。</p>
+
+<h3 id="32-单个慢副本--放大器">3.2 单个慢副本 = 放大器</h3>
+
+<p>在多数派提交下，一个“偶发慢”的副本会把整体写 P99 放大。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  S[One slow replica] --&gt; A[W-th ack shifts right]
+  A --&gt; P[Write P99 increases]
+</code></pre>
+
+<h3 id="33-排队导致尾延迟雪崩">3.3 排队导致尾延迟雪崩</h3>
+
+<p>当系统接近饱和时，小幅抖动会引发排队，排队会进一步拉长延迟，形成正反馈。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  J[Jitter] --&gt; Q[Queue grows]
+  Q --&gt; L[Latency increases]
+  L --&gt; TO[Timeouts/retries]
+  TO --&gt; Q
+</code></pre>
+
+<h2 id="4-多数派写-vs-同步主备尾延迟形态不同但规律一致">4. 多数派写 vs 同步主备：尾延迟形态不同但规律一致</h2>
+
+<ul>
+  <li>主备同步：写延迟常由“最慢的同步备”决定</li>
+  <li>多数派写：写延迟由“第 W 个 ack”决定</li>
+</ul>
+
+<p>共同点：只要你把提交点绑到多个节点，就必须接受尾延迟在延迟分布里占主导。</p>
+
+<h2 id="5-指标怎么打别只看平均">5. 指标怎么打：别只看平均</h2>
+
+<p>建议直接对准“提交点”观测：</p>
+
+<ul>
+  <li><strong>每次写等了哪几个副本的 ack</strong>（写路径 trace）</li>
+  <li><strong>W-th ack 的延迟分布</strong>（而不是单个 RTT 平均）</li>
+  <li><strong>慢副本出现频率</strong>（按副本维度统计）</li>
+  <li><strong>队列长度/排队时间</strong>（线程池、RPC 队列）</li>
+  <li><strong>重传率/丢包率</strong>（网络侧）</li>
+</ul>
+
+<h2 id="6-排障顺序">6. 排障顺序</h2>
 
 <ol>
-  <li>定义承诺（语义）</li>
-  <li>验证事实（指标）</li>
-  <li>再做调整（参数/预算/架构）</li>
+  <li><strong>先确认提交点</strong>：在等谁（W=2？同步备？）</li>
+  <li><strong>把延迟拆成组件</strong>：网络/磁盘/CPU/队列 哪个在拉长尾部</li>
+  <li><strong>定位慢副本</strong>：是固定某几台，还是随机抖动</li>
+  <li><strong>再谈参数</strong>：超时、批量、并发、线程池</li>
+  <li><strong>最后谈架构</strong>：跨 AZ 策略、降级读写语义、异步化</li>
 </ol>
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>复制系统的延迟不是由平均值决定的，而是由“提交点所需的最后一个 ack”决定的。理解这一点，很多“看起来反直觉的慢”都会变得可解释、可定位。</p>
 
         
       </section>
@@ -733,12 +792,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

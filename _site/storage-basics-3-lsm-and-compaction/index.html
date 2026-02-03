@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。">
+  <meta property="og:description" content="本文是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储基础（3）：LSM、Compaction 与写放大">
-    <meta itemprop="description" content="这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。">
+    <meta itemprop="description" content="本文是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。">
     <meta itemprop="datePublished" content="March 01, 2022">
     
 
@@ -629,7 +573,7 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>这篇是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
+        <p>本文是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
 
 <h2 id="1-lsm-是什么用一句话">1. LSM 是什么（用一句话）</h2>
 
@@ -707,7 +651,7 @@
 
 <h2 id="4-compaction-为什么会让系统抖">4. Compaction 为什么会让系统“抖”</h2>
 
-<p>你可能见过这类现象：</p>
+<p>可能见过这类现象：</p>
 
 <ul>
   <li>平时写入很稳</li>
@@ -722,7 +666,7 @@
   <li><strong>内存压力</strong>：compaction buffer、block cache、memtable 之间互相挤占</li>
 </ul>
 
-<h3 id="41-你会在监控里看到哪些前兆">4.1 你会在监控里看到哪些“前兆”</h3>
+<h3 id="41-会在监控里看到哪些前兆">4.1 会在监控里看到哪些“前兆”</h3>
 
 <p>这类问题最怕“等到写延迟爆炸才发现”。更有效的是盯前兆：</p>
 
@@ -817,12 +761,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

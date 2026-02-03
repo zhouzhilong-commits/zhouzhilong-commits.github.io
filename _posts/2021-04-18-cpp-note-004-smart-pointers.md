@@ -561,33 +561,33 @@ std::thread t2([p]() {  // 拷贝 shared_ptr，引用计数原子增加
 classDiagram
     class SmartPointer {
         <<abstract>>
-        +get() T*
-        +reset() void
-        +operator*() T&
-        +operator->() T*
+        + get()
+        + reset()
+        + operator*() T&
+        + operator->() T*
     }
     
     class unique_ptr {
-        -T* ptr_
-        +unique_ptr()
+        - T* ptr_
+        + unique_ptr()
         +~unique_ptr()
-        +release() T*
-        +reset() void
+        + release()
+        + reset()
     }
     
     class shared_ptr {
-        -T* ptr_
-        -ControlBlock* ctrl_
-        +shared_ptr()
+        - T* ptr_
+        - ControlBlock* ctrl_
+        + shared_ptr()
         +~shared_ptr()
-        +use_count() size_t
+        + use_count()
     }
     
     class weak_ptr {
-        -ControlBlock* ctrl_
-        +weak_ptr()
-        +lock() shared_ptr
-        +expired() bool
+        - ControlBlock* ctrl_
+        + weak_ptr()
+        + lock()
+        + expired()
     }
     
     SmartPointer <|-- unique_ptr

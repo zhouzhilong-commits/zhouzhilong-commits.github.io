@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -675,7 +619,7 @@
 </ul>
 
 <blockquote>
-  <p>如果你把“集群写入字节”也算进去，多副本复制会进一步放大成本（这是另一层面的“系统总写入成本”，和单机引擎内部的 WA 不同，但同样重要）。</p>
+  <p>如果把“集群写入字节”也算进去，多副本复制会进一步放大成本（这是另一层面的“系统总写入成本”，和单机引擎内部的 WA 不同，但同样重要）。</p>
 </blockquote>
 
 <h3 id="21-一个最小闭环的写入至少写两份">2.1 一个“最小闭环”的写入至少写两份</h3>
@@ -708,7 +652,7 @@
   <li><strong>同一条记录可能会随着层级下沉，被重写多次</strong></li>
 </ul>
 
-<p>于是你会看到典型现象：</p>
+<p>于是可以看到典型现象：</p>
 
 <ul>
   <li>compaction backlog 增长 → 写延迟抖动</li>
@@ -727,7 +671,7 @@
 
 <h3 id="31-直觉公式为什么-leveled-compaction-wa-往往更高">3.1 直觉公式：为什么 leveled compaction WA 往往更高</h3>
 
-<p>不追求严格推导，只给一个工程直觉：在 <strong>leveled</strong> 策略里，数据会随着层级下沉，多次参与合并。</p>
+<p>不追求严格推导，只给一个工程要点：在 <strong>leveled</strong> 策略里，数据会随着层级下沉，多次参与合并。</p>
 
 <p>如果我们把每层容量比近似成 <code class="language-plaintext highlighter-rouge">T</code>（例如 10），层数为 <code class="language-plaintext highlighter-rouge">L</code>，那么“同一条数据被重写次数”大致与 <code class="language-plaintext highlighter-rouge">L</code> 同阶，写放大常常会接近一个“每层重写一次”的量级（再叠加 WAL / 元数据）。</p>
 
@@ -891,12 +835,42 @@ Compaction 过猛会把后台 IO/CPU 吃满，写入尾延迟反而更差；正�
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

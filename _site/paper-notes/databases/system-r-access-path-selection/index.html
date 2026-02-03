@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：Access Path Selection in a Relational Database Management System（System R）">
+  <meta property="og:description" content="  论文：Access Path Selection in a Relational Database Management System（Selinger et al., SIGMOD 1979）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">数据库论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,62 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -521,6 +521,48 @@
       
     </li>
   
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
 </ul>
 
 
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="System R：Access Path Selection（论文笔记）">
-    <meta itemprop="description" content="  论文：Access Path Selection in a Relational Database Management System（System R）">
+    <meta itemprop="description" content="  论文：Access Path Selection in a Relational Database Management System（Selinger et al., SIGMOD 1979）">
     <meta itemprop="datePublished" content="March 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  2 分钟阅读
 	
 </p>
           
@@ -574,42 +616,292 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：Access Path Selection in a Relational Database Management System（System R）</p>
+  <p>论文：Access Path Selection in a Relational Database Management System（Selinger et al., SIGMOD 1979）</p>
 </blockquote>
 
-<h2 id="1-这篇论文解决什么">1. 这篇论文解决什么</h2>
-
-<p>把 SQL 查询“翻译成一个高质量执行计划”，核心是 <strong>基于代价的优化器（CBO）</strong>：</p>
+<p>System R 这篇论文几乎奠定了现代关系型数据库优化器（CBO, cost-based optimizer）的基本范式：</p>
 
 <ul>
-  <li>有很多 join 顺序 / access path 可以选</li>
-  <li>需要一个成本模型去估计代价并做搜索</li>
+  <li>用统计信息估计基数与代价</li>
+  <li>用动态规划枚举 join 顺序</li>
+  <li>在可控的搜索空间里选“足够好”的计划</li>
 </ul>
 
-<h2 id="2-两个关键思想">2. 两个关键思想</h2>
+<p>今天你在 Postgres/MySQL/Oracle/SQL Server 里看到的大量优化器概念，都能追溯到它。</p>
+
+<h2 id="1-问题sql-的执行计划空间爆炸">1. 问题：SQL 的执行计划空间爆炸</h2>
+
+<p>给定一个多表 join：</p>
 
 <ul>
-  <li><strong>动态规划（DP）枚举 join 顺序</strong>：从小集合逐步扩展到大集合</li>
-  <li><strong>Selinger-style cost model</strong>：用统计信息估计基数、IO、CPU 等</li>
+  <li>join 顺序有阶乘级组合</li>
+  <li>每一步 join 的 access path（index scan / table scan）也有多种</li>
 </ul>
 
-<h2 id="3-为什么它经典">3. 为什么它经典</h2>
+<pre><code class="language-mermaid">flowchart TD
+  Q[SQL query] --&gt; P[Plan space]
+  P --&gt; J[Join order choices]
+  P --&gt; A[Access path choices]
+  P --&gt; M[Join method choices]
 
-<p>你今天看到的大多数关系型数据库优化器，都能看到 System R 的影子：</p>
+  J --&gt; E1[Explodes factorially]
+  A --&gt; E2[Many combinations]
+  M --&gt; E3[Nested loop / hash / merge]
+</code></pre>
+
+<p>优化器的核心任务：在有限时间内，从巨大的计划空间中选出成本最低（或接近最低）的计划。</p>
+
+<h2 id="2-核心思想-1统计信息--基数估计">2. 核心思想 1：统计信息 → 基数估计</h2>
+
+<h3 id="21-基数cardinality为什么是关键">2.1 基数（cardinality）为什么是关键</h3>
+
+<p>代价模型的输入几乎都依赖基数：</p>
 
 <ul>
-  <li>统计信息（histogram/ndv）</li>
-  <li>join reordering</li>
-  <li>access path（index scan / table scan）</li>
+  <li>一个谓词过滤后剩多少行</li>
+  <li>join 后输出多少行</li>
 </ul>
 
-<h2 id="4-读完后的-takeaways">4. 读完后的 takeaways</h2>
+<p>如果基数估计错一个数量级，计划就可能完全选错。</p>
+
+<h3 id="22-system-r-的统计信息直觉">2.2 System R 的统计信息直觉</h3>
+
+<p>典型统计信息：</p>
 
 <ul>
-  <li>优化器的“正确性”很难，但“好用”更难：统计信息质量决定上限</li>
-  <li>CBO 的工程化核心是：可维护的成本模型 + 可控的搜索空间</li>
+  <li>表行数</li>
+  <li>索引/列的不同值数（NDV）</li>
+  <li>选择率（selectivity）</li>
+  <li>（现代系统会用 histogram、更复杂的相关性建模）</li>
 </ul>
 
+<p>在 System R 的时代，它给出了一个可工程化的起点：用简单统计去估计 selectivity。</p>
+
+<h2 id="3-核心思想-2代价模型cost-model">3. 核心思想 2：代价模型（cost model）</h2>
+
+<p>System R 的成本主要考虑：</p>
+
+<ul>
+  <li>IO（磁盘页访问）</li>
+  <li>CPU（当时不是主要瓶颈，但也考虑）</li>
+</ul>
+
+<h3 id="31-access-path-的代价">3.1 access path 的代价</h3>
+
+<ul>
+  <li>table scan：读全表页</li>
+  <li>index scan：读索引页 + 回表页（受选择率影响）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  AP[Access path] --&gt; TS[Table scan]
+  AP --&gt; IS[Index scan]
+
+  TS --&gt; C1["cost proportional to table_pages"]
+  IS --&gt; C2["cost proportional to index_pages plus selectivity times table_pages"]
+</code></pre>
+
+<p>现代 DB 会更复杂（cache、prefetch、CPU vectorization 等），但思路不变：<strong>建立可维护的成本模型</strong>。</p>
+
+<h2 id="4-核心思想-3selinger-dp-枚举-join-顺序">4. 核心思想 3：Selinger DP 枚举 join 顺序</h2>
+
+<h3 id="41-动态规划的基本套路">4.1 动态规划的基本套路</h3>
+
+<p>对 <code class="language-plaintext highlighter-rouge">n</code> 个表：</p>
+
+<ul>
+  <li>先求所有 1 表子集的最优计划</li>
+  <li>再求所有 2 表子集的最优计划</li>
+  <li>…直到 n 表</li>
+</ul>
+
+<p>关键点：对每个子集 S，只保留“最优计划”（或少量候选），避免指数爆炸。</p>
+
+<pre><code class="language-mermaid">flowchart TD
+  S1[Size 1 subsets] --&gt; S2[Size 2 subsets]
+  S2 --&gt; S3[Size 3 subsets]
+  S3 --&gt; SN[Size n subset]
+
+  S2 --&gt; K[Keep best plan per subset]
+  S3 --&gt; K
+  SN --&gt; K
+</code></pre>
+
+<h3 id="42-dp-为什么能-work">4.2 DP 为什么能 work</h3>
+
+<p>因为 join 的最优子结构：</p>
+
+<ul>
+  <li>如果 <code class="language-plaintext highlighter-rouge">Plan(S)</code> 是子集 S 的最优计划</li>
+  <li>那么构造更大集合 <code class="language-plaintext highlighter-rouge">S ∪ {t}</code> 时，考虑 <code class="language-plaintext highlighter-rouge">Plan(S) join t</code> 的候选即可</li>
+</ul>
+
+<p>虽然现实中有复杂算子（谓词下推、物化、并行等）会破坏部分假设，但 DP 仍是 CBO 的骨架。</p>
+
+<h2 id="5-搜索空间控制工程上比最优更重要">5. 搜索空间控制：工程上比“最优”更重要</h2>
+
+<p>System R 就非常强调：</p>
+
+<ul>
+  <li>不能无限制枚举</li>
+  <li>必须剪枝</li>
+</ul>
+
+<h3 id="51-常见剪枝思路">5.1 常见剪枝思路</h3>
+
+<ul>
+  <li>只保留每个子集的一小部分候选（top-k）</li>
+  <li>限制 join method</li>
+  <li>限制 bushy tree（是否允许非左深树）</li>
+</ul>
+
+<h3 id="52-现代优化器的现实问题">5.2 现代优化器的现实问题</h3>
+
+<ul>
+  <li>统计信息过期/不准</li>
+  <li>列相关性强，独立性假设失败</li>
+  <li>参数化查询导致 selectivity 难估</li>
+</ul>
+
+<p>因此今天很多 DB 引入：</p>
+
+<ul>
+  <li>自适应执行（adaptive）</li>
+  <li>runtime re-optimization</li>
+  <li>feedback-based stats</li>
+</ul>
+
+<p>但基础框架仍然是 System R。</p>
+
+<h2 id="6-读完后的-takeaways">6. 读完后的 takeaways</h2>
+
+<ul>
+  <li>CBO 的上限由统计信息决定：基数估计错了，代价模型再好也救不了。</li>
+  <li>Selinger DP 给了一个可工程化的 join order 搜索框架：<strong>子集最优 + 剪枝</strong>。</li>
+  <li>“最优”不是目标，“可维护 + 可控 + 足够好”才是优化器的工程目标。</li>
+</ul>
+
+<h2 id="7-dp-的状态到底是什么优化器在记忆什么">7. DP 的状态到底是什么：优化器在“记忆”什么</h2>
+
+<p>System R 的 DP 思路可以用“子集最优”概括，但工程上最重要的是：</p>
+
+<ul>
+  <li>对每个 join 子集 S，优化器保存什么信息，才能继续扩展到更大子集。</li>
+</ul>
+
+<p>常见最小状态包括：</p>
+
+<ul>
+  <li>输出基数估计（rows）</li>
+  <li>输出有序性/物化特性（是否按某个 key 排序）</li>
+  <li>成本（累计 IO/CPU）</li>
+  <li>计划树本身（或可重建的描述）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  S[Subset S] --&gt; C[cost(S)]
+  S --&gt; R[rows(S)]
+  S --&gt; O[ordering(S)]
+  S --&gt; P[best plan(S)]
+
+  S --&gt; E[Extend with table t]
+  E --&gt; S2[Subset S ∪ {t}]
+</code></pre>
+
+<h2 id="8-左深树left-deep限制为什么现实里常这么做">8. 左深树（left-deep）限制：为什么现实里常这么做</h2>
+
+<p>System R 在工程上常限制搜索到左深树（left-deep trees），原因：</p>
+
+<ul>
+  <li>大幅减少搜索空间</li>
+  <li>更容易生成可执行的流水线（pipeline）</li>
+  <li>与 nested-loop join 的实现更契合</li>
+</ul>
+
+<p>代价：</p>
+
+<ul>
+  <li>可能错过某些 bushy tree 更优计划</li>
+</ul>
+
+<p>在真实系统里，这是典型的“可控性优先”的剪枝。</p>
+
+<h2 id="9-基数估计误差优化器翻车的根源">9. 基数估计误差：优化器翻车的根源</h2>
+
+<h3 id="91-独立性假设经常失败">9.1 独立性假设经常失败</h3>
+
+<p>很多估计会假设：</p>
+
+<ul>
+  <li>谓词之间独立</li>
+  <li>列之间独立</li>
+</ul>
+
+<p>但现实中列相关性强（比如 <code class="language-plaintext highlighter-rouge">city</code> 与 <code class="language-plaintext highlighter-rouge">zip</code>）。</p>
+
+<p>结果：</p>
+
+<ul>
+  <li>估计输出基数差一个数量级</li>
+  <li>计划选择完全跑偏（比如选错 join 顺序或 join 方法）</li>
+</ul>
+
+<h3 id="92-现代系统的补救方向直觉">9.2 现代系统的补救方向（直觉）</h3>
+
+<ul>
+  <li>更丰富统计：histogram、multi-column stats</li>
+  <li>反馈环：运行时收集 cardinality feedback</li>
+  <li>自适应执行：根据中间结果动态调整</li>
+</ul>
+
+<p>System R 给了框架，但“统计质量”决定上限。</p>
+
+<h2 id="10-join-graph不仅是顺序还要看连接结构">10. join graph：不仅是顺序，还要看连接结构</h2>
+
+<p>当 join 不是链式而是图结构时：</p>
+
+<ul>
+  <li>某些 join 顺序更自然（先把选择性高的边收缩）</li>
+  <li>某些顺序会产生巨大中间结果</li>
+</ul>
+
+<p>优化器常会利用 join graph 做更有效的剪枝与启发式。</p>
+
+<h2 id="11-读完后的补充-takeaways">11. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>DP 的关键是“每个子集保存哪些属性”，这决定了搜索能不能正确扩展。</li>
+  <li>left-deep 是典型工程剪枝：牺牲最优性，换可控性与可实现性。</li>
+  <li>优化器的上限仍然由统计信息决定：统计不准，再漂亮的 DP 也会翻车。</li>
+</ul>
+
+<h2 id="12-一个更可操作的例子为什么-join-顺序会改变数量级">12. 一个更“可操作”的例子：为什么 join 顺序会改变数量级</h2>
+
+<p>假设：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">A</code> 与 <code class="language-plaintext highlighter-rouge">B</code> join 很选择性（输出很小）</li>
+  <li><code class="language-plaintext highlighter-rouge">B</code> 与 <code class="language-plaintext highlighter-rouge">C</code> join 很不选择性（输出很大）</li>
+</ul>
+
+<p>那么：</p>
+
+<ul>
+  <li>先做 <code class="language-plaintext highlighter-rouge">(A ⋈ B)</code> 再 join <code class="language-plaintext highlighter-rouge">C</code> 通常更好</li>
+  <li>先做 <code class="language-plaintext highlighter-rouge">(B ⋈ C)</code> 会产生巨大中间结果，后续成本暴涨</li>
+</ul>
+
+<p>优化器的 DP/代价模型就是在系统化地做这类判断。</p>
+
+<h2 id="13-最后总结system-r-给的是优化器的骨架">13. 最后总结：System R 给的是“优化器的骨架”</h2>
+
+<ul>
+  <li>统计信息：决定基数估计上限</li>
+  <li>代价模型：把估计转成可比较的“成本”</li>
+  <li>DP 搜索：在可控空间里选最优/近似最优</li>
+</ul>
+
+<p>现代数据库在此之上叠加了更多复杂度（并行、缓存、向量化、分布式），但骨架仍是本文论文。</p>
 
         
       </section>
@@ -651,12 +943,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

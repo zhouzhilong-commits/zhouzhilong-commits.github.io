@@ -16,13 +16,6 @@ main:
 
   - title: "论文笔记"
     url: /paper-notes/
-    children:
-      - title: "存储论文"
-        url: /paper-notes/storage/
-      - title: "数据库论文"
-        url: /paper-notes/databases/
-      - title: "分布式系统论文"
-        url: /paper-notes/distributed/
 
   - title: "计算机基础"
     url: /cs-foundations/
@@ -113,16 +106,6 @@ consensus:
 paper_notes:
   - title: "论文笔记"
     children:
-      - title: "存储论文"
-        url: /paper-notes/storage/
-      - title: "数据库论文"
-        url: /paper-notes/databases/
-      - title: "分布式系统论文"
-        url: /paper-notes/distributed/
-
-paper_storage:
-  - title: "存储论文"
-    children:
       - title: "Bigtable：A Distributed Storage System for Structured Data（论文笔记）"
         url: /paper-notes/storage/bigtable/
       - title: "Dynamo：Amazon's Highly Available Key-value Store（论文笔记）"
@@ -131,20 +114,12 @@ paper_storage:
         url: /paper-notes/storage/gfs/
       - title: "LSM-Tree：The Log-Structured Merge-Tree（论文笔记）"
         url: /paper-notes/storage/lsm-tree/
-
-paper_databases:
-  - title: "数据库论文"
-    children:
       - title: "ARIES：Recovery Algorithm（论文笔记）"
         url: /paper-notes/databases/aries-recovery/
       - title: "Silo：High Performance OLTP（论文笔记）"
         url: /paper-notes/databases/silo-oltp/
       - title: "System R：Access Path Selection（论文笔记）"
         url: /paper-notes/databases/system-r-access-path-selection/
-
-paper_distributed:
-  - title: "分布式系统论文"
-    children:
       - title: "Chubby：A Lock Service（论文笔记）"
         url: /paper-notes/distributed/chubby/
       - title: "MapReduce：Simplified Data Processing（论文笔记）"
@@ -181,6 +156,34 @@ cpp:
         url: /cpp-note-005-lambda-function-objects/
       - title: "C++ 笔记：异常安全与异常规范"
         url: /cpp-note-006-exception-safety/
+      - title: "C++ 笔记：并发编程基础：线程与同步"
+        url: /cpp-note-007-concurrency-basics/
+      - title: "C++ 笔记：STL 容器：选择与性能"
+        url: /cpp-note-008-stl-containers/
+      - title: "C++ 笔记：类型推导：auto 与 decltype"
+        url: /cpp-note-009-type-deduction/
+      - title: "C++ 笔记：可变参数模板：参数包展开与折叠表达式"
+        url: /cpp-note-010-variadic-templates/
+      - title: "C++ 笔记：迭代器与算法：STL 算法库的使用"
+        url: /cpp-note-011-iterators-algorithms/
+      - title: "C++ 笔记：多态与虚函数：运行时类型识别"
+        url: /cpp-note-012-polymorphism-virtual/
+      - title: "C++ 笔记：运算符重载：自定义类型的行为"
+        url: /cpp-note-013-operator-overloading/
+      - title: "C++ 笔记：const 正确性与 mutable：不可变性的设计"
+        url: /cpp-note-014-const-correctness/
+      - title: "C++ Core Guidelines 阅读笔记（1）：哲学与接口设计"
+        url: /cpp-guidelines-001-philosophy-interfaces/
+      - title: "C++ Core Guidelines 阅读笔记（2）：函数与类设计"
+        url: /cpp-guidelines-002-functions-classes/
+      - title: "C++ Core Guidelines 阅读笔记（3）：资源管理"
+        url: /cpp-guidelines-003-resource-management/
+      - title: "C++ Core Guidelines 阅读笔记（4）：表达式与语句"
+        url: /cpp-guidelines-004-expressions-statements/
+      - title: "C++ Core Guidelines 阅读笔记（5）：性能与并发"
+        url: /cpp-guidelines-005-performance-concurrency/
+      - title: "C++ Core Guidelines 阅读笔记（6）：模板与错误处理"
+        url: /cpp-guidelines-006-templates-error-handling/
 
 cs_foundations:
   - title: "计算机基础"

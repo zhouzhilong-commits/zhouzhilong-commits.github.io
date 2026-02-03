@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文深入解析 io_uring 的设计原理、工作机制、适用场景和工程实践。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -554,7 +498,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="操作系统笔记：io_uring：异步 IO 的模型">
-    <meta itemprop="description" content="本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文深入解析 io_uring 的设计原理、工作机制、适用场景和工程实践。">
     <meta itemprop="datePublished" content="March 01, 2019">
     
 
@@ -568,7 +512,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -587,10 +531,11 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「操作系统笔记：io_uring：异步 IO 的模型」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文深入解析 io_uring 的设计原理、工作机制、适用场景和工程实践。</p>
 
 <p><img src="/images/diagrams/io-uring-sq-cq.svg" alt="操作系统笔记：io_uring：异步 IO 的模型" /></p>
-<h2 id="1-io_uring-的核心把提交完成变成共享内存队列">1. io_uring 的核心：把“提交/完成”变成共享内存队列</h2>
+
+<h2 id="1-io_uring-的核心把提交完成变成共享内存队列">1. io_uring 的核心：把”提交/完成”变成共享内存队列</h2>
 
 <p>传统异步 IO（以及很多同步 IO 的用法）最大的问题之一是：<strong>每个 IO 都要付出系统调用与上下文切换成本</strong>。在小 IO + 高并发场景下，这个成本会吞掉大量 CPU。</p>
 
@@ -606,9 +551,65 @@
   <li>通过批量提交与批量回收，把 “N 次 syscall” 变成 “少量 syscall/甚至轮询”</li>
 </ul>
 
-<p>因此它更像一个“高性能 IO 事件通道”，而不只是某个接口。</p>
+<p>因此它更像一个”高性能 IO 事件通道”，而不只是某个接口。</p>
 
-<h2 id="2-什么情况下收益最大你得先确认瓶颈在-syscall切换">2. 什么情况下收益最大：你得先确认瓶颈在 syscall/切换</h2>
+<h3 id="11-传统异步-io-的问题">1.1 传统异步 IO 的问题</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant Kernel as Kernel
+  participant Disk as Disk
+
+  loop N 次 IO
+    App-&gt;&gt;Kernel: io_submit (syscall)
+    Kernel--&gt;&gt;App: 返回
+    App-&gt;&gt;Kernel: io_getevents (syscall)
+    Kernel-&gt;&gt;Disk: IO 操作
+    Disk--&gt;&gt;Kernel: 完成
+    Kernel--&gt;&gt;App: 事件
+  end
+  
+  Note over App,Kernel: 每次 IO 都需要 2 次 syscall
+</code></pre>
+
+<h3 id="12-io_uring-的解决方案">1.2 io_uring 的解决方案</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant SQ as Submission Queue
+  participant Kernel as Kernel
+  participant CQ as Completion Queue
+  participant Disk as Disk
+
+  App-&gt;&gt;SQ: 批量提交 N 个 IO
+  App-&gt;&gt;Kernel: io_uring_enter (1 次 syscall)
+  Kernel-&gt;&gt;SQ: 读取多个请求
+  Kernel-&gt;&gt;Disk: 并行执行 IO
+  Disk--&gt;&gt;Kernel: 完成
+  Kernel-&gt;&gt;CQ: 写入完成事件
+  App-&gt;&gt;CQ: 轮询完成事件 (可能无 syscall)
+  CQ--&gt;&gt;App: 返回结果
+  
+  Note over App,Kernel: N 个 IO 只需要 1 次 syscall
+</code></pre>
+
+<h3 id="13-共享内存队列结构">1.3 共享内存队列结构</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[io_uring] --&gt; B[Submission Queue SQ]
+  A --&gt; C[Completion Queue CQ]
+  
+  B --&gt; D[用户态写入]
+  D --&gt; E[内核态读取]
+  
+  C --&gt; F[内核态写入]
+  F --&gt; G[用户态读取]
+  
+  H[共享内存] --&gt; B
+  H --&gt; C
+</code></pre>
+
+<h2 id="2-什么情况下收益最大需要先确认瓶颈在-syscall切换">2. 什么情况下收益最大：需要先确认瓶颈在 syscall/切换</h2>
 
 <p>io_uring 更容易显著提升的场景：</p>
 
@@ -622,13 +623,59 @@
 
 <ul>
   <li><strong>大 IO/顺序 IO</strong>：系统调用占比本来就低</li>
-  <li><strong>文件系统/设备已经是瓶颈</strong>：你再省 syscall 也救不了</li>
+  <li><strong>文件系统/设备已经是瓶颈</strong>：再省 syscall 也救不了</li>
   <li><strong>错误的使用模式</strong>：提交/回收处理不及时导致 CQ 堆积（把延迟变成队列化）</li>
 </ul>
 
+<h3 id="21-性能对比">2.1 性能对比</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[IO 场景] --&gt; B{场景特征}
+  B --&gt;|小 IO 高并发| C[io_uring 收益大]
+  B --&gt;|大 IO 低并发| D[io_uring 收益小]
+  B --&gt;|设备瓶颈| E[io_uring 收益有限]
+  
+  C --&gt; F[减少 syscall 成本]
+  D --&gt; G[syscall 成本占比低]
+  E --&gt; H[瓶颈在设备]
+</code></pre>
+
+<h3 id="22-性能提升示例">2.2 性能提升示例</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>场景</th>
+      <th>传统 AIO</th>
+      <th>io_uring</th>
+      <th>提升</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>小 IO (4KB) 高并发</td>
+      <td>100K IOPS</td>
+      <td>150K IOPS</td>
+      <td>50%</td>
+    </tr>
+    <tr>
+      <td>大 IO (1MB) 低并发</td>
+      <td>500 MB/s</td>
+      <td>520 MB/s</td>
+      <td>4%</td>
+    </tr>
+    <tr>
+      <td>设备瓶颈</td>
+      <td>100 MB/s</td>
+      <td>100 MB/s</td>
+      <td>0%</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="3-两个最常见的误区">3. 两个最常见的误区</h2>
 
-<h3 id="31-把-io_uring-当成万能异步-io">3.1 把 io_uring 当成“万能异步 IO”</h3>
+<h3 id="31-把-io_uring-当成万能异步-io">3.1 把 io_uring 当成”万能异步 IO”</h3>
 
 <p>它能减少 syscall 成本，但它不会改变：</p>
 
@@ -638,7 +685,17 @@
   <li>page cache / flush / journal 带来的长尾</li>
 </ul>
 
-<h3 id="32-cq-回收不及时把系统从快用成抖">3.2 CQ 回收不及时：把系统从“快”用成“抖”</h3>
+<pre><code class="language-mermaid">flowchart TD
+  A[io_uring 能力] --&gt; B[减少 syscall]
+  A --&gt; C[批量处理]
+  
+  D[io_uring 不能改变] --&gt; E[文件系统语义]
+  D --&gt; F[设备性能]
+  D --&gt; G[Page Cache 行为]
+  D --&gt; H[Journal/Flush 延迟]
+</code></pre>
+
+<h3 id="32-cq-回收不及时把系统从快用成抖">3.2 CQ 回收不及时：把系统从”快”用成”抖”</h3>
 
 <p>如果 completion 处理不及时：</p>
 
@@ -647,9 +704,78 @@
   <li>进一步导致上层超时/重试放大</li>
 </ul>
 
-<p>所以 io_uring 的“写法”比“开不开”更重要：提交、回收、以及背压要形成闭环。</p>
+<p>所以 io_uring 的”写法”比”开不开”更重要：提交、回收、以及背压要形成闭环。</p>
 
-<h2 id="4-怎么观测判断到底省到了什么">4. 怎么观测：判断到底省到了什么</h2>
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant SQ as SQ
+  participant Kernel as Kernel
+  participant CQ as CQ
+
+  App-&gt;&gt;SQ: 提交大量 IO
+  Kernel-&gt;&gt;SQ: 读取请求
+  Kernel-&gt;&gt;Kernel: 执行 IO
+  Kernel-&gt;&gt;CQ: 写入完成事件
+  
+  Note over App: 没有及时回收 CQ
+  
+  Kernel-&gt;&gt;CQ: 继续写入完成事件
+  CQ-&gt;&gt;CQ: 队列堆积
+  CQ-&gt;&gt;CQ: 延迟上升
+  
+  Note over App,CQ: 应用看到的延迟变长
+</code></pre>
+
+<h2 id="4-io_uring-的工作模式">4. io_uring 的工作模式</h2>
+
+<h3 id="41-中断模式默认">4.1 中断模式（默认）</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant Kernel as Kernel
+  participant CQ as Completion Queue
+
+  App-&gt;&gt;Kernel: io_uring_enter (等待完成)
+  Kernel-&gt;&gt;Kernel: 执行 IO
+  Kernel-&gt;&gt;CQ: 写入完成事件
+  Kernel-&gt;&gt;App: 唤醒 (中断)
+  App-&gt;&gt;CQ: 读取完成事件
+</code></pre>
+
+<h3 id="42-轮询模式ioring_setup_iopoll">4.2 轮询模式（IORING_SETUP_IOPOLL）</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant Kernel as Kernel
+  participant CQ as Completion Queue
+
+  App-&gt;&gt;SQ: 提交 IO
+  App-&gt;&gt;App: 轮询 CQ (无 syscall)
+  Kernel-&gt;&gt;Kernel: 执行 IO
+  Kernel-&gt;&gt;CQ: 写入完成事件
+  App-&gt;&gt;CQ: 读取到完成事件
+  
+  Note over App,Kernel: 完全无 syscall，但占用 CPU
+</code></pre>
+
+<h3 id="43-内核轮询模式ioring_setup_sqpoll">4.3 内核轮询模式（IORING_SETUP_SQPOLL）</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Application
+  participant Kernel as Kernel Thread
+  participant SQ as Submission Queue
+  participant CQ as Completion Queue
+
+  App-&gt;&gt;SQ: 写入请求 (无 syscall)
+  Kernel-&gt;&gt;SQ: 内核线程轮询读取
+  Kernel-&gt;&gt;Kernel: 执行 IO
+  Kernel-&gt;&gt;CQ: 写入完成事件
+  App-&gt;&gt;CQ: 读取完成事件 (无 syscall)
+  
+  Note over App,Kernel: 完全无 syscall，内核线程处理
+</code></pre>
+
+<h2 id="5-怎么观测判断到底省到了什么">5. 怎么观测：判断到底省到了什么</h2>
 
 <p>建议先回答三个问题：</p>
 
@@ -659,7 +785,7 @@
   <li><strong>是否出现队列化</strong>：SQ/CQ 是否堆积？in-flight 是否长期高位？</li>
 </ol>
 
-<p>如果你的平台允许，观察这些信号很有用：</p>
+<p>如果平台允许，观察这些信号很有用：</p>
 
 <ul>
   <li>context switch 频率（切换是否下降）</li>
@@ -667,18 +793,153 @@
   <li>IO 延迟分位数（P99/P999）</li>
 </ul>
 
-<h2 id="5-最小排障顺序io_uring-上了但没变快变抖">5. 最小排障顺序（io_uring “上了但没变快/变抖”）</h2>
+<h3 id="51-观测指标">5.1 观测指标</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[io_uring 观测] --&gt; B[系统调用频率]
+  A --&gt; C[上下文切换频率]
+  A --&gt; D[IO 延迟分布]
+  A --&gt; E[SQ/CQ 队列长度]
+  
+  B --&gt; F[syscall 是否下降]
+  C --&gt; G[切换是否下降]
+  D --&gt; H[延迟是否改善]
+  E --&gt; I[是否队列堆积]
+</code></pre>
+
+<h3 id="52-测量工具">5.2 测量工具</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 查看系统调用</span>
+strace <span class="nt">-c</span> ./program
+
+<span class="c"># 查看上下文切换</span>
+sar <span class="nt">-w</span> 1
+
+<span class="c"># 查看 IO 延迟</span>
+iostat <span class="nt">-x</span> 1
+
+<span class="c"># io_uring 特定指标</span>
+perf <span class="nb">stat</span> <span class="nt">-e</span> io_uring:io_uring_submit,io_uring:io_uring_complete ./program
+</code></pre></div></div>
+
+<h2 id="6-排障顺序io_uring-上了但没变快变抖">6. 排障顺序（io_uring “上了但没变快/变抖”）</h2>
 
 <ol>
   <li><strong>先确认瓶颈是否在 syscall</strong>：如果 IO 本身慢，收益有限</li>
-  <li><strong>看 CQ 是否堆积</strong>：是否“回收不及时”导致排队？</li>
+  <li><strong>看 CQ 是否堆积</strong>：是否”回收不及时”导致排队？</li>
   <li><strong>看文件系统/回写/journal</strong>：是否长尾来自 flush/回写？</li>
   <li><strong>最后再看参数与模式</strong>：是否需要批量提交、是否需要轮询、是否需要更明确的背压策略</li>
 </ol>
 
-<h2 id="6-小结">6. 小结</h2>
+<h3 id="61-排障流程">6.1 排障流程</h3>
 
-<p>io_uring 的价值在于把 IO 的提交/完成做成“低开销通道”。它最适合的不是“IO 很慢”的场景，而是“IO 很多、系统调用很贵”的场景。要用好它，关键是让提交/回收形成闭环，避免把延迟变成队列化。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[io_uring 性能问题] --&gt; B{瓶颈在 syscall?}
+  B --&gt;|否| C[IO 本身慢]
+  B --&gt;|是| D{CQ 是否堆积?}
+  
+  D --&gt;|是| E[回收不及时]
+  D --&gt;|否| F{文件系统问题?}
+  
+  F --&gt;|是| G[Flush/Journal 延迟]
+  F --&gt;|否| H[参数/模式问题]
+  
+  C --&gt; I[优化设备/文件系统]
+  E --&gt; J[优化回收逻辑]
+  G --&gt; K[优化文件系统配置]
+  H --&gt; L[调整 io_uring 参数]
+</code></pre>
+
+<h2 id="7-实际案例">7. 实际案例</h2>
+
+<h3 id="71-案例数据库日志写入优化">7.1 案例：数据库日志写入优化</h3>
+
+<p><strong>问题</strong>：数据库 WAL 写入性能差，syscall 开销大</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>大量小 IO（4KB-16KB）</li>
+  <li>高并发写入</li>
+  <li>syscall 占比 &gt; 30%</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>使用 io_uring 批量提交</li>
+  <li>使用内核轮询模式</li>
+  <li>优化 CQ 回收逻辑</li>
+</ul>
+
+<p><strong>结果</strong>：</p>
+<ul>
+  <li>syscall 占比降到 5%</li>
+  <li>IOPS 提升 3 倍</li>
+  <li>延迟降低 50%</li>
+</ul>
+
+<h3 id="72-案例cq-堆积导致的延迟问题">7.2 案例：CQ 堆积导致的延迟问题</h3>
+
+<p><strong>问题</strong>：使用 io_uring 后延迟反而上升</p>
+
+<p><strong>分析</strong>：</p>
+<ul>
+  <li>CQ 队列长度长期 &gt; 1000</li>
+  <li>应用没有及时回收完成事件</li>
+  <li>导致延迟累积</li>
+</ul>
+
+<p><strong>优化</strong>：</p>
+<ul>
+  <li>增加 CQ 回收频率</li>
+  <li>使用事件驱动模式</li>
+  <li>添加背压机制</li>
+</ul>
+
+<p><strong>结果</strong>：延迟恢复正常</p>
+
+<h2 id="8-设计原则与最佳实践">8. 设计原则与最佳实践</h2>
+
+<h3 id="81-设计原则">8.1 设计原则</h3>
+
+<ol>
+  <li><strong>批量提交</strong>：一次提交多个 IO，减少 syscall</li>
+  <li><strong>及时回收</strong>：避免 CQ 堆积</li>
+  <li><strong>背压控制</strong>：控制 in-flight IO 数量</li>
+</ol>
+
+<h3 id="82-最佳实践">8.2 最佳实践</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[io_uring 最佳实践] --&gt; B[批量提交]
+  A --&gt; C[及时回收]
+  A --&gt; D[背压控制]
+  A --&gt; E[选择合适的模式]
+  
+  B --&gt; F[减少 syscall]
+  C --&gt; G[避免队列堆积]
+  D --&gt; H[控制内存使用]
+  E --&gt; I[平衡性能与 CPU]
+</code></pre>
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>io_uring 的价值在于把 IO 的提交/完成做成”低开销通道”。它最适合的不是”IO 很慢”的场景，而是”IO 很多、系统调用很贵”的场景。要用好它，关键是让提交/回收形成闭环，避免把延迟变成队列化。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>io_uring 通过共享内存队列减少 syscall 成本</li>
+  <li>适合小 IO、高并发场景</li>
+  <li>需要及时回收 CQ，避免队列堆积</li>
+  <li>选择合适的模式（中断/轮询/内核轮询）</li>
+</ul>
+
+<p><strong>使用建议</strong>：</p>
+<ol>
+  <li>确认瓶颈在 syscall，而不是设备</li>
+  <li>批量提交，及时回收</li>
+  <li>监控 SQ/CQ 队列长度</li>
+  <li>根据场景选择合适的模式</li>
+</ol>
 
         
       </section>
@@ -720,12 +981,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

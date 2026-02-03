@@ -21,60 +21,60 @@ IndexLib 的文件系统抽象包括以下核心概念，通过统一的接口�
 classDiagram
     class IFileSystem {
         <<interface>>
-        +Init(FileSystemOptions) FSResult~void~
-        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
-        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
-        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
-        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
+        + Init()
+        + MountVersion()
+        + MountDir()
+        + MountFile()
+        + CreateFileWriter()
+        + CreateFileReader()
     }
     
     class IDirectory {
         <<interface>>
-        +CreateFileWriter(filePath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(filePath, readerOption) FSResult~FileReader~
-        +MakeDirectory(dirPath, directoryOption) FSResult~IDirectory~
-        +GetDirectory(dirPath) FSResult~IDirectory~
-        +RemoveFile(filePath, removeOption) FSResult~void~
-        +RemoveDirectory(dirPath, removeOption) FSResult~void~
-        +Rename(srcPath, destDirectory, destPath) FSResult~void~
-        +IsExist(path) FSResult~bool~
-        +ListDir(path, listOption, fileList) FSResult~void~
-        +GetFileLength(filePath) FSResult~size_t~
+        + CreateFileWriter()
+        + CreateFileReader()
+        + MakeDirectory()
+        + GetDirectory()
+        + RemoveFile()
+        + RemoveDirectory()
+        + Rename()
+        + IsExist()
+        + ListDir()
+        + GetFileLength()
     }
     
     class FileReader {
         <<interface>>
-        +Open() FSResult~void~
-        +Close() FSResult~void~
-        +Read(buffer, length, offset, option) FSResult~size_t~
-        +Prefetch(length, offset, option) FSResult~size_t~
-        +ReadAsync(buffer, length, offset, option) Future~FSResult~size_t~~
-        +GetLength() size_t
-        +GetLogicalPath() string
-        +GetPhysicalPath() string
+        + Open()
+        + Close()
+        + Read()
+        + Prefetch()
+        + ReadAsync()
+        + GetLength()
+        + GetLogicalPath()
+        + GetPhysicalPath()
     }
     
     class FileWriter {
         <<interface>>
-        +Open(logicalPath, physicalPath) FSResult~void~
-        +Close() FSResult~void~
-        +Write(buffer, length) FSResult~size_t~
-        +ReserveFile(reserveSize) FSResult~void~
-        +Truncate(truncateSize) FSResult~void~
-        +GetLength() size_t
-        +GetLogicalPath() string
-        +GetPhysicalPath() string
+        + Open()
+        + Close()
+        + Write()
+        + ReserveFile()
+        + Truncate()
+        + GetLength()
+        + GetLogicalPath()
+        + GetPhysicalPath()
     }
     
     class Storage {
         <<interface>>
-        +CreateInputStorage(options, memController, entryTable) Storage
-        +CreateOutputStorage(outputRoot, options, memController) Storage
-        +CreateFileReader(logicalFilePath, physicalFilePath, readerOption) FSResult~FileReader~
-        +CreateFileWriter(logicalFilePath, physicalFilePath, writerOption) FSResult~FileWriter~
-        +Sync() FSResult~Future~bool~~
-        +GetStorageType() FSStorageType
+        + CreateInputStorage()
+        + CreateOutputStorage()
+        + CreateFileReader()
+        + CreateFileWriter()
+        + Sync()
+        + GetStorageType()
     }
     
     IFileSystem --> IDirectory : 创建
@@ -170,43 +170,43 @@ flowchart TD
 classDiagram
     class IFileSystem {
         <<interface>>
-        +Init(FileSystemOptions) FSResult~void~
-        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
-        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
-        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
-        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
-        +GetDirectory(logicalPath) FSResult~IDirectory~
-        +RemoveFile(logicalPath, removeOption) FSResult~void~
-        +RemoveDirectory(logicalPath, removeOption) FSResult~void~
-        +IsExist(logicalPath) FSResult~bool~
-        +ListDir(logicalPath, listOption, fileList) FSResult~void~
-        +GetFileLength(logicalPath) FSResult~size_t~
+        + Init()
+        + MountVersion()
+        + MountDir()
+        + MountFile()
+        + CreateFileWriter()
+        + CreateFileReader()
+        + GetDirectory()
+        + RemoveFile()
+        + RemoveDirectory()
+        + IsExist()
+        + ListDir()
+        + GetFileLength()
     }
     
     class FileSystemOptions {
-        +string rootPath
-        +bool enableCache
-        +size_t cacheSize
-        +FSStorageType storageType
+        + string rootPath
+        + bool enableCache
+        + size_t cacheSize
+        + FSStorageType storageType
     }
     
     class MountOption {
-        +FSMountType mountType
-        +bool readOnly
-        +bool lazyLoad
+        + FSMountType mountType
+        + bool readOnly
+        + bool lazyLoad
     }
     
     class WriterOption {
-        +bool atomicWrite
-        +bool syncOnClose
-        +size_t bufferSize
+        + bool atomicWrite
+        + bool syncOnClose
+        + size_t bufferSize
     }
     
     class ReaderOption {
-        +bool useCache
-        +bool prefetch
-        +size_t bufferSize
+        + bool useCache
+        + bool prefetch
+        + size_t bufferSize
     }
     
     IFileSystem --> FileSystemOptions : 使用
@@ -1000,42 +1000,42 @@ IndexLib 支持多种存储格式，包括 Package、Archive 和压缩格式，�
 classDiagram
     class StorageFormat {
         <<interface>>
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(packagePath, outputDir) FSResult~void~
-        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
+        + Pack()
+        + Unpack()
+        + GetFileInfo()
     }
     
     class PackageFormat {
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(packagePath, outputDir) FSResult~void~
-        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
-        -WriteIndex(FileIndex) void
-        -ReadIndex(packagePath) FileIndex
+        + Pack()
+        + Unpack()
+        + GetFileInfo()
+        - WriteIndex()
+        - ReadIndex()
     }
     
     class ArchiveFormat {
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(archivePath, outputDir) FSResult~void~
-        +AppendFile(archivePath, file) FSResult~void~
-        -WriteIndex(ArchiveIndex) void
-        -ReadIndex(archivePath) ArchiveIndex
+        + Pack()
+        + Unpack()
+        + AppendFile()
+        - WriteIndex()
+        - ReadIndex()
     }
     
     class Compressor {
         <<interface>>
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        +GetCompressionRatio() double
+        + Compress()
+        + Decompress()
+        + GetCompressionRatio()
     }
     
     class LZ4Compressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     class ZstdCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     StorageFormat <|-- PackageFormat : 实现
@@ -1288,35 +1288,35 @@ IndexLib 支持多种压缩格式，包括 LZ4、Zstd、Snappy 和 Gzip。让我
 classDiagram
     class Compressor {
         <<interface>>
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        +GetType() CompressionType
-        +GetCompressionRatio() double
-        +GetCompressionSpeed() double
-        +GetDecompressionSpeed() double
+        + Compress()
+        + Decompress()
+        + GetType()
+        + GetCompressionRatio()
+        + GetCompressionSpeed()
+        + GetDecompressionSpeed()
     }
     
     class LZ4Compressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -lz4_compress_level int
+        + Compress()
+        + Decompress()
+        - lz4_compress_level int
     }
     
     class ZstdCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -zstd_compression_level int
+        + Compress()
+        + Decompress()
+        - zstd_compression_level int
     }
     
     class SnappyCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     class GzipCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -gzip_compression_level int
+        + Compress()
+        + Decompress()
+        - gzip_compression_level int
     }
     
     Compressor <|-- LZ4Compressor : 实现

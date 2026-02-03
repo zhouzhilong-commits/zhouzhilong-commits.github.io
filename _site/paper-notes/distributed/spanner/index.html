@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="  论文：Spanner: Google’s Globally-Distributed Database">
+  <meta property="og:description" content="  论文：Spanner: Google’s Globally-Distributed Database（Corbett et al., OSDI 2012）">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -463,7 +407,7 @@
 
     <li>
       
-        <span class="nav__sub-title">分布式系统论文</span>
+        <span class="nav__sub-title">论文笔记</span>
       
 
       
@@ -478,6 +422,104 @@
 
 
 <ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
   
     
     
@@ -540,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="Spanner：Globally-Distributed Database（论文笔记）">
-    <meta itemprop="description" content="  论文：Spanner: Google’s Globally-Distributed Database">
+    <meta itemprop="description" content="  论文：Spanner: Google’s Globally-Distributed Database（Corbett et al., OSDI 2012）">
     <meta itemprop="datePublished" content="March 01, 2022">
     
 
@@ -554,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  5 分钟阅读
 	
 </p>
           
@@ -574,51 +616,495 @@
 
       <section class="page__content" itemprop="text">
         <blockquote>
-  <p>论文：Spanner: Google’s Globally-Distributed Database</p>
+  <p>论文：Spanner: Google’s Globally-Distributed Database（Corbett et al., OSDI 2012）</p>
 </blockquote>
 
-<h2 id="1-spanner-解决什么">1. Spanner 解决什么</h2>
-
-<p>目标是在全球范围内提供：</p>
+<p>Spanner 想解决一个“看起来不可能”的组合：</p>
 
 <ul>
-  <li>分布式事务</li>
-  <li>外部一致性（接近线性一致的语义）</li>
-  <li>可扩展与高可用</li>
+  <li>跨地域（全球）部署</li>
+  <li>可扩展（按 key-range 分片）</li>
+  <li>高可用（复制）</li>
+  <li><strong>强一致语义</strong>（论文强调 external consistency，接近线性一致的事务提交顺序）</li>
 </ul>
 
-<h2 id="2-truetime这篇论文最著名的点">2. TrueTime：这篇论文最著名的点</h2>
+<p>本文论文的最大价值是把“时间、不确定性、一致性、延迟”之间的关系讲清楚：Spanner 用 TrueTime 把物理时钟的不确定性显式化，配合 commit-wait 把全局提交顺序工程化落地。</p>
 
-<p>Spanner 引入 TrueTime（TT）来把“不确定的物理时间”建模成一个区间：</p>
+<h2 id="1-spanner-要的语义external-consistency">1. Spanner 要的语义：External Consistency</h2>
+
+<h3 id="11-什么是-external-consistency">1.1 什么是 external consistency</h3>
+
+<p>简化理解：</p>
 
 <ul>
-  <li>TT.now() 返回 ([earliest, latest])</li>
-  <li>系统通过等待（commit wait）跨过不确定性窗口来保证全局顺序</li>
+  <li>如果事务 T1 在真实世界里“先提交完成”，那么任何客户端都不应该看到 T2 的效果早于 T1。</li>
 </ul>
 
-<p>你可以把它理解为：用工程化时钟同步 + 明确的不确定性边界，来换取更强的一致性语义。</p>
+<p>这比单纯的 serializability 更“贴近真实时间”——对跨地域业务很重要（比如金融、跨区配置变更等）。</p>
 
-<h2 id="3-数据模型与复制高层直觉">3. 数据模型与复制（高层直觉）</h2>
+<h3 id="12-为什么这很难">1.2 为什么这很难</h3>
+
+<p>跨地域意味着：</p>
 
 <ul>
-  <li>数据按 key range 分片</li>
-  <li>每个分片由复制组维护（需要一致性协议保证写入）</li>
-  <li>事务通过两阶段提交等机制协调多个分片</li>
+  <li>网络 RTT 大</li>
+  <li>复制协议本身要多数派</li>
+  <li>时钟无法完美同步</li>
 </ul>
 
-<h2 id="4-为什么它经典">4. 为什么它经典</h2>
+<p>如果没有“全球可比较的时间基准”，事务提交顺序就只能依赖消息顺序与协议状态，语义会变弱或成本更高。</p>
 
-<p>Spanner 把“全球一致的事务数据库”从理论走到工程落地：</p>
+<h2 id="2-核心武器truetime">2. 核心武器：TrueTime</h2>
+
+<h3 id="21-ttnow-返回的是区间">2.1 TT.now() 返回的是区间</h3>
+
+<p>TrueTime 把时间建模成区间而不是点：</p>
 
 <ul>
-  <li>明确地展示了时间、不确定性与一致性的关系</li>
-  <li>给出了很多系统设计的工程答案（复制、分片、事务、时钟）</li>
+  <li><code class="language-plaintext highlighter-rouge">TT.now() -&gt; [earliest, latest]</code></li>
 </ul>
 
-<h2 id="5-读完后的-takeaways">5. 读完后的 takeaways</h2>
+<p>不确定性 <code class="language-plaintext highlighter-rouge">ε = latest - earliest</code> 由时钟同步体系（GPS + 原子钟 + 软件校准）控制。</p>
 
-<p>强一致不是“免费”的：你要付出延迟（等待）、实现复杂度与基础设施成本（时间同步）。</p>
+<pre><code class="language-mermaid">flowchart TD
+  TT[TrueTime] --&gt; N[TT.now()]
+  N --&gt; E[earliest]
+  N --&gt; L[latest]
+  E --&gt; EPS["epsilon equals latest minus earliest"]
 
+  EPS --&gt; C1[clock sync quality]
+  EPS --&gt; C2[hardware + software]
+  EPS --&gt; C3[datacenter topology]
+</code></pre>
+
+<h3 id="22-commit-wait把不确定性等过去">2.2 commit-wait：把不确定性“等过去”</h3>
+
+<p>外部一致性需要：提交时间戳 <code class="language-plaintext highlighter-rouge">s</code> 必须在真实时间上“站得住”。Spanner 的关键动作是 commit-wait：</p>
+
+<ul>
+  <li>事务决定提交时间戳 <code class="language-plaintext highlighter-rouge">s</code></li>
+  <li><strong>等待直到 <code class="language-plaintext highlighter-rouge">TT.after(s)</code> 为真</strong>（也就是 <code class="language-plaintext highlighter-rouge">TT.now().earliest &gt; s</code>）</li>
+</ul>
+
+<p>这样可以保证：当事务返回“提交成功”时，真实时间已经超过 <code class="language-plaintext highlighter-rouge">s</code>，从而建立全局可比较的顺序。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant Txn as Transaction
+  participant TT as TrueTime
+
+  Txn-&gt;&gt;Txn: choose commit timestamp s
+  loop commit-wait
+    Txn-&gt;&gt;TT: TT.now()
+    TT--&gt;&gt;Txn: [earliest, latest]
+  end
+  Note over Txn: wait until earliest &gt; s
+  Txn--&gt;&gt;Txn: return commit success
+</code></pre>
+
+<h2 id="3-数据组织key-range-分片--复制组">3. 数据组织：key-range 分片 + 复制组</h2>
+
+<p>Spanner 的数据单位通常可理解为：</p>
+
+<ul>
+  <li><strong>directory / key-range</strong>（按 key 前缀/区间组织）</li>
+  <li>每个 range 由一个复制组（Paxos group）管理</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  K[Key space] --&gt; R1[Range 1]
+  K --&gt; R2[Range 2]
+  K --&gt; R3[Range 3]
+
+  R1 --&gt; G1[Paxos group #1]
+  R2 --&gt; G2[Paxos group #2]
+  R3 --&gt; G3[Paxos group #3]
+
+  G1 --&gt; DC1[replicas across DCs]
+  G2 --&gt; DC1
+  G3 --&gt; DC1
+</code></pre>
+
+<h2 id="4-事务跨-range-的-2pc--每个-range-内-paxos">4. 事务：跨 range 的 2PC + 每个 range 内 Paxos</h2>
+
+<h3 id="41-两层协议的组合">4.1 两层协议的组合</h3>
+
+<ul>
+  <li><strong>range 内</strong>：用 Paxos（或等价多数派复制）决定写入顺序与 durability</li>
+  <li><strong>跨 range</strong>：用 2PC 协调多个参与者（participant）</li>
+</ul>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant C as Client
+  participant CO as Coordinator
+  participant P1 as Participant (range A)
+  participant P2 as Participant (range B)
+
+  C-&gt;&gt;CO: Commit txn
+  CO-&gt;&gt;P1: Prepare
+  CO-&gt;&gt;P2: Prepare
+  P1--&gt;&gt;CO: Prepared (timestamp)
+  P2--&gt;&gt;CO: Prepared (timestamp)
+  CO-&gt;&gt;CO: choose commit ts s (with TT)
+  CO-&gt;&gt;P1: Commit(s)
+  CO-&gt;&gt;P2: Commit(s)
+  P1--&gt;&gt;CO: Ack
+  P2--&gt;&gt;CO: Ack
+  CO--&gt;&gt;C: Success (after commit-wait)
+</code></pre>
+
+<h3 id="42-truetime-在事务里扮演什么角色">4.2 TrueTime 在事务里扮演什么角色</h3>
+
+<p>它让系统能给事务一个“全球可比较”的提交时间戳，从而：</p>
+
+<ul>
+  <li>提供 external consistency</li>
+  <li>让只读事务在某些模式下可以“按时间戳读”而避免锁冲突（论文里描述了多种读模式）</li>
+</ul>
+
+<h2 id="5-读强一致读-vs-时间戳读">5. 读：强一致读 vs 时间戳读</h2>
+
+<p>Spanner 支持按不同一致性需求选择读策略：</p>
+
+<ul>
+  <li><strong>强一致读</strong>：读最新 committed（成本更高）</li>
+  <li><strong>时间戳读</strong>：读某个时间戳 <code class="language-plaintext highlighter-rouge">t</code> 的快照（可用来降低锁竞争/提高可用性）</li>
+</ul>
+
+<p>工程要点：</p>
+
+<ul>
+  <li>越接近“读最新”，越需要更强的同步/等待</li>
+  <li>越愿意读“稍旧的快照”，就越能换到更低延迟、更高吞吐</li>
+</ul>
+
+<h2 id="6-延迟成本外部一致性不是免费的">6. 延迟成本：外部一致性不是免费的</h2>
+
+<h3 id="61-成本来源">6.1 成本来源</h3>
+
+<ul>
+  <li>多地域复制：Paxos 多数派 RTT</li>
+  <li>跨 range：2PC 两轮</li>
+  <li>TrueTime：commit-wait 引入额外等待（与 ε 相关）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  L[Commit latency] --&gt; P[Paxos quorum RTT]
+  L --&gt; T[2PC overhead]
+  L --&gt; W["commit-wait proportional to epsilon"]
+
+  W --&gt; EPS[TrueTime uncertainty]
+</code></pre>
+
+<h3 id="62-什么时候值得">6.2 什么时候值得</h3>
+
+<ul>
+  <li>对“全球顺序”和“业务可解释性”有硬需求</li>
+  <li>对跨地域一致的配置/元数据/金融类业务</li>
+</ul>
+
+<p>如果业务可以接受最终一致或弱一些的读写语义，可能更适合 Dynamo-style 或多主异步复制。</p>
+
+<h2 id="7-读完后的-takeaways">7. 读完后的 takeaways</h2>
+
+<ul>
+  <li>Spanner 的关键不是“它有分布式事务”，而是 <strong>TrueTime + commit-wait</strong> 把外部一致性工程化。</li>
+  <li>强一致的成本主要体现在：多地域复制 + 2PC + 时间不确定性等待。</li>
+  <li>本文论文最值得学的是：如何把“理论语义”转成“可运维的系统机制”（显式建模不确定性）。</li>
+</ul>
+
+<h2 id="8-更细看-truetimeepsilon-从哪来怎么影响延迟">8. 更细看 TrueTime：epsilon 从哪来，怎么影响延迟</h2>
+
+<h3 id="81-epsilon-的来源">8.1 epsilon 的来源</h3>
+
+<p><code class="language-plaintext highlighter-rouge">ε</code> 不是一个“理论常数”，它来自一整套工程体系：</p>
+
+<ul>
+  <li>时钟源（GPS/原子钟）</li>
+  <li>机房内分发与校准</li>
+  <li>软件层的误差估计与上报</li>
+</ul>
+
+<p>Spanner 不要求“时钟完美同步”，但要求系统能<strong>给出一个可信的误差上界</strong>。这就是 TrueTime 的关键：</p>
+
+<ul>
+  <li>不知道现在是几点（精确点）</li>
+  <li>但你知道“现在一定在这个区间里”</li>
+</ul>
+
+<h3 id="82-commit-wait-的延迟上界">8.2 commit-wait 的延迟上界</h3>
+
+<p>commit-wait 至少要等待到 <code class="language-plaintext highlighter-rouge">TT.now().earliest &gt; s</code>。</p>
+
+<p>要点：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">ε</code> 越大，commit-wait 的额外等待越大</li>
+  <li>在跨地域写入本就很慢的情况下，commit-wait 可能不是主导项；但在同城/低 RTT 环境下，它可能更显著</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[commit latency] --&gt; B[paxos RTT]
+  A --&gt; C[2PC rounds]
+  A --&gt; D[commit-wait]
+
+  D --&gt; E[epsilon]
+  E --&gt; F[clock sync quality]
+</code></pre>
+
+<h2 id="9-paxos-group复制组在系统里的位置">9. Paxos group（复制组）在系统里的位置</h2>
+
+<p>Spanner 的复制通常可以理解为：每个 range 是一个 Paxos group。</p>
+
+<ul>
+  <li>group leader 负责排序与提交</li>
+  <li>多数派 ack 后写入生效</li>
+</ul>
+
+<p>因此即便不考虑事务，单 range 的写入也至少需要“多数派 RTT”。</p>
+
+<h2 id="10-事务提交2pc--paxos-的组合成本">10. 事务提交：2PC + Paxos 的组合成本</h2>
+
+<h3 id="101-为什么需要-2pc">10.1 为什么需要 2PC</h3>
+
+<p>跨 range 的事务需要协调多个 participant，否则会出现：</p>
+
+<ul>
+  <li>A range 写成功、B range 写失败</li>
+  <li>系统进入不一致状态</li>
+</ul>
+
+<p>2PC 用 coordinator 做全局决策：</p>
+
+<ul>
+  <li>prepare 阶段让所有 participant 进入可提交状态</li>
+  <li>commit/abort 阶段统一做决定</li>
+</ul>
+
+<h3 id="102-与复制组的叠加">10.2 与复制组的叠加</h3>
+
+<p>每个 participant 的 prepare/commit 本身又要在其 Paxos group 内达成一致。</p>
+
+<p>所以“一个跨 range 写事务”的关键路径通常是：</p>
+
+<ul>
+  <li>多个 group 的 prepare（多数派）</li>
+  <li>coordinator 选择时间戳 + commit-wait</li>
+  <li>多个 group 的 commit（多数派）</li>
+</ul>
+
+<h2 id="11-只读事务为什么时间戳读很强大">11. 只读事务：为什么时间戳读很强大</h2>
+
+<p>只读事务如果能在一个时间戳 <code class="language-plaintext highlighter-rouge">t</code> 上读取一致快照，就可以：</p>
+
+<ul>
+  <li>避免加锁干扰写事务</li>
+  <li>获得更稳定的读延迟</li>
+</ul>
+
+<p>TrueTime 帮你把“时间戳 t”变成跨地域可比较的概念，从而让快照读语义更自然。</p>
+
+<h2 id="12-目录directory与数据放置让-locality-可控">12. 目录（directory）与数据放置：让 locality 可控</h2>
+
+<p>论文里强调了 directory 的概念（可理解为 key-space 的层级组织），目的是：</p>
+
+<ul>
+  <li>把“经常一起访问的数据”放到更近的位置</li>
+  <li>让数据放置策略（placement）可表达</li>
+</ul>
+
+<p>这是一种工程现实：强一致全局数据库不只是协议，还要面对 locality 与成本。</p>
+
+<h2 id="13-外部一致性再用一个因果视角总结">13. 外部一致性：再用一个“因果视角”总结</h2>
+
+<p>commit-wait 的本质是：</p>
+
+<ul>
+  <li>当系统告诉你“事务提交成功”时，它确保真实时间已经跨过该事务的提交时间戳</li>
+</ul>
+
+<p>这样用户观察到的提交顺序就能和真实世界的时间顺序一致（在误差上界 ε 的定义下）。</p>
+
+<h2 id="14-读完后的补充-takeaways">14. 读完后的补充 takeaways</h2>
+
+<ul>
+  <li>Spanner 的工程核心是：显式建模时间不确定性，并把它纳入协议（commit-wait）。</li>
+  <li>真正的成本来自：复制 + 2PC + commit-wait 的叠加；理解延迟拆分有助于判断是否值得。</li>
+  <li>directory/placement 体现了“全球数据库最终还是要服从 locality”：系统不可能违背物理。</li>
+</ul>
+
+<h2 id="15-并发控制锁两阶段锁与时间戳的关系">15. 并发控制：锁、两阶段锁与时间戳的关系</h2>
+
+<p>Spanner 论文的主角是 TrueTime，但“事务能跑起来”还需要并发控制。</p>
+
+<p>一个工程要点：</p>
+
+<ul>
+  <li><strong>写事务</strong>通常需要锁（至少是对写集合的保护）</li>
+  <li><strong>只读事务</strong>可以在某些模式下用“时间戳快照读”减少锁冲突</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  T[Transaction] --&gt; W[Read-write txn]
+  T --&gt; R[Read-only txn]
+
+  W --&gt; L[Locks]
+  W --&gt; C[2PC + Paxos]
+
+  R --&gt; TS[Timestamp read]
+  TS --&gt; TT[TrueTime]
+</code></pre>
+
+<h3 id="151-为什么只靠时间戳不够">15.1 为什么只靠时间戳不够</h3>
+
+<p>如果没有锁，两个写事务可能并发写同一 key-range：</p>
+
+<ul>
+  <li>即使你能分配时间戳，也需要在冲突时决定谁赢谁输</li>
+</ul>
+
+<p>因此写事务仍需要某种互斥/验证机制（锁或等价的 OCC/验证）。</p>
+
+<h3 id="152-两阶段锁2pl的直觉位置">15.2 两阶段锁（2PL）的直觉位置</h3>
+
+<p>2PL 常见要点：</p>
+
+<ul>
+  <li>阶段 1：获取锁</li>
+  <li>阶段 2：释放锁（提交/回滚时释放）</li>
+</ul>
+
+<p>在分布式环境里，锁本身也是协调开销，所以 Spanner 更希望让只读事务减少锁参与。</p>
+
+<h2 id="16-读模式强一致读-vs-stale-read-vs-bounded-staleness">16. 读模式：强一致读 vs stale read vs bounded staleness</h2>
+
+<p>Spanner 提供多种读模式，本质是在做“语义 vs 延迟/吞吐”的交换：</p>
+
+<ul>
+  <li><strong>强一致读</strong>：读最新 committed（成本更高）</li>
+  <li><strong>时间戳读</strong>：读某个 <code class="language-plaintext highlighter-rouge">t</code> 的快照（可以更快、更可并行）</li>
+  <li><strong>bounded staleness</strong>：允许读稍旧的数据，换低延迟</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  R[Read] --&gt; S[Strong read]
+  R --&gt; TS[Timestamp read]
+  R --&gt; BS[Bounded staleness]
+
+  S --&gt; L1[Higher coordination]
+  TS --&gt; L2[Lower contention]
+  BS --&gt; L3[Lower tail latency]
+</code></pre>
+
+<h3 id="161-为什么-bounded-staleness-重要">16.1 为什么 bounded staleness 重要</h3>
+
+<p>在全球部署下，很多读并不需要“最新”，而需要：</p>
+
+<ul>
+  <li>延迟稳定</li>
+  <li>语义可解释（最多旧 N 秒或 N 个版本）</li>
+</ul>
+
+<p>这种模式能显著降低跨地域的同步等待。</p>
+
+<h2 id="17-directoryplacement全球系统最终还是要服从-locality">17. directory/placement：全球系统最终还是要服从 locality</h2>
+
+<h3 id="171-directory-的工程意义">17.1 directory 的工程意义</h3>
+
+<p>Spanner 的 directory 可以理解为：</p>
+
+<ul>
+  <li>key-space 的一个“可移动单元”（通常是一段范围或前缀）</li>
+  <li>系统可以把 directory 作为放置与迁移的对象</li>
+</ul>
+
+<p>动机：</p>
+
+<ul>
+  <li>把经常一起访问的数据放近（减少跨地域事务）</li>
+  <li>把热数据拆分/迁移（负载均衡）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  D[Directory] --&gt; K[Key range]
+  D --&gt; P[Placement policy]
+  D --&gt; M[Move/rebalance]
+
+  P --&gt; DC[Choose replica locations]
+  M --&gt; L[Improve locality]
+</code></pre>
+
+<h3 id="172-为什么全球一致仍需要-placement">17.2 为什么“全球一致”仍需要 placement</h3>
+
+<p>协议解决的是“如何一致”，placement 决定的是“付出多少延迟”。</p>
+
+<ul>
+  <li>如果跨洲事务很多，2PC + Paxos RTT 会直接把延迟拉爆</li>
+  <li>把相关数据 co-locate 是降低成本的第一手段</li>
+</ul>
+
+<h2 id="18-故障与恢复复制组层面的可用性">18. 故障与恢复：复制组层面的可用性</h2>
+
+<h3 id="181-paxos-group-的故障边界">18.1 Paxos group 的故障边界</h3>
+
+<p>对于单个 range（一个复制组）：</p>
+
+<ul>
+  <li>少数副本故障：多数派仍可写</li>
+  <li>leader 故障：选举新 leader，继续服务</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  G[Paxos group] --&gt; Q[Quorum majority]
+  Q --&gt; OK[Still available]
+
+  F[Leader failure] --&gt; E[Elect new leader]
+  E --&gt; OK
+</code></pre>
+
+<h3 id="182-跨-group-事务的恢复更复杂">18.2 跨 group 事务的恢复更复杂</h3>
+
+<p>跨 group 的事务还牵涉 2PC：</p>
+
+<ul>
+  <li>coordinator 失败怎么办</li>
+  <li>participant prepared 但没收到 commit 怎么办</li>
+</ul>
+
+<p>2PC 的经典问题是：coordinator 失败可能导致阻塞，需要额外机制（日志、超时、恢复协议）把状态推进。</p>
+
+<h2 id="19-端到端延迟拆分一个工程视角的可解释模型">19. 端到端延迟拆分：一个工程视角的“可解释模型”</h2>
+
+<p>把一次跨地域写事务的延迟粗分为：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">L_paxos</code>: 每个 participant 在其 Paxos group 内达成多数派的 RTT</li>
+  <li><code class="language-plaintext highlighter-rouge">L_2pc</code>: 2PC 的往返次数（prepare/commit）</li>
+  <li><code class="language-plaintext highlighter-rouge">L_wait</code>: commit-wait（与 ε 相关）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  L[Total commit latency] --&gt; P[L_paxos]
+  L --&gt; T[L_2pc]
+  L --&gt; W[L_wait]
+
+  W --&gt; EPS[epsilon]
+  P --&gt; RTT[network RTT]
+</code></pre>
+
+<h3 id="191-怎么用这个模型判断值不值得">19.1 怎么用这个模型判断“值不值得”</h3>
+
+<ul>
+  <li>如果你的业务对 external consistency 没硬需求，<code class="language-plaintext highlighter-rouge">L_wait</code> 与跨地域 <code class="language-plaintext highlighter-rouge">L_paxos/L_2pc</code> 的成本可能不划算</li>
+  <li>如果你的业务需要“全球顺序可解释”，Spanner 的这套机制能显著降低应用层复杂度</li>
+</ul>
+
+<h2 id="20-读完后的最终-takeaways加深版">20. 读完后的最终 takeaways（加深版）</h2>
+
+<ul>
+  <li>Spanner 的核心贡献是：把“时间不确定性”显式建模，并将其纳入一致性协议（commit-wait）。</li>
+  <li>强一致的实际成本来自复制与 2PC，placement/locality 决定了你付出的 RTT。</li>
+  <li>读模式（timestamp / bounded staleness）是工程落地的关键：它让系统在语义与性能之间有可控的旋钮。</li>
+</ul>
 
         
       </section>
@@ -660,12 +1146,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

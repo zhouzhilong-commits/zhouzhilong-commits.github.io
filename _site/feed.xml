@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-02T21:27:18+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-03T20:40:51+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <p><img src="/images/diagrams/indexlib-filesystem-overview.svg" alt="文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制" /></p>
 
@@ -11,60 +11,60 @@
 <pre><code class="language-mermaid">classDiagram
     class IFileSystem {
         &lt;&lt;interface&gt;&gt;
-        +Init(FileSystemOptions) FSResult~void~
-        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
-        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
-        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
-        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
+        + Init()
+        + MountVersion()
+        + MountDir()
+        + MountFile()
+        + CreateFileWriter()
+        + CreateFileReader()
     }
     
     class IDirectory {
         &lt;&lt;interface&gt;&gt;
-        +CreateFileWriter(filePath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(filePath, readerOption) FSResult~FileReader~
-        +MakeDirectory(dirPath, directoryOption) FSResult~IDirectory~
-        +GetDirectory(dirPath) FSResult~IDirectory~
-        +RemoveFile(filePath, removeOption) FSResult~void~
-        +RemoveDirectory(dirPath, removeOption) FSResult~void~
-        +Rename(srcPath, destDirectory, destPath) FSResult~void~
-        +IsExist(path) FSResult~bool~
-        +ListDir(path, listOption, fileList) FSResult~void~
-        +GetFileLength(filePath) FSResult~size_t~
+        + CreateFileWriter()
+        + CreateFileReader()
+        + MakeDirectory()
+        + GetDirectory()
+        + RemoveFile()
+        + RemoveDirectory()
+        + Rename()
+        + IsExist()
+        + ListDir()
+        + GetFileLength()
     }
     
     class FileReader {
         &lt;&lt;interface&gt;&gt;
-        +Open() FSResult~void~
-        +Close() FSResult~void~
-        +Read(buffer, length, offset, option) FSResult~size_t~
-        +Prefetch(length, offset, option) FSResult~size_t~
-        +ReadAsync(buffer, length, offset, option) Future~FSResult~size_t~~
-        +GetLength() size_t
-        +GetLogicalPath() string
-        +GetPhysicalPath() string
+        + Open()
+        + Close()
+        + Read()
+        + Prefetch()
+        + ReadAsync()
+        + GetLength()
+        + GetLogicalPath()
+        + GetPhysicalPath()
     }
     
     class FileWriter {
         &lt;&lt;interface&gt;&gt;
-        +Open(logicalPath, physicalPath) FSResult~void~
-        +Close() FSResult~void~
-        +Write(buffer, length) FSResult~size_t~
-        +ReserveFile(reserveSize) FSResult~void~
-        +Truncate(truncateSize) FSResult~void~
-        +GetLength() size_t
-        +GetLogicalPath() string
-        +GetPhysicalPath() string
+        + Open()
+        + Close()
+        + Write()
+        + ReserveFile()
+        + Truncate()
+        + GetLength()
+        + GetLogicalPath()
+        + GetPhysicalPath()
     }
     
     class Storage {
         &lt;&lt;interface&gt;&gt;
-        +CreateInputStorage(options, memController, entryTable) Storage
-        +CreateOutputStorage(outputRoot, options, memController) Storage
-        +CreateFileReader(logicalFilePath, physicalFilePath, readerOption) FSResult~FileReader~
-        +CreateFileWriter(logicalFilePath, physicalFilePath, writerOption) FSResult~FileWriter~
-        +Sync() FSResult~Future~bool~~
-        +GetStorageType() FSStorageType
+        + CreateInputStorage()
+        + CreateOutputStorage()
+        + CreateFileReader()
+        + CreateFileWriter()
+        + Sync()
+        + GetStorageType()
     }
     
     IFileSystem --&gt; IDirectory : 创建
@@ -182,43 +182,43 @@
 <pre><code class="language-mermaid">classDiagram
     class IFileSystem {
         &lt;&lt;interface&gt;&gt;
-        +Init(FileSystemOptions) FSResult~void~
-        +MountVersion(physicalRoot, versionId, logicalPath, mountOption) FSResult~void~
-        +MountDir(physicalRoot, physicalPath, logicalPath, mountOption) FSResult~void~
-        +MountFile(physicalRoot, physicalPath, logicalPath, mountType) FSResult~void~
-        +CreateFileWriter(rawPath, writerOption) FSResult~FileWriter~
-        +CreateFileReader(rawPath, readerOption) FSResult~FileReader~
-        +GetDirectory(logicalPath) FSResult~IDirectory~
-        +RemoveFile(logicalPath, removeOption) FSResult~void~
-        +RemoveDirectory(logicalPath, removeOption) FSResult~void~
-        +IsExist(logicalPath) FSResult~bool~
-        +ListDir(logicalPath, listOption, fileList) FSResult~void~
-        +GetFileLength(logicalPath) FSResult~size_t~
+        + Init()
+        + MountVersion()
+        + MountDir()
+        + MountFile()
+        + CreateFileWriter()
+        + CreateFileReader()
+        + GetDirectory()
+        + RemoveFile()
+        + RemoveDirectory()
+        + IsExist()
+        + ListDir()
+        + GetFileLength()
     }
     
     class FileSystemOptions {
-        +string rootPath
-        +bool enableCache
-        +size_t cacheSize
-        +FSStorageType storageType
+        + string rootPath
+        + bool enableCache
+        + size_t cacheSize
+        + FSStorageType storageType
     }
     
     class MountOption {
-        +FSMountType mountType
-        +bool readOnly
-        +bool lazyLoad
+        + FSMountType mountType
+        + bool readOnly
+        + bool lazyLoad
     }
     
     class WriterOption {
-        +bool atomicWrite
-        +bool syncOnClose
-        +size_t bufferSize
+        + bool atomicWrite
+        + bool syncOnClose
+        + size_t bufferSize
     }
     
     class ReaderOption {
-        +bool useCache
-        +bool prefetch
-        +size_t bufferSize
+        + bool useCache
+        + bool prefetch
+        + size_t bufferSize
     }
     
     IFileSystem --&gt; FileSystemOptions : 使用
@@ -1054,42 +1054,42 @@
 <pre><code class="language-mermaid">classDiagram
     class StorageFormat {
         &lt;&lt;interface&gt;&gt;
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(packagePath, outputDir) FSResult~void~
-        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
+        + Pack()
+        + Unpack()
+        + GetFileInfo()
     }
     
     class PackageFormat {
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(packagePath, outputDir) FSResult~void~
-        +GetFileInfo(packagePath, fileName) FSResult~FileInfo~
-        -WriteIndex(FileIndex) void
-        -ReadIndex(packagePath) FileIndex
+        + Pack()
+        + Unpack()
+        + GetFileInfo()
+        - WriteIndex()
+        - ReadIndex()
     }
     
     class ArchiveFormat {
-        +Pack(files, outputPath) FSResult~void~
-        +Unpack(archivePath, outputDir) FSResult~void~
-        +AppendFile(archivePath, file) FSResult~void~
-        -WriteIndex(ArchiveIndex) void
-        -ReadIndex(archivePath) ArchiveIndex
+        + Pack()
+        + Unpack()
+        + AppendFile()
+        - WriteIndex()
+        - ReadIndex()
     }
     
     class Compressor {
         &lt;&lt;interface&gt;&gt;
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        +GetCompressionRatio() double
+        + Compress()
+        + Decompress()
+        + GetCompressionRatio()
     }
     
     class LZ4Compressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     class ZstdCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     StorageFormat &lt;|-- PackageFormat : 实现
@@ -1358,35 +1358,35 @@
 <pre><code class="language-mermaid">classDiagram
     class Compressor {
         &lt;&lt;interface&gt;&gt;
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        +GetType() CompressionType
-        +GetCompressionRatio() double
-        +GetCompressionSpeed() double
-        +GetDecompressionSpeed() double
+        + Compress()
+        + Decompress()
+        + GetType()
+        + GetCompressionRatio()
+        + GetCompressionSpeed()
+        + GetDecompressionSpeed()
     }
     
     class LZ4Compressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -lz4_compress_level int
+        + Compress()
+        + Decompress()
+        - lz4_compress_level int
     }
     
     class ZstdCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -zstd_compression_level int
+        + Compress()
+        + Decompress()
+        - zstd_compression_level int
     }
     
     class SnappyCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
+        + Compress()
+        + Decompress()
     }
     
     class GzipCompressor {
-        +Compress(data, compressed) FSResult~void~
-        +Decompress(compressed, data) FSResult~void~
-        -gzip_compression_level int
+        + Compress()
+        + Decompress()
+        - gzip_compression_level int
     }
     
     Compressor &lt;|-- LZ4Compressor : 实现
@@ -1607,19 +1607,19 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Locator {
-        -uint64_t _src
-        -Progress::Offset _minOffset
-        -MultiProgress _multiProgress
-        -string _userData
-        -bool _isLegacyLocator
-        +IsFasterThan(Locator, bool) LocatorCompareResult
-        +Update(Locator) void
-        +Serialize() string
-        +Deserialize(string) Status
-        +GetSrc() uint64_t
-        +GetMinOffset() Offset
-        +GetMultiProgress() MultiProgress
-        +GetUserData() string
+        - uint64_t _src
+        - Progress::Offset _minOffset
+        - MultiProgress _multiProgress
+        - string _userData
+        - bool _isLegacyLocator
+        + IsFasterThan()
+        + Update()
+        + Serialize()
+        + Deserialize()
+        + GetSrc()
+        + GetMinOffset()
+        + GetMultiProgress()
+        + GetUserData()
     }
     
     class LocatorCompareResult {
@@ -1631,20 +1631,20 @@
     }
     
     class DocInfo {
-        +int64_t timestamp
-        +uint32_t concurrentIdx
-        +uint16_t hashId
-        +uint8_t sourceIdx
+        + int64_t timestamp
+        + uint32_t concurrentIdx
+        + uint16_t hashId
+        + uint8_t sourceIdx
     }
     
     class Progress {
-        +uint32_t from
-        +uint32_t to
-        +Offset offset
+        + uint32_t from
+        + uint32_t to
+        + Offset offset
     }
     
     class MultiProgress {
-        +vector~ProgressVector~ _progresses
+        + vector_ProgressVector _progresses
     }
     
     Locator --&gt; LocatorCompareResult : 返回
@@ -2762,30 +2762,30 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Version {
-        -versionid_t _versionId
-        -map~uint64_t, Locator~ _locators
-        +GetLocator(uint64_t src) Locator
-        +SetLocator(uint64_t src, Locator) void
-        +GetAllLocators() map~uint64_t, Locator~
+        - versionid_t _versionId
+        - map_uint64_t_Locator _locators
+        + GetLocator()
+        + SetLocator()
+        + GetAllLocators()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan(Locator) LocatorCompareResult
-        +Update(Locator) void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
     }
     
     class TabletWriter {
-        -map~uint64_t, Locator~ _locators
-        +Build(Document) Status
-        +GetLocator(uint64_t src) Locator
+        - map_uint64_t_Locator _locators
+        + Build()
+        + GetLocator()
     }
     
     class Document {
-        +uint64_t _src
-        +DocInfo _docInfo
-        +GetLocator() Locator
+        + uint64_t _src
+        + DocInfo _docInfo
+        + GetLocator()
     }
     
     Version --&gt; Locator : 包含多个
@@ -3179,25 +3179,25 @@
 
 <pre><code class="language-mermaid">classDiagram
     class LocatorPool {
-        -queue~Locator*~ _pool
-        -mutex _mutex
-        +Get() Locator*
-        +Put(Locator*) void
-        +Clear() void
+        - queue_Locator _pool
+        - mutex _mutex
+        + Get()
+        + Put()
+        + Clear()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        -string _userData
-        +Reset() void
-        +Reuse() void
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        - string _userData
+        + Reset()
+        + Reuse()
     }
     
     class ProgressPool {
-        -queue~ProgressVector*~ _pool
-        +Get() ProgressVector*
-        +Put(ProgressVector*) void
+        - queue_ProgressVector _pool
+        + Get()
+        + Put()
     }
     
     LocatorPool --&gt; Locator : 管理
@@ -3276,11 +3276,11 @@
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        +IsFasterThan() LocatorCompareResult
-        +Update() void
-        +Serialize() string
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        + IsFasterThan()
+        + Update()
+        + Serialize()
     }
     
     class Compatibility {
@@ -3526,44 +3526,44 @@
 <pre><code class="language-mermaid">classDiagram
     class ITabletFactory {
         &lt;&lt;interface&gt;&gt;
-        +CreateTabletWriter(Schema) TabletWriter
-        +CreateTabletReader(Schema) TabletReader
-        +CreateMemSegment(SegmentMeta) MemSegment
-        +CreateDiskSegment(SegmentMeta) DiskSegment
+        + CreateTabletWriter()
+        + CreateTabletReader()
+        + CreateMemSegment()
+        + CreateDiskSegment()
     }
     
     class NormalTableFactory {
-        +CreateTabletWriter(Schema) NormalTabletWriter
-        +CreateTabletReader(Schema) NormalTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KVTableFactory {
-        +CreateTabletWriter(Schema) KVTabletWriter
-        +CreateTabletReader(Schema) KVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class KKVTableFactory {
-        +CreateTabletWriter(Schema) KKVTabletWriter
-        +CreateTabletReader(Schema) KKVTabletReader
+        + CreateTabletWriter()
+        + CreateTabletReader()
     }
     
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        +Search(jsonQuery) Status
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        + Search()
     }
     
     class KVTabletReader {
-        -KVIndexReader _kvIndexReader
-        -PackAttributeFormatter _formatter
-        +Search(jsonQuery) Status
+        - KVIndexReader _kvIndexReader
+        - PackAttributeFormatter _formatter
+        + Search()
     }
     
     class KKVTabletReader {
-        -KKVReader _kkvReader
-        -KKVIterator _iterator
-        +Search(jsonQuery) Status
+        - KKVReader _kkvReader
+        - KKVIterator _iterator
+        + Search()
     }
     
     ITabletFactory &lt;|-- NormalTableFactory : 实现
@@ -3634,29 +3634,29 @@
 
 <pre><code class="language-mermaid">classDiagram
     class NormalTabletReader {
-        -MultiFieldIndexReader _multiFieldIndexReader
-        -AttributeReader _attributeReader
-        -PrimaryKeyReader _primaryKeyReader
-        -SummaryReader _summaryReader
-        -DeletionMapReader _deletionMapReader
-        +Search(jsonQuery) Status
-        +GetMultiFieldIndexReader() MultiFieldIndexReader
-        +GetAttributeReader(attrName) AttributeReader
+        - MultiFieldIndexReader _multiFieldIndexReader
+        - AttributeReader _attributeReader
+        - PrimaryKeyReader _primaryKeyReader
+        - SummaryReader _summaryReader
+        - DeletionMapReader _deletionMapReader
+        + Search()
+        + GetMultiFieldIndexReader()
+        + GetAttributeReader()
     }
     
     class MultiFieldIndexReader {
-        -map~string, InvertedIndexReader~ _indexReaders
-        +Search(Query) QueryResult
+        - map_string_InvertedIndexReader _indexReaders
+        + Search()
     }
     
     class AttributeReader {
-        -map~string, AttributeIndexReader~ _readers
-        +ReadAttribute(docId, attrName) AttributeValue
+        - map_string_AttributeIndexReader _readers
+        + ReadAttribute()
     }
     
     class PrimaryKeyReader {
-        -PrimaryKeyIndexReader _reader
-        +Lookup(pk) DocId
+        - PrimaryKeyIndexReader _reader
+        + Lookup()
     }
     
     NormalTabletReader --&gt; MultiFieldIndexReader : 包含
@@ -4256,38 +4256,38 @@
 
 <pre><code class="language-mermaid">classDiagram
     class MemoryQuotaController {
-        -string _name
-        -int64_t _rootQuota
-        -atomic~int64_t~ _localFreeQuota
-        -atomic~int64_t~ _reservedParentQuota
-        -MemoryQuotaController _parentController
-        +Allocate(int64_t) void
-        +TryAllocate(int64_t) Status
-        +Reserve(int64_t) Status
-        +Free(int64_t) void
-        +GetAllocatedQuota() int64_t
+        - string _name
+        - int64_t _rootQuota
+        - atomic_int64_t _localFreeQuota
+        - atomic_int64_t _reservedParentQuota
+        - MemoryQuotaController _parentController
+        + Allocate()
+        + TryAllocate()
+        + Reserve()
+        + Free()
+        + GetAllocatedQuota()
     }
     
     class TabletMemoryCalculator {
-        -TabletWriter _tabletWriter
-        -TabletReaderContainer _tabletReaderContainer
-        +GetRtBuiltSegmentsMemsize() size_t
-        +GetRtIndexMemsize() size_t
-        +GetBuildingSegmentMemsize() size_t
+        - TabletWriter _tabletWriter
+        - TabletReaderContainer _tabletReaderContainer
+        + GetRtBuiltSegmentsMemsize()
+        + GetRtIndexMemsize()
+        + GetBuildingSegmentMemsize()
     }
     
     class IIndexMemoryReclaimer {
         &lt;&lt;interface&gt;&gt;
-        +Retire(void*, deAllocator) int64_t
-        +DropRetireItem(int64_t) void
-        +TryReclaim() void
-        +Reclaim() void
+        + Retire()
+        + DropRetireItem()
+        + TryReclaim()
+        + Reclaim()
     }
     
     class BuildResourceCalculator {
-        +GetCurrentTotalMemoryUse(Metrics) int64_t
-        +EstimateDumpTempMemoryUse(Metrics, threadCount) int64_t
-        +EstimateDumpExpandMemoryUse(Metrics) int64_t
+        + GetCurrentTotalMemoryUse()
+        + EstimateDumpTempMemoryUse()
+        + EstimateDumpExpandMemoryUse()
     }
     
     MemoryQuotaController --&gt; MemoryQuotaController : 层级关系
@@ -4493,35 +4493,35 @@
 
 <pre><code class="language-mermaid">classDiagram
     class RootController {
-        -int64_t _rootQuota = 100GB
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - int64_t _rootQuota = 100GB
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class PartitionController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class TabletController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class BuildController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
     }
     
     class QueryController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
     }
     
     RootController --&gt; PartitionController : 分配配额
@@ -5246,41 +5246,41 @@
 <pre><code class="language-mermaid">classDiagram
     class MergeStrategy {
         &lt;&lt;interface&gt;&gt;
-        +GetName() string
-        +CreateMergePlan(IndexTaskContext) MergePlan
+        + GetName()
+        + CreateMergePlan()
     }
     
     class OptimizeMergeStrategy {
-        -OptimizeMergeParams _params
-        +CreateMergePlan(IndexTaskContext) MergePlan
+        - OptimizeMergeParams _params
+        + CreateMergePlan()
     }
     
     class MergePlan {
-        -vector~SegmentMergePlan~ _mergePlan
-        -Version _targetVersion
-        +AddMergePlan(SegmentMergePlan) void
-        +GetTargetVersion() Version
+        - vector_SegmentMergePlan _mergePlan
+        - Version _targetVersion
+        + AddMergePlan()
+        + GetTargetVersion()
     }
     
     class SegmentMergePlan {
-        -vector~segmentid_t~ _srcSegments
-        -segmentid_t _targetSegment
-        +AddSrcSegment(segmentid_t) void
-        +SetTargetSegment(segmentid_t) void
+        - vector_segmentid_t _srcSegments
+        - segmentid_t _targetSegment
+        + AddSrcSegment()
+        + SetTargetSegment()
     }
     
     class VersionMerger {
-        -ITabletMergeController _controller
-        -IIndexTaskPlanCreator _planCreator
-        +ExecuteTask(Version, taskType, taskName, params) future
-        +Run() future
+        - ITabletMergeController _controller
+        - IIndexTaskPlanCreator _planCreator
+        + ExecuteTask()
+        + Run()
     }
     
     class IndexMergeOperation {
-        -vector~Segment~ _srcSegments
-        -Segment _targetSegment
-        +Execute() Status
-        +MergeIndex() Status
+        - vector_Segment _srcSegments
+        - Segment _targetSegment
+        + Execute()
+        + MergeIndex()
     }
     
     MergeStrategy &lt;|-- OptimizeMergeStrategy : 实现
@@ -6185,35 +6185,35 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Version {
-        -versionid_t _versionId
-        -vector~SegmentInVersion~ _segments
-        -Locator _locator
-        -int64_t _timestamp
-        -bool _sealed
-        +GetVersionId() versionid_t
-        +AddSegment(segmentid_t, schemaid_t) void
-        +SetLocator(Locator) void
-        +IncVersionId() void
+        - versionid_t _versionId
+        - vector_SegmentInVersion _segments
+        - Locator _locator
+        - int64_t _timestamp
+        - bool _sealed
+        + GetVersionId()
+        + AddSegment()
+        + SetLocator()
+        + IncVersionId()
     }
     
     class Locator {
-        -uint64_t _src
-        -MultiProgress _multiProgress
-        -string _userData
-        +IsFasterThan(Locator) LocatorCompareResult
-        +Update(Locator) void
-        +Serialize() string
+        - uint64_t _src
+        - MultiProgress _multiProgress
+        - string _userData
+        + IsFasterThan()
+        + Update()
+        + Serialize()
     }
     
     class VersionCommitter {
-        +Commit(TabletData, Schema, CommitOptions) VersionMeta
-        +CreateFence() Status
-        +WriteVersion(Version) Status
+        + Commit()
+        + CreateFence()
+        + WriteVersion()
     }
     
     class VersionLoader {
-        +Load(IndexRoot, versionid_t) Version
-        +Validate(Version) Status
+        + Load()
+        + Validate()
     }
     
     Version --&gt; Locator : 包含
@@ -9211,44 +9211,44 @@
 
 <pre><code class="language-mermaid">classDiagram
     class Tablet {
-        -TabletData _tabletData
-        -TabletSchema _schema
-        -TabletOptions _options
-        +Open() Status
-        +Build() Status
-        +Flush() Status
-        +GetTabletReader() TabletReader
+        - TabletData _tabletData
+        - TabletSchema _schema
+        - TabletOptions _options
+        + Open()
+        + Build()
+        + Flush()
+        + GetTabletReader()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
-        +CreateSlice(SegmentStatus) Slice
-        +GetSegment(segmentid_t) SegmentPtr
-        +GetSegmentWithBaseDocid(segmentid_t) pair
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
+        + CreateSlice()
+        + GetSegment()
+        + GetSegmentWithBaseDocid()
     }
     
     class Segment {
         &lt;&lt;abstract&gt;&gt;
-        #segmentid_t _segmentId
-        #SegmentStatus _status
-        +GetSegmentId() segmentid_t
-        +GetDocCount() uint64_t
-        +GetIndexer(type, name) IIndexer
+        # segmentid_t _segmentId
+        # SegmentStatus _status
+        + GetSegmentId()
+        + GetDocCount()
+        + GetIndexer()
     }
     
     class MemSegment {
-        -map~string, IIndexer~ _indexers
-        +Build(IDocumentBatch) Status
-        +NeedDump() bool
-        +CreateSegmentDumpItems() vector~DumpItem~
+        - map_string_IIndexer _indexers
+        + Build()
+        + NeedDump()
+        + CreateSegmentDumpItems()
     }
     
     class DiskSegment {
-        -map~string, IIndexer~ _indexers
-        +Open(MemoryQuotaController, OpenMode) Status
-        +GetIndexer(type, name) IIndexer
+        - map_string_IIndexer _indexers
+        + Open()
+        + GetIndexer()
     }
     
     Tablet --&gt; TabletData : 管理
@@ -9385,32 +9385,32 @@
 
 <pre><code class="language-mermaid">classDiagram
     class SegmentMeta {
-        +segmentid_t segmentId
-        +Directory segmentDir
-        +SegmentInfo segmentInfo
-        +SegmentMetrics segmentMetrics
-        +ITabletSchema schema
-        +string lifecycle
+        + segmentid_t segmentId
+        + Directory segmentDir
+        + SegmentInfo segmentInfo
+        + SegmentMetrics segmentMetrics
+        + ITabletSchema schema
+        + string lifecycle
     }
     
     class SegmentInfo {
-        +uint64_t docCount
-        +int64_t timestamp
-        +schemaid_t schemaId
-        +Locator locator
-        +uint32_t shardId
-        +bool mergedSegment
+        + uint64_t docCount
+        + int64_t timestamp
+        + schemaid_t schemaId
+        + Locator locator
+        + uint32_t shardId
+        + bool mergedSegment
     }
     
     class Directory {
-        +CreateFileReader(path) FileReader
-        +CreateFileWriter(path) FileWriter
-        +ListDir() vector~string~
+        + CreateFileReader()
+        + CreateFileWriter()
+        + ListDir()
     }
     
     class SegmentMetrics {
-        +map~string, double~ metrics
-        +GetMetric(name) double
+        + map_string_double metrics
+        + GetMetric()
     }
     
     SegmentMeta --&gt; SegmentInfo : 包含
@@ -9500,7 +9500,7 @@
     H[查询请求] --&gt; I[GlobalDocId]
     I --&gt; J[定位Segment]
     J --&gt; K[计算BaseDocId]
-    K --&gt; L[LocalDocId = GlobalDocId - BaseDocId]
+    K --&gt; L["LocalDocId equals GlobalDocId minus BaseDocId"]
     L --&gt; M[在Segment内查询]
     
     style A fill:#e3f2fd
@@ -10499,55 +10499,55 @@
 <pre><code class="language-mermaid">classDiagram
     class ITablet {
         &lt;&lt;interface&gt;&gt;
-        +Open(IndexRoot, Schema, Options, VersionCoord) Status
-        +Build(IDocumentBatch) Status
-        +Flush() Status
-        +Seal() Status
-        +Commit(CommitOptions) VersionMeta
-        +GetTabletReader() ITabletReader
+        + Open()
+        + Build()
+        + Flush()
+        + Seal()
+        + Commit()
+        + GetTabletReader()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
-        +CreateSlice(SegmentStatus) Slice
-        +GetSegment(segmentid_t) SegmentPtr
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
+        + CreateSlice()
+        + GetSegment()
     }
     
     class Segment {
         &lt;&lt;abstract&gt;&gt;
-        +GetSegmentId() segmentid_t
-        +GetSegmentStatus() SegmentStatus
-        +GetIndexer(indexType, indexName) IIndexer
+        + GetSegmentId()
+        + GetSegmentStatus()
+        + GetIndexer()
     }
     
     class MemSegment {
-        +Build(IDocumentBatch) Status
-        +NeedDump() bool
-        +CreateSegmentDumpItems() vector~DumpItem~
-        +Seal() void
+        + Build()
+        + NeedDump()
+        + CreateSegmentDumpItems()
+        + Seal()
     }
     
     class DiskSegment {
-        +Open(MemoryQuotaController, OpenMode) Status
-        +Reopen(vector~Schema~) Status
+        + Open()
+        + Reopen()
     }
     
     class Version {
-        -versionid_t _versionId
-        -set~SegmentInVersion~ _segments
-        -Locator _locator
-        +AddSegment(segmentid_t, schemaid_t) void
-        +GetVersionId() versionid_t
-        +GetLocator() Locator
+        - versionid_t _versionId
+        - set_SegmentInVersion _segments
+        - Locator _locator
+        + AddSegment()
+        + GetVersionId()
+        + GetLocator()
     }
     
     class TabletReader {
-        -map~IndexReaderKey, IIndexReader~ _indexReaderMap
-        +Open(TabletData, ReadResource) Status
-        +Search(string jsonQuery, string&amp; result) Status
-        +GetIndexReader(indexType, indexName) IIndexReader
+        - map_IndexReaderKey_IIndexReader _indexReaderMap
+        + Open()
+        + Search()
+        + GetIndexReader()
     }
     
     ITablet --&gt; TabletData : 管理
@@ -10617,37 +10617,37 @@
 <pre><code class="language-mermaid">classDiagram
     class ITablet {
         &lt;&lt;interface&gt;&gt;
-        +Open(IndexRoot, Schema, Options, VersionCoord) Status
-        +Build(IDocumentBatch) Status
-        +Flush() Status
-        +Seal() Status
-        +Commit(CommitOptions) VersionMeta
-        +GetTabletReader() ITabletReader
+        + Open()
+        + Build()
+        + Flush()
+        + Seal()
+        + Commit()
+        + GetTabletReader()
     }
     
     class TabletSchema {
-        -vector~FieldConfig~ _fields
-        -map~string, IndexConfig~ _indexConfigs
-        +GetFieldConfig(fieldName) FieldConfig
-        +GetIndexConfig(indexName) IndexConfig
+        - vector_FieldConfig _fields
+        - map_string_IndexConfig _indexConfigs
+        + GetFieldConfig()
+        + GetIndexConfig()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
     }
     
     class Version {
-        -versionid_t _versionId
-        -set~SegmentInVersion~ _segments
-        -Locator _locator
+        - versionid_t _versionId
+        - set_SegmentInVersion _segments
+        - Locator _locator
     }
     
     class TabletOptions {
-        -BuildOptions _buildOptions
-        -ReadOptions _readOptions
-        -MemoryOptions _memoryOptions
+        - BuildOptions _buildOptions
+        - ReadOptions _readOptions
+        - MemoryOptions _memoryOptions
     }
     
     ITablet --&gt; TabletSchema : 包含

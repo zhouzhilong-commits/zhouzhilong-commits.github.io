@@ -267,66 +267,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -477,8 +421,6 @@
       
       
       
-      
-        <li><a href="https://github.com/zhouzhilong-commits"><i class="fab fa-fw fa-github" aria-hidden="true"></i> Github</a></li>
       
       
       
@@ -646,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="16"
+    data-total-pages="19"
     data-current-page="5"
   
 >
@@ -673,151 +615,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/rocksdb-note-058-write-stall/" rel="permalink">RocksDB 笔记：Write stall：为什么会卡住、如何定位
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-09-01T00:00:00+08:00">September 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：Write stall：为什么会卡住、如何定位」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/consensus-note-039-post/" rel="permalink">一致性笔记：线性一致性：从客户端视角理解
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-09-01T00:00:00+08:00">September 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：线性一致性：从客户端视角理解」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/consensus-note-053-matchindex/" rel="permalink">一致性笔记：日志复制：matchIndex 与提交规则
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-08-01T00:00:00+08:00">August 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：日志复制：matchIndex 与提交规则」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/rocksdb-note-044-memtable-immutable/" rel="permalink">RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进
+        <a href="/rocksdb-1-write-path/" rel="permalink">RocksDB（1）：写入链路（WAL + MemTable）
 </a>
       
     </h2>
@@ -834,12 +632,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-07-01T00:00:00+08:00">July 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-12-01T00:00:00+08:00">December 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文作为 RocksDB 系列的第 1 篇，先把「一次 <code class="language-plaintext highlighter-rouge">Put()/Write()</code> 从 API 到落盘语义」讲清楚：<strong>写入路径、确认点（durability）、以及写入抖动来自哪里</strong>。后续再分别展开 SST、读路径与 compaction 调参。</p>
 
 </p>
     
@@ -865,7 +663,55 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-note-046-joint-consensus/" rel="permalink">一致性笔记：成员变更：joint consensus 的必要性
+        <a href="/consensus-1-replication-basics/" rel="permalink">一致性（1）：从复制到一致性（Primary-Backup / Quorum）
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-12-01T00:00:00+08:00">December 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇作为“分布式一致性系列”第 1 篇，不从 Raft/Paxos 的细节开始，而是先把<strong>复制（replication）到底在保证什么</strong>讲清楚：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/storage-note-071-tombstone/" rel="permalink">存储笔记：tombstone 与空间回收：为什么删除不等于释放
 </a>
       
     </h2>
@@ -882,12 +728,108 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-07-01T00:00:00+08:00">July 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文围绕「一致性笔记：成员变更：joint consensus 的必要性」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-016-cpu-io/" rel="permalink">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-002-writebatch-seq/" rel="permalink">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚两件事：</p>
 
 </p>
     
@@ -974,7 +916,7 @@
     
 
     
-      <li><a href="/page16/">16</a></li>
+      <li><a href="/page19/">19</a></li>
     
 
     
@@ -1026,12 +968,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

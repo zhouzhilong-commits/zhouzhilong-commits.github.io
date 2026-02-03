@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「一致性笔记：快照与日志截断：减少恢复时间」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -638,7 +582,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="一致性笔记：快照与日志截断：减少恢复时间">
-    <meta itemprop="description" content="本文围绕「一致性笔记：快照与日志截断：减少恢复时间」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：">
     <meta itemprop="datePublished" content="June 01, 2022">
     
 
@@ -652,7 +596,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  1 分钟阅读
 	
 </p>
           
@@ -671,27 +615,231 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「一致性笔记：快照与日志截断：减少恢复时间」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
-
-<p><img src="/images/diagrams/note-generic-model-metrics.svg" alt="一致性笔记：快照与日志截断：减少恢复时间" /></p>
-<h2 id="1-先把语义模型说清楚">1. 先把语义/模型说清楚</h2>
+        <p>这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：</p>
 
 <ul>
-  <li>这件事的“成功”到底意味着什么？</li>
-  <li>哪些边界条件会让你看到反直觉现象？</li>
+  <li>日志会无限增长</li>
+  <li>新节点追赶会越来越慢</li>
+  <li>重启恢复会越来越慢</li>
 </ul>
 
-<h2 id="2-你应该先看哪些指标">2. 你应该先看哪些指标</h2>
+<p><strong>快照（snapshot）+ 日志截断（log truncation）</strong>就是用来把“恢复成本”从“与历史长度相关”变成“与快照大小相关”。</p>
 
-<p>先找能证明因果的中间量（队列/欠账/命中率/重传率等），不要只看平均值。</p>
+<p>可以将它理解成：</p>
 
-<h2 id="3-最小排障顺序">3. 最小排障顺序</h2>
+<ul>
+  <li>日志负责增量复制</li>
+  <li>快照负责把增量压缩成一个可快速安装的检查点</li>
+</ul>
+
+<h2 id="1-先定义目标成功意味着什么">1. 先定义目标：成功意味着什么</h2>
+
+<p>做快照/截断不是为了“省磁盘”，而是为了：</p>
+
+<ul>
+  <li><strong>恢复时间可控</strong>：重启不需要重放超长日志</li>
+  <li><strong>追赶时间可控</strong>：新 follower 不需要从远古 entry 一条条补</li>
+  <li><strong>运行稳定</strong>：避免日志元数据/存储膨胀导致性能退化</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  G[Goal] --&gt; R[Fast restart]
+  G --&gt; C[Fast catch-up]
+  G --&gt; S[Stable long-running]
+</code></pre>
+
+<h2 id="2-直觉模型日志是增量快照是压缩后的基线">2. 直觉模型：日志是增量，快照是压缩后的基线</h2>
+
+<p>把状态机状态表示为：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">state = apply(snapshot) + apply(log entries after snapshot)</code></li>
+</ul>
+
+<p>因此截断的前提是：</p>
+
+<ul>
+  <li>被截断掉的日志内容已经被快照“覆盖”（已包含其效果）</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart LR
+  SS[Snapshot at index S] --&gt; L[Log entries S+1..]
+  L --&gt; SM[State machine]
+
+  SS --&gt;|covers| T[Log &lt;= S can be truncated]
+</code></pre>
+
+<h2 id="3-快照生命周期生成持久化传播安装">3. 快照生命周期：生成、持久化、传播、安装</h2>
+
+<h3 id="31-什么时候生成快照触发条件">3.1 什么时候生成快照（触发条件）</h3>
+
+<p>常见触发：</p>
+
+<ul>
+  <li><strong>日志长度/大小超过阈值</strong>（最常见）</li>
+  <li><strong>磁盘空间压力</strong>（不得不做）</li>
+  <li><strong>运行时间周期性</strong>（保守策略）</li>
+</ul>
+
+<p>建议：以“<strong>截断带来的收益</strong>”来选阈值：</p>
+
+<ul>
+  <li>快照太频繁：CPU/IO 开销高</li>
+  <li>快照太稀疏：恢复/追赶慢</li>
+</ul>
+
+<h3 id="32-快照包含什么">3.2 快照包含什么</h3>
+
+<p>典型快照内容：</p>
+
+<ul>
+  <li>状态机数据（可能是 KV、元数据、索引等）</li>
+  <li><code class="language-plaintext highlighter-rouge">lastIncludedIndex</code> / <code class="language-plaintext highlighter-rouge">lastIncludedTerm</code></li>
+  <li>（可选）配置/成员信息、校验和</li>
+</ul>
+
+<h2 id="4-installsnapshotleader-如何把快照发给落后的-follower">4. InstallSnapshot：leader 如何把快照发给落后的 follower</h2>
+
+<p>当 follower 落后太多，leader 发现：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">nextIndex</code> 已经落到 leader 的截断点之前</li>
+</ul>
+
+<p>此时继续发 AppendEntries 已经没意义，必须改发快照。</p>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant L as Leader
+  participant F as Follower
+
+  Note over L: follower too far behind
+  L-&gt;&gt;F: InstallSnapshot with index term and data
+  F-&gt;&gt;F: Persist snapshot
+  F-&gt;&gt;F: Discard log up to lastIncludedIndex
+  F-&gt;&gt;F: Apply snapshot to state machine
+  F--&gt;&gt;L: Ack
+  L-&gt;&gt;F: Resume AppendEntries from lastIncludedIndex plus 1
+</code></pre>
+
+<h3 id="41-关键安全点先落盘再-apply">4.1 关键安全点：先落盘，再 apply</h3>
+
+<p>快照安装的顺序很关键：</p>
+
+<ul>
+  <li>先把 snapshot 持久化</li>
+  <li>再更新本地元数据（lastIncludedIndex/Term）</li>
+  <li>再 apply 到状态机</li>
+</ul>
+
+<p>否则 crash 会把节点留在“半安装”的危险状态。</p>
+
+<h2 id="5-日志截断能删什么">5. 日志截断：能删什么</h2>
+
+<p>截断（truncation）的安全条件可以压成核心要点：</p>
+
+<ul>
+  <li>只截断<strong>已经被快照覆盖</strong>的前缀日志</li>
+</ul>
+
+<p>典型动作：</p>
+
+<ul>
+  <li>保留：<code class="language-plaintext highlighter-rouge">lastIncludedIndex</code> 之后的日志</li>
+  <li>删除：<code class="language-plaintext highlighter-rouge">&lt;= lastIncludedIndex</code> 的日志段</li>
+</ul>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[Truncate] --&gt; B[Snapshot covers prefix]
+  B --&gt; C[Delete log segments &lt;= S]
+  C --&gt; D[Keep S+1..]
+</code></pre>
+
+<h2 id="6-恢复路径重启时怎么恢复得快">6. 恢复路径：重启时怎么恢复得快</h2>
+
+<p>重启恢复通常变成：</p>
 
 <ol>
-  <li>定义承诺（语义）</li>
-  <li>验证事实（指标）</li>
-  <li>再做调整（参数/预算/架构）</li>
+  <li>读取 snapshot（得到一个基线）</li>
+  <li>重放 snapshot 之后的日志增量</li>
 </ol>
+
+<pre><code class="language-mermaid">flowchart TD
+  Boot[Restart] --&gt; LoadSS[Load snapshot]
+  LoadSS --&gt; Replay[Replay log after snapshot]
+  Replay --&gt; Serve[Ready]
+</code></pre>
+
+<h2 id="7-常见问题为什么快照做不好会更慢更不稳">7. 常见问题：为什么快照做不好会“更慢更不稳”</h2>
+
+<h3 id="71-快照太大">7.1 快照太大</h3>
+
+<ul>
+  <li>生成快照耗时长</li>
+  <li>传输耗时长</li>
+  <li>install 期间 follower 落后更严重</li>
+</ul>
+
+<p>对策：</p>
+
+<ul>
+  <li>分片/增量快照</li>
+  <li>压缩（但注意 CPU）</li>
+  <li>传输分块 + 断点续传（实现复杂度更高）</li>
+</ul>
+
+<h3 id="72-快照与业务-io-争用">7.2 快照与业务 IO 争用</h3>
+
+<p>快照本质是大 IO：</p>
+
+<ul>
+  <li>与前台读写抢磁盘带宽</li>
+  <li>导致尾延迟抖动</li>
+</ul>
+
+<p>对策：</p>
+
+<ul>
+  <li>限速（rate limit）</li>
+  <li>后台优先级</li>
+  <li>资源隔离（独立盘/独立线程池）</li>
+</ul>
+
+<h3 id="73-快照与成员变更配置的边界">7.3 快照与成员变更/配置的边界</h3>
+
+<p>如果系统支持成员变更：</p>
+
+<ul>
+  <li>快照里是否包含配置？</li>
+  <li>install 后如何保证配置一致？</li>
+</ul>
+
+<p>需要保证：配置变更与快照的元数据能一起被安全恢复。</p>
+
+<h2 id="8-需要监控什么可观测信号">8. 需要监控什么（可观测信号）</h2>
+
+<p>建议直接围绕“恢复成本与落后程度”监控：</p>
+
+<ul>
+  <li><strong>log size / log segment count</strong></li>
+  <li><strong>snapshot size / generation time</strong></li>
+  <li><strong>install snapshot count / duration</strong></li>
+  <li><strong>replication lag（follower 落后 index）</strong></li>
+  <li><strong>catch-up time（新节点追赶耗时）</strong></li>
+</ul>
+
+<h2 id="9-排障顺序">9. 排障顺序</h2>
+
+<ol>
+  <li>先确认瓶颈：追赶慢还是重启慢</li>
+  <li>看 lag：是不是某些 follower 长期落后</li>
+  <li>看 snapshot：是不是太大/太慢/太频繁</li>
+  <li>看 IO：是不是快照把磁盘打爆导致尾延迟</li>
+  <li>最后改阈值/架构：分片/限速/隔离</li>
+</ol>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>快照与日志截断的本质是：用一个可安装的“基线”替代无限增长的历史，让恢复与追赶成本可控。做不好会引入巨大的 IO 抖动与恢复风险；做得好则是强一致系统长期稳定运行的关键。</p>
 
         
       </section>
@@ -733,12 +881,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

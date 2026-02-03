@@ -33,38 +33,38 @@ IndexLib 的内存管理包括以下核心概念：
 ```mermaid
 classDiagram
     class MemoryQuotaController {
-        -string _name
-        -int64_t _rootQuota
-        -atomic~int64_t~ _localFreeQuota
-        -atomic~int64_t~ _reservedParentQuota
-        -MemoryQuotaController _parentController
-        +Allocate(int64_t) void
-        +TryAllocate(int64_t) Status
-        +Reserve(int64_t) Status
-        +Free(int64_t) void
-        +GetAllocatedQuota() int64_t
+        - string _name
+        - int64_t _rootQuota
+        - atomic_int64_t _localFreeQuota
+        - atomic_int64_t _reservedParentQuota
+        - MemoryQuotaController _parentController
+        + Allocate()
+        + TryAllocate()
+        + Reserve()
+        + Free()
+        + GetAllocatedQuota()
     }
     
     class TabletMemoryCalculator {
-        -TabletWriter _tabletWriter
-        -TabletReaderContainer _tabletReaderContainer
-        +GetRtBuiltSegmentsMemsize() size_t
-        +GetRtIndexMemsize() size_t
-        +GetBuildingSegmentMemsize() size_t
+        - TabletWriter _tabletWriter
+        - TabletReaderContainer _tabletReaderContainer
+        + GetRtBuiltSegmentsMemsize()
+        + GetRtIndexMemsize()
+        + GetBuildingSegmentMemsize()
     }
     
     class IIndexMemoryReclaimer {
         <<interface>>
-        +Retire(void*, deAllocator) int64_t
-        +DropRetireItem(int64_t) void
-        +TryReclaim() void
-        +Reclaim() void
+        + Retire()
+        + DropRetireItem()
+        + TryReclaim()
+        + Reclaim()
     }
     
     class BuildResourceCalculator {
-        +GetCurrentTotalMemoryUse(Metrics) int64_t
-        +EstimateDumpTempMemoryUse(Metrics, threadCount) int64_t
-        +EstimateDumpExpandMemoryUse(Metrics) int64_t
+        + GetCurrentTotalMemoryUse()
+        + EstimateDumpTempMemoryUse()
+        + EstimateDumpExpandMemoryUse()
     }
     
     MemoryQuotaController --> MemoryQuotaController : 层级关系
@@ -248,35 +248,35 @@ MemoryQuotaController 支持层级配额管理：
 ```mermaid
 classDiagram
     class RootController {
-        -int64_t _rootQuota = 100GB
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - int64_t _rootQuota = 100GB
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class PartitionController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class TabletController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
-        +GetFreeQuota() int64_t
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
+        + GetFreeQuota()
     }
     
     class BuildController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
     }
     
     class QueryController {
-        -MemoryQuotaController _parent
-        -int64_t _localFreeQuota
-        +Allocate(quota) void
+        - MemoryQuotaController _parent
+        - int64_t _localFreeQuota
+        + Allocate()
     }
     
     RootController --> PartitionController : 分配配额

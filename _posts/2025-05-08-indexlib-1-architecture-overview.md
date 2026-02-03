@@ -67,55 +67,55 @@ IndexLib 的核心组件采用清晰的职责划分和接口设计，通过组�
 classDiagram
     class ITablet {
         <<interface>>
-        +Open(IndexRoot, Schema, Options, VersionCoord) Status
-        +Build(IDocumentBatch) Status
-        +Flush() Status
-        +Seal() Status
-        +Commit(CommitOptions) VersionMeta
-        +GetTabletReader() ITabletReader
+        + Open()
+        + Build()
+        + Flush()
+        + Seal()
+        + Commit()
+        + GetTabletReader()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
-        +CreateSlice(SegmentStatus) Slice
-        +GetSegment(segmentid_t) SegmentPtr
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
+        + CreateSlice()
+        + GetSegment()
     }
     
     class Segment {
         <<abstract>>
-        +GetSegmentId() segmentid_t
-        +GetSegmentStatus() SegmentStatus
-        +GetIndexer(indexType, indexName) IIndexer
+        + GetSegmentId()
+        + GetSegmentStatus()
+        + GetIndexer()
     }
     
     class MemSegment {
-        +Build(IDocumentBatch) Status
-        +NeedDump() bool
-        +CreateSegmentDumpItems() vector~DumpItem~
-        +Seal() void
+        + Build()
+        + NeedDump()
+        + CreateSegmentDumpItems()
+        + Seal()
     }
     
     class DiskSegment {
-        +Open(MemoryQuotaController, OpenMode) Status
-        +Reopen(vector~Schema~) Status
+        + Open()
+        + Reopen()
     }
     
     class Version {
-        -versionid_t _versionId
-        -set~SegmentInVersion~ _segments
-        -Locator _locator
-        +AddSegment(segmentid_t, schemaid_t) void
-        +GetVersionId() versionid_t
-        +GetLocator() Locator
+        - versionid_t _versionId
+        - set_SegmentInVersion _segments
+        - Locator _locator
+        + AddSegment()
+        + GetVersionId()
+        + GetLocator()
     }
     
     class TabletReader {
-        -map~IndexReaderKey, IIndexReader~ _indexReaderMap
-        +Open(TabletData, ReadResource) Status
-        +Search(string jsonQuery, string& result) Status
-        +GetIndexReader(indexType, indexName) IIndexReader
+        - map_IndexReaderKey_IIndexReader _indexReaderMap
+        + Open()
+        + Search()
+        + GetIndexReader()
     }
     
     ITablet --> TabletData : 管理
@@ -171,37 +171,37 @@ classDiagram
 classDiagram
     class ITablet {
         <<interface>>
-        +Open(IndexRoot, Schema, Options, VersionCoord) Status
-        +Build(IDocumentBatch) Status
-        +Flush() Status
-        +Seal() Status
-        +Commit(CommitOptions) VersionMeta
-        +GetTabletReader() ITabletReader
+        + Open()
+        + Build()
+        + Flush()
+        + Seal()
+        + Commit()
+        + GetTabletReader()
     }
     
     class TabletSchema {
-        -vector~FieldConfig~ _fields
-        -map~string, IndexConfig~ _indexConfigs
-        +GetFieldConfig(fieldName) FieldConfig
-        +GetIndexConfig(indexName) IndexConfig
+        - vector_FieldConfig _fields
+        - map_string_IndexConfig _indexConfigs
+        + GetFieldConfig()
+        + GetIndexConfig()
     }
     
     class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
+        - Version _onDiskVersion
+        - vector_Segment _segments
+        - ResourceMap _resourceMap
     }
     
     class Version {
-        -versionid_t _versionId
-        -set~SegmentInVersion~ _segments
-        -Locator _locator
+        - versionid_t _versionId
+        - set_SegmentInVersion _segments
+        - Locator _locator
     }
     
     class TabletOptions {
-        -BuildOptions _buildOptions
-        -ReadOptions _readOptions
-        -MemoryOptions _memoryOptions
+        - BuildOptions _buildOptions
+        - ReadOptions _readOptions
+        - MemoryOptions _memoryOptions
     }
     
     ITablet --> TabletSchema : 包含

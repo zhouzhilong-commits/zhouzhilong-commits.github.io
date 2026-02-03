@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文是「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端">
-    <meta itemprop="description" content="本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文是「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。">
     <meta itemprop="datePublished" content="April 01, 2023">
     
 
@@ -629,13 +573,13 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文是「存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 <p><img src="/images/diagrams/nvme-queue-submission-completion.svg" alt="存储笔记：冷热分层：把热点留在 NVMe，把冷数据放远端" /></p>
 
 <h2 id="1-先把nvme-为什么快说清楚并行--低开销">1. 先把“NVMe 为什么快”说清楚：并行 + 低开销</h2>
 
-<p>把 NVMe 的优势概括成一句话：</p>
+<p>把 NVMe 的优势概括成核心要点：</p>
 
 <blockquote>
   <p><strong>把“提交 IO → 完成 IO”做成多队列（SQ/CQ）并行模型，并尽量降低每次 IO 的协议/中断开销。</strong></p>
@@ -689,7 +633,7 @@
 
 <h3 id="33-cpu-反而成瓶颈nvme-够快后更常见">3.3 CPU 反而成瓶颈：NVMe 够快后更常见</h3>
 
-<p>NVMe 变快后，你会更容易遇到：</p>
+<p>NVMe 变快后，会更容易遇到：</p>
 
 <ul>
   <li>压缩/校验把 CPU 打满</li>
@@ -724,9 +668,9 @@
   <li>固定 QD，逐步增大并发</li>
 </ul>
 
-<p>你会很直观地看到“吞吐提升”和“尾延迟恶化”的拐点。</p>
+<p>会很直观地看到“吞吐提升”和“尾延迟恶化”的拐点。</p>
 
-<h2 id="6-最小排障顺序线上-p99-变差">6. 最小排障顺序（线上 P99 变差）</h2>
+<h2 id="6-排障顺序线上-p99-变差">6. 排障顺序（线上 P99 变差）</h2>
 
 <ol>
   <li><strong>先看排队</strong>：QD/in-flight 是否异常？是否存在周期性掉速？</li>
@@ -778,12 +722,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

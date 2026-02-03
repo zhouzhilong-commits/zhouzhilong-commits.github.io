@@ -7,7 +7,7 @@ tags: [存储, RocksDB]
 permalink: /rocksdb-note-016-cpu-io/
 ---
 
-本文围绕「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」做一次**工程化**的梳理：先定义语义/模型，再给出可观测信号与排障顺序。
+本文是「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。
 
 ![RocksDB 笔记：压缩与校验：CPU/IO 的权衡点](/images/diagrams/cpu-vs-io-bound.svg)
 ## 1. 这篇到底想解决什么：别把“变慢”都归因给 IO
@@ -79,7 +79,7 @@ RocksDB 的常见误判是：
 压缩/校验本质上是在做交换：
 
 - 用 CPU 换 IO（减少写入字节/读盘字节）
-- 换来的收益取决于：你当前到底是 IO-bound 还是 CPU-bound
+- 换来的收益取决于：当前是 IO-bound 还是 CPU-bound
 
 实践中常见两种极端：
 

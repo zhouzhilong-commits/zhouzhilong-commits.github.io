@@ -3,14 +3,16 @@ layout: single
 title: "论文笔记"
 permalink: /paper-notes/
 author_profile: false
-series: paper_storage
+sidebar:
+  nav: "paper_notes"
 ---
 
 
-{% assign posts = site.posts | where: "series", "paper_storage" %}
-{% if posts and posts.size > 0 %}
 ## 文章列表
-{% for post in posts %}
+
+{% assign all_posts = site.posts | where: "series", "paper_notes" %}
+{% if all_posts and all_posts.size > 0 %}
+{% for post in all_posts %}
 - [{{ post.title }}]({{ post.url }})
 {% endfor %}
 {% else %}

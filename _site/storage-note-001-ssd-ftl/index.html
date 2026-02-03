@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="你在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是设备内部也在发生：">
+  <meta property="og:description" content="在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是设备内部也在发生：">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="存储笔记：SSD 写放大与 FTL：为什么随机写更贵">
-    <meta itemprop="description" content="你在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是设备内部也在发生：">
+    <meta itemprop="description" content="在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是设备内部也在发生：">
     <meta itemprop="datePublished" content="June 01, 2022">
     
 
@@ -629,14 +573,14 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>你在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
+        <p>在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
 
 <ul>
-  <li>你写的是 4KB 随机写</li>
+  <li>写入的是 4KB 随机写</li>
   <li>SSD 可能在内部做了更多的搬运/合并/擦除</li>
 </ul>
 
-<p>结果就是：<strong>你在主机侧看到的写入字节 &lt; 盘内实际写入字节</strong>，SSD 的寿命和尾延迟会更敏感。</p>
+<p>结果就是：<strong>在主机侧看到的写入字节 &lt; 盘内实际写入字节</strong>，SSD 的寿命和尾延迟会更敏感。</p>
 
 <p><img src="/images/diagrams/ssd-ftl-mapping-gc-wa.svg" alt="SSD / FTL：映射、GC 与设备写放大" /></p>
 
@@ -674,16 +618,16 @@
 
 <h2 id="3-两种写放大主机侧-vs-设备侧">3. 两种写放大：主机侧 vs 设备侧</h2>
 
-<p>工程上建议把 “WA” 明确分成两类：</p>
+<p>建议把 “WA” 明确分成两类：</p>
 
 <ul>
   <li><strong>Host WA（主机写放大）</strong>：上层引擎带来的额外写入（WAL/compaction/rewrite…）。</li>
   <li><strong>Device WA（设备写放大）</strong>：SSD 内部搬运/合并/擦除带来的额外写入。</li>
 </ul>
 
-<p>你优化 compaction 把 Host WA 降下来，但如果写入模式导致 Device WA 飙升，系统仍然会抖。</p>
+<p>优化 compaction 把 Host WA 降下来，但如果写入模式导致 Device WA 飙升，系统仍然会抖。</p>
 
-<h2 id="4-你能观测到什么以及怎么判断是-ftlgc-在作祟">4. 你能观测到什么（以及怎么判断是 FTL/GC 在作祟）</h2>
+<h2 id="4-可观测指标以及怎么判断是-ftlgc-在作祟">4. 可观测指标（以及怎么判断是 FTL/GC 在作祟）</h2>
 
 <p>常见现象：</p>
 
@@ -693,7 +637,7 @@
   <li><strong>盘寿命/写入量异常</strong>：同样业务写入，某些盘磨损更快（取决于写入分布与 over-provisioning）。</li>
 </ul>
 
-<p>你可以做的验证：</p>
+<p>可以做的验证：</p>
 
 <ul>
   <li><strong>对比不同写入模式</strong>：顺序 append vs 随机 overwrite；如果 overwrite 更抖，FTL/GC 影响通常更明显。</li>
@@ -721,7 +665,7 @@
 
 <h2 id="7-小结">7. 小结</h2>
 
-<p>SSD 上的性能与寿命，很多时候是“写入形态学”问题：<strong>你写的模式决定了 FTL/GC 的痛苦程度</strong>。把问题拆成 Host vs Device 两段，排障会快很多。</p>
+<p>SSD 上的性能与寿命，很多时候是“写入形态学”问题：<strong>写入模式决定了 FTL/GC 的痛苦程度</strong>。把问题拆成 Host vs Device 两段，排障会快很多。</p>
 
 
         
@@ -764,12 +708,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

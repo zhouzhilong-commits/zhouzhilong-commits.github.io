@@ -40,7 +40,7 @@
 
 
 
-  <meta property="og:description" content="本文围绕「计算机组成笔记：Cache line：伪共享与性能抖动」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+  <meta property="og:description" content="本文深入解析 Cache line 的工作原理、伪共享（false sharing）的机制与影响，以及工程实践中的定位与优化方法。">
 
 
 
@@ -266,66 +266,10 @@
     
     
 
-    <li class="masthead__menu-item masthead__menu-item--dropdown">
-      
-        <a href="/paper-notes/" class="masthead__dropdown-trigger" aria-haspopup="true">论文笔记</a>
-      
-
-      
-        
-        
-
-
-
-
-
-
-
-<ul class="masthead__submenu">
-  
-
-  
-    
-
-    
-    
-
     <li class="masthead__menu-item">
       
-        <a href="/paper-notes/storage/">存储论文</a>
+        <a href="/paper-notes/">论文笔记</a>
       
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/databases/">数据库论文</a>
-      
-
-      
-    </li>
-  
-    
-
-    
-    
-
-    <li class="masthead__menu-item">
-      
-        <a href="/paper-notes/distributed/">分布式系统论文</a>
-      
-
-      
-    </li>
-  
-</ul>
-
 
       
     </li>
@@ -596,7 +540,7 @@
 
   <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
     <meta itemprop="headline" content="计算机组成笔记：Cache line：伪共享与性能抖动">
-    <meta itemprop="description" content="本文围绕「计算机组成笔记：Cache line：伪共享与性能抖动」做一次工程化的梳理：先定义语义/模型，再给出可观测信号与排障顺序。">
+    <meta itemprop="description" content="本文深入解析 Cache line 的工作原理、伪共享（false sharing）的机制与影响，以及工程实践中的定位与优化方法。">
     <meta itemprop="datePublished" content="March 01, 2019">
     
 
@@ -610,7 +554,7 @@
 
 
   
-	  少于 1 分钟阅读
+	  4 分钟阅读
 	
 </p>
           
@@ -629,38 +573,149 @@
       
 
       <section class="page__content" itemprop="text">
-        <p>本文围绕「计算机组成笔记：Cache line：伪共享与性能抖动」做一次<strong>工程化</strong>的梳理：先定义语义/模型，再给出可观测信号与排障顺序。</p>
+        <p>本文深入解析 Cache line 的工作原理、伪共享（false sharing）的机制与影响，以及工程实践中的定位与优化方法。</p>
 
 <p><img src="/images/diagrams/cache-line-false-sharing.svg" alt="计算机组成笔记：Cache line：伪共享与性能抖动" /></p>
-<h2 id="1-cache-line-的工程直觉cpu-不是按变量搬数据">1. cache line 的工程直觉：CPU 不是按“变量”搬数据</h2>
+
+<h2 id="1-cache-line-的本质cpu-不是按变量搬数据">1. Cache line 的本质：CPU 不是按”变量”搬数据</h2>
 
 <p>CPU 的缓存一致性与搬运单位通常是 <strong>cache line</strong>（很多平台是 64B）。这意味着：</p>
 
 <ul>
-  <li>你改的是一个 8 字节变量</li>
-  <li>实际在核之间“来回抢”的，可能是包含它的整条 cache line</li>
+  <li>修改的是一个 8 字节变量</li>
+  <li>实际在核之间”来回抢”的，可能是包含它的整条 cache line</li>
 </ul>
 
-<h2 id="2-false-sharing-是什么你写不同变量却在抢同一条线">2. false sharing 是什么：你写不同变量，却在抢同一条线</h2>
+<pre><code class="language-mermaid">flowchart TD
+  A[CPU Core 1] --&gt; B[修改变量 x]
+  B --&gt; C[x 在 Cache Line 中]
+  C --&gt; D[整个 Cache Line 64B]
+  D --&gt; E[Cache 一致性协议]
+  E --&gt; F[其他 Core 的 Cache Line 失效]
+  
+  G[CPU Core 2] --&gt; H[修改变量 y]
+  H --&gt; I[y 在同一 Cache Line]
+  I --&gt; D
+</code></pre>
 
-<p>经典场景：</p>
-
+<p><strong>关键理解</strong>：</p>
 <ul>
-  <li>线程 A 不停写 <code class="language-plaintext highlighter-rouge">x</code></li>
-  <li>线程 B 不停写 <code class="language-plaintext highlighter-rouge">y</code></li>
-  <li><code class="language-plaintext highlighter-rouge">x</code> 和 <code class="language-plaintext highlighter-rouge">y</code> 恰好落在同一个 cache line 里</li>
+  <li>Cache line 是缓存一致性的最小单位</li>
+  <li>即使只修改一个字节，整个 cache line 都会参与一致性协议</li>
+  <li>这导致了伪共享（false sharing）问题</li>
 </ul>
+
+<h2 id="2-cache-line-的组织与访问">2. Cache line 的组织与访问</h2>
+
+<h3 id="21-cache-line-的结构">2.1 Cache line 的结构</h3>
+
+<pre><code class="language-mermaid">flowchart LR
+  A[内存地址] --&gt; B[Tag 标签位]
+  A --&gt; C[Set Index 组索引]
+  A --&gt; D[Offset 偏移]
+  
+  C --&gt; E[定位到 Cache Set]
+  E --&gt; F[Way 0 Cache Line]
+  E --&gt; G[Way 1 Cache Line]
+  E --&gt; H[Way N Cache Line]
+  
+  B --&gt; I[Tag 比较]
+  F --&gt; I
+  G --&gt; I
+  H --&gt; I
+  
+  I --&gt;|匹配| J[Cache Hit]
+  I --&gt;|不匹配| K[Cache Miss]
+</code></pre>
+
+<h3 id="22-cache-line-的大小">2.2 Cache line 的大小</h3>
+
+<p>常见平台的 cache line 大小：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>平台</th>
+      <th>Cache Line 大小</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>x86-64</td>
+      <td>64 字节</td>
+    </tr>
+    <tr>
+      <td>ARM</td>
+      <td>64 字节（常见）</td>
+    </tr>
+    <tr>
+      <td>某些嵌入式</td>
+      <td>32 字节</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>为什么是 64B</strong>：</p>
+<ul>
+  <li>平衡容量与延迟</li>
+  <li>匹配内存总线宽度</li>
+  <li>利用空间局部性</li>
+</ul>
+
+<h2 id="3-false-sharing-的机制写不同变量却在抢同一条线">3. False sharing 的机制：写不同变量，却在抢同一条线</h2>
+
+<h3 id="31-经典场景">3.1 经典场景</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+  participant T1 as Thread 1
+  participant C1 as Core 1 Cache
+  participant M as Memory
+  participant C2 as Core 2 Cache
+  participant T2 as Thread 2
+
+  Note over T1,T2: x 和 y 在同一 Cache Line
+
+  T1-&gt;&gt;C1: 写 x
+  C1-&gt;&gt;M: 获取 Cache Line
+  M--&gt;&gt;C1: 返回 Cache Line
+  C1-&gt;&gt;C1: 修改 x
+  
+  T2-&gt;&gt;C2: 写 y
+  C2-&gt;&gt;M: 获取 Cache Line
+  M--&gt;&gt;C1: 使 Core 1 的 Cache Line 失效
+  C1--&gt;&gt;M: 写回 Cache Line
+  M--&gt;&gt;C2: 返回 Cache Line
+  C2-&gt;&gt;C2: 修改 y
+  
+  Note over T1,T2: 循环往复，性能下降
+</code></pre>
+
+<h3 id="32-false-sharing-的性能影响">3.2 False sharing 的性能影响</h3>
 
 <p>虽然逻辑上互不相关，但硬件层面会发生：</p>
 
 <ul>
   <li>cache line 在不同 core 之间反复失效/转移</li>
   <li>写入需要一致性协议协调 → 延迟抖动、吞吐下降</li>
+  <li>内存带宽被浪费在无效的数据传输上</li>
 </ul>
 
-<p>这类问题最“玄学”的地方是：<strong>CPU 利用率可能不满，但性能就是上不去</strong>。</p>
+<pre><code class="language-mermaid">flowchart TD
+  A[False Sharing] --&gt; B[Cache Line 频繁失效]
+  B --&gt; C[一致性协议开销]
+  C --&gt; D[内存带宽浪费]
+  C --&gt; E[延迟抖动]
+  C --&gt; F[吞吐下降]
+  
+  G[CPU 利用率] --&gt; H[可能不满]
+  H --&gt; I[但性能上不去]
+</code></pre>
 
-<h2 id="3-你会看到什么现象线上信号">3. 你会看到什么现象（线上信号）</h2>
+<p>这类问题最”玄学”的地方是：<strong>CPU 利用率可能不满，但性能就是上不去</strong>。</p>
+
+<h2 id="4-可以看到什么现象线上信号">4. 可以看到什么现象（线上信号）</h2>
+
+<h3 id="41-典型症状">4.1 典型症状</h3>
 
 <ul>
   <li>增加线程数，吞吐不升反降（扩展性变差）</li>
@@ -668,7 +723,23 @@
   <li>同一段代码换个数据结构/换个字段顺序，性能突然变好</li>
 </ul>
 
-<h2 id="4-怎么定位先找到热点写再确认布局">4. 怎么定位：先找到“热点写”，再确认布局</h2>
+<h3 id="42-性能指标异常">4.2 性能指标异常</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[性能问题] --&gt; B{检查指标}
+  B --&gt; C[Cache Miss 高]
+  B --&gt; D[Remote Hit 多]
+  B --&gt; E[Store Buffer Stall]
+  
+  C --&gt; F[可能是 False Sharing]
+  D --&gt; F
+  E --&gt; F
+  
+  F --&gt; G[定位热点写字段]
+  G --&gt; H[检查 Cache Line 布局]
+</code></pre>
+
+<h2 id="5-怎么定位先找到热点写再确认布局">5. 怎么定位：先找到”热点写”，再确认布局</h2>
 
 <p>最稳的定位顺序：</p>
 
@@ -678,15 +749,158 @@
   <li><strong>看一致性相关指标</strong>（能用就用）：比如 cache miss、remote hit、store buffer stall 等</li>
 </ol>
 
-<h2 id="5-怎么修三种常见改法按侵入性从低到高">5. 怎么修：三种常见改法（按侵入性从低到高）</h2>
+<h3 id="51-定位工具">5.1 定位工具</h3>
 
-<ol>
-  <li><strong>padding/对齐</strong>：让热点写字段独占 cache line（最常用）</li>
-  <li><strong>结构体拆分</strong>：把“热点写”与“只读/冷字段”拆开（SoA/分离结构）</li>
-  <li><strong>减少共享写</strong>：用 thread-local 累积、批量合并、或用更合适的并发结构（从根上减少写争用）</li>
-</ol>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 示例：检查结构体布局</span>
+<span class="k">struct</span> <span class="nc">BadLayout</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>  <span class="c1">// offset: 0</span>
+    <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>  <span class="c1">// offset: 4</span>
+    <span class="c1">// ... 如果 counter1 和 counter2 在同一 cache line</span>
+    <span class="c1">// 且被不同线程频繁写，就会 false sharing</span>
+<span class="p">};</span>
 
-<h2 id="6-最小排障清单">6. 最小排障清单</h2>
+<span class="c1">// 使用 perf 工具定位</span>
+<span class="c1">// perf c2c record -a ./program</span>
+<span class="c1">// perf c2c report</span>
+</code></pre></div></div>
+
+<h3 id="52-定位流程">5.2 定位流程</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[性能问题] --&gt; B[使用 perf 定位热点]
+  B --&gt; C[找到频繁写的字段]
+  C --&gt; D[检查字段偏移]
+  D --&gt; E{在同一 Cache Line?}
+  E --&gt;|是| F[确认 False Sharing]
+  E --&gt;|否| G[其他问题]
+  F --&gt; H[应用修复方案]
+</code></pre>
+
+<h2 id="6-怎么修三种常见改法按侵入性从低到高">6. 怎么修：三种常见改法（按侵入性从低到高）</h2>
+
+<h3 id="61-padding对齐最常用">6.1 Padding/对齐（最常用）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 修复前：False Sharing</span>
+<span class="k">struct</span> <span class="nc">BadCounter</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>  <span class="c1">// 可能和 counter2 在同一 cache line</span>
+    <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// 修复后：Padding</span>
+<span class="k">struct</span> <span class="nc">GoodCounter</span> <span class="p">{</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>  <span class="c1">// 独占 cache line</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>  <span class="c1">// 独占 cache line</span>
+<span class="p">};</span>
+
+<span class="c1">// 或者使用 padding</span>
+<span class="k">struct</span> <span class="nc">GoodCounter2</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">counter1</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">padding</span><span class="p">[</span><span class="mi">64</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)];</span>  <span class="c1">// 填充到 cache line 边界</span>
+    <span class="kt">int</span> <span class="n">counter2</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="62-结构体拆分soa分离结构">6.2 结构体拆分（SoA/分离结构）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 修复前：AoS (Array of Structures)</span>
+<span class="k">struct</span> <span class="nc">Data</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">hot_field1</span><span class="p">;</span>  <span class="c1">// 热点写</span>
+    <span class="kt">int</span> <span class="n">hot_field2</span><span class="p">;</span>  <span class="c1">// 热点写</span>
+    <span class="kt">int</span> <span class="n">cold_field1</span><span class="p">;</span> <span class="c1">// 只读</span>
+    <span class="kt">int</span> <span class="n">cold_field2</span><span class="p">;</span> <span class="c1">// 只读</span>
+<span class="p">};</span>
+
+<span class="c1">// 修复后：SoA (Structure of Arrays)</span>
+<span class="k">struct</span> <span class="nc">DataSoA</span> <span class="p">{</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">hot_field1</span><span class="p">;</span>  <span class="c1">// 热点字段分离</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">hot_field2</span><span class="p">;</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">cold_field1</span><span class="p">;</span> <span class="c1">// 冷字段分离</span>
+    <span class="kt">int</span><span class="o">*</span> <span class="n">cold_field2</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="63-减少共享写从根上减少写争用">6.3 减少共享写（从根上减少写争用）</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 修复前：共享写</span>
+<span class="k">class</span> <span class="nc">Counter</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">count</span><span class="p">;</span>  <span class="c1">// 多线程写同一变量</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span> <span class="o">++</span><span class="n">count</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 修复后：Thread-local 累积</span>
+<span class="k">class</span> <span class="nc">Counter</span> <span class="p">{</span>
+    <span class="k">thread_local</span> <span class="kt">int</span> <span class="n">local_count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 每个线程独立累积</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">global_count</span><span class="p">;</span>
+<span class="nl">public:</span>
+    <span class="kt">void</span> <span class="n">increment</span><span class="p">()</span> <span class="p">{</span> <span class="o">++</span><span class="n">local_count</span><span class="p">;</span> <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">flush</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">global_count</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="n">local_count</span><span class="p">);</span>
+        <span class="n">local_count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="64-修复方案对比">6.4 修复方案对比</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+  A[False Sharing 问题] --&gt; B[方案选择]
+  B --&gt; C[Padding/对齐]
+  B --&gt; D[结构体拆分]
+  B --&gt; E[减少共享写]
+  
+  C --&gt; F[侵入性低]
+  C --&gt; G[内存开销增加]
+  
+  D --&gt; H[侵入性中]
+  D --&gt; I[需要重构代码]
+  
+  E --&gt; J[侵入性高]
+  E --&gt; K[从根本上解决问题]
+</code></pre>
+
+<h2 id="7-实际案例性能优化前后对比">7. 实际案例：性能优化前后对比</h2>
+
+<h3 id="71-案例多线程计数器">7.1 案例：多线程计数器</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 问题代码</span>
+<span class="k">struct</span> <span class="nc">Counters</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">counter</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>  <span class="c1">// 8 个计数器，可能在同一 cache line</span>
+<span class="p">};</span>
+
+<span class="c1">// 优化后</span>
+<span class="k">struct</span> <span class="nc">Counters</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="nc">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="n">Counter</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">value</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">padding</span><span class="p">[</span><span class="mi">64</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">)];</span>
+    <span class="p">};</span>
+    <span class="n">Counter</span> <span class="n">counters</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>  <span class="c1">// 每个独占 cache line</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>性能提升</strong>：</p>
+<ul>
+  <li>吞吐提升：2-4 倍（取决于线程数）</li>
+  <li>延迟降低：P99 延迟降低 50-70%</li>
+</ul>
+
+<h3 id="72-案例生产者-消费者队列">7.2 案例：生产者-消费者队列</h3>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 问题代码</span>
+<span class="k">struct</span> <span class="nc">Queue</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">head</span><span class="p">;</span>  <span class="c1">// 生产者写</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">tail</span><span class="p">;</span>  <span class="c1">// 消费者写</span>
+    <span class="c1">// head 和 tail 可能在同一 cache line</span>
+<span class="p">};</span>
+
+<span class="c1">// 优化后</span>
+<span class="k">struct</span> <span class="nc">Queue</span> <span class="p">{</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">head</span><span class="p">;</span>  <span class="c1">// 独占 cache line</span>
+    <span class="k">alignas</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">tail</span><span class="p">;</span>  <span class="c1">// 独占 cache line</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="8-最小排障清单">8. 最小排障清单</h2>
 
 <ol>
   <li>线程数增加时吞吐是否变差？</li>
@@ -694,9 +908,35 @@
   <li>padding/拆分后是否立刻改善（A/B 验证最有效）？</li>
 </ol>
 
-<h2 id="7-小结">7. 小结</h2>
+<h2 id="9-设计原则与最佳实践">9. 设计原则与最佳实践</h2>
 
-<p>false sharing 的本质是“硬件层面的共享写”，它常常让并发优化从“多线程更快”变成“多线程更慢”。排障时抓住两件事：<strong>热点写字段</strong> 与 <strong>cache line 布局</strong>，基本就能把问题从玄学变成工程。</p>
+<h3 id="91-设计原则">9.1 设计原则</h3>
+
+<ul>
+  <li><strong>热点字段隔离</strong>：频繁写的字段应该独占 cache line</li>
+  <li><strong>冷热分离</strong>：热点字段和冷字段应该分开存储</li>
+  <li><strong>对齐意识</strong>：结构体设计时考虑 cache line 边界</li>
+</ul>
+
+<h3 id="92-最佳实践">9.2 最佳实践</h3>
+
+<ol>
+  <li><strong>使用 alignas(64)</strong>：确保关键字段对齐到 cache line 边界</li>
+  <li><strong>使用工具验证</strong>：perf c2c、Intel VTune 等工具定位问题</li>
+  <li><strong>A/B 测试</strong>：修改后验证性能是否真正提升</li>
+</ol>
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>False sharing 的本质是”硬件层面的共享写”，它常常让并发优化从”多线程更快”变成”多线程更慢”。排障时抓住两件事：<strong>热点写字段</strong> 与 <strong>cache line 布局</strong>，基本就能把问题从玄学变成工程。</p>
+
+<p><strong>核心要点</strong>：</p>
+<ul>
+  <li>Cache line 是缓存一致性的最小单位，不是单个变量</li>
+  <li>False sharing 会导致 cache line 频繁失效，性能下降</li>
+  <li>通过 padding、对齐、结构体拆分等方法可以解决</li>
+  <li>使用工具定位问题，用 A/B 测试验证修复效果</li>
+</ul>
 
         
       </section>
@@ -738,12 +978,42 @@
 <script src="/assets/js/home-page-size.js"></script>
 
 <!-- Mermaid.js for diagram rendering -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
   // Initialize Mermaid
   mermaid.initialize({ 
     startOnLoad: false,  // We'll manually initialize after processing code blocks
-    theme: 'default',
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
     flowchart: {
       useMaxWidth: true,
       htmlLabels: true,

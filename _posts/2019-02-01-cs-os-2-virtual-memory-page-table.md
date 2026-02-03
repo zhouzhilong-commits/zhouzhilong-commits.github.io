@@ -280,7 +280,7 @@ sequenceDiagram
 
 ### 5.2 TLB miss：随机访问会把页表遍历成本放大
 
-你会看到 IPC 下降、cycles 上升，程序像是在"等内存"。这和 cache miss 很像，但根因可能是 TLB。
+可以看到 IPC 下降、cycles 上升，程序像是在"等内存"。这和 cache miss 很像，但根因可能是 TLB。
 
 **TLB miss 的优化**：
 - **使用大页**：减少 TLB 项数量，提高命中率
@@ -338,7 +338,7 @@ void* addr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
 - **按需加载**：只加载实际使用的页面，节省内存
 - **性能优化**：通过 TLB、大页等机制优化性能
 
-## 8. 最小排障顺序（线上出现"偶发很慢"）
+## 8. 排障顺序（线上出现"偶发很慢"）
 
 1. **先看 page fault**：major/minor fault 是否上升？是否与 P99 同步？
 2. **再看内存工作集**：是否超过物理内存或 cgroup 限制？
