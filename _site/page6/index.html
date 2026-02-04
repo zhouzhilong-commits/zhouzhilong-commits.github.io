@@ -588,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="22"
     data-current-page="6"
   
 >
@@ -601,6 +601,198 @@
         <section class="archive__year" data-year="2022">
           <h2 id="2022" class="archive__subtitle">2022</h2>
         
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/consensus-1-replication-basics/" rel="permalink">一致性（1）：从复制到一致性（Primary-Backup / Quorum）
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-12-01T00:00:00+08:00">December 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇作为“分布式一致性系列”第 1 篇，不从 Raft/Paxos 的细节开始，而是先把<strong>复制（replication）到底在保证什么</strong>讲清楚：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/storage-note-071-tombstone/" rel="permalink">存储笔记：tombstone 与空间回收：为什么删除不等于释放
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文讲清楚一个容易误解的事实：在很多存储系统（尤其 LSM）里，<strong>Delete 并不等于空间立刻释放</strong>。删除本质上是“写入一个 tombstone（删除标记）”，真正回收空间通常发生在后台 compaction/GC 之后。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-016-cpu-io/" rel="permalink">RocksDB 笔记：压缩与校验：CPU/IO 的权衡点
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  少于 1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-11-01T00:00:00+08:00">November 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：压缩与校验：CPU/IO 的权衡点」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-002-writebatch-seq/" rel="permalink">RocksDB 笔记：WriteBatch 与 seq：一次写入如何变成原子批次
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-10-01T00:00:00+08:00">October 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚两件事：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
       
       
 
@@ -638,198 +830,6 @@
 
     
     <p class="archive__item-excerpt" itemprop="description"><p>脑裂（split brain）的本质不是“网络断了”，而是：</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/rocksdb-note-058-write-stall/" rel="permalink">RocksDB 笔记：Write stall：为什么会卡住、如何定位
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-09-01T00:00:00+08:00">September 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：Write stall：为什么会卡住、如何定位」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/consensus-note-039-post/" rel="permalink">一致性笔记：线性一致性：从客户端视角理解
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-09-01T00:00:00+08:00">September 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>线性一致性（linearizability）这四个字经常被当成“强一致”的代名词，但工程里最重要的是：<strong>它是一个可以用客户端观察来定义、也可以被测试与反证的语义</strong>。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/consensus-note-053-matchindex/" rel="permalink">一致性笔记：日志复制：matchIndex 与提交规则
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-08-01T00:00:00+08:00">August 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇把 Raft 实现里两个最常见、也最容易误用的 index 讲清楚：</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/rocksdb-note-044-memtable-immutable/" rel="permalink">RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-07-01T00:00:00+08:00">July 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：MemTable/Immutable：写入高峰的内存结构演进」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
 
 </p>
     
@@ -916,7 +916,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page22/">22</a></li>
     
 
     

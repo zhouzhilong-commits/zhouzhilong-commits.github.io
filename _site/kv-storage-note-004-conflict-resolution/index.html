@@ -1,0 +1,970 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>KV存储笔记：版本、并发写与冲突解决（LWW / vector clock） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）">
+
+
+  <link rel="canonical" href="http://localhost:4000/kv-storage-note-004-conflict-resolution/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-note-004-conflict-resolution/">
+
+
+
+  <meta property="og:description" content="复制 + quorum 的系统一旦允许在故障/分区下继续接受写，就必须回答：当同一 key 出现并发写时，系统如何定义“最终值”？">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-10-22T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">KV存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-1-core-concepts/" class=""><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-2-lsm-vs-btree/" class=""><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-3-partitioning-and-routing/" class=""><span class="nav__sub-title">KV存储（3）：分片、路由与再均衡（hash / consistent hashing）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-4-replication-and-quorum/" class=""><span class="nav__sub-title">KV存储（4）：复制、Quorum 读写与一致性边界</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-001-wal-recovery/" class=""><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-002-compaction/" class=""><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-003-anti-entropy-repair/" class=""><span class="nav__sub-title">KV存储笔记：反熵（anti-entropy）、read-repair 与一致性修复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-004-conflict-resolution/" class="active"><span class="nav__sub-title">KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-005-tombstone-ttl-compaction/" class=""><span class="nav__sub-title">KV存储笔记：删除、tombstone、TTL 与压缩（避免“删了又回来”）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）">
+    <meta itemprop="description" content="复制 + quorum 的系统一旦允许在故障/分区下继续接受写，就必须回答：当同一 key 出现并发写时，系统如何定义“最终值”？">
+    <meta itemprop="datePublished" content="October 22, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-10-22T00:00:00+08:00">October 22, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>复制 + quorum 的系统一旦允许在故障/分区下继续接受写，就必须回答：<strong>当同一 key 出现并发写时，系统如何定义“最终值”？</strong></p>
+
+<p>这里的“并发”不是多线程意义，而是分布式因果意义：两个写互相不可比较（没有 happens-before）。</p>
+
+<p>本文聚焦三种常见策略：</p>
+
+<ul>
+  <li><strong>LWW（Last-Write-Wins）</strong>：用时间戳强行线性化</li>
+  <li><strong>vector clock + siblings</strong>：保留多个并发版本，把合并交给上层</li>
+  <li><strong>单主/租约</strong>：通过领导者把写线性化（本质是避免并发）</li>
+</ul>
+
+<hr />
+
+<h2 id="1-为什么会出现并发写分区--可用性选择">1. 为什么会出现并发写：分区 + 可用性选择</h2>
+
+<p>以 N=3 为例，若系统选择 W=1（更可用）：</p>
+
+<ul>
+  <li>分区时两侧都可能分别写入不同副本集合</li>
+  <li>当分区恢复，这些写会在修复中“相遇”，形成并发版本</li>
+</ul>
+
+<p>即使 W=2，也可能出现：</p>
+
+<ul>
+  <li>coordinator 超时重试导致重复写</li>
+  <li>不同 coordinator 在配置切换时对同一 key 接受写（epoch 设计不严谨）</li>
+</ul>
+
+<p>工程结论：<strong>只要系统不是严格单主线性化，并发版本就是常态风险。</strong></p>
+
+<hr />
+
+<h2 id="2-版本的基本要求可比较可判定并发">2. 版本的基本要求：可比较、可判定并发</h2>
+
+<p>一个版本系统至少要支持：</p>
+
+<ul>
+  <li>比较新旧（A 是否更新于 B）</li>
+  <li>判定并发（A 与 B 是否并发）</li>
+</ul>
+
+<p>常见版本类型：</p>
+
+<ul>
+  <li>单调序列号（需要单主或全局序列源）</li>
+  <li>时间戳（需要时钟假设）</li>
+  <li>逻辑时钟（Lamport：可比较但无法判定并发）</li>
+  <li>向量时钟（vector clock：可判定并发）</li>
+</ul>
+
+<hr />
+
+<h2 id="3-lww简单但把风险转移到时钟与重试">3. LWW：简单，但把风险转移到时钟与重试</h2>
+
+<h3 id="31-lww-的定义">3.1 LWW 的定义</h3>
+
+<p>为每次写附带一个 timestamp，取 timestamp 最大的版本作为 winner：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>winner = argmax(version.timestamp)
+</code></pre></div></div>
+
+<h3 id="32-lww-的工程陷阱">3.2 LWW 的工程陷阱</h3>
+
+<ul>
+  <li><strong>时钟漂移</strong>：不同节点时间不同，会导致“较旧写被认为较新”</li>
+  <li><strong>回拨</strong>：NTP 校时造成时间跳变</li>
+  <li><strong>客户端时间戳</strong>：风险更大，且与客户端重试耦合</li>
+</ul>
+
+<p>若仍要用 LWW，至少要明确：</p>
+
+<ul>
+  <li>timestamp 由谁生成（服务端更常见）</li>
+  <li>单调性如何保证（逻辑时钟 + 物理时钟混合）</li>
+  <li>时钟异常时的降级策略（拒写/强制走单主）</li>
+</ul>
+
+<h3 id="33-lww-适用边界">3.3 LWW 适用边界</h3>
+
+<p>适用于：</p>
+
+<ul>
+  <li>value 本身可被覆盖，业务只关心“最新写”</li>
+  <li>能容忍小概率错误覆盖（或有上层补偿）</li>
+</ul>
+
+<p>不适用于：</p>
+
+<ul>
+  <li>计数器、集合更新等需要“合并语义”的场景</li>
+</ul>
+
+<hr />
+
+<h2 id="4-vector-clock保留并发版本明确冲突存在">4. Vector Clock：保留并发版本，明确冲突存在</h2>
+
+<h3 id="41-向量时钟的直觉">4.1 向量时钟的直觉</h3>
+
+<p>每个 key 的版本携带一个向量：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vc = { nodeA: 5, nodeB: 2, nodeC: 7 }
+</code></pre></div></div>
+
+<p>当某节点写入时，递增自己的分量并携带整个向量。</p>
+
+<p>两个版本 vc1 与 vc2 的关系：</p>
+
+<ul>
+  <li>若对所有节点 (vc1[i] &lt;= vc2[i])，且至少一个严格小于，则 vc2 “更新于” vc1</li>
+  <li>若既不满足 vc1&lt;=vc2 也不满足 vc2&lt;=vc1，则并发</li>
+</ul>
+
+<h3 id="42-siblings并发版本集合">4.2 siblings：并发版本集合</h3>
+
+<p>当系统检测到并发，会把多个版本都保留：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>key -&gt; [ (value1, vc1), (value2, vc2), ... ]
+</code></pre></div></div>
+
+<p>读可能返回多个值（siblings），由上层合并并写回“合并后的新版本”。</p>
+
+<h3 id="43-代价与工程问题">4.3 代价与工程问题</h3>
+
+<ul>
+  <li><strong>元数据膨胀</strong>：向量长度随节点数增长；工程上常做裁剪/只保留相关节点</li>
+  <li><strong>并发版本爆炸</strong>：若上层不及时合并，siblings 会持续累积</li>
+  <li><strong>读写路径复杂</strong>：读要合并、修复要传播多个版本</li>
+</ul>
+
+<p>因此常见工程约束：</p>
+
+<ul>
+  <li>siblings 上限（超过则强制 LWW 或拒写）</li>
+  <li>自动合并策略（对可自动合并的数据类型）</li>
+  <li>只在“需要并发语义”的表启用 vector clock</li>
+</ul>
+
+<hr />
+
+<h2 id="5-另一条路避免并发单主租约共识">5. 另一条路：避免并发（单主/租约/共识）</h2>
+
+<p>如果系统目标是更强的一致性与更简单的读写语义，通常会选择：</p>
+
+<ul>
+  <li>单主复制（primary-backup）</li>
+  <li>leader lease（租约）限制并发 leader</li>
+  <li>Raft/Paxos 把写线性化</li>
+</ul>
+
+<p>代价是：</p>
+
+<ul>
+  <li>可用性在分区下下降（写需要 leader/quorum）</li>
+  <li>时延与实现复杂度上升</li>
+</ul>
+
+<p>工程上常见分层：</p>
+
+<ul>
+  <li>强一致关键路径：走共识/单主</li>
+  <li>大吞吐弱一致路径：走多主 + 修复</li>
+</ul>
+
+<hr />
+
+<h2 id="6-冲突解决策略上层视角">6. 冲突解决策略（上层视角）</h2>
+
+<p>当读到 siblings，需要一个 merge 函数：</p>
+
+<ul>
+  <li><strong>集合</strong>：取并集（加 tombstone 处理删除）</li>
+  <li><strong>计数器</strong>：用 CRDT（PN-Counter 等）</li>
+  <li><strong>最后写</strong>：回到 LWW（但明确语义）</li>
+  <li><strong>业务合并</strong>：例如购物车、点赞等</li>
+</ul>
+
+<p>关键是：merge 必须是幂等的，且在重试/重复执行下不会扩大错误。</p>
+
+<hr />
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>冲突解决没有银弹，只有明确的语义选择：</p>
+
+<ul>
+  <li>LWW 简单但依赖时钟与容错假设</li>
+  <li>vector clock 能表达并发，但需要控制元数据与 siblings 增长</li>
+  <li>单主/共识能避免并发，但牺牲分区下写可用性与实现复杂度</li>
+</ul>
+
+<p>下一篇笔记会把“删除语义”补齐：tombstone、TTL 与 compaction/修复的交互，避免“删了又回来”。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

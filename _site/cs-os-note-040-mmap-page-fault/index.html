@@ -1,0 +1,976 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-os-note-040-mmap-page-fault/">
+  <meta property="og:url" content="http://localhost:4000/cs-os-note-040-mmap-page-fault/">
+
+
+
+  <meta property="og:description" content="mmap 把“文件”与“内存地址空间”连接起来：读写文件内容可以变成对内存的 load/store。它常用于：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-08-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">操作系统</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/process-thread-context-switch/" class=""><span class="nav__sub-title">OS（1）：进程/线程与上下文切换</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/virtual-memory-page-table/" class=""><span class="nav__sub-title">OS（2）：虚拟内存与页表</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-010-futex-sync-primitives/" class=""><span class="nav__sub-title">操作系统笔记：同步原语：mutex、futex 与条件变量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-020-epoll-io-multiplexing/" class=""><span class="nav__sub-title">操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-030-page-cache-writeback/" class=""><span class="nav__sub-title">操作系统笔记：Page Cache 与回写（writeback）：为什么会抖</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-040-mmap-page-fault/" class="active"><span class="nav__sub-title">操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-050-numa-memory-allocation/" class=""><span class="nav__sub-title">操作系统笔记：NUMA：内存分配与远端访问的代价</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-005-cfs/" class=""><span class="nav__sub-title">操作系统笔记：调度器：时间片与 CFS 的直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-068-io-uring-io/" class=""><span class="nav__sub-title">操作系统笔记：io_uring：异步 IO 的模型</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么">
+    <meta itemprop="description" content="mmap 把“文件”与“内存地址空间”连接起来：读写文件内容可以变成对内存的 load/store。它常用于：">
+    <meta itemprop="datePublished" content="August 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-08-01T00:00:00+08:00">August 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p><code class="language-plaintext highlighter-rouge">mmap</code> 把“文件”与“内存地址空间”连接起来：读写文件内容可以变成对内存的 load/store。它常用于：</p>
+
+<ul>
+  <li>零拷贝式的文件读（减少 read 系统调用与拷贝）</li>
+  <li>大文件随机访问（按需缺页加载）</li>
+  <li>共享内存（跨进程共享页）</li>
+</ul>
+
+<p>但 mmap 的工程难点也集中在 page fault：<strong>缺页会把“访问内存”变成一次内核路径 + IO</strong>，尾延迟可能被 page fault 放大。本文把一次缺页拆成可理解的步骤。</p>
+
+<hr />
+
+<h2 id="1-mmap-的两种直觉文件映射与匿名映射">1. mmap 的两种直觉：文件映射与匿名映射</h2>
+
+<h3 id="11-文件映射file-backed">1.1 文件映射（file-backed）</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fd = open(file)
+addr = mmap(fd)
+read bytes by: *(addr + offset)
+</code></pre></div></div>
+
+<p>底层含义：虚拟页表项指向“该文件某个 offset 的页”，实际物理页可能尚未加载。</p>
+
+<h3 id="12-匿名映射anonymous">1.2 匿名映射（anonymous）</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>addr = mmap(MAP_ANON)
+</code></pre></div></div>
+
+<p>用于堆/栈之外的大块内存分配（也可能是共享匿名页）。它通常与 swap/零页等机制相关。</p>
+
+<hr />
+
+<h2 id="2-缺页page-fault发生时从-cpu-trap-到页就绪">2. 缺页（page fault）发生时：从 CPU trap 到页就绪</h2>
+
+<p>当 CPU 访问某个虚拟地址 VA：</p>
+
+<p>1) TLB miss -&gt; 查页表
+2) 页表项不存在或权限不满足 -&gt; 触发 page fault 异常（trap）
+3) 内核 page fault handler 接管</p>
+
+<p>抽象路径：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>CPU load/store VA
+  -&gt; page fault trap
+    -&gt; kernel: handle_mm_fault()
+        - find VMA
+        - check permissions
+        - allocate page or locate file page
+        - schedule IO if needed
+        - install PTE
+  -&gt; return to user
+  -&gt; retry instruction
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="3-文件映射缺页从-page-cache-找或从磁盘读">3. 文件映射缺页：从 page cache 找或从磁盘读</h2>
+
+<p>文件映射缺页的关键问题：该页是否已经在 page cache 中。</p>
+
+<h3 id="31-命中-page-cacheminor-fault">3.1 命中 page cache（minor fault）</h3>
+
+<p>若文件对应的页已经在 page cache：</p>
+
+<ul>
+  <li>只需要建立 PTE 映射到该物理页</li>
+  <li>不需要磁盘 IO</li>
+</ul>
+
+<p>这类 fault 常被称为 minor fault（仍有内核开销，但较小）。</p>
+
+<h3 id="32-未命中-page-cachemajor-fault">3.2 未命中 page cache（major fault）</h3>
+
+<p>若 page cache 没有该页：</p>
+
+<ul>
+  <li>内核需要发起磁盘读，把数据读入 page cache</li>
+  <li>等 IO 完成后再建立 PTE</li>
+</ul>
+
+<p>这类是 major fault，延迟可能从微秒到毫秒，取决于存储与并发。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>major fault:
+  allocate page -&gt; submit read -&gt; wait -&gt; mark uptodate -&gt; map
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="4-写时复制cow为什么-fork-很快">4. 写时复制（COW）：为什么 fork 很快</h2>
+
+<p><code class="language-plaintext highlighter-rouge">fork()</code> 之后父子进程逻辑上拥有相同的地址空间，但物理上并不会立刻复制所有页。常见做法：</p>
+
+<ul>
+  <li>父子共享同一物理页</li>
+  <li>页表项标记为只读</li>
+  <li>当任一方尝试写入该页时触发 fault</li>
+  <li>内核复制一份新页给写入方（copy-on-write）</li>
+</ul>
+
+<p>示意：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fork:
+  parent PTE -&gt; page X (RO)
+  child  PTE -&gt; page X (RO)
+
+child writes:
+  fault -&gt; allocate page Y
+  copy X -&gt; Y
+  child PTE -&gt; Y (RW)
+</code></pre></div></div>
+
+<p>工程含义：</p>
+
+<ul>
+  <li>fork 本身快（只复制页表元数据）</li>
+  <li>第一次写入某页会触发 COW，可能造成延迟尖刺</li>
+</ul>
+
+<hr />
+
+<h2 id="5-mmap-写回脏页与-msync">5. mmap 写回：脏页与 msync</h2>
+
+<p>对文件映射进行写入，通常会：</p>
+
+<ul>
+  <li>修改 page cache 中的页</li>
+  <li>把页标记为 dirty</li>
+  <li>后台 writeback 把脏页写回磁盘</li>
+</ul>
+
+<p>若需要更强的持久性语义：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">msync()</code> 可请求把映射范围写回（但成本高）</li>
+  <li>或采用“WAL + fsync”类方案保证提交点</li>
+</ul>
+
+<p>关键直觉：mmap 写并不等价于“立即写盘”，与 buffered write 类似，同样受 writeback 策略影响。</p>
+
+<hr />
+
+<h2 id="6-性能与尾延迟mmap-常见坑">6. 性能与尾延迟：mmap 常见坑</h2>
+
+<h3 id="61-第一次访问抖page-fault-放大尾延迟">6.1 第一次访问抖：page fault 放大尾延迟</h3>
+
+<p>如果访问模式是随机跳跃：</p>
+
+<ul>
+  <li>每次跳到新页都可能触发 major fault</li>
+  <li>延迟与 IO 绑定，P99 会被放大</li>
+</ul>
+
+<p>缓解手段：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">madvise(MADV_WILLNEED)</code>：预取提示（不保证）</li>
+  <li>顺序访问配合 readahead（或应用层批量访问）</li>
+  <li>热路径避免第一次触页（预热）</li>
+</ul>
+
+<h3 id="62-页抖动工作集超过内存">6.2 页抖动：工作集超过内存</h3>
+
+<p>当工作集远大于可用内存时：</p>
+
+<ul>
+  <li>page cache 与匿名页争用</li>
+  <li>频繁回收/换入换出（swap）或频繁回收 page cache
+-&gt; 形成抖动（thrashing）</li>
+</ul>
+
+<h3 id="63-numa-与大页thp">6.3 NUMA 与大页（THP）</h3>
+
+<p>在 NUMA 机器上，page fault 还决定了“页分配在哪个 NUMA 节点”，会影响后续访问延迟；THP（透明大页）也会改变 fault 与 TLB 行为。</p>
+
+<hr />
+
+<h2 id="7-观测与排查">7. 观测与排查</h2>
+
+<p>建议关注：</p>
+
+<ul>
+  <li>minor/major faults 计数与速率</li>
+  <li>major fault 的 IO 延迟分布</li>
+  <li>readahead 命中率（若可观测）</li>
+  <li>系统内存压力：page cache 与匿名页比例、回收速率</li>
+</ul>
+
+<p>常见定位路径：</p>
+
+<ul>
+  <li>P99 抖动与 major fault 同步上升：说明热路径在触发磁盘读</li>
+  <li>fault 上升但 IO 不高：可能是 page cache 命中（minor fault），瓶颈在内核路径/锁竞争</li>
+</ul>
+
+<hr />
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>mmap 的工程优势来自“把 IO 变成地址空间访问”，但 page fault 把这种访问的成本从纳秒级拉到了微秒/毫秒级。把 fault 分成 minor/major、理解 page cache 的角色、明确 COW 与 writeback 的语义，才能把 mmap 用在正确的路径上并解释尾延迟。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

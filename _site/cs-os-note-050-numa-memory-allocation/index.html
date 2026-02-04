@@ -1,0 +1,954 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>操作系统笔记：NUMA：内存分配与远端访问的代价 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="操作系统笔记：NUMA：内存分配与远端访问的代价">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-os-note-050-numa-memory-allocation/">
+  <meta property="og:url" content="http://localhost:4000/cs-os-note-050-numa-memory-allocation/">
+
+
+
+  <meta property="og:description" content="NUMA（Non-Uniform Memory Access）机器上，“同样是内存访问”并不等价：访问本地 NUMA 节点的内存更快，访问远端节点更慢，且会引入额外互连流量。对延迟敏感服务而言，NUMA 问题经常表现为：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-09-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">操作系统</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/process-thread-context-switch/" class=""><span class="nav__sub-title">OS（1）：进程/线程与上下文切换</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/virtual-memory-page-table/" class=""><span class="nav__sub-title">OS（2）：虚拟内存与页表</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-010-futex-sync-primitives/" class=""><span class="nav__sub-title">操作系统笔记：同步原语：mutex、futex 与条件变量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-020-epoll-io-multiplexing/" class=""><span class="nav__sub-title">操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-030-page-cache-writeback/" class=""><span class="nav__sub-title">操作系统笔记：Page Cache 与回写（writeback）：为什么会抖</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-040-mmap-page-fault/" class=""><span class="nav__sub-title">操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-050-numa-memory-allocation/" class="active"><span class="nav__sub-title">操作系统笔记：NUMA：内存分配与远端访问的代价</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-005-cfs/" class=""><span class="nav__sub-title">操作系统笔记：调度器：时间片与 CFS 的直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-068-io-uring-io/" class=""><span class="nav__sub-title">操作系统笔记：io_uring：异步 IO 的模型</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="操作系统笔记：NUMA：内存分配与远端访问的代价">
+    <meta itemprop="description" content="NUMA（Non-Uniform Memory Access）机器上，“同样是内存访问”并不等价：访问本地 NUMA 节点的内存更快，访问远端节点更慢，且会引入额外互连流量。对延迟敏感服务而言，NUMA 问题经常表现为：">
+    <meta itemprop="datePublished" content="September 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">操作系统笔记：NUMA：内存分配与远端访问的代价
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-09-01T00:00:00+08:00">September 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>NUMA（Non-Uniform Memory Access）机器上，“同样是内存访问”并不等价：访问本地 NUMA 节点的内存更快，访问远端节点更慢，且会引入额外互连流量。对延迟敏感服务而言，NUMA 问题经常表现为：</p>
+
+<ul>
+  <li>P99/P999 抖动</li>
+  <li>线程迁移后性能突然变化</li>
+  <li>某些核很忙但整体吞吐不高</li>
+</ul>
+
+<p>这篇笔记把 NUMA 相关的三个工程问题串起来：</p>
+
+<ul>
+  <li><strong>内存分配在哪里发生</strong>（first-touch）</li>
+  <li><strong>线程跑在哪里</strong>（CPU 亲和性）</li>
+  <li><strong>数据被谁访问</strong>（跨节点共享与伪共享）</li>
+</ul>
+
+<hr />
+
+<h2 id="1-numa-的结构socket--node内存就近">1. NUMA 的结构：socket = node，内存就近</h2>
+
+<p>简化示意：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Socket/Node 0: CPUs (cores) + Local DRAM 0
+Socket/Node 1: CPUs (cores) + Local DRAM 1
+
+Remote access:
+  CPU0 reads DRAM1 -&gt; via interconnect (slower)
+</code></pre></div></div>
+
+<p>代价通常体现为：</p>
+
+<ul>
+  <li>更高的访问延迟</li>
+  <li>更低的有效带宽</li>
+  <li>更大的互连拥塞风险（多核同时跨节点访问）</li>
+</ul>
+
+<hr />
+
+<h2 id="2-first-touch页在哪里分配取决于第一次写">2. first-touch：页在哪里分配，取决于第一次写</h2>
+
+<p>很多 Linux 配置下，匿名页（heap 等）采用 first-touch：</p>
+
+<ul>
+  <li>某线程第一次写入该页时，页被分配在该线程所在 CPU 的 NUMA 节点</li>
+</ul>
+
+<p>这意味着：</p>
+
+<ul>
+  <li>初始化线程在哪个节点触页，决定后续数据的位置</li>
+  <li>如果初始化在 node0，但主要访问在 node1，就会产生大量远端访问</li>
+</ul>
+
+<p>示意：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Thread on node0 initializes array -&gt; pages allocated on node0
+Thread on node1 later processes array -&gt; remote accesses
+</code></pre></div></div>
+
+<p>工程策略：</p>
+
+<ul>
+  <li>让“初始化/触页”的线程与“主要使用”的线程在同一节点</li>
+  <li>或按分区初始化：每个 worker 初始化自己会处理的数据分片</li>
+</ul>
+
+<hr />
+
+<h2 id="3-cpu-亲和性线程跑哪决定了访问路径">3. CPU 亲和性：线程跑哪决定了访问路径</h2>
+
+<p>如果线程频繁跨节点迁移：</p>
+
+<ul>
+  <li>cache/TLB 失效</li>
+  <li>新节点访问旧节点内存 -&gt; remote
+-&gt; 延迟与吞吐更不稳定</li>
+</ul>
+
+<p>常见策略：</p>
+
+<ul>
+  <li>绑定线程到一组核（cpuset/affinity）</li>
+  <li>NUMA aware 调度（让线程尽量留在其数据所在节点）</li>
+</ul>
+
+<p>但也要避免过度绑定导致：</p>
+
+<ul>
+  <li>某节点过载而另一个节点空闲</li>
+</ul>
+
+<hr />
+
+<h2 id="4-跨节点共享远端访问与一致性流量">4. 跨节点共享：远端访问与一致性流量</h2>
+
+<p>当两个节点的核频繁写同一 cache line：</p>
+
+<ul>
+  <li>发生 cache coherence 流量</li>
+  <li>在 NUMA 下不仅跨核，还跨 socket 互连
+-&gt; 代价更大</li>
+</ul>
+
+<p>这类问题常与伪共享相互叠加：</p>
+
+<ul>
+  <li>数据结构布局不当，多线程写落在同一 cache line</li>
+  <li>即使逻辑上“不同字段”，也会互相拉扯</li>
+</ul>
+
+<p>工程手段：</p>
+
+<ul>
+  <li>padding/对齐，避免多线程写共享同一 line</li>
+  <li>把写热点改为分片计数（per-thread/per-core），最后聚合</li>
+</ul>
+
+<hr />
+
+<h2 id="5-内存策略interleavebind-与大页">5. 内存策略：interleave、bind 与大页</h2>
+
+<p>常见内存策略（抽象）：</p>
+
+<ul>
+  <li><strong>bind</strong>：把分配限制在某个节点（更可预测，但可能耗尽）</li>
+  <li><strong>preferred</strong>：优先本地，必要时可远端</li>
+  <li><strong>interleave</strong>：在多个节点间交错分配（带宽更均匀，但延迟更平均）</li>
+</ul>
+
+<p>选择取决于负载：</p>
+
+<ul>
+  <li>延迟敏感：通常 prefer/bind，本地化优先</li>
+  <li>带宽敏感（流式扫描）：interleave 可能更好</li>
+</ul>
+
+<p>大页（THP/hugepage）也会影响：</p>
+
+<ul>
+  <li>页分配粒度更大，first-touch 影响更显著</li>
+  <li>TLB miss 降低，但分配/回收成本可能上升</li>
+</ul>
+
+<hr />
+
+<h2 id="6-观测与排查">6. 观测与排查</h2>
+
+<p>建议关注：</p>
+
+<ul>
+  <li>远端访问比例（local vs remote）</li>
+  <li>节点间互连带宽/拥塞（如果可观测）</li>
+  <li>线程迁移次数、跨节点迁移次数</li>
+  <li>每节点内存分配量与回收压力</li>
+</ul>
+
+<p>典型定位路径：</p>
+
+<ul>
+  <li>P99 抖动 + 远端访问上升：数据不本地或线程漂移</li>
+  <li>吞吐下降 + 互连忙：跨节点共享写热点（coherence 风暴）</li>
+</ul>
+
+<hr />
+
+<h2 id="7-小结">7. 小结</h2>
+
+<p>NUMA 的工程本质是“数据与执行的空间一致性”：</p>
+
+<ul>
+  <li>first-touch 决定数据在哪里</li>
+  <li>亲和性决定线程在哪里</li>
+  <li>共享写决定互连与一致性流量</li>
+</ul>
+
+<p>在高并发服务中，NUMA 问题往往不是“平均变慢”，而是“尾延迟变差”。把数据分片、初始化本地化、减少跨节点共享写，是最常用也最有效的稳定性手段。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -588,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="22"
     data-current-page="8"
   
 >
@@ -615,7 +615,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/storage-basics-4-wal-and-recovery/" rel="permalink">存储基础（4）：WAL、崩溃恢复与一致性
+        <a href="/storage-note-001-ssd-ftl/" rel="permalink">存储笔记：SSD 写放大与 FTL：为什么随机写更贵
 </a>
       
     </h2>
@@ -632,12 +632,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储基础系列」的第 4 篇：为什么存储系统几乎都要 WAL，以及一个最小的崩溃恢复闭环应该长什么样。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>在 SSD 上看到的“写放大”，常常不是上层存储引擎（LSM/B+Tree）带来的那一个，而是<strong>设备内部</strong>也在发生：</p>
 
 </p>
     
@@ -663,7 +663,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/paper-notes/storage/lsm-tree/" rel="permalink">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）
+        <a href="/paper-notes/storage/rocksdb-tuning/" rel="permalink">RocksDB 调优与实践（论文笔记）
 </a>
       
     </h2>
@@ -673,20 +673,20 @@
 
 
   
-	  6 分钟阅读
+	  8 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><blockquote>
-  <p>论文：The Log-Structured Merge-Tree（O’Neil et al., Acta Informatica 1996；在工程界常被视为 LSM 系统的源头之一）</p>
+  <p>论文：RocksDB: Evolution of Development Priorities in a Key-Value Store Serving Large-Scale Applications（Dong et al., VLDB 2022）</p>
 </blockquote>
 
 </p>
@@ -713,7 +713,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/consensus-note-011-post/" rel="permalink">一致性笔记：复制延迟：尾延迟如何影响提交点
+        <a href="/consensus-note-032-post/" rel="permalink">一致性笔记：快照与日志截断：减少恢复时间
 </a>
       
     </h2>
@@ -730,12 +730,12 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-04-01T00:00:00+08:00">April 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>这篇解决一个工程上最常见的困惑：</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>这篇讲清楚一个“基于日志复制的一致性系统”迟早要面对的现实：</p>
 
 </p>
     
@@ -761,55 +761,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/storage-basics-3-lsm-and-compaction/" rel="permalink">存储基础（3）：LSM、Compaction 与写放大
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储基础系列」的第 3 篇，建立一个 LSM 的“直觉模型”，并解释 compaction 为什么既是性能来源，也是写放大的主要来源。</p>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/rocksdb-note-051-bloom-ribbon-filter/" rel="permalink">RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本
+        <a href="/storage-basics-5-btree-vs-lsm/" rel="permalink">存储基础（5）：B+Tree vs LSM——读写与范围查询的权衡
 </a>
       
     </h2>
@@ -826,12 +778,60 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-03-01T00:00:00+08:00">March 01, 2022</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是「RocksDB 笔记：Bloom / Ribbon filter：降低负查的成本」的工程化笔记，记录语义/模型定义、可观测信号与排障要点。</p>
+    <p class="archive__item-excerpt" itemprop="description"><p>本文是「存储基础系列」的第 5 篇：用“工作负载”的视角比较 B+Tree 与 LSM，两者没有绝对优劣，只有取舍。</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/rocksdb-note-065-flush-write-buffer-l0/" rel="permalink">RocksDB 笔记：Flush 触发条件：write buffer 与 L0 文件数量
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>在 RocksDB 写入链路中，最容易遇到两类“看似突然”的现象：</p>
 
 </p>
     
@@ -918,7 +918,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page22/">22</a></li>
     
 
     

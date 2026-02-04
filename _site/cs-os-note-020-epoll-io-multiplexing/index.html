@@ -1,0 +1,941 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型 - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型">
+
+
+  <link rel="canonical" href="http://localhost:4000/cs-os-note-020-epoll-io-multiplexing/">
+  <meta property="og:url" content="http://localhost:4000/cs-os-note-020-epoll-io-multiplexing/">
+
+
+
+  <meta property="og:description" content="这篇笔记把 IO 多路复用当作一个“代价模型”问题：在大量连接/FD 下，如何以更低的 CPU 成本判断哪些 FD 可读/可写。常见路径：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2019-06-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">操作系统</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/process-thread-context-switch/" class=""><span class="nav__sub-title">OS（1）：进程/线程与上下文切换</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs/os/virtual-memory-page-table/" class=""><span class="nav__sub-title">OS（2）：虚拟内存与页表</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-010-futex-sync-primitives/" class=""><span class="nav__sub-title">操作系统笔记：同步原语：mutex、futex 与条件变量</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-020-epoll-io-multiplexing/" class="active"><span class="nav__sub-title">操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-030-page-cache-writeback/" class=""><span class="nav__sub-title">操作系统笔记：Page Cache 与回写（writeback）：为什么会抖</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-040-mmap-page-fault/" class=""><span class="nav__sub-title">操作系统笔记：mmap 与 page fault：一次缺页到底发生了什么</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-050-numa-memory-allocation/" class=""><span class="nav__sub-title">操作系统笔记：NUMA：内存分配与远端访问的代价</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-005-cfs/" class=""><span class="nav__sub-title">操作系统笔记：调度器：时间片与 CFS 的直觉</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/cs-os-note-068-io-uring-io/" class=""><span class="nav__sub-title">操作系统笔记：io_uring：异步 IO 的模型</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型">
+    <meta itemprop="description" content="这篇笔记把 IO 多路复用当作一个“代价模型”问题：在大量连接/FD 下，如何以更低的 CPU 成本判断哪些 FD 可读/可写。常见路径：">
+    <meta itemprop="datePublished" content="June 01, 2019">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">操作系统笔记：IO 多路复用：select/poll/epoll 的代价模型
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-06-01T00:00:00+08:00">June 01, 2019</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这篇笔记把 IO 多路复用当作一个“代价模型”问题：<strong>在大量连接/FD 下，如何以更低的 CPU 成本判断哪些 FD 可读/可写</strong>。常见路径：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">select</code>：用户态传 fdset，内核每次线性扫描</li>
+  <li><code class="language-plaintext highlighter-rouge">poll</code>：用户态传数组，内核每次线性扫描</li>
+  <li><code class="language-plaintext highlighter-rouge">epoll</code>：注册 + 事件驱动，把“谁就绪”的集合增量维护</li>
+</ul>
+
+<p>重点不在 API，而在“为什么 epoll 在高并发下更省 CPU、但仍会踩坑（ET/LT、惊群、回压）”。</p>
+
+<hr />
+
+<h2 id="1-问题抽象大量-fd-的就绪检测">1. 问题抽象：大量 FD 的就绪检测</h2>
+
+<p>假设有 100K 连接，绝大多数时刻只有很少连接有数据：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>FD count: 100000
+ready per tick: ~几十
+</code></pre></div></div>
+
+<p>如果每次循环都扫描全部 FD，CPU 会浪费在“检查不就绪”的工作上。</p>
+
+<hr />
+
+<h2 id="2-selectpoll每轮-on-扫描">2. select/poll：每轮 O(N) 扫描</h2>
+
+<h3 id="21-select-的代价">2.1 select 的代价</h3>
+
+<ul>
+  <li>受 fdset 大小限制（历史原因）</li>
+  <li>每次调用都要把 fdset 从用户态拷贝到内核态</li>
+  <li>内核要线性扫描所有 bit/FD</li>
+</ul>
+
+<h3 id="22-poll-的代价">2.2 poll 的代价</h3>
+
+<p>poll 去掉了 fdset 限制，但本质仍是：</p>
+
+<ul>
+  <li>每次把 <code class="language-plaintext highlighter-rouge">pollfd[]</code> 拷贝到内核</li>
+  <li>内核线性扫描数组，检查每个 FD 的状态</li>
+</ul>
+
+<p>结论：当 FD 很多、就绪很少时，<code class="language-plaintext highlighter-rouge">select/poll</code> 的 CPU 成本随 N 线性增长。</p>
+
+<hr />
+
+<h2 id="3-epoll注册--就绪队列增量维护">3. epoll：注册 + 就绪队列（增量维护）</h2>
+
+<h3 id="31-基本模型">3.1 基本模型</h3>
+
+<p>epoll 把工作拆成两步：</p>
+
+<p>1) <strong>注册</strong>：把 FD 加入 epoll 实例，并声明关心的事件
+2) <strong>等待</strong>：内核维护一个“已就绪列表”，<code class="language-plaintext highlighter-rouge">epoll_wait</code> 直接返回就绪集合</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>epoll_ctl(ADD, fd, events)
+...
+ready = epoll_wait(epfd)
+for fd in ready:
+  handle(fd)
+</code></pre></div></div>
+
+<h3 id="32-为什么能避免-on-扫描">3.2 为什么能避免 O(N) 扫描</h3>
+
+<p>关键在于“事件到来时谁负责把 fd 放入就绪队列”：</p>
+
+<ul>
+  <li>当网卡收包、协议栈把数据放入 socket 接收队列时</li>
+  <li>内核把这个 socket 对应的 fd 标记为就绪，并加入 epoll ready list</li>
+</ul>
+
+<p>所以 <code class="language-plaintext highlighter-rouge">epoll_wait</code> 不必扫描所有 fd，而是消费 ready list。</p>
+
+<hr />
+
+<h2 id="4-lt-vs-et边沿触发的正确使用方式">4. LT vs ET：边沿触发的正确使用方式</h2>
+
+<h3 id="41-ltlevel-triggered">4.1 LT（Level Triggered）</h3>
+
+<p>只要 fd 仍然可读/可写，就会持续被返回。</p>
+
+<p>优点：不易漏事件；缺点：若处理不彻底，可能反复被唤醒。</p>
+
+<h3 id="42-etedge-triggered">4.2 ET（Edge Triggered）</h3>
+
+<p>只有从“不可读→可读”这样的边沿变化时才通知一次。</p>
+
+<p>优点：减少重复通知；缺点：若一次没把数据读干净，会“卡住”（不再收到通知）。</p>
+
+<p>ET 的关键纪律：<strong>必须读到 <code class="language-plaintext highlighter-rouge">EAGAIN</code></strong>。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>on readable event:
+  while true:
+    n = read(fd, buf)
+    if n &gt; 0: continue
+    if n == 0: close
+    if errno == EAGAIN: break   // drained
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="5-惊群thundering-herd与-accept-竞争">5. 惊群（thundering herd）与 accept 竞争</h2>
+
+<p>多进程/多线程同时 <code class="language-plaintext highlighter-rouge">epoll_wait</code>，同一监听 socket 就绪时，可能出现：</p>
+
+<ul>
+  <li>多个 worker 同时被唤醒</li>
+  <li>只有一个能 accept 成功，其他被唤醒后又睡回去</li>
+</ul>
+
+<p>缓解思路：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">SO_REUSEPORT</code>：让内核在多个监听 socket 之间分配连接</li>
+  <li>accept mutex：在用户态串行化 accept（代价是潜在瓶颈）</li>
+  <li>合理的 worker 数量：避免过度并发等待同一资源</li>
+</ul>
+
+<hr />
+
+<h2 id="6-回压backpressure可写事件不等于无限可写">6. 回压（backpressure）：可写事件不等于“无限可写”</h2>
+
+<p>常见误用：把 EPOLLOUT 当作“可以一直写”，导致：</p>
+
+<ul>
+  <li>用户态不断写满 socket buffer</li>
+  <li>系统调用频率高</li>
+  <li>队列堆积导致尾延迟上升</li>
+</ul>
+
+<p>工程落点：</p>
+
+<ul>
+  <li>只在有待发送数据时监听 EPOLLOUT</li>
+  <li>发送队列清空后及时取消监听</li>
+  <li>配合应用层限流与队列长度上限</li>
+</ul>
+
+<hr />
+
+<h2 id="7-观测与排查">7. 观测与排查</h2>
+
+<p>常见症状：</p>
+
+<ul>
+  <li>CPU 高但吞吐不高：可能是 wakeup 过多或空转扫描</li>
+  <li>延迟抖动：可能是惊群/队列堆积/写放大</li>
+</ul>
+
+<p>建议指标：</p>
+
+<ul>
+  <li>每轮 <code class="language-plaintext highlighter-rouge">epoll_wait</code> 返回事件数分布（平均/长尾）</li>
+  <li>可读事件的“读到 EAGAIN”比例（ET 是否正确 draining）</li>
+  <li>accept 失败/重试次数（惊群信号）</li>
+  <li>发送队列长度与 EPOLLOUT 触发频率（回压是否生效）</li>
+</ul>
+
+<hr />
+
+<h2 id="8-小结">8. 小结</h2>
+
+<p>IO 多路复用的核心不是“多路”，而是<strong>把就绪检测从每轮 O(N) 扫描，变成事件到来时的增量维护</strong>。<code class="language-plaintext highlighter-rouge">epoll</code> 在高并发下更省 CPU，但 ET/LT、惊群与回压的工程细节决定了最终的尾延迟与稳定性。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

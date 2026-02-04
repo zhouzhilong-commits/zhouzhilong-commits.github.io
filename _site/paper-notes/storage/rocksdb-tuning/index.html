@@ -1,0 +1,1950 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RocksDB 调优与实践（论文笔记） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RocksDB 调优与实践（论文笔记）">
+
+
+  <link rel="canonical" href="http://localhost:4000/paper-notes/storage/rocksdb-tuning/">
+  <meta property="og:url" content="http://localhost:4000/paper-notes/storage/rocksdb-tuning/">
+
+
+
+  <meta property="og:description" content="  论文：RocksDB: Evolution of Development Priorities in a Key-Value Store Serving Large-Scale Applications（Dong et al., VLDB 2022）">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-06-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">论文笔记</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/raid/" class=""><span class="nav__sub-title">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lfs/" class=""><span class="nav__sub-title">LFS：The Design and Implementation of a Log-Structured File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/wafl/" class=""><span class="nav__sub-title">WAFL：Write Anywhere File Layout（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/arc/" class=""><span class="nav__sub-title">ARC：Adaptive Replacement Cache（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/polardb/" class=""><span class="nav__sub-title">PolarDB：云原生数据库架构（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/rocksdb-tuning/" class="active"><span class="nav__sub-title">RocksDB 调优与实践（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RocksDB 调优与实践（论文笔记）">
+    <meta itemprop="description" content="  论文：RocksDB: Evolution of Development Priorities in a Key-Value Store Serving Large-Scale Applications（Dong et al., VLDB 2022）">
+    <meta itemprop="datePublished" content="June 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RocksDB 调优与实践（论文笔记）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  8 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-06-01T00:00:00+08:00">June 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>论文：RocksDB: Evolution of Development Priorities in a Key-Value Store Serving Large-Scale Applications（Dong et al., VLDB 2022）</p>
+</blockquote>
+
+<p>RocksDB 是 Facebook 开源的基于 LSM-Tree 的高性能键值存储引擎，广泛应用于数据库、分布式系统和大数据场景。本文深入解析 RocksDB 的架构设计、调优策略和工程实践。</p>
+
+<h2 id="1-rocksdb-的设计目标与挑战">1. RocksDB 的设计目标与挑战</h2>
+
+<h3 id="11-设计目标">1.1 设计目标</h3>
+
+<p>RocksDB 的设计目标：</p>
+
+<ul>
+  <li><strong>高性能</strong>：高吞吐、低延迟的读写性能</li>
+  <li><strong>可调优</strong>：丰富的配置参数，适应不同场景</li>
+  <li><strong>可靠性</strong>：数据持久化，故障恢复</li>
+  <li><strong>可扩展</strong>：支持大规模数据存储</li>
+</ul>
+
+<h3 id="12-核心挑战">1.2 核心挑战</h3>
+
+<p>RocksDB 面临的核心挑战：</p>
+
+<ul>
+  <li><strong>写放大</strong>：Compaction 带来的写放大问题</li>
+  <li><strong>读放大</strong>：多层级读取带来的读放大</li>
+  <li><strong>空间放大</strong>：多版本数据带来的空间占用</li>
+  <li><strong>尾延迟</strong>：Compaction 对读写性能的影响</li>
+</ul>
+
+<h2 id="2-rocksdb-架构概览">2. RocksDB 架构概览</h2>
+
+<h3 id="21-整体架构">2.1 整体架构</h3>
+
+<p>RocksDB 采用 LSM-Tree 架构：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────┐
+│         Application Layer                │
+└─────────────────────────────────────────┘
+                    │
+┌─────────────────────────────────────────┐
+│         RocksDB Engine                   │
+│  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ MemTable │  │  WAL     │  │ Options ││
+│  └──────────┘  └──────────┘  └────────┘│
+│  ┌────────────────────────────────────┐│
+│  │      LSM-Tree (SST Files)          ││
+│  │  L0  L1  L2  L3  L4  L5  L6        ││
+│  └────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+                    │
+┌─────────────────────────────────────────┐
+│         Storage Layer (File System)      │
+└─────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><strong>核心组件</strong>：</p>
+
+<ul>
+  <li><strong>MemTable</strong>：内存中的有序表，写入缓冲区</li>
+  <li><strong>WAL</strong>：Write-Ahead Log，保证数据持久化</li>
+  <li><strong>SST Files</strong>：Sorted String Table，持久化的有序数据文件</li>
+  <li><strong>Compaction</strong>：后台合并和压缩机制</li>
+</ul>
+
+<h3 id="22-写入路径">2.2 写入路径</h3>
+
+<p>RocksDB 的写入路径：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Write Request:
+1. 写入 WAL（可选，根据配置）
+   └─&gt; 保证数据持久化
+   
+2. 写入 MemTable
+   └─&gt; SkipList 或 HashSkipList
+   └─&gt; 内存中的有序表
+   
+3. MemTable 满时 Flush
+   └─&gt; 转换为 Immutable MemTable
+   └─&gt; 后台 Flush 到 L0 SST File
+   
+4. L0 文件过多时触发 Compaction
+   └─&gt; 合并到 L1 及以下层级
+</code></pre></div></div>
+
+<h3 id="23-读取路径">2.3 读取路径</h3>
+
+<p>RocksDB 的读取路径：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Read Request:
+1. 检查 MemTable
+   └─&gt; 命中：直接返回
+   
+2. 检查 Immutable MemTable
+   └─&gt; 命中：直接返回
+   
+3. 从 L0 开始逐层查找
+   └─&gt; L0：可能需要检查多个文件（文件间可能有重叠）
+   └─&gt; L1-L6：每层最多检查一个文件（文件间无重叠）
+   
+4. 使用 Bloom Filter 快速过滤
+   └─&gt; 减少不必要的文件读取
+   
+5. 返回数据或 NotFound
+</code></pre></div></div>
+
+<h2 id="3-memtable-设计">3. MemTable 设计</h2>
+
+<h3 id="31-memtable-的作用">3.1 MemTable 的作用</h3>
+
+<p>MemTable 是 RocksDB 的写入缓冲区：</p>
+
+<p><strong>设计目的</strong>：</p>
+
+<ul>
+  <li><strong>批量写入</strong>：积累写入请求，批量刷新到磁盘</li>
+  <li><strong>顺序写入</strong>：MemTable 刷新时是顺序写入，性能好</li>
+  <li><strong>快速读取</strong>：热点数据在内存中，读取快</li>
+</ul>
+
+<p><strong>MemTable 结构</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// MemTable 简化结构</span>
+<span class="k">class</span> <span class="nc">MemTable</span> <span class="p">{</span>
+    <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">KeyValue</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">;</span>  <span class="c1">// SkipList 或 HashSkipList</span>
+    <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span>               <span class="c1">// 当前大小</span>
+    <span class="kt">size_t</span> <span class="n">max_size</span><span class="p">;</span>           <span class="c1">// 最大大小（write_buffer_size）</span>
+    
+    <span class="kt">void</span> <span class="n">Put</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">data</span><span class="p">.</span><span class="n">Insert</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+        <span class="n">size</span> <span class="o">+=</span> <span class="n">key</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">+</span> <span class="n">value</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">max_size</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 转换为 Immutable MemTable</span>
+            <span class="n">make_immutable</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="32-memtable-类型">3.2 MemTable 类型</h3>
+
+<p>RocksDB 支持多种 MemTable 实现：</p>
+
+<p><strong>SkipList</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：有序，支持范围查询</li>
+  <li><strong>适用场景</strong>：通用场景</li>
+  <li><strong>性能</strong>：O(log n) 插入和查找</li>
+</ul>
+
+<p><strong>HashSkipList</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：哈希 + SkipList，点查询更快</li>
+  <li><strong>适用场景</strong>：点查询为主</li>
+  <li><strong>性能</strong>：O(1) 点查询，O(log n) 范围查询</li>
+</ul>
+
+<p><strong>HashLinkList</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：哈希 + 链表，内存占用小</li>
+  <li><strong>适用场景</strong>：内存受限场景</li>
+  <li><strong>性能</strong>：O(1) 点查询，不支持范围查询</li>
+</ul>
+
+<h3 id="33-memtable-flush">3.3 MemTable Flush</h3>
+
+<p>MemTable 满时会触发 Flush：</p>
+
+<p><strong>Flush 触发条件</strong>：</p>
+
+<ol>
+  <li><strong>大小触发</strong>：MemTable 大小达到 <code class="language-plaintext highlighter-rouge">write_buffer_size</code></li>
+  <li><strong>手动触发</strong>：调用 <code class="language-plaintext highlighter-rouge">Flush()</code> 接口</li>
+  <li><strong>WAL 触发</strong>：WAL 文件大小达到阈值</li>
+</ol>
+
+<p><strong>Flush 流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. MemTable 转换为 Immutable MemTable
+   └─&gt; 停止写入
+   └─&gt; 创建新的 MemTable
+   
+2. 后台线程 Flush Immutable MemTable
+   └─&gt; 遍历数据，写入 L0 SST File
+   └─&gt; 顺序写入，性能好
+   
+3. Flush 完成
+   └─&gt; 删除 Immutable MemTable
+   └─&gt; 更新元数据
+</code></pre></div></div>
+
+<h2 id="4-lsm-tree-层级设计">4. LSM-Tree 层级设计</h2>
+
+<h3 id="41-层级结构">4.1 层级结构</h3>
+
+<p>RocksDB 的 LSM-Tree 采用多层级设计：</p>
+
+<p><strong>层级特点</strong>：</p>
+
+<ul>
+  <li><strong>L0</strong>：文件可能有重叠，需要检查多个文件</li>
+  <li><strong>L1-L6</strong>：文件无重叠，每层最多检查一个文件</li>
+  <li><strong>大小递增</strong>：每层大小通常是上一层的 10 倍</li>
+</ul>
+
+<p><strong>层级配置</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>L0: max_bytes_for_level_base (通常 256MB)
+L1: max_bytes_for_level_base * 10 (2.56GB)
+L2: max_bytes_for_level_base * 100 (25.6GB)
+L3: max_bytes_for_level_base * 1000 (256GB)
+...
+</code></pre></div></div>
+
+<h3 id="42-sst-file-格式">4.2 SST File 格式</h3>
+
+<p>SST File 是 RocksDB 的持久化数据文件：</p>
+
+<p><strong>文件结构</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>SST File:
+┌─────────────────┐
+│  Data Blocks     │  ← 实际数据
+├─────────────────┤
+│  Index Block     │  ← 索引，快速定位
+├─────────────────┤
+│  Meta Blocks     │  ← 元数据
+├─────────────────┤
+│  Footer          │  ← 文件尾部信息
+└─────────────────┘
+</code></pre></div></div>
+
+<p><strong>Data Block</strong>：</p>
+
+<ul>
+  <li><strong>格式</strong>：有序的 Key-Value 对</li>
+  <li><strong>压缩</strong>：支持 Snappy、Zlib、LZ4 等压缩算法</li>
+  <li><strong>大小</strong>：通常 4KB-64KB</li>
+</ul>
+
+<p><strong>Index Block</strong>：</p>
+
+<ul>
+  <li><strong>作用</strong>：快速定位 Data Block</li>
+  <li><strong>结构</strong>：每个 Index Entry 指向一个 Data Block</li>
+  <li><strong>查找</strong>：二分查找，快速定位</li>
+</ul>
+
+<h3 id="43-bloom-filter">4.3 Bloom Filter</h3>
+
+<p>Bloom Filter 用于快速过滤不存在的 Key：</p>
+
+<p><strong>工作原理</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 写入时：将 Key 加入 Bloom Filter
+2. 读取时：先检查 Bloom Filter
+   └─&gt; 不存在：Key 肯定不存在，直接返回 NotFound
+   └─&gt; 存在：Key 可能存在，继续查找
+</code></pre></div></div>
+
+<p><strong>优势</strong>：</p>
+
+<ul>
+  <li><strong>快速过滤</strong>：减少不必要的文件读取</li>
+  <li><strong>空间效率</strong>：占用空间小</li>
+  <li><strong>误判率低</strong>：合理的 false positive 率</li>
+</ul>
+
+<p><strong>配置参数</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">bloom_bits_per_key</code>：每个 Key 的 Bloom Filter 位数</li>
+  <li><code class="language-plaintext highlighter-rouge">bloom_locality</code>：Bloom Filter 的局部性优化</li>
+</ul>
+
+<h2 id="5-compaction-机制">5. Compaction 机制</h2>
+
+<h3 id="51-compaction-的作用">5.1 Compaction 的作用</h3>
+
+<p>Compaction 是 LSM-Tree 的核心机制：</p>
+
+<p><strong>主要作用</strong>：</p>
+
+<ol>
+  <li><strong>合并数据</strong>：合并多个 SST 文件，减少文件数量</li>
+  <li><strong>删除过期数据</strong>：删除已删除的 Key 和旧版本数据</li>
+  <li><strong>减少读放大</strong>：减少需要检查的文件数量</li>
+  <li><strong>减少空间放大</strong>：回收已删除数据的空间</li>
+</ol>
+
+<h3 id="52-compaction-策略">5.2 Compaction 策略</h3>
+
+<p>RocksDB 支持多种 Compaction 策略：</p>
+
+<p><strong>Leveled Compaction</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：每层文件大小固定，文件间无重叠</li>
+  <li><strong>优势</strong>：读放大小，空间放大小</li>
+  <li><strong>劣势</strong>：写放大较大</li>
+</ul>
+
+<p><strong>Universal Compaction</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：合并相邻层级的文件</li>
+  <li><strong>优势</strong>：写放大小</li>
+  <li><strong>劣势</strong>：读放大和空间放大较大</li>
+</ul>
+
+<p><strong>FIFO Compaction</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：FIFO 策略，删除最旧的文件</li>
+  <li><strong>适用场景</strong>：时间序列数据，可以接受数据过期</li>
+</ul>
+
+<p><strong>Tiered Compaction</strong>：</p>
+
+<ul>
+  <li><strong>特点</strong>：类似 Leveled，但允许同层文件重叠</li>
+  <li><strong>优势</strong>：写放大介于 Leveled 和 Universal 之间</li>
+</ul>
+
+<h3 id="53-leveled-compaction-详解">5.3 Leveled Compaction 详解</h3>
+
+<p>Leveled Compaction 是 RocksDB 的默认策略：</p>
+
+<p><strong>工作原理</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. L0 文件过多时触发 Compaction
+   └─&gt; 选择 L0 文件，合并到 L1
+   
+2. L1 文件过多时触发 Compaction
+   └─&gt; 选择 L1 文件，合并到 L2
+   
+3. 逐层向上，直到达到目标层级
+</code></pre></div></div>
+
+<p><strong>Compaction 触发条件</strong>：</p>
+
+<ul>
+  <li><strong>L0</strong>：文件数量达到 <code class="language-plaintext highlighter-rouge">level0_file_num_compaction_trigger</code></li>
+  <li><strong>L1+</strong>：文件大小超过 <code class="language-plaintext highlighter-rouge">max_bytes_for_level_base * (10^level)</code></li>
+</ul>
+
+<p><strong>Compaction 过程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 选择要合并的文件
+   └─&gt; L0：选择所有文件或部分文件
+   └─&gt; L1+：选择与下一层有重叠的文件
+   
+2. 读取文件，合并数据
+   └─&gt; 多路归并排序
+   └─&gt; 删除重复和过期数据
+   
+3. 写入新文件到下一层
+   └─&gt; 顺序写入，性能好
+   
+4. 删除旧文件
+   └─&gt; 更新元数据
+</code></pre></div></div>
+
+<h3 id="54-compaction-优化">5.4 Compaction 优化</h3>
+
+<p>RocksDB 的 Compaction 优化策略：</p>
+
+<p><strong>并行 Compaction</strong>：</p>
+
+<ul>
+  <li><strong>多线程</strong>：多个 Compaction 线程并行执行</li>
+  <li><strong>配置</strong>：<code class="language-plaintext highlighter-rouge">max_background_compactions</code> 控制并发数</li>
+</ul>
+
+<p><strong>Subcompaction</strong>：</p>
+
+<ul>
+  <li><strong>分片合并</strong>：大 Compaction 任务分成多个子任务</li>
+  <li><strong>配置</strong>：<code class="language-plaintext highlighter-rouge">max_subcompactions</code> 控制子任务数</li>
+</ul>
+
+<p><strong>Compaction 优先级</strong>：</p>
+
+<ul>
+  <li><strong>L0</strong>：最高优先级，尽快减少 L0 文件</li>
+  <li><strong>L1+</strong>：根据文件大小和数量决定优先级</li>
+</ul>
+
+<h2 id="6-写入性能优化">6. 写入性能优化</h2>
+
+<h3 id="61-写入路径优化">6.1 写入路径优化</h3>
+
+<p>RocksDB 的写入优化策略：</p>
+
+<p><strong>批量写入</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 批量写入示例</span>
+<span class="n">WriteBatch</span> <span class="n">batch</span><span class="p">;</span>
+<span class="n">batch</span><span class="p">.</span><span class="n">Put</span><span class="p">(</span><span class="s">"key1"</span><span class="p">,</span> <span class="s">"value1"</span><span class="p">);</span>
+<span class="n">batch</span><span class="p">.</span><span class="n">Put</span><span class="p">(</span><span class="s">"key2"</span><span class="p">,</span> <span class="s">"value2"</span><span class="p">);</span>
+<span class="n">batch</span><span class="p">.</span><span class="n">Put</span><span class="p">(</span><span class="s">"key3"</span><span class="p">,</span> <span class="s">"value3"</span><span class="p">);</span>
+<span class="n">db</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">batch</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><strong>优势</strong>：</p>
+<ul>
+  <li>减少锁竞争</li>
+  <li>减少 WAL 写入次数</li>
+  <li>提高写入吞吐</li>
+</ul>
+
+<p><strong>并发写入</strong>：</p>
+
+<ul>
+  <li><strong>多线程写入</strong>：多个线程可以并发写入</li>
+  <li><strong>WriteBatch</strong>：每个线程使用独立的 WriteBatch</li>
+  <li><strong>WAL 同步</strong>：根据 <code class="language-plaintext highlighter-rouge">sync</code> 选项决定是否同步</li>
+</ul>
+
+<h3 id="62-wal-优化">6.2 WAL 优化</h3>
+
+<p>WAL（Write-Ahead Log）的优化策略：</p>
+
+<p><strong>WAL 配置</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">disable_wal</code>：禁用 WAL（不推荐，数据可能丢失）</li>
+  <li><code class="language-plaintext highlighter-rouge">sync</code>：每次写入后同步 WAL（性能差，但最安全）</li>
+  <li><code class="language-plaintext highlighter-rouge">manual_wal_flush</code>：手动刷新 WAL（平衡性能和安全性）</li>
+</ul>
+
+<p><strong>WAL 优化</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>传统方式：
+Write 1 → Sync WAL
+Write 2 → Sync WAL
+Write 3 → Sync WAL
+问题：每次都要同步，性能差
+
+优化方式：
+Write 1 ┐
+Write 2 ├─&gt; Batch Sync WAL
+Write 3 ┘
+优势：批量同步，提高性能
+</code></pre></div></div>
+
+<h3 id="63-memtable-优化">6.3 MemTable 优化</h3>
+
+<p>MemTable 的优化策略：</p>
+
+<p><strong>大小配置</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">write_buffer_size</code>：单个 MemTable 大小</li>
+  <li><code class="language-plaintext highlighter-rouge">max_write_buffer_number</code>：最大 MemTable 数量</li>
+  <li><code class="language-plaintext highlighter-rouge">min_write_buffer_number_to_merge</code>：触发 Flush 前的最小 MemTable 数量</li>
+</ul>
+
+<p><strong>优化建议</strong>：</p>
+
+<ol>
+  <li><strong>增大 write_buffer_size</strong>：减少 Flush 频率，提高写入性能</li>
+  <li><strong>调整 max_write_buffer_number</strong>：平衡内存使用和写入性能</li>
+  <li><strong>选择合适的 MemTable 类型</strong>：根据查询模式选择</li>
+</ol>
+
+<h2 id="7-读取性能优化">7. 读取性能优化</h2>
+
+<h3 id="71-读取路径优化">7.1 读取路径优化</h3>
+
+<p>RocksDB 的读取优化策略：</p>
+
+<p><strong>多级缓存</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>读取路径：
+1. Block Cache（L1 Cache）
+   └─&gt; 缓存 SST File 的 Data Block
+   └─&gt; 减少磁盘读取
+   
+2. OS Page Cache（L2 Cache）
+   └─&gt; 操作系统页面缓存
+   └─&gt; 缓存未压缩的数据
+   
+3. 磁盘读取
+   └─&gt; 最后的选择
+</code></pre></div></div>
+
+<p><strong>Block Cache 配置</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">block_cache</code>：Block Cache 大小</li>
+  <li><code class="language-plaintext highlighter-rouge">block_cache_compressed</code>：压缩 Block Cache 大小</li>
+  <li><code class="language-plaintext highlighter-rouge">cache_index_and_filter_blocks</code>：缓存 Index 和 Filter Block</li>
+</ul>
+
+<h3 id="72-bloom-filter-优化">7.2 Bloom Filter 优化</h3>
+
+<p>Bloom Filter 的优化策略：</p>
+
+<p><strong>配置参数</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">bloom_bits_per_key</code>：每个 Key 的 Bloom Filter 位数
+    <ul>
+      <li>默认：10 bits</li>
+      <li>增大：减少 false positive，但占用更多空间</li>
+      <li>减小：占用空间小，但 false positive 增加</li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>优化建议</strong>：</p>
+
+<ol>
+  <li><strong>点查询为主</strong>：增大 <code class="language-plaintext highlighter-rouge">bloom_bits_per_key</code>，减少 false positive</li>
+  <li><strong>范围查询为主</strong>：Bloom Filter 作用有限，可以适当减小</li>
+  <li><strong>内存受限</strong>：减小 <code class="language-plaintext highlighter-rouge">bloom_bits_per_key</code>，节省内存</li>
+</ol>
+
+<h3 id="73-预取优化">7.3 预取优化</h3>
+
+<p>RocksDB 的预取策略：</p>
+
+<p><strong>配置参数</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">readahead_size</code>：预取大小</li>
+  <li><code class="language-plaintext highlighter-rouge">adaptive_readahead</code>：自适应预取</li>
+</ul>
+
+<p><strong>预取优化</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>顺序读取时：
+1. 读取当前 Block
+2. 预取下一个 Block
+3. 减少后续读取延迟
+</code></pre></div></div>
+
+<h2 id="8-compaction-调优">8. Compaction 调优</h2>
+
+<h3 id="81-compaction-参数调优">8.1 Compaction 参数调优</h3>
+
+<p>关键 Compaction 参数：</p>
+
+<p><strong>Leveled Compaction 参数</strong>：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">level0_file_num_compaction_trigger</code>：L0 触发 Compaction 的文件数</li>
+  <li><code class="language-plaintext highlighter-rouge">max_bytes_for_level_base</code>：L1 的基础大小</li>
+  <li><code class="language-plaintext highlighter-rouge">max_bytes_for_level_multiplier</code>：每层大小倍数</li>
+  <li><code class="language-plaintext highlighter-rouge">target_file_size_base</code>：目标文件大小</li>
+  <li><code class="language-plaintext highlighter-rouge">max_background_compactions</code>：后台 Compaction 线程数</li>
+</ul>
+
+<p><strong>调优建议</strong>：</p>
+
+<ol>
+  <li><strong>减少 L0 文件数</strong>：降低 <code class="language-plaintext highlighter-rouge">level0_file_num_compaction_trigger</code>，但会增加 Compaction 频率</li>
+  <li><strong>增大层级大小</strong>：增大 <code class="language-plaintext highlighter-rouge">max_bytes_for_level_base</code>，减少层级数，但会增加读放大</li>
+  <li><strong>调整 Compaction 线程数</strong>：根据 CPU 和 I/O 资源调整</li>
+</ol>
+
+<h3 id="82-compaction-性能优化">8.2 Compaction 性能优化</h3>
+
+<p>Compaction 性能优化策略：</p>
+
+<p><strong>并行 Compaction</strong>：</p>
+
+<ul>
+  <li>多个 Compaction 线程并行执行</li>
+  <li>充分利用多核 CPU 和 I/O 带宽</li>
+</ul>
+
+<p><strong>Subcompaction</strong>：</p>
+
+<ul>
+  <li>大 Compaction 任务分成多个子任务</li>
+  <li>提高并行度，减少 Compaction 时间</li>
+</ul>
+
+<p><strong>Compaction 优先级</strong>：</p>
+
+<ul>
+  <li>L0 Compaction 优先级最高</li>
+  <li>尽快减少 L0 文件，降低读放大</li>
+</ul>
+
+<h3 id="83-compaction-对性能的影响">8.3 Compaction 对性能的影响</h3>
+
+<p>Compaction 对读写性能的影响：</p>
+
+<p><strong>写入性能影响</strong>：</p>
+
+<ul>
+  <li><strong>I/O 竞争</strong>：Compaction 会占用 I/O 带宽</li>
+  <li><strong>CPU 竞争</strong>：Compaction 会占用 CPU 资源</li>
+  <li><strong>缓解措施</strong>：限制 Compaction 线程数，使用 Rate Limiter</li>
+</ul>
+
+<p><strong>读取性能影响</strong>：</p>
+
+<ul>
+  <li><strong>文件数量</strong>：L0 文件过多会增加读放大</li>
+  <li><strong>缓解措施</strong>：及时触发 Compaction，减少 L0 文件</li>
+</ul>
+
+<p><strong>尾延迟影响</strong>：</p>
+
+<ul>
+  <li><strong>Compaction 突发</strong>：大量 Compaction 会导致尾延迟增加</li>
+  <li><strong>缓解措施</strong>：平滑 Compaction，使用 Rate Limiter</li>
+</ul>
+
+<h2 id="9-空间优化">9. 空间优化</h2>
+
+<h3 id="91-压缩算法">9.1 压缩算法</h3>
+
+<p>RocksDB 支持多种压缩算法：</p>
+
+<p><strong>压缩算法对比</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>算法</th>
+      <th>压缩比</th>
+      <th>压缩速度</th>
+      <th>解压速度</th>
+      <th>CPU 开销</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No Compression</td>
+      <td>1.0</td>
+      <td>最快</td>
+      <td>最快</td>
+      <td>最低</td>
+    </tr>
+    <tr>
+      <td>Snappy</td>
+      <td>中等</td>
+      <td>快</td>
+      <td>快</td>
+      <td>低</td>
+    </tr>
+    <tr>
+      <td>Zlib</td>
+      <td>高</td>
+      <td>慢</td>
+      <td>中等</td>
+      <td>中等</td>
+    </tr>
+    <tr>
+      <td>LZ4</td>
+      <td>中等</td>
+      <td>快</td>
+      <td>快</td>
+      <td>低</td>
+    </tr>
+    <tr>
+      <td>ZSTD</td>
+      <td>高</td>
+      <td>中等</td>
+      <td>快</td>
+      <td>中等</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>选择建议</strong>：</p>
+
+<ul>
+  <li><strong>CPU 受限</strong>：使用 Snappy 或 LZ4</li>
+  <li><strong>存储受限</strong>：使用 Zlib 或 ZSTD</li>
+  <li><strong>平衡场景</strong>：使用 ZSTD</li>
+</ul>
+
+<h3 id="92-压缩级别配置">9.2 压缩级别配置</h3>
+
+<p>不同层级可以使用不同的压缩算法：</p>
+
+<p><strong>配置示例</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 不同层级使用不同压缩算法</span>
+<span class="n">CompressionType</span> <span class="n">level_compression</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">kNoCompression</span><span class="p">,</span>     <span class="c1">// L0: 不压缩，减少写入延迟</span>
+    <span class="n">kSnappyCompression</span><span class="p">,</span> <span class="c1">// L1: 快速压缩</span>
+    <span class="n">kSnappyCompression</span><span class="p">,</span> <span class="c1">// L2: 快速压缩</span>
+    <span class="n">kZlibCompression</span><span class="p">,</span>   <span class="c1">// L3: 高压缩比</span>
+    <span class="n">kZlibCompression</span><span class="p">,</span>   <span class="c1">// L4: 高压缩比</span>
+    <span class="n">kZlibCompression</span><span class="p">,</span>   <span class="c1">// L5: 高压缩比</span>
+    <span class="n">kZlibCompression</span>    <span class="c1">// L6: 高压缩比</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>优化策略</strong>：</p>
+
+<ul>
+  <li><strong>L0</strong>：不压缩或快速压缩，减少写入延迟</li>
+  <li><strong>L1-L2</strong>：快速压缩，平衡性能和空间</li>
+  <li><strong>L3+</strong>：高压缩比，节省存储空间</li>
+</ul>
+
+<h3 id="93-数据删除优化">9.3 数据删除优化</h3>
+
+<p>RocksDB 的删除机制：</p>
+
+<p><strong>删除流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 写入删除标记（Tombstone）
+   └─&gt; 不立即删除数据
+   
+2. Compaction 时真正删除
+   └─&gt; 合并时跳过已删除的 Key
+   └─&gt; 删除旧版本数据
+</code></pre></div></div>
+
+<p><strong>删除优化</strong>：</p>
+
+<ul>
+  <li><strong>及时 Compaction</strong>：定期触发 Compaction，及时删除数据</li>
+  <li><strong>手动 Compaction</strong>：调用 <code class="language-plaintext highlighter-rouge">CompactRange()</code> 手动触发</li>
+  <li><strong>TTL</strong>：使用 TTL 自动删除过期数据</li>
+</ul>
+
+<h2 id="10-监控与调优">10. 监控与调优</h2>
+
+<h3 id="101-关键指标监控">10.1 关键指标监控</h3>
+
+<p>RocksDB 的关键性能指标：</p>
+
+<p><strong>写入指标</strong>：</p>
+
+<ul>
+  <li><strong>Write Amplification</strong>：写放大倍数</li>
+  <li><strong>Flush Rate</strong>：Flush 速率</li>
+  <li><strong>Compaction Rate</strong>：Compaction 速率</li>
+</ul>
+
+<p><strong>读取指标</strong>：</p>
+
+<ul>
+  <li><strong>Read Amplification</strong>：读放大倍数</li>
+  <li><strong>Cache Hit Rate</strong>：缓存命中率</li>
+  <li><strong>Bloom Filter False Positive Rate</strong>：Bloom Filter 误判率</li>
+</ul>
+
+<p><strong>空间指标</strong>：</p>
+
+<ul>
+  <li><strong>Space Amplification</strong>：空间放大倍数</li>
+  <li><strong>Compression Ratio</strong>：压缩比</li>
+</ul>
+
+<p><strong>延迟指标</strong>：</p>
+
+<ul>
+  <li><strong>P50/P99/P999 Latency</strong>：延迟分布</li>
+  <li><strong>Tail Latency</strong>：尾延迟</li>
+</ul>
+
+<h3 id="102-调优实践">10.2 调优实践</h3>
+
+<p><strong>写入优化场景</strong>：</p>
+
+<ol>
+  <li><strong>高吞吐写入</strong>：
+    <ul>
+      <li>增大 <code class="language-plaintext highlighter-rouge">write_buffer_size</code></li>
+      <li>增大 <code class="language-plaintext highlighter-rouge">max_write_buffer_number</code></li>
+      <li>使用批量写入</li>
+      <li>禁用 WAL 同步（如果可以接受数据丢失风险）</li>
+    </ul>
+  </li>
+  <li><strong>低延迟写入</strong>：
+    <ul>
+      <li>减小 <code class="language-plaintext highlighter-rouge">write_buffer_size</code></li>
+      <li>使用快速压缩算法</li>
+      <li>减少 Compaction 线程数</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>读取优化场景</strong>：</p>
+
+<ol>
+  <li><strong>点查询优化</strong>：
+    <ul>
+      <li>增大 Block Cache</li>
+      <li>增大 <code class="language-plaintext highlighter-rouge">bloom_bits_per_key</code></li>
+      <li>使用 HashSkipList MemTable</li>
+    </ul>
+  </li>
+  <li><strong>范围查询优化</strong>：
+    <ul>
+      <li>增大 Block Cache</li>
+      <li>启用预取</li>
+      <li>使用 SkipList MemTable</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>空间优化场景</strong>：</p>
+
+<ol>
+  <li><strong>存储受限</strong>：
+    <ul>
+      <li>使用高压缩比算法（Zlib/ZSTD）</li>
+      <li>及时触发 Compaction</li>
+      <li>使用 TTL 删除过期数据</li>
+    </ul>
+  </li>
+  <li><strong>成本优化</strong>：
+    <ul>
+      <li>平衡压缩比和 CPU 开销</li>
+      <li>选择合适的压缩算法</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="103-常见问题与解决">10.3 常见问题与解决</h3>
+
+<p><strong>问题 1：写入性能差</strong></p>
+
+<p><strong>可能原因</strong>：</p>
+<ul>
+  <li>WAL 同步过于频繁</li>
+  <li>MemTable Flush 过于频繁</li>
+  <li>Compaction 占用过多资源</li>
+</ul>
+
+<p><strong>解决方案</strong>：</p>
+<ul>
+  <li>减少 WAL 同步频率</li>
+  <li>增大 <code class="language-plaintext highlighter-rouge">write_buffer_size</code></li>
+  <li>限制 Compaction 线程数</li>
+</ul>
+
+<p><strong>问题 2：读取性能差</strong></p>
+
+<p><strong>可能原因</strong>：</p>
+<ul>
+  <li>L0 文件过多</li>
+  <li>Block Cache 太小</li>
+  <li>Bloom Filter 配置不当</li>
+</ul>
+
+<p><strong>解决方案</strong>：</p>
+<ul>
+  <li>降低 <code class="language-plaintext highlighter-rouge">level0_file_num_compaction_trigger</code></li>
+  <li>增大 Block Cache</li>
+  <li>调整 Bloom Filter 参数</li>
+</ul>
+
+<p><strong>问题 3：空间占用大</strong></p>
+
+<p><strong>可能原因</strong>：</p>
+<ul>
+  <li>压缩算法选择不当</li>
+  <li>删除数据未及时清理</li>
+  <li>多版本数据占用空间</li>
+</ul>
+
+<p><strong>解决方案</strong>：</p>
+<ul>
+  <li>使用高压缩比算法</li>
+  <li>及时触发 Compaction</li>
+  <li>使用 TTL 删除过期数据</li>
+</ul>
+
+<h2 id="11-高级特性">11. 高级特性</h2>
+
+<h3 id="111-column-family">11.1 Column Family</h3>
+
+<p>Column Family 是 RocksDB 的逻辑分区：</p>
+
+<p><strong>设计目的</strong>：</p>
+
+<ul>
+  <li><strong>逻辑隔离</strong>：不同 Column Family 的数据物理隔离</li>
+  <li><strong>独立配置</strong>：每个 Column Family 可以独立配置</li>
+  <li><strong>独立 Compaction</strong>：每个 Column Family 独立 Compaction</li>
+</ul>
+
+<p><strong>使用场景</strong>：</p>
+
+<ul>
+  <li>不同数据类型（如元数据和用户数据）</li>
+  <li>不同访问模式（如热数据和冷数据）</li>
+  <li>不同生命周期（如临时数据和持久数据）</li>
+</ul>
+
+<h3 id="112-transaction">11.2 Transaction</h3>
+
+<p>RocksDB 支持事务：</p>
+
+<p><strong>事务特性</strong>：</p>
+
+<ul>
+  <li><strong>ACID 保证</strong>：原子性、一致性、隔离性、持久性</li>
+  <li><strong>快照隔离</strong>：基于快照的隔离级别</li>
+  <li><strong>乐观并发控制</strong>：使用版本号检测冲突</li>
+</ul>
+
+<p><strong>事务 API</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">TransactionDB</span><span class="o">*</span> <span class="n">txn_db</span><span class="p">;</span>
+<span class="n">Transaction</span><span class="o">*</span> <span class="n">txn</span> <span class="o">=</span> <span class="n">txn_db</span><span class="o">-&gt;</span><span class="n">BeginTransaction</span><span class="p">(</span><span class="n">WriteOptions</span><span class="p">());</span>
+<span class="n">txn</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="s">"key1"</span><span class="p">,</span> <span class="s">"value1"</span><span class="p">);</span>
+<span class="n">txn</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="s">"key2"</span><span class="p">,</span> <span class="s">"value2"</span><span class="p">);</span>
+<span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">txn</span><span class="o">-&gt;</span><span class="n">Commit</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h3 id="113-backup-and-restore">11.3 Backup and Restore</h3>
+
+<p>RocksDB 支持备份和恢复：</p>
+
+<p><strong>备份方式</strong>：</p>
+
+<ul>
+  <li><strong>全量备份</strong>：备份所有 SST 文件</li>
+  <li><strong>增量备份</strong>：只备份新增和修改的文件</li>
+  <li><strong>快照备份</strong>：基于快照的备份</li>
+</ul>
+
+<p><strong>恢复方式</strong>：</p>
+
+<ul>
+  <li><strong>全量恢复</strong>：恢复所有数据</li>
+  <li><strong>增量恢复</strong>：基于增量备份恢复</li>
+  <li><strong>时间点恢复</strong>：恢复到指定时间点</li>
+</ul>
+
+<h2 id="12-工程实践">12. 工程实践</h2>
+
+<h3 id="121-部署建议">12.1 部署建议</h3>
+
+<p>RocksDB 的部署建议：</p>
+
+<p><strong>硬件配置</strong>：</p>
+
+<ul>
+  <li><strong>CPU</strong>：多核 CPU，支持并行 Compaction</li>
+  <li><strong>内存</strong>：足够的内存用于 Block Cache 和 MemTable</li>
+  <li><strong>存储</strong>：SSD 推荐，HDD 性能较差</li>
+  <li><strong>网络</strong>：如果使用分布式存储，需要高速网络</li>
+</ul>
+
+<p><strong>配置建议</strong>：</p>
+
+<ul>
+  <li>根据工作负载调整参数</li>
+  <li>监控关键指标，及时调整</li>
+  <li>定期进行性能测试</li>
+</ul>
+
+<h3 id="122-故障处理">12.2 故障处理</h3>
+
+<p>常见故障及处理：</p>
+
+<p><strong>故障 1：数据损坏</strong></p>
+
+<ul>
+  <li><strong>现象</strong>：读取数据时出现错误</li>
+  <li><strong>处理</strong>：使用备份恢复，检查硬件问题</li>
+</ul>
+
+<p><strong>故障 2：性能下降</strong></p>
+
+<ul>
+  <li><strong>现象</strong>：读写性能突然下降</li>
+  <li><strong>处理</strong>：检查 Compaction 状态，调整参数</li>
+</ul>
+
+<p><strong>故障 3：空间不足</strong></p>
+
+<ul>
+  <li><strong>现象</strong>：磁盘空间不足</li>
+  <li><strong>处理</strong>：清理数据，触发 Compaction，扩容存储</li>
+</ul>
+
+<h2 id="13-与其他系统对比">13. 与其他系统对比</h2>
+
+<h3 id="131-rocksdb-vs-leveldb">13.1 RocksDB vs LevelDB</h3>
+
+<p><strong>相似点</strong>：</p>
+<ul>
+  <li>都基于 LSM-Tree</li>
+  <li>都支持快照和迭代器</li>
+</ul>
+
+<p><strong>差异点</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>特性</th>
+      <th>LevelDB</th>
+      <th>RocksDB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>多线程</td>
+      <td>有限支持</td>
+      <td>完整支持</td>
+    </tr>
+    <tr>
+      <td>Compaction 策略</td>
+      <td>单一</td>
+      <td>多种策略</td>
+    </tr>
+    <tr>
+      <td>压缩算法</td>
+      <td>有限</td>
+      <td>丰富</td>
+    </tr>
+    <tr>
+      <td>事务</td>
+      <td>不支持</td>
+      <td>支持</td>
+    </tr>
+    <tr>
+      <td>性能</td>
+      <td>基础</td>
+      <td>优化</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="132-rocksdb-vs-innodb">13.2 RocksDB vs InnoDB</h3>
+
+<p><strong>架构差异</strong>：</p>
+
+<ul>
+  <li><strong>RocksDB</strong>：LSM-Tree，顺序写入</li>
+  <li><strong>InnoDB</strong>：B+Tree，随机写入</li>
+</ul>
+
+<p><strong>性能特点</strong>：</p>
+
+<ul>
+  <li><strong>写入</strong>：RocksDB 写入性能通常更好</li>
+  <li><strong>读取</strong>：InnoDB 点查询性能通常更好</li>
+  <li><strong>空间</strong>：RocksDB 压缩比通常更高</li>
+</ul>
+
+<h2 id="14-小结">14. 小结</h2>
+
+<p>RocksDB 是高性能 LSM-Tree 存储引擎的代表，通过丰富的配置和优化策略，适应各种应用场景。</p>
+
+<p><strong>核心要点</strong>：</p>
+
+<ul>
+  <li><strong>LSM-Tree 架构</strong>：顺序写入，后台 Compaction</li>
+  <li><strong>多级优化</strong>：MemTable、SST File、Compaction 多级优化</li>
+  <li><strong>丰富配置</strong>：大量可调参数，适应不同场景</li>
+  <li><strong>性能平衡</strong>：在写放大、读放大、空间放大之间平衡</li>
+  <li><strong>工程实践</strong>：丰富的监控和调优工具</li>
+</ul>
+
+<p><strong>调优建议</strong>：</p>
+
+<ol>
+  <li><strong>写入优化</strong>：批量写入、增大 MemTable、调整 WAL</li>
+  <li><strong>读取优化</strong>：增大 Block Cache、优化 Bloom Filter、启用预取</li>
+  <li><strong>空间优化</strong>：选择合适的压缩算法、及时 Compaction</li>
+  <li><strong>性能监控</strong>：监控关键指标，及时调整参数</li>
+</ol>
+
+<p>RocksDB 的设计展示了 LSM-Tree 存储引擎的工程化实践，为大规模应用提供了高性能、可靠的存储解决方案。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

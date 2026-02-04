@@ -588,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="22"
     data-current-page="14"
   
 >
@@ -615,55 +615,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/kv-storage-note-001-wal-recovery/" rel="permalink">KV存储笔记：WAL 与崩溃恢复
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  2 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-05-18T00:00:00+08:00">May 18, 2021</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/kv-storage-2-lsm-vs-btree/" rel="permalink">KV存储（2）：LSM-Tree 与 B+Tree 的权衡
+        <a href="/kv-storage-note-004-conflict-resolution/" rel="permalink">KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）
 </a>
       
     </h2>
@@ -680,7 +632,55 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-04-20T00:00:00+08:00">April 20, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-10-22T00:00:00+08:00">October 22, 2021</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>复制 + quorum 的系统一旦允许在故障/分区下继续接受写，就必须回答：<strong>当同一 key 出现并发写时，系统如何定义“最终值”？</strong></p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cpp-note-010-variadic-templates/" rel="permalink">C++ 笔记：可变参数模板：参数包展开与折叠表达式
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  3 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-10-15T00:00:00+08:00">October 15, 2021</time></p>
           
         
 
@@ -711,7 +711,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-004-smart-pointers/" rel="permalink">C++ 笔记：智能指针：unique_ptr 与 shared_ptr
+        <a href="/kv-storage-note-003-anti-entropy-repair/" rel="permalink">KV存储笔记：反熵（anti-entropy）、read-repair 与一致性修复
 </a>
       
     </h2>
@@ -721,14 +721,62 @@
 
 
   
-	  7 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-04-18T00:00:00+08:00">April 18, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-09-18T00:00:00+08:00">September 18, 2021</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>复制系统长期运行一定会产生副本分歧（divergence）。原因不是“实现有 bug”，而是现实世界的常态：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cpp-note-009-type-deduction/" rel="permalink">C++ 笔记：类型推导：auto 与 decltype
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  2 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-09-10T00:00:00+08:00">September 10, 2021</time></p>
           
         
 
@@ -759,7 +807,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-003-template-metaprogramming/" rel="permalink">C++ 笔记：模板元编程基础
+        <a href="/cpp-note-008-stl-containers/" rel="permalink">C++ 笔记：STL 容器：选择与性能
 </a>
       
     </h2>
@@ -769,67 +817,19 @@
 
 
   
-	  6 分钟阅读
+	  2 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-03-25T00:00:00+08:00">March 25, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-08-20T00:00:00+08:00">August 20, 2021</time></p>
           
         
 
     
     <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/kv-storage-1-core-concepts/" rel="permalink">KV存储（1）：KV存储的核心概念
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  少于 1 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-03-15T00:00:00+08:00">March 15, 2021</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><p>本文是KV存储系列的第 1 篇，先介绍KV存储的核心概念和基本抽象。</p>
 
 </p>
     
@@ -916,7 +916,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page22/">22</a></li>
     
 
     

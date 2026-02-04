@@ -1,0 +1,1046 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>KV存储（3）：分片、路由与再均衡（hash / consistent hashing） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="KV存储（3）：分片、路由与再均衡（hash / consistent hashing）">
+
+
+  <link rel="canonical" href="http://localhost:4000/kv-storage-3-partitioning-and-routing/">
+  <meta property="og:url" content="http://localhost:4000/kv-storage-3-partitioning-and-routing/">
+
+
+
+  <meta property="og:description" content="这一篇聚焦 KV 存储做成“多机可扩展系统”时绕不开的第一件事：数据怎么分片、请求怎么路由、扩缩容怎么再均衡。主题看起来像“hash 环”，但工程上真正决定可用性与性能的是：">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2021-07-20T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">KV存储系列</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-1-core-concepts/" class=""><span class="nav__sub-title">KV存储（1）：KV存储的核心概念</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-2-lsm-vs-btree/" class=""><span class="nav__sub-title">KV存储（2）：LSM-Tree 与 B+Tree 的权衡</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-3-partitioning-and-routing/" class="active"><span class="nav__sub-title">KV存储（3）：分片、路由与再均衡（hash / consistent hashing）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-4-replication-and-quorum/" class=""><span class="nav__sub-title">KV存储（4）：复制、Quorum 读写与一致性边界</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-001-wal-recovery/" class=""><span class="nav__sub-title">KV存储笔记：WAL 与崩溃恢复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-002-compaction/" class=""><span class="nav__sub-title">KV存储笔记：Compaction 策略与写放大</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-003-anti-entropy-repair/" class=""><span class="nav__sub-title">KV存储笔记：反熵（anti-entropy）、read-repair 与一致性修复</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-004-conflict-resolution/" class=""><span class="nav__sub-title">KV存储笔记：版本、并发写与冲突解决（LWW / vector clock）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/kv-storage-note-005-tombstone-ttl-compaction/" class=""><span class="nav__sub-title">KV存储笔记：删除、tombstone、TTL 与压缩（避免“删了又回来”）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="KV存储（3）：分片、路由与再均衡（hash / consistent hashing）">
+    <meta itemprop="description" content="这一篇聚焦 KV 存储做成“多机可扩展系统”时绕不开的第一件事：数据怎么分片、请求怎么路由、扩缩容怎么再均衡。主题看起来像“hash 环”，但工程上真正决定可用性与性能的是：">
+    <meta itemprop="datePublished" content="July 20, 2021">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">KV存储（3）：分片、路由与再均衡（hash / consistent hashing）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  2 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-07-20T00:00:00+08:00">July 20, 2021</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <p>这一篇聚焦 KV 存储做成“多机可扩展系统”时绕不开的第一件事：<strong>数据怎么分片、请求怎么路由、扩缩容怎么再均衡</strong>。主题看起来像“hash 环”，但工程上真正决定可用性与性能的是：</p>
+
+<ul>
+  <li><strong>分片粒度</strong>：一个节点承担多少个分片（token / vnode）？热点会不会被平摊？</li>
+  <li><strong>路由一致性</strong>：客户端路由表与服务端实际 ownership 不一致时会发生什么？</li>
+  <li><strong>迁移策略</strong>：迁移期间读写如何保证正确性？如何避免迁移把线上打爆？</li>
+  <li><strong>观测与回滚</strong>：再均衡失败如何止损？如何识别“正在形成的热点”？</li>
+</ul>
+
+<p>本文按“模型 → 机制 → 代价 → 运维指标”组织，图用 ASCII 表示。</p>
+
+<hr />
+
+<h2 id="1-分片的目标让系统能横向扩展且可预测">1. 分片的目标：让系统能横向扩展且可预测</h2>
+
+<p>理想目标：</p>
+
+<ul>
+  <li><strong>负载均衡</strong>：不同节点的 QPS、IO、空间尽量均衡</li>
+  <li><strong>可扩缩容</strong>：加/减节点时只迁移一小部分数据</li>
+  <li><strong>可定位</strong>：给定 key 能快速找到负责的节点集合</li>
+  <li><strong>容错域可控</strong>：机架/可用区故障不会集中打到某一段 keyspace</li>
+</ul>
+
+<p>工程上，分片方案通常必须同时满足“数据面效率”和“控制面可运维”。</p>
+
+<hr />
+
+<h2 id="2-最简单的-hash-分片为什么不够用">2. 最简单的 hash 分片：为什么不够用</h2>
+
+<h3 id="21-直接-node--hashkey--n">2.1 直接 <code class="language-plaintext highlighter-rouge">node = hash(key) % N</code></h3>
+
+<p>好处：简单、路由 O(1)、无需元数据。</p>
+
+<p>问题：<strong>扩缩容代价极高</strong>。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>N=4: node = h(k) % 4
+N=5: node = h(k) % 5
+
+几乎所有 key 的归属都会变化 -&gt; 全量迁移
+</code></pre></div></div>
+
+<h3 id="22-工程结论">2.2 工程结论</h3>
+
+<p>只要系统需要在线扩缩容、节点数量变动不可避免，就需要“<strong>增量迁移</strong>”而不是“全量重算”。</p>
+
+<hr />
+
+<h2 id="3-一致性哈希让迁移变成局部变化">3. 一致性哈希：让迁移变成“局部变化”</h2>
+
+<h3 id="31-hash-ring-与区间归属">3.1 hash ring 与区间归属</h3>
+
+<p>把 hash 空间视作 ([0, 2^m)) 的环。每个节点在环上占若干位置（token），节点负责其 token 到下一个 token 之间的区间（或反向定义）。</p>
+
+<p>示意（token 简化为 0..99）：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Ring: 0 -------------------------------------- 99 (wrap)
+
+tokens:
+  A: 10, 60
+  B: 25, 80
+  C: 40, 90
+
+ownership (clockwise):
+  (10..25] -&gt; B
+  (25..40] -&gt; C
+  (40..60] -&gt; A
+  (60..80] -&gt; B
+  (80..90] -&gt; C
+  (90..10] -&gt; A
+</code></pre></div></div>
+
+<p>路由规则（典型）：对 key 求 hash 得到点 p，找到“环上第一个 token &gt;= p”的节点为 owner（wrap）。</p>
+
+<h3 id="32-为什么能只迁移一部分">3.2 为什么能“只迁移一部分”</h3>
+
+<p>新增节点 D 只会插入若干 token，影响的是这些 token 相邻的少数区间：</p>
+
+<ul>
+  <li>旧 owner 的一部分区间被切走</li>
+  <li>其余区间不变</li>
+</ul>
+
+<p>迁移量近似与新增 token 覆盖的区间大小成比例，而不是全量。</p>
+
+<hr />
+
+<h2 id="4-虚拟节点vnode解决节点不均衡和热点">4. 虚拟节点（vnode）：解决“节点不均衡”和“热点”</h2>
+
+<h3 id="41-单-token-的问题">4.1 单 token 的问题</h3>
+
+<p>如果每个节点只有 1 个 token：</p>
+
+<ul>
+  <li>由于 token 随机，区间大小分布不均 → <strong>负载不均</strong></li>
+  <li>节点性能差异（异构硬件）无法表达</li>
+  <li>热点 key 落入一个大区间会拖垮单节点</li>
+</ul>
+
+<h3 id="42-vnode-的思路">4.2 vnode 的思路</h3>
+
+<p>每个物理节点分配很多 token（例如 256/1024 个），让区间更细粒度：</p>
+
+<ul>
+  <li>大数定律让区间大小更均匀</li>
+  <li>热点更容易被“切碎”并摊到不同节点（仍取决于 key 分布）</li>
+  <li>异构节点可用不同 token 数表示权重</li>
+</ul>
+
+<p>工程提示：</p>
+
+<ul>
+  <li>vnode 太多会增加 ring 元数据体积与查找开销</li>
+  <li>vnode 太少会导致均衡性差</li>
+</ul>
+
+<hr />
+
+<h2 id="5-路由客户端路由-vs-服务端路由">5. 路由：客户端路由 vs 服务端路由</h2>
+
+<h3 id="51-客户端路由client-side-routing">5.1 客户端路由（client-side routing）</h3>
+
+<p>客户端持有 ring/token 表，直接把请求发到目标节点。</p>
+
+<p>优点：</p>
+
+<ul>
+  <li>少一跳，延迟更低</li>
+  <li>节点不做转发，降低负载</li>
+</ul>
+
+<p>缺点（关键）：</p>
+
+<ul>
+  <li>路由表可能过期：拓扑变化、迁移中、节点抖动</li>
+  <li>需要传播与一致性协议：至少保证“最终收敛”</li>
+</ul>
+
+<h3 id="52-服务端路由server-side-routing">5.2 服务端路由（server-side routing）</h3>
+
+<p>客户端发给任意入口（或 coordinator），由服务端转发到 owner。</p>
+
+<p>优点：</p>
+
+<ul>
+  <li>客户端简单</li>
+  <li>路由表一致性由服务端承担</li>
+</ul>
+
+<p>缺点：</p>
+
+<ul>
+  <li>多一跳</li>
+  <li>coordinator 可能成为瓶颈（除非做无状态水平扩展）</li>
+</ul>
+
+<h3 id="53-常见折中smart-client--server-fallback">5.3 常见折中：smart client + server fallback</h3>
+
+<p>客户端按本地路由表直连；若节点发现“请求不属于本节点”，返回重定向或进行一次转发：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client -&gt; NodeX (wrong owner)
+  NodeX -&gt; returns "moved to NodeY" (or forwards once)
+Client updates route table
+</code></pre></div></div>
+
+<p>工程落点是“错误路径的成本是否可控”：如果路由频繁过期，会形成大量额外 RTT 与转发压力。</p>
+
+<hr />
+
+<h2 id="6-扩缩容与再均衡迁移不是复制文件那么简单">6. 扩缩容与再均衡：迁移不是“复制文件”那么简单</h2>
+
+<h3 id="61-再均衡的三个阶段抽象">6.1 再均衡的三个阶段（抽象）</h3>
+
+<p>1) <strong>规划</strong>：哪些 token 区间从哪些节点迁到哪些节点
+2) <strong>数据迁移</strong>：把区间内的数据复制到新 owner
+3) <strong>切换 ownership</strong>：让新路由生效，并清理旧副本</p>
+
+<p>关键难点集中在阶段 2/3：迁移期间有读写并发，必须定义一致性语义。</p>
+
+<h3 id="62-迁移期间的读写语义两类典型做法">6.2 迁移期间的读写语义（两类典型做法）</h3>
+
+<p><strong>做法 A：双写 + 最终收敛</strong></p>
+
+<ul>
+  <li>在迁移窗口内，写入同时写新旧 owner（或写到 quorum 覆盖两侧）</li>
+  <li>切换后，新 owner 一定包含最新数据</li>
+</ul>
+
+<p>代价：写放大，且需要对失败重试、幂等做严格约束。</p>
+
+<p><strong>做法 B：单写 + 转发/重试</strong></p>
+
+<ul>
+  <li>ownership 切换前写旧 owner</li>
+  <li>切换后写新 owner</li>
+  <li>迁移期间若请求打到错误侧，由服务端转发或客户端重试</li>
+</ul>
+
+<p>代价：错误路径多、尾延迟抖动，且要处理“切换瞬间的并发竞态”。</p>
+
+<h3 id="63-一个可落地的切换点模型">6.3 一个可落地的“切换点”模型</h3>
+
+<p>在控制面定义一个 epoch（配置版本）：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>config_epoch = 42
+ownership_map(epoch=42): token ranges -&gt; owners
+
+write(key, value, epoch=42):
+  node rejects if local epoch &lt; 42
+  node accepts only if it is owner under epoch=42
+</code></pre></div></div>
+
+<p>好处：把“谁是 owner”变成可验证的条件，避免旧配置写入新 owner 或反之导致不一致。</p>
+
+<hr />
+
+<h2 id="7-热点问题分片解决不了极端倾斜">7. 热点问题：分片解决不了“极端倾斜”</h2>
+
+<p>一致性哈希擅长解决“均匀随机 key”的负载均衡，但真实业务常见：</p>
+
+<ul>
+  <li>某些 key（或 key 前缀）超级热</li>
+  <li>某些租户/分区规模远大于其他</li>
+</ul>
+
+<p>对策通常需要超出分片本身：</p>
+
+<ul>
+  <li><strong>key 打散</strong>：把热点 key 拆成多个子 key（需要应用语义配合）</li>
+  <li><strong>分层缓存</strong>：把热点读挡在 cache</li>
+  <li><strong>热点检测 + 动态复制</strong>：对热点分片临时增加副本或读副本</li>
+  <li><strong>限流</strong>：保护系统稳定性</li>
+</ul>
+
+<hr />
+
+<h2 id="8-运维与观测再均衡是否安全靠指标说话">8. 运维与观测：再均衡是否安全，靠指标说话</h2>
+
+<p>建议最少监控：</p>
+
+<ul>
+  <li><strong>节点维度</strong>：QPS、CPU、磁盘带宽、读写延迟（P50/P99/P999）、错误率</li>
+  <li><strong>分片维度</strong>：每 token/分片的 key 数、数据量、读写 QPS、热点 topN</li>
+  <li><strong>迁移维度</strong>：迁移速率（MB/s）、迁移 backlog、失败重试次数、切换次数</li>
+  <li><strong>路由错误</strong>：重定向/转发比例，配置 epoch 不匹配次数</li>
+</ul>
+
+<p>再均衡的常见失败模式：</p>
+
+<ul>
+  <li>迁移太快导致后台 IO 抢占前台（尾延迟飙升）</li>
+  <li>迁移太慢导致长时间双写/错误路径，整体成本过高</li>
+  <li>热点未被切碎，迁移后仍集中在某节点</li>
+</ul>
+
+<hr />
+
+<h2 id="9-小结">9. 小结</h2>
+
+<p>分片与路由的“正确打开方式”不是画一个 hash 环，而是把它当成一套工程系统：</p>
+
+<ul>
+  <li>vnode/权重解决均衡与异构</li>
+  <li>客户端/服务端路由决定错误路径成本</li>
+  <li>迁移与切换点（epoch）决定一致性与尾延迟</li>
+  <li>热点需要额外手段处理</li>
+</ul>
+
+<p>下一篇会把“<strong>分片之后的复制与一致性</strong>”补齐：读写如何走 quorum、写入如何在副本间收敛、以及常见的故障与修复路径。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

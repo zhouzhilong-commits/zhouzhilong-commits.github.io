@@ -1,0 +1,1213 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）">
+
+
+  <link rel="canonical" href="http://localhost:4000/paper-notes/storage/raid/">
+  <meta property="og:url" content="http://localhost:4000/paper-notes/storage/raid/">
+
+
+
+  <meta property="og:description" content="  论文：A Case for Redundant Arrays of Inexpensive Disks (RAID)（Patterson, Gibson, Katz，SIGMOD 1988）">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2023-05-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">论文笔记</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/raid/" class="active"><span class="nav__sub-title">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lfs/" class=""><span class="nav__sub-title">LFS：The Design and Implementation of a Log-Structured File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/wafl/" class=""><span class="nav__sub-title">WAFL：Write Anywhere File Layout（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/arc/" class=""><span class="nav__sub-title">ARC：Adaptive Replacement Cache（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/polardb/" class=""><span class="nav__sub-title">PolarDB：云原生数据库架构（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/rocksdb-tuning/" class=""><span class="nav__sub-title">RocksDB 调优与实践（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）">
+    <meta itemprop="description" content="  论文：A Case for Redundant Arrays of Inexpensive Disks (RAID)（Patterson, Gibson, Katz，SIGMOD 1988）">
+    <meta itemprop="datePublished" content="May 01, 2023">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  2 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-05-01T00:00:00+08:00">May 01, 2023</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>论文：A Case for Redundant Arrays of Inexpensive Disks (RAID)（Patterson, Gibson, Katz，SIGMOD 1988）</p>
+</blockquote>
+
+<p>这篇笔记关注 RAID 论文提出的核心论点：<strong>用多块廉价磁盘的并行带宽 + 冗余编码</strong>，在成本更低的前提下，获得更高的吞吐/容量，并把可靠性提升到可接受水平。工程落点是三个问题：</p>
+
+<ul>
+  <li><strong>性能</strong>：顺序/随机读写的带宽与 IOPS 如何随盘数扩展？小写放大来自哪里？</li>
+  <li><strong>可靠性</strong>：单盘失效、重建窗口、双盘失效概率怎样估算？冗余级别如何选？</li>
+  <li><strong>实现</strong>：条带化（striping）、校验（parity）、重建（rebuild）对控制面/数据面意味着什么？</li>
+</ul>
+
+<p>为避免“只记 RAID0/1/5 的名词”，本文按“模型 → 机制 → 代价 → 运维”组织。</p>
+
+<hr />
+
+<h2 id="1-术语与统一抽象">1. 术语与统一抽象</h2>
+
+<h3 id="11-条带化与条带宽度">1.1 条带化与条带宽度</h3>
+
+<ul>
+  <li><strong>条带（stripe）</strong>：把逻辑地址空间切分成固定大小的块（chunk），分布到多个磁盘。</li>
+  <li><strong>条带宽度（N）</strong>：一个 stripe 覆盖的磁盘数（含数据盘与冗余盘）。</li>
+  <li><strong>chunk size</strong>：每块在单盘上的连续大小，影响顺序带宽与随机 IOPS。</li>
+</ul>
+
+<p>直观示意（N=4，chunk=64KB）：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Logical blocks:
+  [0..63KB]   [64..127KB] [128..191KB] [192..255KB] ...
+
+Disks:
+  D0: block0   block4      block8       block12 ...
+  D1: block1   block5      block9       block13 ...
+  D2: block2   block6      block10      block14 ...
+  D3: block3   block7      block11      block15 ...
+</code></pre></div></div>
+
+<h3 id="12-冗余镜像-vs-校验">1.2 冗余：镜像 vs 校验</h3>
+
+<ul>
+  <li><strong>镜像（mirroring）</strong>：复制一份完整数据（RAID1/10），写放大小，读可并行，空间开销高。</li>
+  <li><strong>校验（parity / ECC）</strong>：存储冗余信息，可在盘坏时重建（RAID4/5/6），空间开销低，<strong>小写代价高</strong>。</li>
+</ul>
+
+<hr />
+
+<h2 id="2-raid-的核心主张并行带宽--冗余替代昂贵单盘">2. RAID 的核心主张：并行带宽 + 冗余，替代“昂贵单盘”</h2>
+
+<p>论文的背景假设是：磁盘容量/带宽增长快，但单盘随机 IO 受限，且“高端大盘”更贵。RAID 用多盘并行解决两个方向：</p>
+
+<ul>
+  <li><strong>吞吐扩展</strong>：并行读写，顺序带宽近似随盘数线性增长。</li>
+  <li><strong>可靠性可控</strong>：通过冗余方案把系统级 MTTDL 提升到“可以接受”的量级。</li>
+</ul>
+
+<p>工程上，这意味着需要同时做两套设计：</p>
+
+<ul>
+  <li><strong>数据面</strong>：条带映射、读写路径、校验更新、重建读写。</li>
+  <li><strong>控制面</strong>：故障检测、盘替换、重建调度、限速与优先级。</li>
+</ul>
+
+<hr />
+
+<h2 id="3-raid0--raid1两端点">3. RAID0 / RAID1：两端点</h2>
+
+<h3 id="31-raid0只有条带化性能优先">3.1 RAID0：只有条带化（性能优先）</h3>
+
+<ul>
+  <li><strong>优点</strong>：读写带宽扩展最佳；实现简单。</li>
+  <li><strong>缺点</strong>：任何单盘坏导致数据不可用（系统可靠性显著下降）。</li>
+</ul>
+
+<p>适用：无状态缓存、可重建数据、强上层复制的场景。</p>
+
+<h3 id="32-raid1镜像可靠性优先">3.2 RAID1：镜像（可靠性优先）</h3>
+
+<ul>
+  <li><strong>写</strong>：写两份；小写基本不需要 read-modify-write。</li>
+  <li><strong>读</strong>：可从任一副本读；可做读负载均衡。</li>
+  <li><strong>空间</strong>：2x。</li>
+</ul>
+
+<p>适用：延迟敏感随机读、写比例不高、或运维希望简单的场景。</p>
+
+<hr />
+
+<h2 id="4-raid4--raid5校验冗余与小写问题">4. RAID4 / RAID5：校验冗余与“小写问题”</h2>
+
+<h3 id="41-raid4专用校验盘parity-disk">4.1 RAID4：专用校验盘（Parity Disk）</h3>
+
+<p>布局：N-1 个数据盘 + 1 个独立校验盘。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stripe k:
+  D0: Data0(k)
+  D1: Data1(k)
+  D2: Data2(k)
+  P : Parity(k) = Data0(k) XOR Data1(k) XOR Data2(k)
+</code></pre></div></div>
+
+<p><strong>问题</strong>：校验盘是写入热点（所有更新都要写 Parity），会形成瓶颈。</p>
+
+<h3 id="42-raid5分布式校验distributed-parity">4.2 RAID5：分布式校验（Distributed Parity）</h3>
+
+<p>把 parity 块分布到不同磁盘，缓解单点热点：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Stripe k:
+  D0: Data0(k)   D1: Data1(k)   D2: Parity(k)   D3: Data2(k)
+Stripe k+1:
+  D0: Data0      D1: Parity     D2: Data1       D3: Data2
+</code></pre></div></div>
+
+<h3 id="43-小写-read-modify-writermw的本质">4.3 小写 read-modify-write（RMW）的本质</h3>
+
+<p>当写入小于一个完整 stripe（或一个 parity 覆盖范围）时，需要维持 parity 正确：</p>
+
+<ul>
+  <li><strong>方式 A：read old data + read old parity + write new data + write new parity</strong></li>
+  <li><strong>方式 B：read other data blocks（重算 parity） + write new data + write new parity</strong></li>
+</ul>
+
+<p>两种方式在不同工作负载/缓存命中下取舍不同，但共同结论是：<strong>小随机写会被放大成多次 IO</strong>。</p>
+
+<p>一个常见的“4 次 IO”模型（方式 A）：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Small write to one block:
+  read(old_data)
+  read(old_parity)
+  write(new_data)
+  write(new_parity)
+</code></pre></div></div>
+
+<p>工程含义：</p>
+
+<ul>
+  <li>RAID5 在 <strong>随机小写</strong> 场景下，IOPS 会明显下降；</li>
+  <li>RAID10 往往更稳；</li>
+  <li>若必须 RAID5，小写要尽量做聚合（log-structured / coalescing）。</li>
+</ul>
+
+<hr />
+
+<h2 id="5-raid-可靠性直觉重建窗口与二次故障">5. RAID 可靠性直觉：重建窗口与二次故障</h2>
+
+<h3 id="51-mttdl-的直觉不求精确但要看对量纲">5.1 MTTDL 的直觉（不求精确，但要看对量纲）</h3>
+
+<p>系统级可用性，常被“第二块盘在重建期间坏掉”的概率主导：</p>
+
+<ul>
+  <li>单盘年故障率 AFR</li>
+  <li>重建时间 (T_{rebuild})</li>
+  <li>盘数 (n)</li>
+</ul>
+
+<p>近似直觉：</p>
+
+<ul>
+  <li>盘越多，<strong>第一块盘失效</strong>出现得越频繁（“大系统更常坏盘”）。</li>
+  <li>重建越慢（容量越大、带宽越低、线上限速越保守），<strong>窗口越大</strong>。</li>
+  <li>RAID5 在窗口内再坏一块盘会数据丢失；RAID6（双校验）把风险往后推一阶。</li>
+</ul>
+
+<h3 id="52-工程上影响重建时间的因素">5.2 工程上影响重建时间的因素</h3>
+
+<ul>
+  <li><strong>容量</strong>：盘越大，重建读写总量越大。</li>
+  <li><strong>线上限速</strong>：为了保护前台延迟，rebuild 通常限速。</li>
+  <li><strong>读放大</strong>：重建可能需要读多个盘的条带块并做 XOR。</li>
+  <li><strong>坏块/介质错误</strong>：重建期间遇到 URE（不可恢复读错误）会放大风险。</li>
+</ul>
+
+<p>建议的观测指标（按盘/阵列维度）：</p>
+
+<ul>
+  <li>rebuild 进度、剩余时间估计</li>
+  <li>重建读带宽、写带宽</li>
+  <li>前台 IO 延迟（P99/P999）随重建的变化</li>
+  <li>介质错误计数、坏块重映射计数</li>
+</ul>
+
+<hr />
+
+<h2 id="6-关键设计参数chunk-size条带宽度与工作负载">6. 关键设计参数：chunk size、条带宽度与工作负载</h2>
+
+<h3 id="61-chunk-size顺序吞吐-vs-随机并行">6.1 chunk size：顺序吞吐 vs 随机并行</h3>
+
+<ul>
+  <li>chunk 太小：顺序读写频繁跨盘切换，控制开销大。</li>
+  <li>chunk 太大：随机并行度不足，热点集中。</li>
+</ul>
+
+<p>经验直觉：</p>
+
+<ul>
+  <li><strong>大顺序吞吐</strong>：chunk 大一些（例如 256KB/1MB），减少跨盘切换。</li>
+  <li><strong>随机读为主</strong>：chunk 小一些，增加并行机会，但要控制元数据与寻道开销。</li>
+</ul>
+
+<h3 id="62-条带宽度吞吐扩展-vs-可靠性重建成本">6.2 条带宽度：吞吐扩展 vs 可靠性/重建成本</h3>
+
+<ul>
+  <li>N 越大：顺序吞吐越高，但故障频率更高、重建更重、管理更复杂。</li>
+</ul>
+
+<hr />
+
+<h2 id="7-写路径工程化如何让-raid5-不抖">7. 写路径工程化：如何让 RAID5 不“抖”</h2>
+
+<p>针对 RAID5 的小写放大，常见工程手段：</p>
+
+<ul>
+  <li><strong>写聚合</strong>：在上层做日志化或 batch，把多个小写拼成接近 full-stripe write。</li>
+  <li><strong>NVRAM / write-back cache</strong>：提升 parity 更新的时效与吞吐，降低前台延迟。</li>
+  <li><strong>延迟 parity</strong>：在缓存中合并多次更新（需要掉电保护）。</li>
+  <li><strong>前台/后台隔离</strong>：rebuild/compaction 等后台 IO 需要 QoS。</li>
+</ul>
+
+<p>一个“full stripe write” 的简化路径：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Collect N-1 data blocks for a stripe
+Compute parity once
+Write all N blocks sequentially
+=&gt; no RMW
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="8-重建rebuild路径带宽优先级与正确性">8. 重建（rebuild）路径：带宽、优先级与正确性</h2>
+
+<h3 id="81-raid5-单盘失效重建">8.1 RAID5 单盘失效重建</h3>
+
+<p>坏盘上某块数据的重建，需要读取同 stripe 的其余块并 XOR：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Missing DataX = Parity XOR Data0 XOR Data1 XOR ... (excluding X)
+</code></pre></div></div>
+
+<p>工程要点：</p>
+
+<ul>
+  <li><strong>顺序化读取</strong>：尽量按条带顺序扫，提升带宽。</li>
+  <li><strong>限速与优先级</strong>：保护前台；但过慢会拉长窗口，提高二次故障风险。</li>
+  <li><strong>一致性点</strong>：写入过程中失效/重建交错，需要明确“写原子性”的落点（控制器日志/写序）。</li>
+</ul>
+
+<h3 id="82-校验一致性巡检scrub">8.2 校验一致性巡检（scrub）</h3>
+
+<p>即使没坏盘，也需要周期性读数据并核对校验，提前暴露静默错误：</p>
+
+<ul>
+  <li>scrub 过于激进会影响前台 latency；</li>
+  <li>scrub 过于保守会累积介质错误，重建时爆雷。</li>
+</ul>
+
+<hr />
+
+<h2 id="9-raid-级别选择的表格化结论">9. RAID 级别选择的“表格化”结论</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>级别</th>
+      <th>冗余</th>
+      <th style="text-align: right">空间开销</th>
+      <th>随机小写</th>
+      <th>随机读</th>
+      <th>重建风险</th>
+      <th>典型适用</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>RAID0</td>
+      <td>无</td>
+      <td style="text-align: right">1.0x</td>
+      <td>好</td>
+      <td>好</td>
+      <td>高（不可恢复）</td>
+      <td>缓存/可重建</td>
+    </tr>
+    <tr>
+      <td>RAID1</td>
+      <td>镜像</td>
+      <td style="text-align: right">2.0x</td>
+      <td>好</td>
+      <td>很好</td>
+      <td>中</td>
+      <td>低延迟读</td>
+    </tr>
+    <tr>
+      <td>RAID10</td>
+      <td>镜像+条带</td>
+      <td style="text-align: right">2.0x</td>
+      <td>好</td>
+      <td>很好</td>
+      <td>中</td>
+      <td>OLTP/混合</td>
+    </tr>
+    <tr>
+      <td>RAID5</td>
+      <td>单校验</td>
+      <td style="text-align: right">~1.2x-1.5x</td>
+      <td>差（RMW）</td>
+      <td>好</td>
+      <td>高（重建窗）</td>
+      <td>大顺序写/读多写少</td>
+    </tr>
+    <tr>
+      <td>RAID6</td>
+      <td>双校验</td>
+      <td style="text-align: right">~1.3x-1.7x</td>
+      <td>更差</td>
+      <td>好</td>
+      <td>中（更安全）</td>
+      <td>大容量阵列</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-小结论文贡献与现代语境">10. 小结：论文贡献与现代语境</h2>
+
+<p>这篇 RAID 论文的“经典性”在于它把系统工程的三件事放到一起讨论：</p>
+
+<ul>
+  <li><strong>性能可扩展</strong>：并行化带来的线性吞吐扩展；</li>
+  <li><strong>可靠性可建模</strong>：冗余级别与重建窗口决定数据丢失风险；</li>
+  <li><strong>实现可落地</strong>：条带/校验/重建路径对应具体读写与调度策略。</li>
+</ul>
+
+<p>现代系统里，RAID 的思想仍在，只是形态更丰富：</p>
+
+<ul>
+  <li>单机：硬 RAID / 软件 RAID / 文件系统层冗余（ZFS、btrfs）</li>
+  <li>分布式：多副本、纠删码（EC），把“条带”扩展到网络与机架域</li>
+  <li>运维：QoS、scrub、容量增长导致的“重建窗口变长”成为核心风险项</li>
+</ul>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

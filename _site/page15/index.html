@@ -588,7 +588,7 @@
   data-baseurl=""
   data-base-page-size="5"
   
-    data-total-pages="19"
+    data-total-pages="22"
     data-current-page="15"
   
 >
@@ -615,7 +615,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-002-move-semantics-perfect-forwarding/" rel="permalink">C++ 笔记：移动语义与完美转发
+        <a href="/kv-storage-4-replication-and-quorum/" rel="permalink">KV存储（4）：复制、Quorum 读写与一致性边界
 </a>
       
     </h2>
@@ -625,19 +625,19 @@
 
 
   
-	  6 分钟阅读
+	  1 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-02-20T00:00:00+08:00">February 20, 2021</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-08-15T00:00:00+08:00">August 15, 2021</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
+    <p class="archive__item-excerpt" itemprop="description"><p>分片解决了“把 keyspace 切开”与“扩缩容迁移”的问题，但它不解决可靠性。要让 KV 存储在节点故障、网络分区下仍可用，需要引入复制。复制引入了新的核心问题：</p>
 
 </p>
     
@@ -663,62 +663,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cpp-note-001-raii-resource-management/" rel="permalink">C++ 笔记：RAII 与资源管理
-</a>
-      
-    </h2>
-    
-    
-      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
-
-
-  
-	  6 分钟阅读
-	
-</p>
-    
-
-        
-          
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-01-15T00:00:00+08:00">January 15, 2021</time></p>
-          
-        
-
-    
-    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
-
-</p>
-    
-    
-    
-
-  </article>
-</div>
-
-    
-      
-      
-        
-          </section>
-        
-        <section class="archive__year" data-year="2019">
-          <h2 id="2019" class="archive__subtitle">2019</h2>
-        
-      
-      
-
-
-
-
-
-
-<div class="list__item">
-  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
-    
-
-    <h2 class="archive__item-title" itemprop="headline">
-      
-        <a href="/cs/network/http-cache-and-cdn/" rel="permalink">网络（2）：HTTP 缓存与 CDN
+        <a href="/kv-storage-3-partitioning-and-routing/" rel="permalink">KV存储（3）：分片、路由与再均衡（hash / consistent hashing）
 </a>
       
     </h2>
@@ -735,7 +680,55 @@
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-08-01T00:00:00+08:00">August 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-07-20T00:00:00+08:00">July 20, 2021</time></p>
+          
+        
+
+    
+    <p class="archive__item-excerpt" itemprop="description"><p>这一篇聚焦 KV 存储做成“多机可扩展系统”时绕不开的第一件事：<strong>数据怎么分片、请求怎么路由、扩缩容怎么再均衡</strong>。主题看起来像“hash 环”，但工程上真正决定可用性与性能的是：</p>
+
+</p>
+    
+    
+    
+
+  </article>
+</div>
+
+    
+      
+      
+      
+
+
+
+
+
+
+<div class="list__item">
+  <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
+    
+
+    <h2 class="archive__item-title" itemprop="headline">
+      
+        <a href="/cpp-note-007-concurrency-basics/" rel="permalink">C++ 笔记：并发编程基础：线程与同步
+</a>
+      
+    </h2>
+    
+    
+      <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+    
+
+        
+          
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-07-15T00:00:00+08:00">July 15, 2021</time></p>
           
         
 
@@ -766,7 +759,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs/network/tcp-reliability-and-cc/" rel="permalink">网络（1）：TCP 可靠传输与拥塞控制直觉
+        <a href="/cpp-note-006-exception-safety/" rel="permalink">C++ 笔记：异常安全与异常规范
 </a>
       
     </h2>
@@ -776,14 +769,14 @@
 
 
   
-	  2 分钟阅读
+	  6 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-07-01T00:00:00+08:00">July 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-30T00:00:00+08:00">June 30, 2021</time></p>
           
         
 
@@ -814,7 +807,7 @@
 
     <h2 class="archive__item-title" itemprop="headline">
       
-        <a href="/cs-arch-note-063-flush/" rel="permalink">计算机组成笔记：分支预测失败：流水线 flush 的代价
+        <a href="/kv-storage-note-002-compaction/" rel="permalink">KV存储笔记：Compaction 策略与写放大
 </a>
       
     </h2>
@@ -824,19 +817,19 @@
 
 
   
-	  5 分钟阅读
+	  3 分钟阅读
 	
 </p>
     
 
         
           
-           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2019-07-01T00:00:00+08:00">July 01, 2019</time></p>
+           <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2021-06-25T00:00:00+08:00">June 25, 2021</time></p>
           
         
 
     
-    <p class="archive__item-excerpt" itemprop="description"><p>本文深入解析分支预测失败导致的流水线 flush 机制、性能影响和优化方法。</p>
+    <p class="archive__item-excerpt" itemprop="description"><h2 id="前言">前言</h2>
 
 </p>
     
@@ -916,13 +909,6 @@
         <li><a href="/page17/">17</a></li>
       
     
-      
-        
-        
-        
-        <li><a href="/page18/">18</a></li>
-      
-    
 
     
     
@@ -930,7 +916,7 @@
     
 
     
-      <li><a href="/page19/">19</a></li>
+      <li><a href="/page22/">22</a></li>
     
 
     

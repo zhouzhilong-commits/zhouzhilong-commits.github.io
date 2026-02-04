@@ -1,0 +1,2045 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>PolarDB：云原生数据库架构（论文笔记） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="PolarDB：云原生数据库架构（论文笔记）">
+
+
+  <link rel="canonical" href="http://localhost:4000/paper-notes/storage/polardb/">
+  <meta property="og:url" content="http://localhost:4000/paper-notes/storage/polardb/">
+
+
+
+  <meta property="og:description" content="  论文：PolarDB: A Cloud-Native Database Designed for the Cloud（Wang et al., SIGMOD 2022）">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2022-05-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">论文笔记</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/raid/" class=""><span class="nav__sub-title">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lfs/" class=""><span class="nav__sub-title">LFS：The Design and Implementation of a Log-Structured File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/wafl/" class=""><span class="nav__sub-title">WAFL：Write Anywhere File Layout（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/arc/" class=""><span class="nav__sub-title">ARC：Adaptive Replacement Cache（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/polardb/" class="active"><span class="nav__sub-title">PolarDB：云原生数据库架构（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/rocksdb-tuning/" class=""><span class="nav__sub-title">RocksDB 调优与实践（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="PolarDB：云原生数据库架构（论文笔记）">
+    <meta itemprop="description" content="  论文：PolarDB: A Cloud-Native Database Designed for the Cloud（Wang et al., SIGMOD 2022）">
+    <meta itemprop="datePublished" content="May 01, 2022">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">PolarDB：云原生数据库架构（论文笔记）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  10 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2022-05-01T00:00:00+08:00">May 01, 2022</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>论文：PolarDB: A Cloud-Native Database Designed for the Cloud（Wang et al., SIGMOD 2022）</p>
+</blockquote>
+
+<p>PolarDB 是阿里云开发的云原生数据库系统，采用存储计算分离架构，实现了高性能、高可用和弹性扩展。本文深入解析 PolarDB 的架构设计、核心机制和工程实践。</p>
+
+<h2 id="1-polardb-的设计目标与挑战">1. PolarDB 的设计目标与挑战</h2>
+
+<h3 id="11-云原生数据库的需求">1.1 云原生数据库的需求</h3>
+
+<p>传统数据库在云环境下面临的挑战：</p>
+
+<ul>
+  <li><strong>弹性扩展</strong>：计算和存储需要独立扩展</li>
+  <li><strong>高可用性</strong>：需要自动故障恢复，减少 RTO</li>
+  <li><strong>成本优化</strong>：按需付费，避免资源浪费</li>
+  <li><strong>性能要求</strong>：保持接近本地数据库的性能</li>
+</ul>
+
+<p><strong>传统架构 vs 云原生架构</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>传统架构：
+┌─────────────────┐
+│  Database Node  │
+│  ┌───────────┐  │
+│  │  Compute  │  │
+│  └───────────┘  │
+│  ┌───────────┐  │
+│  │  Storage  │  │
+│  └───────────┘  │
+└─────────────────┘
+问题：计算和存储耦合，难以独立扩展
+
+云原生架构（PolarDB）：
+┌─────────────┐     ┌─────────────┐
+│  Compute   │────▶│  Storage    │
+│  Nodes     │     │  Cluster    │
+└─────────────┘     └─────────────┘
+优势：计算和存储分离，独立扩展
+</code></pre></div></div>
+
+<h3 id="12-核心设计目标">1.2 核心设计目标</h3>
+
+<p>PolarDB 的设计目标：</p>
+
+<ol>
+  <li><strong>存储计算分离</strong>：计算节点和存储集群解耦，独立扩展</li>
+  <li><strong>高性能</strong>：接近本地数据库的性能，延迟 &lt; 1ms</li>
+  <li><strong>高可用</strong>：自动故障恢复，RTO &lt; 30s</li>
+  <li><strong>弹性扩展</strong>：计算节点和存储容量独立扩展</li>
+  <li><strong>兼容性</strong>：兼容 MySQL/PostgreSQL 协议</li>
+</ol>
+
+<h2 id="2-polardb-的架构设计">2. PolarDB 的架构设计</h2>
+
+<h3 id="21-整体架构">2.1 整体架构</h3>
+
+<p>PolarDB 采用三层架构：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────┐
+│         Application Layer                │
+└─────────────────────────────────────────┘
+                    │
+┌─────────────────────────────────────────┐
+│      Compute Layer (Read/Write Nodes)    │
+│  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ Primary  │  │ Replica1 │  │Replica2││
+│  └──────────┘  └──────────┘  └────────┘│
+└─────────────────────────────────────────┘
+                    │
+         ┌──────────┴──────────┐
+         │   PolarFS (RDMA)    │
+         └──────────┬──────────┘
+                    │
+┌─────────────────────────────────────────┐
+│      Storage Layer (PolarStore)         │
+│  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ Chunk 1  │  │ Chunk 2  │  │Chunk 3 ││
+│  └──────────┘  └──────────┘  └────────┘│
+└─────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><strong>架构组件</strong>：</p>
+
+<ul>
+  <li><strong>Compute Layer</strong>：读写节点，处理 SQL 查询和事务</li>
+  <li><strong>PolarFS</strong>：分布式文件系统，提供 RDMA 访问</li>
+  <li><strong>Storage Layer</strong>：存储集群，管理数据块和日志</li>
+</ul>
+
+<h3 id="22-存储计算分离的优势">2.2 存储计算分离的优势</h3>
+
+<p><strong>传统架构的问题</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 传统架构：计算和存储耦合</span>
+<span class="k">class</span> <span class="nc">TraditionalDB</span> <span class="p">{</span>
+    <span class="n">LocalStorage</span> <span class="n">storage</span><span class="p">;</span>  <span class="c1">// 本地存储</span>
+    <span class="kt">void</span> <span class="n">query</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 查询需要访问本地存储</span>
+        <span class="c1">// 扩展时需要同时扩展计算和存储</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>PolarDB 的分离架构</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// PolarDB：存储计算分离</span>
+<span class="k">class</span> <span class="nc">PolarDB</span> <span class="p">{</span>
+    <span class="n">ComputeNode</span> <span class="n">compute</span><span class="p">;</span>  <span class="c1">// 计算节点</span>
+    <span class="n">RemoteStorage</span> <span class="n">storage</span><span class="p">;</span>  <span class="c1">// 远程存储</span>
+    
+    <span class="kt">void</span> <span class="n">query</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 通过 PolarFS 访问远程存储</span>
+        <span class="c1">// 计算节点和存储可以独立扩展</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>分离架构的优势</strong>：</p>
+
+<ol>
+  <li><strong>独立扩展</strong>：计算节点和存储容量独立扩展</li>
+  <li><strong>资源共享</strong>：多个计算节点共享同一份存储</li>
+  <li><strong>快速恢复</strong>：计算节点故障时，新节点可以快速接入</li>
+  <li><strong>成本优化</strong>：按需扩展，避免资源浪费</li>
+</ol>
+
+<h2 id="3-polarfs分布式文件系统">3. PolarFS：分布式文件系统</h2>
+
+<h3 id="31-polarfs-的设计">3.1 PolarFS 的设计</h3>
+
+<p>PolarFS 是 PolarDB 的核心组件，提供高性能的分布式文件访问：</p>
+
+<p><strong>设计特点</strong>：</p>
+
+<ul>
+  <li><strong>RDMA 网络</strong>：使用 RDMA 实现低延迟访问（&lt; 1ms）</li>
+  <li><strong>日志结构</strong>：采用日志结构存储，优化写入性能</li>
+  <li><strong>多副本</strong>：数据多副本存储，保证高可用</li>
+  <li><strong>一致性</strong>：强一致性保证，支持事务语义</li>
+</ul>
+
+<p><strong>PolarFS 架构</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────┐
+│ Compute Node│
+│  ┌────────┐ │
+│  │PolarFS  │ │
+│  │ Client  │ │
+│  └────┬────┘ │
+└───────┼──────┘
+        │ RDMA
+┌───────┼──────┐
+│  ┌────▼────┐ │
+│  │PolarFS  │ │
+│  │ Metadata│ │
+│  └────┬────┘ │
+│       │      │
+│  ┌────▼────┐ │
+│  │ Chunk   │ │
+│  │ Servers │ │
+│  └─────────┘ │
+└──────────────┘
+</code></pre></div></div>
+
+<h3 id="32-rdma-优化">3.2 RDMA 优化</h3>
+
+<p>PolarFS 使用 RDMA 实现高性能网络访问：</p>
+
+<p><strong>RDMA vs 传统网络</strong>：</p>
+
+<ul>
+  <li><strong>传统 TCP/IP</strong>：延迟 100-500μs，CPU 开销大</li>
+  <li><strong>RDMA</strong>：延迟 &lt; 10μs，零拷贝，CPU 开销小</li>
+</ul>
+
+<p><strong>RDMA 的优势</strong>：</p>
+
+<ol>
+  <li><strong>低延迟</strong>：绕过内核，直接访问内存</li>
+  <li><strong>高吞吐</strong>：支持高带宽网络（100Gbps+）</li>
+  <li><strong>低 CPU 开销</strong>：减少 CPU 参与，提高效率</li>
+</ol>
+
+<p><strong>RDMA 工作原理</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>传统 TCP/IP 路径：
+Application → Kernel → Network Stack → NIC → Network
+问题：多次拷贝，内核参与，延迟高
+
+RDMA 路径：
+Application → RDMA NIC → Network → Remote Memory
+优势：零拷贝，绕过内核，延迟低
+</code></pre></div></div>
+
+<p><strong>实现细节</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// RDMA 访问示例</span>
+<span class="k">class</span> <span class="nc">PolarFSClient</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="nc">RDMAConnection</span> <span class="p">{</span>
+        <span class="n">ibv_qp</span><span class="o">*</span> <span class="n">queue_pair</span><span class="p">;</span>      <span class="c1">// 队列对</span>
+        <span class="n">ibv_mr</span><span class="o">*</span> <span class="n">memory_region</span><span class="p">;</span>   <span class="c1">// 内存区域</span>
+        <span class="kt">uint64_t</span> <span class="n">remote_addr</span><span class="p">;</span>    <span class="c1">// 远程地址</span>
+        <span class="kt">uint32_t</span> <span class="n">rkey</span><span class="p">;</span>           <span class="c1">// 远程键</span>
+    <span class="p">};</span>
+    
+    <span class="kt">void</span> <span class="n">read_block</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">block_id</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 1. 准备 RDMA Read 操作</span>
+        <span class="k">struct</span> <span class="nc">ibv_sge</span> <span class="n">sge</span><span class="p">;</span>
+        <span class="n">sge</span><span class="p">.</span><span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint64_t</span><span class="p">)</span><span class="n">buffer</span><span class="p">;</span>
+        <span class="n">sge</span><span class="p">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">BLOCK_SIZE</span><span class="p">;</span>
+        <span class="n">sge</span><span class="p">.</span><span class="n">lkey</span> <span class="o">=</span> <span class="n">local_mr</span><span class="o">-&gt;</span><span class="n">lkey</span><span class="p">;</span>
+        
+        <span class="k">struct</span> <span class="nc">ibv_send_wr</span> <span class="n">wr</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">sg_list</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">sge</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">num_sge</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">opcode</span> <span class="o">=</span> <span class="n">IBV_WR_RDMA_READ</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">send_flags</span> <span class="o">=</span> <span class="n">IBV_SEND_SIGNALED</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">wr</span><span class="p">.</span><span class="n">rdma</span><span class="p">.</span><span class="n">remote_addr</span> <span class="o">=</span> <span class="n">remote_addr</span> <span class="o">+</span> <span class="n">block_id</span> <span class="o">*</span> <span class="n">BLOCK_SIZE</span><span class="p">;</span>
+        <span class="n">wr</span><span class="p">.</span><span class="n">wr</span><span class="p">.</span><span class="n">rdma</span><span class="p">.</span><span class="n">rkey</span> <span class="o">=</span> <span class="n">remote_rkey</span><span class="p">;</span>
+        
+        <span class="c1">// 2. 提交到 RDMA 队列</span>
+        <span class="k">struct</span> <span class="nc">ibv_send_wr</span><span class="o">*</span> <span class="n">bad_wr</span><span class="p">;</span>
+        <span class="n">ibv_post_send</span><span class="p">(</span><span class="n">queue_pair</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">bad_wr</span><span class="p">);</span>
+        
+        <span class="c1">// 3. 等待完成（轮询或事件驱动）</span>
+        <span class="n">wait_for_completion</span><span class="p">();</span>
+        
+        <span class="c1">// 零拷贝，数据直接写入 buffer</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>RDMA 性能分析</strong>：</p>
+
+<p><strong>延迟对比</strong>：</p>
+<ul>
+  <li><strong>TCP/IP</strong>：100-500μs（内核处理 + 网络延迟）</li>
+  <li><strong>RDMA</strong>：&lt; 10μs（硬件直接访问）</li>
+</ul>
+
+<p><strong>吞吐对比</strong>：</p>
+<ul>
+  <li><strong>TCP/IP</strong>：受限于 CPU 处理能力</li>
+  <li><strong>RDMA</strong>：接近网络带宽上限（100Gbps+）</li>
+</ul>
+
+<p><strong>CPU 开销对比</strong>：</p>
+<ul>
+  <li><strong>TCP/IP</strong>：每个数据包需要 CPU 处理</li>
+  <li><strong>RDMA</strong>：CPU 只参与设置，数据传输由硬件完成</li>
+</ul>
+
+<p><strong>RDMA 的挑战与解决方案</strong>：</p>
+
+<ol>
+  <li><strong>内存管理</strong>：
+    <ul>
+      <li><strong>挑战</strong>：需要预先注册内存区域</li>
+      <li><strong>解决</strong>：使用内存池，预先注册常用内存</li>
+    </ul>
+  </li>
+  <li><strong>错误处理</strong>：
+    <ul>
+      <li><strong>挑战</strong>：RDMA 错误处理复杂</li>
+      <li><strong>解决</strong>：完善的错误检测和恢复机制</li>
+    </ul>
+  </li>
+  <li><strong>网络分区</strong>：
+    <ul>
+      <li><strong>挑战</strong>：网络分区时 RDMA 连接可能中断</li>
+      <li><strong>解决</strong>：自动重连和故障转移</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="4-存储层设计polarstore">4. 存储层设计：PolarStore</h2>
+
+<h3 id="41-数据组织">4.1 数据组织</h3>
+
+<p>PolarStore 采用 Chunk 作为基本存储单位：</p>
+
+<p><strong>Chunk 设计</strong>：</p>
+
+<ul>
+  <li><strong>大小</strong>：64MB 或 128MB</li>
+  <li><strong>多副本</strong>：每个 Chunk 有 3 个副本</li>
+  <li><strong>分布</strong>：Chunk 分布在不同的存储节点上</li>
+</ul>
+
+<p><strong>数据布局</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Chunk 1 (Primary)     Chunk 2 (Primary)     Chunk 3 (Primary)
+    │                      │                      │
+    ├── Replica 1          ├── Replica 1          ├── Replica 1
+    ├── Replica 2          ├── Replica 2          ├── Replica 2
+    └── Replica 3          └── Replica 3          └── Replica 3
+</code></pre></div></div>
+
+<h3 id="42-日志结构存储">4.2 日志结构存储</h3>
+
+<p>PolarStore 采用日志结构存储（Log-Structured Storage）：</p>
+
+<p><strong>设计原理</strong>：</p>
+
+<ul>
+  <li><strong>追加写</strong>：所有写入都是追加操作</li>
+  <li><strong>顺序写入</strong>：提高写入性能</li>
+  <li><strong>后台合并</strong>：定期合并和压缩数据</li>
+</ul>
+
+<p><strong>日志结构 vs 就地更新</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>就地更新（传统方式）：
+Block 1: [Data A] → Update → [Data A']
+问题：随机写入，性能差
+
+日志结构（PolarStore）：
+Log: [Data A] → Append → [Data A'] [Data A]
+优势：顺序写入，性能好
+后台：定期合并，回收空间
+</code></pre></div></div>
+
+<h3 id="43-一致性保证">4.3 一致性保证</h3>
+
+<p>PolarStore 保证强一致性：</p>
+
+<p><strong>多副本一致性</strong>：</p>
+
+<ul>
+  <li><strong>Primary-Replica</strong>：主副本负责写入，副本同步</li>
+  <li><strong>Quorum 写入</strong>：写入需要多数副本确认</li>
+  <li><strong>读取一致性</strong>：读取时检查副本一致性</li>
+</ul>
+
+<p><strong>一致性协议</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Write Request:
+1. Primary 接收写入请求
+2. Primary 写入本地日志
+3. Primary 同步到 Replicas（Quorum）
+4. 等待多数确认
+5. 返回成功
+
+Read Request:
+1. 从 Primary 或 Replica 读取
+2. 检查数据版本
+3. 返回最新数据
+</code></pre></div></div>
+
+<p><strong>一致性保证的实现细节</strong>：</p>
+
+<p><strong>写入流程详细分析</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// PolarStore 写入流程伪代码</span>
+<span class="k">class</span> <span class="nc">PolarStore</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="nc">WriteRequest</span> <span class="p">{</span>
+        <span class="kt">uint64_t</span> <span class="n">chunk_id</span><span class="p">;</span>
+        <span class="kt">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
+        <span class="kt">void</span><span class="o">*</span> <span class="n">data</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span>
+        <span class="kt">uint64_t</span> <span class="n">version</span><span class="p">;</span>  <span class="c1">// 版本号</span>
+    <span class="p">};</span>
+    
+    <span class="n">Status</span> <span class="n">Write</span><span class="p">(</span><span class="k">const</span> <span class="n">WriteRequest</span><span class="o">&amp;</span> <span class="n">req</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 1. 选择 Primary Chunk</span>
+        <span class="n">Chunk</span><span class="o">*</span> <span class="n">primary</span> <span class="o">=</span> <span class="n">get_primary_chunk</span><span class="p">(</span><span class="n">req</span><span class="p">.</span><span class="n">chunk_id</span><span class="p">);</span>
+        
+        <span class="c1">// 2. 写入 Primary 本地日志</span>
+        <span class="n">LogEntry</span> <span class="n">entry</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">req</span><span class="p">.</span><span class="n">version</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">req</span><span class="p">.</span><span class="n">data</span><span class="p">;</span>
+        <span class="n">entry</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">req</span><span class="p">.</span><span class="n">size</span><span class="p">;</span>
+        <span class="n">primary</span><span class="o">-&gt;</span><span class="n">append_log</span><span class="p">(</span><span class="n">entry</span><span class="p">);</span>
+        
+        <span class="c1">// 3. 同步到 Replicas（Quorum）</span>
+        <span class="n">vector</span><span class="o">&lt;</span><span class="n">Chunk</span><span class="o">*&gt;</span> <span class="n">replicas</span> <span class="o">=</span> <span class="n">get_replicas</span><span class="p">(</span><span class="n">req</span><span class="p">.</span><span class="n">chunk_id</span><span class="p">);</span>
+        <span class="kt">int</span> <span class="n">quorum</span> <span class="o">=</span> <span class="p">(</span><span class="n">replicas</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// 多数派</span>
+        <span class="kt">int</span> <span class="n">success_count</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// Primary 已写入</span>
+        
+        <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">*</span> <span class="n">replica</span> <span class="o">:</span> <span class="n">replicas</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">replica</span><span class="o">-&gt;</span><span class="n">replicate</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">success_count</span><span class="o">++</span><span class="p">;</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">success_count</span> <span class="o">&gt;=</span> <span class="n">quorum</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="k">break</span><span class="p">;</span>  <span class="c1">// 达到 Quorum，可以返回</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 4. 检查是否达到 Quorum</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">success_count</span> <span class="o">&lt;</span> <span class="n">quorum</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">QuorumNotReached</span><span class="p">();</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 5. 提交到存储</span>
+        <span class="n">primary</span><span class="o">-&gt;</span><span class="n">commit</span><span class="p">(</span><span class="n">entry</span><span class="p">.</span><span class="n">version</span><span class="p">);</span>
+        
+        <span class="c1">// 6. 异步通知其他 Replicas 提交</span>
+        <span class="n">async_commit_replicas</span><span class="p">(</span><span class="n">replicas</span><span class="p">,</span> <span class="n">entry</span><span class="p">.</span><span class="n">version</span><span class="p">);</span>
+        
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>读取一致性保证</strong>：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 读取一致性检查</span>
+<span class="k">class</span> <span class="nc">PolarStore</span> <span class="p">{</span>
+    <span class="n">Status</span> <span class="n">Read</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">chunk_id</span><span class="p">,</span> <span class="kt">uint64_t</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 1. 选择读取源（Primary 或 Replica）</span>
+        <span class="n">Chunk</span><span class="o">*</span> <span class="n">source</span> <span class="o">=</span> <span class="n">select_read_source</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">);</span>
+        
+        <span class="c1">// 2. 读取数据</span>
+        <span class="n">ReadResult</span> <span class="n">result</span> <span class="o">=</span> <span class="n">source</span><span class="o">-&gt;</span><span class="n">read</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+        
+        <span class="c1">// 3. 检查数据版本一致性</span>
+        <span class="kt">uint64_t</span> <span class="n">expected_version</span> <span class="o">=</span> <span class="n">get_latest_version</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">version</span> <span class="o">&lt;</span> <span class="n">expected_version</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 数据过期，从 Primary 重新读取</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">get_primary_chunk</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">);</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">source</span><span class="o">-&gt;</span><span class="n">read</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+        <span class="p">}</span>
+        
+        <span class="c1">// 4. 返回数据</span>
+        <span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">result</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><strong>一致性模型分析</strong>：</p>
+
+<p><strong>强一致性保证</strong>：</p>
+
+<ol>
+  <li><strong>写入一致性</strong>：
+    <ul>
+      <li>所有写入必须达到 Quorum 才返回成功</li>
+      <li>保证多数副本已持久化数据</li>
+      <li>即使部分副本故障，数据也不会丢失</li>
+    </ul>
+  </li>
+  <li><strong>读取一致性</strong>：
+    <ul>
+      <li>读取时检查数据版本</li>
+      <li>如果数据过期，从 Primary 重新读取</li>
+      <li>保证读取到最新数据</li>
+    </ul>
+  </li>
+  <li><strong>版本管理</strong>：
+    <ul>
+      <li>每个写入操作都有唯一版本号</li>
+      <li>版本号单调递增</li>
+      <li>通过版本号判断数据新旧</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>一致性 vs 性能权衡</strong>：</p>
+
+<ul>
+  <li><strong>强一致性</strong>：保证数据一致，但延迟较高（需要 Quorum）</li>
+  <li><strong>最终一致性</strong>：延迟低，但可能读到旧数据</li>
+  <li><strong>PolarDB 选择</strong>：强一致性，因为数据库需要 ACID 保证</li>
+</ul>
+
+<h2 id="5-计算层设计">5. 计算层设计</h2>
+
+<h3 id="51-读写节点">5.1 读写节点</h3>
+
+<p>PolarDB 的计算层包含多个节点：</p>
+
+<p><strong>节点类型</strong>：</p>
+
+<ul>
+  <li><strong>Primary Node</strong>：主节点，处理所有写入和部分读取</li>
+  <li><strong>Read Replicas</strong>：只读副本，处理读请求</li>
+</ul>
+
+<p><strong>节点架构</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Primary Node:
+┌─────────────────┐
+│  SQL Parser     │
+│  Query Optimizer│
+│  Transaction    │
+│  Buffer Pool    │
+│  PolarFS Client │
+└─────────────────┘
+
+Read Replica:
+┌─────────────────┐
+│  SQL Parser     │
+│  Query Optimizer│
+│  Read Only      │
+│  Buffer Pool    │
+│  PolarFS Client │
+└─────────────────┘
+</code></pre></div></div>
+
+<h3 id="52-事务处理">5.2 事务处理</h3>
+
+<p>PolarDB 支持完整的 ACID 事务：</p>
+
+<p><strong>事务流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Begin Transaction
+   └─&gt; 分配事务 ID
+   
+2. Execute Operations
+   └─&gt; 写入 Buffer Pool
+   └─&gt; 记录 Redo Log
+   
+3. Commit
+   └─&gt; 刷新 Redo Log 到 PolarFS
+   └─&gt; 等待存储确认
+   └─&gt; 返回成功
+   
+4. Rollback (if needed)
+   └─&gt; 撤销 Buffer Pool 中的修改
+</code></pre></div></div>
+
+<p><strong>Redo Log 处理</strong>：</p>
+
+<ul>
+  <li><strong>本地 Buffer</strong>：Redo Log 先写入本地 Buffer</li>
+  <li><strong>批量刷新</strong>：定期批量刷新到 PolarFS</li>
+  <li><strong>同步保证</strong>：Commit 时强制刷新，保证持久性</li>
+</ul>
+
+<h3 id="53-buffer-pool-管理">5.3 Buffer Pool 管理</h3>
+
+<p>PolarDB 的 Buffer Pool 管理：</p>
+
+<p><strong>设计特点</strong>：</p>
+
+<ul>
+  <li><strong>本地缓存</strong>：缓存热点数据，减少远程访问</li>
+  <li><strong>预取策略</strong>：预测性预取，提高命中率</li>
+  <li><strong>淘汰策略</strong>：LRU 或其他策略管理缓存</li>
+</ul>
+
+<p><strong>Buffer Pool 架构</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Buffer Pool:
+┌─────────────┐
+│  Hot Pages  │  ← 频繁访问
+├─────────────┤
+│  Warm Pages │  ← 偶尔访问
+├─────────────┤
+│  Cold Pages │  ← 很少访问
+└─────────────┘
+     │
+     ▼
+  PolarFS
+</code></pre></div></div>
+
+<h2 id="6-高可用设计">6. 高可用设计</h2>
+
+<h3 id="61-故障检测与恢复">6.1 故障检测与恢复</h3>
+
+<p>PolarDB 的高可用机制：</p>
+
+<p><strong>故障检测</strong>：</p>
+
+<ul>
+  <li><strong>心跳机制</strong>：计算节点和存储节点定期发送心跳</li>
+  <li><strong>超时检测</strong>：超时未收到心跳，判定为故障</li>
+  <li><strong>快速切换</strong>：检测到故障后，快速切换到备用节点</li>
+</ul>
+
+<p><strong>故障恢复流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 故障检测
+   └─&gt; 心跳超时
+   └─&gt; 判定 Primary 故障
+   
+2. 选举新 Primary
+   └─&gt; 从 Read Replicas 中选择
+   └─&gt; 检查数据一致性
+   └─&gt; 提升为新 Primary
+   
+3. 存储层切换
+   └─&gt; 更新元数据
+   └─&gt; 重新路由请求
+   
+4. 恢复完成
+   └─&gt; RTO &lt; 30s
+</code></pre></div></div>
+
+<h3 id="62-数据一致性保证">6.2 数据一致性保证</h3>
+
+<p>故障恢复时的数据一致性：</p>
+
+<p><strong>一致性检查</strong>：</p>
+
+<ul>
+  <li><strong>LSN 检查</strong>：检查日志序列号（Log Sequence Number）</li>
+  <li><strong>数据校验</strong>：校验数据完整性</li>
+  <li><strong>回放日志</strong>：回放未提交的日志</li>
+</ul>
+
+<p><strong>恢复策略</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>故障场景 1：Primary 故障
+└─&gt; Read Replica 提升为 Primary
+└─&gt; 检查 LSN，确保数据最新
+└─&gt; 继续服务
+
+故障场景 2：存储节点故障
+└─&gt; 使用其他副本
+└─&gt; 后台重建故障副本
+└─&gt; 保证多副本一致性
+</code></pre></div></div>
+
+<h2 id="7-性能优化">7. 性能优化</h2>
+
+<h3 id="71-写入优化">7.1 写入优化</h3>
+
+<p>PolarDB 的写入优化策略：</p>
+
+<p><strong>批量写入</strong>：</p>
+
+<ul>
+  <li><strong>日志合并</strong>：合并多个小事务的日志</li>
+  <li><strong>批量刷新</strong>：批量刷新到 PolarFS</li>
+  <li><strong>异步提交</strong>：异步提交，提高吞吐</li>
+</ul>
+
+<p><strong>写入流程优化</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>传统方式：
+Transaction 1 → Flush → Storage
+Transaction 2 → Flush → Storage
+Transaction 3 → Flush → Storage
+问题：每次都要刷新，性能差
+
+优化方式：
+Transaction 1 ┐
+Transaction 2 ├─&gt; Batch Flush → Storage
+Transaction 3 ┘
+优势：批量刷新，提高吞吐
+</code></pre></div></div>
+
+<h3 id="72-读取优化">7.2 读取优化</h3>
+
+<p>PolarDB 的读取优化策略：</p>
+
+<p><strong>缓存策略</strong>：</p>
+
+<ul>
+  <li><strong>多级缓存</strong>：本地 Buffer Pool + 存储层缓存</li>
+  <li><strong>预取策略</strong>：预测性预取，减少延迟</li>
+  <li><strong>并行读取</strong>：并行读取多个 Chunk</li>
+</ul>
+
+<p><strong>读取优化</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>读取请求：
+1. 检查本地 Buffer Pool
+   └─&gt; 命中：直接返回
+   
+2. 未命中：从 PolarFS 读取
+   └─&gt; 并行读取多个 Chunk
+   └─&gt; 预取相邻数据
+   └─&gt; 更新 Buffer Pool
+   
+3. 返回数据
+</code></pre></div></div>
+
+<h3 id="73-网络优化">7.3 网络优化</h3>
+
+<p>PolarDB 的网络优化：</p>
+
+<p><strong>RDMA 优化</strong>：</p>
+
+<ul>
+  <li><strong>零拷贝</strong>：直接内存访问，减少拷贝</li>
+  <li><strong>批量操作</strong>：批量 RDMA 操作，提高效率</li>
+  <li><strong>连接池</strong>：复用 RDMA 连接，减少开销</li>
+</ul>
+
+<h2 id="8-弹性扩展">8. 弹性扩展</h2>
+
+<h3 id="81-计算节点扩展">8.1 计算节点扩展</h3>
+
+<p>PolarDB 支持计算节点的弹性扩展：</p>
+
+<p><strong>扩展流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 创建新的计算节点
+   └─&gt; 启动 PolarDB 实例
+   └─&gt; 连接到 PolarFS
+   
+2. 同步元数据
+   └─&gt; 同步 Schema
+   └─&gt; 同步事务状态
+   
+3. 加入集群
+   └─&gt; 注册为 Read Replica
+   └─&gt; 开始服务读请求
+   
+4. 扩展完成
+   └─&gt; 新节点可以处理请求
+</code></pre></div></div>
+
+<h3 id="82-存储容量扩展">8.2 存储容量扩展</h3>
+
+<p>PolarDB 支持存储容量的弹性扩展：</p>
+
+<p><strong>扩展机制</strong>：</p>
+
+<ul>
+  <li><strong>动态添加 Chunk</strong>：添加新的 Chunk 到存储集群</li>
+  <li><strong>数据重分布</strong>：后台重分布数据，平衡负载</li>
+  <li><strong>在线扩展</strong>：扩展过程中不影响服务</li>
+</ul>
+
+<p><strong>扩展流程</strong>：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 添加存储节点
+   └─&gt; 新节点加入集群
+   
+2. 创建新 Chunk
+   └─&gt; 在新节点上创建 Chunk
+   └─&gt; 设置多副本
+   
+3. 数据迁移（可选）
+   └─&gt; 后台迁移数据
+   └─&gt; 平衡负载
+   
+4. 扩展完成
+   └─&gt; 存储容量增加
+</code></pre></div></div>
+
+<h2 id="9-兼容性与生态">9. 兼容性与生态</h2>
+
+<h3 id="91-mysqlpostgresql-兼容">9.1 MySQL/PostgreSQL 兼容</h3>
+
+<p>PolarDB 兼容 MySQL 和 PostgreSQL：</p>
+
+<p><strong>兼容性保证</strong>：</p>
+
+<ul>
+  <li><strong>协议兼容</strong>：支持 MySQL/PostgreSQL 协议</li>
+  <li><strong>SQL 兼容</strong>：支持标准 SQL 和扩展语法</li>
+  <li><strong>工具兼容</strong>：兼容现有数据库工具</li>
+</ul>
+
+<p><strong>迁移优势</strong>：</p>
+
+<ul>
+  <li><strong>零代码修改</strong>：现有应用无需修改代码</li>
+  <li><strong>平滑迁移</strong>：支持在线迁移</li>
+  <li><strong>工具支持</strong>：兼容现有数据库工具链</li>
+</ul>
+
+<h3 id="92-云原生特性">9.2 云原生特性</h3>
+
+<p>PolarDB 的云原生特性：</p>
+
+<ul>
+  <li><strong>按需付费</strong>：根据实际使用量付费</li>
+  <li><strong>自动运维</strong>：自动备份、监控、告警</li>
+  <li><strong>多租户</strong>：支持多租户隔离</li>
+  <li><strong>API 集成</strong>：提供丰富的 API 接口</li>
+</ul>
+
+<h2 id="10-工程实践与经验">10. 工程实践与经验</h2>
+
+<h3 id="101-性能调优">10.1 性能调优</h3>
+
+<p>PolarDB 的性能调优经验：</p>
+
+<p><strong>关键参数</strong>：</p>
+
+<ul>
+  <li><strong>Buffer Pool 大小</strong>：根据内存容量调整</li>
+  <li><strong>并发连接数</strong>：根据负载调整</li>
+  <li><strong>网络带宽</strong>：确保足够的网络带宽</li>
+</ul>
+
+<p><strong>调优建议</strong>：</p>
+
+<ol>
+  <li><strong>Buffer Pool</strong>：设置足够大的 Buffer Pool，提高缓存命中率</li>
+  <li><strong>网络</strong>：使用高速网络（RDMA），减少延迟</li>
+  <li><strong>并发</strong>：合理设置并发连接数，避免资源竞争</li>
+</ol>
+
+<h3 id="102-故障处理">10.2 故障处理</h3>
+
+<p>PolarDB 的故障处理经验：</p>
+
+<p><strong>常见故障</strong>：</p>
+
+<ul>
+  <li><strong>网络分区</strong>：使用 Quorum 机制保证一致性</li>
+  <li><strong>节点故障</strong>：快速切换，保证服务可用</li>
+  <li><strong>数据损坏</strong>：使用多副本恢复数据</li>
+</ul>
+
+<p><strong>故障预防</strong>：</p>
+
+<ul>
+  <li><strong>监控告警</strong>：实时监控系统状态</li>
+  <li><strong>定期演练</strong>：定期进行故障演练</li>
+  <li><strong>自动化恢复</strong>：自动化故障恢复流程</li>
+</ul>
+
+<h2 id="11-polardb-的影响与意义">11. PolarDB 的影响与意义</h2>
+
+<h3 id="111-对云数据库的影响">11.1 对云数据库的影响</h3>
+
+<p>PolarDB 的设计影响了云数据库的发展：</p>
+
+<p><strong>设计模式</strong>：</p>
+
+<ul>
+  <li><strong>存储计算分离</strong>：成为云数据库的标准架构</li>
+  <li><strong>RDMA 网络</strong>：高性能网络在数据库中的应用</li>
+  <li><strong>日志结构存储</strong>：优化写入性能</li>
+</ul>
+
+<p><strong>行业影响</strong>：</p>
+
+<ul>
+  <li><strong>AWS Aurora</strong>：类似的存储计算分离架构</li>
+  <li><strong>Azure Database</strong>：采用类似的设计理念</li>
+  <li><strong>其他云数据库</strong>：参考 PolarDB 的设计</li>
+</ul>
+
+<h3 id="112-技术贡献">11.2 技术贡献</h3>
+
+<p>PolarDB 的技术贡献：</p>
+
+<ol>
+  <li><strong>存储计算分离架构</strong>：证明了在云环境下的可行性</li>
+  <li><strong>RDMA 优化</strong>：展示了 RDMA 在数据库中的应用</li>
+  <li><strong>高可用设计</strong>：实现了快速故障恢复</li>
+  <li><strong>弹性扩展</strong>：实现了计算和存储的独立扩展</li>
+</ol>
+
+<h2 id="12-性能基准测试">12. 性能基准测试</h2>
+
+<h3 id="121-性能指标">12.1 性能指标</h3>
+
+<p>PolarDB 的性能指标：</p>
+
+<p><strong>延迟指标</strong>：</p>
+<ul>
+  <li><strong>写入延迟</strong>：P99 &lt; 1ms（本地 Buffer Pool）</li>
+  <li><strong>读取延迟</strong>：P99 &lt; 1ms（缓存命中）</li>
+  <li><strong>网络延迟</strong>：RDMA &lt; 10μs</li>
+</ul>
+
+<p><strong>吞吐指标</strong>：</p>
+<ul>
+  <li><strong>写入吞吐</strong>：单节点 100K+ TPS</li>
+  <li><strong>读取吞吐</strong>：单节点 500K+ QPS</li>
+  <li><strong>网络吞吐</strong>：100Gbps+</li>
+</ul>
+
+<p><strong>可用性指标</strong>：</p>
+<ul>
+  <li><strong>RTO</strong>：&lt; 30s（故障恢复时间）</li>
+  <li><strong>RPO</strong>：&lt; 1s（数据恢复点）</li>
+  <li><strong>可用性</strong>：99.99%+</li>
+</ul>
+
+<h3 id="122-性能对比">12.2 性能对比</h3>
+
+<p>PolarDB vs 传统数据库：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>指标</th>
+      <th>传统数据库</th>
+      <th>PolarDB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>扩展性</td>
+      <td>计算存储耦合</td>
+      <td>计算存储分离</td>
+    </tr>
+    <tr>
+      <td>写入延迟</td>
+      <td>1-5ms</td>
+      <td>&lt; 1ms</td>
+    </tr>
+    <tr>
+      <td>读取延迟</td>
+      <td>0.5-2ms</td>
+      <td>&lt; 1ms</td>
+    </tr>
+    <tr>
+      <td>故障恢复</td>
+      <td>分钟级</td>
+      <td>秒级</td>
+    </tr>
+    <tr>
+      <td>成本</td>
+      <td>固定成本</td>
+      <td>按需付费</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="123-性能优化实践">12.3 性能优化实践</h3>
+
+<p><strong>写入性能优化</strong>：</p>
+
+<ol>
+  <li><strong>批量写入</strong>：
+    <ul>
+      <li>合并多个小事务</li>
+      <li>减少网络往返</li>
+      <li>提高吞吐</li>
+    </ul>
+  </li>
+  <li><strong>异步刷新</strong>：
+    <ul>
+      <li>日志异步刷新到存储</li>
+      <li>减少写入延迟</li>
+      <li>提高响应速度</li>
+    </ul>
+  </li>
+  <li><strong>本地缓存</strong>：
+    <ul>
+      <li>Buffer Pool 缓存热点数据</li>
+      <li>减少远程访问</li>
+      <li>提高命中率</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>读取性能优化</strong>：</p>
+
+<ol>
+  <li><strong>多级缓存</strong>：
+    <ul>
+      <li>本地 Buffer Pool</li>
+      <li>存储层缓存</li>
+      <li>提高缓存命中率</li>
+    </ul>
+  </li>
+  <li><strong>预取策略</strong>：
+    <ul>
+      <li>预测性预取</li>
+      <li>减少延迟</li>
+      <li>提高吞吐</li>
+    </ul>
+  </li>
+  <li><strong>并行读取</strong>：
+    <ul>
+      <li>并行读取多个 Chunk</li>
+      <li>充分利用网络带宽</li>
+      <li>提高读取速度</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="13-工程实践与经验">13. 工程实践与经验</h2>
+
+<h3 id="131-部署实践">13.1 部署实践</h3>
+
+<p>PolarDB 的部署实践：</p>
+
+<p><strong>计算节点部署</strong>：</p>
+
+<ol>
+  <li><strong>节点配置</strong>：
+    <ul>
+      <li>CPU：16+ 核心</li>
+      <li>内存：64GB+</li>
+      <li>网络：25Gbps+（支持 RDMA）</li>
+    </ul>
+  </li>
+  <li><strong>节点数量</strong>：
+    <ul>
+      <li>Primary：1 个</li>
+      <li>Read Replicas：2-5 个（根据读负载）</li>
+    </ul>
+  </li>
+  <li><strong>负载均衡</strong>：
+    <ul>
+      <li>读请求分发到多个 Replicas</li>
+      <li>写请求只到 Primary</li>
+      <li>动态调整负载</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>存储节点部署</strong>：</p>
+
+<ol>
+  <li><strong>节点配置</strong>：
+    <ul>
+      <li>存储：10TB+ SSD</li>
+      <li>网络：25Gbps+（支持 RDMA）</li>
+      <li>内存：32GB+（用于缓存）</li>
+    </ul>
+  </li>
+  <li><strong>副本配置</strong>：
+    <ul>
+      <li>每个 Chunk 3 个副本</li>
+      <li>副本分布在不同机架</li>
+      <li>保证容错能力</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="132-监控与运维">13.2 监控与运维</h3>
+
+<p>PolarDB 的监控指标：</p>
+
+<p><strong>关键指标</strong>：</p>
+
+<ol>
+  <li><strong>性能指标</strong>：
+    <ul>
+      <li>QPS/TPS</li>
+      <li>延迟分布（P50/P99/P999）</li>
+      <li>吞吐量</li>
+    </ul>
+  </li>
+  <li><strong>资源指标</strong>：
+    <ul>
+      <li>CPU 使用率</li>
+      <li>内存使用率</li>
+      <li>网络带宽</li>
+      <li>磁盘 I/O</li>
+    </ul>
+  </li>
+  <li><strong>可用性指标</strong>：
+    <ul>
+      <li>故障次数</li>
+      <li>故障恢复时间</li>
+      <li>数据一致性</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>告警策略</strong>：</p>
+
+<ul>
+  <li><strong>延迟告警</strong>：P99 延迟 &gt; 阈值</li>
+  <li><strong>错误率告警</strong>：错误率 &gt; 阈值</li>
+  <li><strong>资源告警</strong>：资源使用率 &gt; 阈值</li>
+  <li><strong>故障告警</strong>：节点故障或网络分区</li>
+</ul>
+
+<h3 id="133-故障处理经验">13.3 故障处理经验</h3>
+
+<p><strong>常见故障及处理</strong>：</p>
+
+<ol>
+  <li><strong>计算节点故障</strong>：
+    <ul>
+      <li><strong>现象</strong>：节点无响应，心跳超时</li>
+      <li><strong>处理</strong>：自动切换到 Read Replica</li>
+      <li><strong>时间</strong>：&lt; 30s</li>
+    </ul>
+  </li>
+  <li><strong>存储节点故障</strong>：
+    <ul>
+      <li><strong>现象</strong>：Chunk 副本不可用</li>
+      <li><strong>处理</strong>：使用其他副本，后台重建</li>
+      <li><strong>时间</strong>：立即切换，重建时间取决于数据量</li>
+    </ul>
+  </li>
+  <li><strong>网络分区</strong>：
+    <ul>
+      <li><strong>现象</strong>：节点间无法通信</li>
+      <li><strong>处理</strong>：使用 Quorum 机制保证一致性</li>
+      <li><strong>时间</strong>：自动处理，无需人工干预</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="14-与其他系统的对比">14. 与其他系统的对比</h2>
+
+<h3 id="141-polardb-vs-aws-aurora">14.1 PolarDB vs AWS Aurora</h3>
+
+<p><strong>相似点</strong>：</p>
+<ul>
+  <li>存储计算分离架构</li>
+  <li>多副本存储</li>
+  <li>快速故障恢复</li>
+</ul>
+
+<p><strong>差异点</strong>：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>特性</th>
+      <th>PolarDB</th>
+      <th>AWS Aurora</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>网络</td>
+      <td>RDMA</td>
+      <td>传统网络</td>
+    </tr>
+    <tr>
+      <td>延迟</td>
+      <td>&lt; 1ms</td>
+      <td>1-2ms</td>
+    </tr>
+    <tr>
+      <td>存储</td>
+      <td>日志结构</td>
+      <td>日志结构</td>
+    </tr>
+    <tr>
+      <td>兼容性</td>
+      <td>MySQL/PostgreSQL</td>
+      <td>MySQL/PostgreSQL</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="142-polardb-vs-传统数据库">14.2 PolarDB vs 传统数据库</h3>
+
+<p><strong>优势</strong>：</p>
+<ul>
+  <li>弹性扩展</li>
+  <li>高可用性</li>
+  <li>成本优化</li>
+</ul>
+
+<p><strong>适用场景</strong>：</p>
+<ul>
+  <li>云原生应用</li>
+  <li>大规模数据</li>
+  <li>高可用要求</li>
+</ul>
+
+<h2 id="15-小结">15. 小结</h2>
+
+<p>PolarDB 是云原生数据库的典型代表，通过存储计算分离架构实现了高性能、高可用和弹性扩展。</p>
+
+<p><strong>核心要点</strong>：</p>
+
+<ul>
+  <li><strong>存储计算分离</strong>：计算节点和存储集群解耦，独立扩展</li>
+  <li><strong>PolarFS</strong>：基于 RDMA 的分布式文件系统，提供低延迟访问（&lt; 10μs）</li>
+  <li><strong>PolarStore</strong>：日志结构存储，优化写入性能，多副本保证高可用</li>
+  <li><strong>高可用</strong>：快速故障恢复，RTO &lt; 30s，RPO &lt; 1s</li>
+  <li><strong>弹性扩展</strong>：计算和存储独立扩展，按需付费</li>
+  <li><strong>兼容性</strong>：兼容 MySQL/PostgreSQL，便于迁移</li>
+  <li><strong>性能</strong>：低延迟（&lt; 1ms），高吞吐（100K+ TPS）</li>
+</ul>
+
+<p><strong>技术贡献</strong>：</p>
+
+<ol>
+  <li><strong>存储计算分离架构</strong>：证明了在云环境下的可行性</li>
+  <li><strong>RDMA 优化</strong>：展示了 RDMA 在数据库中的应用，实现 &lt; 10μs 网络延迟</li>
+  <li><strong>高可用设计</strong>：实现了快速故障恢复，RTO &lt; 30s</li>
+  <li><strong>弹性扩展</strong>：实现了计算和存储的独立扩展</li>
+</ol>
+
+<p>PolarDB 的设计展示了云原生数据库的发展方向，为后续的云数据库系统提供了重要参考。其存储计算分离架构、RDMA 网络优化、日志结构存储等技术已成为云数据库的标准设计模式。</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

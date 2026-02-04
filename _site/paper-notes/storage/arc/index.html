@@ -1,0 +1,1108 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>ARC：Adaptive Replacement Cache（论文笔记） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="ARC：Adaptive Replacement Cache（论文笔记）">
+
+
+  <link rel="canonical" href="http://localhost:4000/paper-notes/storage/arc/">
+  <meta property="og:url" content="http://localhost:4000/paper-notes/storage/arc/">
+
+
+
+  <meta property="og:description" content="  论文：ARC: A Self-Tuning, Low Overhead Replacement Cache（Megiddo, Modha，FAST 2003）">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2023-08-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">论文笔记</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/raid/" class=""><span class="nav__sub-title">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lfs/" class=""><span class="nav__sub-title">LFS：The Design and Implementation of a Log-Structured File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/wafl/" class=""><span class="nav__sub-title">WAFL：Write Anywhere File Layout（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/arc/" class="active"><span class="nav__sub-title">ARC：Adaptive Replacement Cache（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/polardb/" class=""><span class="nav__sub-title">PolarDB：云原生数据库架构（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/rocksdb-tuning/" class=""><span class="nav__sub-title">RocksDB 调优与实践（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="ARC：Adaptive Replacement Cache（论文笔记）">
+    <meta itemprop="description" content="  论文：ARC: A Self-Tuning, Low Overhead Replacement Cache（Megiddo, Modha，FAST 2003）">
+    <meta itemprop="datePublished" content="August 01, 2023">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">ARC：Adaptive Replacement Cache（论文笔记）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  1 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2023-08-01T00:00:00+08:00">August 01, 2023</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>论文：ARC: A Self-Tuning, Low Overhead Replacement Cache（Megiddo, Modha，FAST 2003）</p>
+</blockquote>
+
+<p>ARC 是存储系统里非常经典的缓存替换算法之一（ZFS 采用）。它的核心价值不是“命中率比 LRU 高一点”，而是提供了一种更工程化的能力：<strong>在工作负载从 recency（近期性）切换到 frequency（频率性）时，缓存策略能够自适应调整</strong>，避免 LRU 在某些扫描/混合负载下被“拖垮”。</p>
+
+<p>本文按“问题 → 结构 → 调参机制 → 复杂度/实现 → 观测与调优”做笔记，图用 ASCII，避免 Mermaid。</p>
+
+<hr />
+
+<h2 id="1-背景lru-为什么会在扫描场景失效">1. 背景：LRU 为什么会在扫描场景失效</h2>
+
+<p>LRU 假设“最近访问的未来更可能被访问”。这在许多负载成立，但在扫描（scan）场景会出现典型问题：</p>
+
+<ul>
+  <li>大范围顺序扫描会把缓存全部替换掉（cache pollution）</li>
+  <li>扫描结束后，原本的热数据已被逐出，命中率暴跌</li>
+</ul>
+
+<p>同时，纯 LFU（按频率）又容易被“历史热点”绑架，对近期热点响应慢。</p>
+
+<p>ARC 的目标：<strong>同时兼顾 recency 与 frequency，并能自动在两者间调节。</strong></p>
+
+<hr />
+
+<h2 id="2-arc-的数据结构两条队列--两条幽灵队列">2. ARC 的数据结构：两条队列 + 两条幽灵队列</h2>
+
+<p>ARC 维护四个列表（通常按 LRU 顺序组织）：</p>
+
+<ul>
+  <li><strong>T1</strong>：最近访问过一次的缓存条目（recency）</li>
+  <li><strong>T2</strong>：最近访问过至少两次的缓存条目（frequency）</li>
+  <li><strong>B1</strong>：T1 的幽灵条目（只保存 key，不保存数据）</li>
+  <li><strong>B2</strong>：T2 的幽灵条目（只保存 key，不保存数据）</li>
+</ul>
+
+<p>直观示意：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cache (data):
+  T1: [MRU ... LRU]   (seen once)
+  T2: [MRU ... LRU]   (seen multiple times)
+
+Ghost (keys only):
+  B1: [MRU ... LRU]   (recently evicted from T1)
+  B2: [MRU ... LRU]   (recently evicted from T2)
+</code></pre></div></div>
+
+<p>其中缓存容量为 (c)，ARC 维护一个自适应参数 (p)：</p>
+
+<ul>
+  <li>目标：T1 的大小靠近 (p)，T2 的大小靠近 (c - p)</li>
+  <li>(p) 会根据命中在 B1/B2 的情况动态调整</li>
+</ul>
+
+<hr />
+
+<h2 id="3-命中与插入规则高层">3. 命中与插入规则（高层）</h2>
+
+<h3 id="31-命中在缓存t1t2">3.1 命中在缓存（T1/T2）</h3>
+
+<ul>
+  <li>命中 T1：说明“近期性”有效，同时该条目获得第二次访问 → 移到 T2 的 MRU</li>
+  <li>命中 T2：继续保持在 T2 的 MRU</li>
+</ul>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hit(T1): move to T2 MRU
+hit(T2): move to T2 MRU
+</code></pre></div></div>
+
+<h3 id="32-命中幽灵b1b2用于调参">3.2 命中幽灵（B1/B2）：用于调参</h3>
+
+<p>命中幽灵的含义是“最近被逐出的东西又被访问了”，说明驱逐策略可能偏了：</p>
+
+<ul>
+  <li>命中 B1：说明 T1（recency）不够大，应该提升 p（多给 recency 配额）</li>
+  <li>命中 B2：说明 T2（frequency）不够大，应该降低 p（多给 frequency 配额）</li>
+</ul>
+
+<p>调参直觉：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if hit(B1): p = min(c, p + delta)
+if hit(B2): p = max(0, p - delta)
+</code></pre></div></div>
+
+<p>delta 通常与队列大小比例有关（论文中有更细的建议），关键是：<strong>调整幅度随工作负载变化自动收敛</strong>。</p>
+
+<hr />
+
+<h2 id="4-replace统一的驱逐函数">4. Replace()：统一的驱逐函数</h2>
+
+<p>ARC 的实现核心通常被归结为一个 replace()：</p>
+
+<ul>
+  <li>当需要腾出空间时，根据当前 p 与 T1/T2 的大小决定从哪边驱逐</li>
+</ul>
+
+<p>直觉规则（简化）：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if |T1| &gt; p:
+  evict from T1 LRU -&gt; move key to B1 MRU
+else:
+  evict from T2 LRU -&gt; move key to B2 MRU
+</code></pre></div></div>
+
+<p>含义：</p>
+
+<ul>
+  <li>如果 recency（T1）超出目标 p，就从 T1 驱逐；</li>
+  <li>否则从 frequency（T2）驱逐。</li>
+</ul>
+
+<hr />
+
+<h2 id="5-为什么需要幽灵队列让失败模式可观测可反馈">5. 为什么需要幽灵队列：让“失败模式”可观测、可反馈</h2>
+
+<p>没有幽灵队列时，很难知道“刚驱逐出去的东西是否马上又被需要”。</p>
+
+<p>幽灵队列提供了一种低成本信号：</p>
+
+<ul>
+  <li>B1 命中：recency 被低估（需要更大的 T1）</li>
+  <li>B2 命中：frequency 被低估（需要更大的 T2）</li>
+</ul>
+
+<p>这让 ARC 成为“自调参”算法，而不是固定策略。</p>
+
+<hr />
+
+<h2 id="6-复杂度与工程实现要点">6. 复杂度与工程实现要点</h2>
+
+<h3 id="61-时间复杂度">6.1 时间复杂度</h3>
+
+<p>ARC 的关键操作是：</p>
+
+<ul>
+  <li>哈希查找 key 是否在 T1/T2/B1/B2</li>
+  <li>从双向链表移动节点、从尾部驱逐</li>
+</ul>
+
+<p>因此单次访问的摊还复杂度接近 O(1)。</p>
+
+<h3 id="62-空间开销">6.2 空间开销</h3>
+
+<p>幽灵队列只存 key（或 key 的哈希/指纹），开销通常可控，但要注意：</p>
+
+<ul>
+  <li>key 很大时需做压缩存储</li>
+  <li>幽灵队列大小一般与 cache 容量同量级（最多 2c 级别的 key 记录）</li>
+</ul>
+
+<h3 id="63-并发与锁">6.3 并发与锁</h3>
+
+<p>在存储系统（例如文件系统缓存）中，ARC 往往处于高并发路径：</p>
+
+<ul>
+  <li>全局锁会成为瓶颈</li>
+  <li>常见做法：分段锁、每 CPU/每 NUMA 局部队列 + 周期性平衡（实现更复杂）</li>
+</ul>
+
+<hr />
+
+<h2 id="7-工作负载直觉arc-在哪里赢">7. 工作负载直觉：ARC 在哪里赢</h2>
+
+<h3 id="71-扫描--热点混合">7.1 扫描 + 热点混合</h3>
+
+<p>扫描会让 LRU 发生污染；ARC 会通过 B1/B2 的反馈把 p 调小（增加 T2），避免热点被挤掉。</p>
+
+<h3 id="72-热点迁移">7.2 热点迁移</h3>
+
+<p>热点从 A 切到 B：</p>
+
+<ul>
+  <li>纯 LFU 容易被 A 的历史频率锁死</li>
+  <li>ARC 的 recency 侧（T1）允许新热点快速进入，并通过第二次命中晋升到 T2</li>
+</ul>
+
+<hr />
+
+<h2 id="8-工程观测指标建议">8. 工程观测指标（建议）</h2>
+
+<p>若系统实现了 ARC（或类似机制），建议暴露以下指标用于诊断：</p>
+
+<ul>
+  <li>T1/T2/B1/B2 当前长度</li>
+  <li>参数 p 的时间序列（收敛情况）</li>
+  <li>命中率拆分：hit(T1), hit(T2), hit(B1), hit(B2)</li>
+  <li>replace() 驱逐来源：evict_from_T1 vs evict_from_T2</li>
+  <li>负载维度：顺序读比例、随机读比例、热点 key 分布变化</li>
+</ul>
+
+<p>通过这些指标，可以把“缓存策略是否被扫描拖垮”从现象变成可观测信号。</p>
+
+<hr />
+
+<h2 id="9-与其他策略的关系简表">9. 与其他策略的关系（简表）</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>策略</th>
+      <th>优点</th>
+      <th>典型失败模式</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LRU</td>
+      <td>简单、近期性强时效果好</td>
+      <td>扫描污染、混合负载下热数据被挤掉</td>
+    </tr>
+    <tr>
+      <td>LFU</td>
+      <td>频率性强时稳定</td>
+      <td>对热点迁移反应慢、历史热点绑架</td>
+    </tr>
+    <tr>
+      <td>2Q</td>
+      <td>通过两个队列降低扫描污染</td>
+      <td>参数依赖经验，适配性有限</td>
+    </tr>
+    <tr>
+      <td>ARC</td>
+      <td>自适应 recency vs frequency</td>
+      <td>实现更复杂，需要维护更多结构与指标</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="10-小结">10. 小结</h2>
+
+<p>ARC 的经典性来自“可自适应”这一工程属性：用幽灵队列把策略偏差变成信号，再用参数 p 把信号反馈到驱逐决策里，从而在扫描/混合/迁移负载下比单纯 LRU 更稳。对于存储系统而言，这种“稳定性”往往比极限命中率更重要，因为它直接影响尾延迟与整体吞吐的可预测性。</p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+<script>
+  // Initialize Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false,  // We'll manually initialize after processing code blocks
+    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
+    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
+    theme: 'base',
+    themeVariables: {
+      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+      fontSize: "14px",
+
+      // Neutral, high-contrast palette
+      primaryColor: "#eef2ff",
+      primaryBorderColor: "#6366f1",
+      primaryTextColor: "#111827",
+
+      secondaryColor: "#ecfeff",
+      secondaryBorderColor: "#06b6d4",
+      secondaryTextColor: "#0f172a",
+
+      tertiaryColor: "#f0fdf4",
+      tertiaryBorderColor: "#22c55e",
+      tertiaryTextColor: "#0f172a",
+
+      lineColor: "#475569",
+
+      // Sequence diagram
+      actorBkg: "#eef2ff",
+      actorBorder: "#6366f1",
+      actorTextColor: "#111827",
+      noteBkgColor: "#fff7ed",
+      noteTextColor: "#0f172a",
+      noteBorderColor: "#fb923c"
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis'
+    },
+    sequence: {
+      diagramMarginX: 50,
+      diagramMarginY: 10,
+      actorMargin: 50,
+      width: 150,
+      height: 65,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 35,
+      mirrorActors: true,
+      bottomMarginAdj: 1,
+      useMaxWidth: true,
+      rightAngles: false,
+      showSequenceNumbers: false
+    },
+    state: {
+      useMaxWidth: true
+    }
+  });
+
+  // Process mermaid code blocks after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks with language-mermaid or containing mermaid
+    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+      // Get the parent pre element
+      const pre = codeBlock.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        // Create a div for mermaid
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = codeBlock.textContent;
+        
+        // Replace the pre element with the mermaid div
+        pre.parentNode.replaceChild(mermaidDiv, pre);
+      }
+    });
+    
+    // Also check for pre > code structure that might have mermaid content
+    const allPreCode = document.querySelectorAll('pre > code');
+    allPreCode.forEach(function(code) {
+      const pre = code.parentElement;
+      // Check if the code block contains mermaid syntax
+      const codeText = code.textContent.trim();
+      if (codeText && (
+        codeText.startsWith('graph ') || 
+        codeText.startsWith('sequenceDiagram') ||
+        codeText.startsWith('stateDiagram') ||
+        codeText.startsWith('classDiagram') ||
+        code.classList.contains('language-mermaid')
+      )) {
+        // Check if parent pre has class indicating mermaid
+        if (pre.classList.contains('language-mermaid') || 
+            code.classList.contains('language-mermaid') ||
+            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeText;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      }
+    });
+    
+    // Initialize Mermaid after processing
+    mermaid.run();
+  });
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

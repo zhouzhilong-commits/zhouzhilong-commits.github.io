@@ -274,7 +274,7 @@ commit-wait 的本质是：
 
 这样用户观察到的提交顺序就能和真实世界的时间顺序一致（在误差上界 ε 的定义下）。
 
-## 14. 读完后的补充 takeaways
+## 14. 读完后的 takeaways
 
 - Spanner 的工程核心是：显式建模时间不确定性，并把它纳入协议（commit-wait）。
 - 真正的成本来自：复制 + 2PC + commit-wait 的叠加；理解延迟拆分有助于判断是否值得。
@@ -427,7 +427,7 @@ flowchart TD
 - 如果你的业务对 external consistency 没硬需求，`L_wait` 与跨地域 `L_paxos/L_2pc` 的成本可能不划算
 - 如果你的业务需要“全球顺序可解释”，Spanner 的这套机制能显著降低应用层复杂度
 
-## 20. 读完后的最终 takeaways（加深版）
+## 20. 读完后的最终 takeaways
 
 - Spanner 的核心贡献是：把“时间不确定性”显式建模，并将其纳入一致性协议（commit-wait）。
 - 强一致的实际成本来自复制与 2PC，placement/locality 决定了你付出的 RTT。
