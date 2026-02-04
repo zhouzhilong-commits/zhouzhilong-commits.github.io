@@ -31,14 +31,22 @@ jobs:
         with:
           ruby-version: "3.2"
           bundler: "2.4.10"
-          bundler-cache: true
+          bundler-cache: false  # Disable cache to force fresh install on Linux
+
+      - name: Install system dependencies for nokogiri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libxml2-dev libxslt1-dev zlib1g-dev
 
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
 
-      - name: Ensure gems installed
-        run: bundle check || bundle install --jobs 4 --retry 3
+      - name: Install dependencies
+        run: |
+          bundle config set --local deployment 'false'
+          bundle config set --local path 'vendor/bundle'
+          bundle install --jobs 4 --retry 3
 
       - name: Build with Jekyll
         run: bundle exec jekyll build
