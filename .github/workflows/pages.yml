@@ -37,6 +37,9 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
+      - name: Ensure gems installed
+        run: bundle check || bundle install --jobs 4 --retry 3
+
       - name: Build with Jekyll
         run: bundle exec jekyll build
 
