@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-05T19:38:27+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-05T19:57:06+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
 
@@ -13875,47 +13875,63 @@
         - TabletData _tabletData
         - TabletSchema _schema
         - TabletOptions _options
-        + Open()
-        + Build()
-        + Flush()
-        + GetTabletReader()
+        + Open(string) Status
+        + Build(IDocumentBatch) Status
+        + Flush() Status
+        + Seal() void
+        + Commit() Status
+        + GetTabletReader() TabletReader
+        + Reopen() Status
     }
     
     class TabletData {
         - Version _onDiskVersion
-        - vector_Segment _segments
-        - ResourceMap _resourceMap
-        + CreateSlice()
-        + GetSegment()
-        + GetSegmentWithBaseDocid()
+        - vector~shared_ptr~Segment~~ _segments
+        - shared_ptr~ResourceMap~ _resourceMap
+        + CreateSlice(SegmentStatus) vector~Segment~
+        + GetSegment(segmentid_t) Segment
+        + GetSegmentWithBaseDocid(docid_t) Segment
+        + UpdateVersion(Version) void
+        + GetSegmentCount() size_t
     }
     
     class Segment {
         &lt;&lt;abstract&gt;&gt;
         # segmentid_t _segmentId
         # SegmentStatus _status
-        + GetSegmentId()
-        + GetDocCount()
-        + GetIndexer()
+        + GetSegmentId() segmentid_t
+        + GetDocCount() uint32_t
+        + GetSegmentStatus() SegmentStatus
+        + GetIndexer(string) IIndexer
+        + GetBaseDocId() docid_t
     }
     
     class MemSegment {
-        - map_string_IIndexer _indexers
-        + Build()
-        + NeedDump()
-        + CreateSegmentDumpItems()
+        - map~string,IIndexer~ _indexers
+        + Build(IDocumentBatch) Status
+        + NeedDump() bool
+        + CreateSegmentDumpItems() vector~SegmentDumpItem~
+        + Seal() void
+        + EvaluateCurrentMemUsed() size_t
     }
     
     class DiskSegment {
-        - map_string_IIndexer _indexers
-        + Open()
-        + GetIndexer()
+        - map~string,IIndexer~ _indexers
+        + Open(string) Status
+        + Reopen() Status
+        + GetIndexer(string) IIndexer
     }
     
-    Tablet --&gt; TabletData : 管理
-    TabletData --&gt; Segment : 包含多个
+    Tablet "1" --&gt; "1" TabletData : 管理
+    TabletData "1" *-- "many" Segment : 包含多个有序Segment
     Segment &lt;|-- MemSegment : 继承
     Segment &lt;|-- DiskSegment : 继承
+    
+    note for Tablet "索引表的完整抽象&lt;br/&gt;管理索引的构建和查询"
+    note for TabletData "管理Segment列表和版本&lt;br/&gt;提供Segment访问接口"
+    note for Segment "抽象基类&lt;br/&gt;定义Segment通用接口"
+    note for MemSegment "内存段&lt;br/&gt;实时写入和构建"
+    note for DiskSegment "磁盘段&lt;br/&gt;持久化存储和查询"
 </code></pre>
 
 <p><strong>组织关系</strong>：</p>
@@ -14355,22 +14371,38 @@
 
 <p><strong>Segment 列表的维护</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[TabletData] --&gt; B[Init&lt;br/&gt;初始化]
-    A --&gt; C[AddSegment&lt;br/&gt;添加]
-    A --&gt; D[RemoveSegment&lt;br/&gt;移除]
-    A --&gt; E[Reopen&lt;br/&gt;更新]
+<pre><code class="language-mermaid">flowchart TD
+    Start[TabletData&lt;br/&gt;管理Segment列表] --&gt; Operations{操作类型}
     
-    B --&gt; F[设置初始Segment列表]
-    C --&gt; G[新Segment通过TabletWriter创建]
-    D --&gt; H[合并后移除旧Segment]
-    E --&gt; I[更新Segment列表]
+    Operations --&gt; Init[Init&lt;br/&gt;初始化]
+    Operations --&gt; Add[AddSegment&lt;br/&gt;添加Segment]
+    Operations --&gt; Remove[RemoveSegment&lt;br/&gt;移除Segment]
+    Operations --&gt; Reopen[Reopen&lt;br/&gt;更新Segment列表]
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style E fill:#fce4ec
+    Init --&gt; InitDetail[设置初始Segment列表&lt;br/&gt;设置Version和ResourceMap&lt;br/&gt;建立Segment有序列表]
+    
+    Add --&gt; AddDetail[新Segment通过TabletWriter创建&lt;br/&gt;添加到_segments列表末尾&lt;br/&gt;保持SegmentId有序]
+    
+    Remove --&gt; RemoveDetail[合并后移除旧Segment&lt;br/&gt;从_segments列表中删除&lt;br/&gt;释放Segment资源]
+    
+    Reopen --&gt; ReopenDetail[加载新Version&lt;br/&gt;更新Segment列表&lt;br/&gt;重新建立Segment视图]
+    
+    InitDetail --&gt; End[Segment列表已更新]
+    AddDetail --&gt; End
+    RemoveDetail --&gt; End
+    ReopenDetail --&gt; End
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Operations fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Init fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Add fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Remove fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Reopen fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style InitDetail fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    style AddDetail fill:#c8e6c9,stroke:#388e3c,stroke-width:1px
+    style RemoveDetail fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ReopenDetail fill:#f8bbd0,stroke:#c2185b,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -14577,23 +14609,63 @@
 
 <p>MemSegment 的内存管理是保证系统稳定性的关键。让我们通过流程图来理解内存管理的完整机制：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始构建] --&gt; B[EstimateMemUsed]
-    B --&gt; C{内存配额检查}
-    C --&gt;|配额不足| D[等待或拒绝]
-    C --&gt;|配额充足| E[分配内存]
-    E --&gt; F[Build文档]
-    F --&gt; G[EvaluateCurrentMemUsed]
-    G --&gt; H{内存使用检查}
-    H --&gt;|未超阈值| F
-    H --&gt;|超过阈值| I[触发转储]
-    I --&gt; J[释放内存]
-    J --&gt; K[创建新MemSegment]
+<pre><code class="language-mermaid">flowchart TD
+    Start[开始构建] --&gt; Estimate[EstimateMemUsed&lt;br/&gt;估算内存需求]
     
-    style C fill:#e3f2fd
-    style H fill:#fff3e0
-    style I fill:#f3e5f5
-    style J fill:#e8f5e9
+    Estimate --&gt; QuotaCheck{内存配额检查&lt;br/&gt;检查可用配额}
+    
+    QuotaCheck --&gt;|配额不足| WaitOrReject[等待或拒绝&lt;br/&gt;等待配额释放或拒绝构建]
+    QuotaCheck --&gt;|配额充足| Allocate[分配内存&lt;br/&gt;从MemoryQuotaController分配]
+    
+    Allocate --&gt; BuildLoop[构建循环]
+    
+    subgraph BuildLoop["构建循环"]
+        direction TB
+        Build[Build文档&lt;br/&gt;写入MemSegment]
+        Evaluate[EvaluateCurrentMemUsed&lt;br/&gt;评估当前内存使用]
+        MemCheck{内存使用检查&lt;br/&gt;是否超过阈值?}
+        
+        Build --&gt; Evaluate
+        Evaluate --&gt; MemCheck
+        MemCheck --&gt;|未超阈值&lt;br/&gt;继续构建| Build
+        MemCheck --&gt;|超过阈值&lt;br/&gt;触发转储| Dump[触发转储&lt;br/&gt;NeedDump返回true]
+    end
+    
+    Dump --&gt; DumpProcess[转储处理]
+    
+    subgraph DumpProcess["转储处理"]
+        direction TB
+        CreateDump[CreateSegmentDumpItems&lt;br/&gt;创建转储项]
+        AsyncDump[异步转储到磁盘&lt;br/&gt;不阻塞写入]
+        ReleaseMem[释放内存&lt;br/&gt;释放MemSegment内存]
+        CreateNew[创建新MemSegment&lt;br/&gt;继续构建]
+        
+        CreateDump --&gt; AsyncDump
+        AsyncDump --&gt; ReleaseMem
+        ReleaseMem --&gt; CreateNew
+    end
+    
+    CreateNew --&gt; BuildLoop
+    
+    WaitOrReject --&gt; End[结束]
+    BuildLoop -.-&gt;|构建完成| End
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Estimate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style QuotaCheck fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WaitOrReject fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Allocate fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style BuildLoop fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style Build fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style Evaluate fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style MemCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Dump fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style DumpProcess fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style CreateDump fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style AsyncDump fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style ReleaseMem fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style CreateNew fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <p><strong>内存管理策略</strong>：</p>
@@ -14664,77 +14736,68 @@
 <p><strong>DiskSegment 的加载流程</strong>：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    A[DiskSegment.Open&lt;br/&gt;打开磁盘段] --&gt; B[读取SegmentInfo&lt;br/&gt;从磁盘加载元数据]
-    B --&gt; C{OpenMode选择}
+    Start[DiskSegment.Open&lt;br/&gt;打开磁盘段] --&gt; ReadInfo[读取SegmentInfo&lt;br/&gt;从磁盘加载元数据]
+    ReadInfo --&gt; ModeSelect{OpenMode选择}
     
-    subgraph Normal["NORMAL 模式&lt;br/&gt;立即加载"]
-        N1[遍历所有IndexConfig]
-        N2[打开所有Indexer]
-        N3[倒排索引&lt;br/&gt;InvertedIndexer]
-        N4[正排索引&lt;br/&gt;AttributeIndexer]
-        N5[主键索引&lt;br/&gt;PrimaryKeyIndexer]
-        N6[摘要索引&lt;br/&gt;SummaryIndexer]
-        N7[所有Indexer在内存&lt;br/&gt;查询延迟低]
-        
-        C --&gt;|NORMAL| N1
-        N1 --&gt; N2
-        N2 --&gt; N3
-        N2 --&gt; N4
-        N2 --&gt; N5
-        N2 --&gt; N6
-        N3 --&gt; N7
+    subgraph Normal["NORMAL 模式：立即加载"]
+        direction TB
+        N1[遍历所有IndexConfig] --&gt; N2[打开所有Indexer&lt;br/&gt;并行加载]
+        N2 --&gt; N3[InvertedIndexer&lt;br/&gt;倒排索引]
+        N2 --&gt; N4[AttributeIndexer&lt;br/&gt;正排索引]
+        N2 --&gt; N5[PrimaryKeyIndexer&lt;br/&gt;主键索引]
+        N2 --&gt; N6[SummaryIndexer&lt;br/&gt;摘要索引]
+        N3 --&gt; N7[所有Indexer在内存&lt;br/&gt;查询延迟低]
         N4 --&gt; N7
         N5 --&gt; N7
         N6 --&gt; N7
     end
     
-    subgraph Lazy["LAZY 模式&lt;br/&gt;按需加载"]
-        L1[不加载Indexer&lt;br/&gt;只读取SegmentInfo]
-        L2[等待查询请求]
-        L3[GetIndexer调用&lt;br/&gt;type, indexName]
-        L4{Indexer已加载?}
-        L5[按需打开Indexer&lt;br/&gt;OpenIndexer]
-        L6[加载索引数据到内存]
-        L7[缓存Indexer]
-        L8[返回Indexer]
-        
-        C --&gt;|LAZY| L1
-        L1 --&gt; L2
-        L2 --&gt; L3
-        L3 --&gt; L4
-        L4 --&gt;|否| L5
-        L4 --&gt;|是| L8
-        L5 --&gt; L6
-        L6 --&gt; L7
+    subgraph Lazy["LAZY 模式：按需加载"]
+        direction TB
+        L1[只读取SegmentInfo&lt;br/&gt;不加载Indexer] --&gt; L2[等待查询请求]
+        L2 --&gt; L3[GetIndexer调用&lt;br/&gt;type, indexName]
+        L3 --&gt; L4{Indexer已加载?}
+        L4 --&gt;|否| L5[按需打开Indexer&lt;br/&gt;OpenIndexer]
+        L4 --&gt;|是| L8[返回缓存的Indexer]
+        L5 --&gt; L6[加载索引数据到内存]
+        L6 --&gt; L7[缓存Indexer]
         L7 --&gt; L8
     end
     
-    subgraph Reopen["Reopen操作&lt;br/&gt;Schema变更时"]
-        R1[Schema变更检测]
-        R2[重新打开Segment&lt;br/&gt;Reopen]
-        R3[重新加载Indexer&lt;br/&gt;使用新Schema]
-        R1 --&gt; R2
-        R2 --&gt; R3
-        R3 --&gt; A
+    subgraph Reopen["Reopen操作：Schema变更"]
+        direction TB
+        R1[Schema变更检测] --&gt; R2[调用Reopen&lt;br/&gt;重新打开Segment]
+        R2 --&gt; R3[使用新Schema&lt;br/&gt;重新加载Indexer]
+        R3 -.-&gt;|重新打开| Start
     end
     
     subgraph Memory["内存管理"]
+        direction TB
         M1[MemoryQuotaController&lt;br/&gt;内存配额控制]
         M2[估算内存使用&lt;br/&gt;EstimateMemUsed]
         M3[检查内存配额]
         M4[分配内存]
         
-        N2 -.-&gt; M1
-        L5 -.-&gt; M1
         M1 --&gt; M2
         M2 --&gt; M3
         M3 --&gt; M4
     end
     
-    style Normal fill:#e3f2fd
-    style Lazy fill:#fff3e0
-    style Reopen fill:#f3e5f5
-    style Memory fill:#f5f5f5
+    ModeSelect --&gt;|NORMAL| Normal
+    ModeSelect --&gt;|LAZY| Lazy
+    
+    N2 -.-&gt;|内存分配| Memory
+    L5 -.-&gt;|内存分配| Memory
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadInfo fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style ModeSelect fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Normal fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Lazy fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Reopen fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Memory fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style N7 fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style L8 fill:#fff9c4,stroke:#f57f17,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -14971,22 +15034,43 @@
 
 <p><strong>DocId 分配机制</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[文档写入] --&gt; B[获取BaseDocId]
-    B --&gt; C[分配LocalDocId]
-    C --&gt; D[LocalDocId递增]
-    D --&gt; E[计算GlobalDocId]
-    E --&gt; F["GlobalDocId = BaseDocId + LocalDocId"]
+<pre><code class="language-mermaid">flowchart TD
+    Start[文档写入] --&gt; GetBase[获取BaseDocId&lt;br/&gt;_buildingSegmentBaseDocId]
+    GetBase --&gt; AllocLocal[分配LocalDocId&lt;br/&gt;从0开始递增]
+    AllocLocal --&gt; Increment[LocalDocId递增&lt;br/&gt;localDocId++]
+    Increment --&gt; CalcGlobal[计算GlobalDocId&lt;br/&gt;GlobalDocId = BaseDocId + LocalDocId]
+    CalcGlobal --&gt; Assign[为文档分配DocId&lt;br/&gt;设置到Document对象]
     
-    G[BaseDocId] --&gt; H[前面所有Segment的docCount之和]
-    I[LocalDocId] --&gt; J[从0开始递增]
-    K[GlobalDocId] --&gt; L[全局唯一文档ID]
+    subgraph Concepts["概念说明"]
+        direction TB
+        BaseConcept[BaseDocId&lt;br/&gt;基础文档ID] --&gt; BaseDesc[前面所有Segment的&lt;br/&gt;docCount之和]
+        LocalConcept[LocalDocId&lt;br/&gt;局部文档ID] --&gt; LocalDesc[在Segment内&lt;br/&gt;从0开始递增]
+        GlobalConcept[GlobalDocId&lt;br/&gt;全局文档ID] --&gt; GlobalDesc[全局唯一&lt;br/&gt;BaseDocId + LocalDocId]
+    end
     
-    style A fill:#e3f2fd
-    style E fill:#fff3e0
-    style G fill:#e8f5e9
-    style I fill:#f3e5f5
-    style K fill:#fce4ec
+    subgraph Example["示例计算"]
+        direction TB
+        E1[Segment1: docCount=100&lt;br/&gt;BaseDocId=0]
+        E2[Segment2: docCount=200&lt;br/&gt;BaseDocId=100]
+        E3[Segment3: 第1个文档&lt;br/&gt;BaseDocId=300, LocalDocId=0&lt;br/&gt;GlobalDocId=300]
+        E4[Segment3: 第2个文档&lt;br/&gt;BaseDocId=300, LocalDocId=1&lt;br/&gt;GlobalDocId=301]
+        
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E3 --&gt; E4
+    end
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetBase fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style AllocLocal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Increment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style CalcGlobal fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Assign fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Concepts fill:#f5f5f5,stroke:#757575,stroke-width:1px
+    style BaseConcept fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style LocalConcept fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style GlobalConcept fill:#fce4ec,stroke:#c2185b,stroke-width:1px
+    style Example fill:#fff9c4,stroke:#f57f17,stroke-width:1px
 </code></pre>
 
 <ul>
@@ -15275,53 +15359,44 @@
 
 <p><strong>DocId 转换流程</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    A[查询请求&lt;br/&gt;GlobalDocId] --&gt; B[TabletData.GetSegment&lt;br/&gt;遍历Segment列表]
+<pre><code class="language-mermaid">flowchart LR
+    Start[查询请求&lt;br/&gt;GlobalDocId] --&gt; Locate[定位Segment]
     
-    subgraph Locate["定位Segment"]
-        L1[遍历所有Segment]
-        L2[计算每个Segment的BaseDocId&lt;br/&gt;累加前面Segment的docCount]
-        L3{GlobalDocId在范围内?&lt;br/&gt;BaseDocId &lt;= GlobalDocId &lt; BaseDocId + docCount}
-        L4[找到对应Segment]
-        L5[继续遍历下一个Segment]
-        
-        B --&gt; L1
-        L1 --&gt; L2
-        L2 --&gt; L3
-        L3 --&gt;|是| L4
-        L3 --&gt;|否| L5
-        L5 --&gt; L1
+    subgraph Locate["1. 定位Segment"]
+        direction TB
+        L1[遍历Segment列表] --&gt; L2[计算BaseDocId&lt;br/&gt;累加前面Segment的docCount]
+        L2 --&gt; L3{GlobalDocId在范围内?&lt;br/&gt;BaseDocId &lt;= GlobalDocId&lt;br/&gt;&lt; BaseDocId + docCount}
+        L3 --&gt;|否| L1
+        L3 --&gt;|是| L4[找到对应Segment]
     end
     
-    subgraph Convert["DocId转换"]
-        C1[获取Segment的BaseDocId&lt;br/&gt;前面所有Segment的docCount之和]
-        C2[计算LocalDocId&lt;br/&gt;LocalDocId = GlobalDocId - BaseDocId]
-        C3[验证LocalDocId有效性&lt;br/&gt;0 &lt;= LocalDocId &lt; docCount]
-        
-        L4 --&gt; C1
-        C1 --&gt; C2
-        C2 --&gt; C3
+    Locate --&gt; Convert[DocId转换]
+    
+    subgraph Convert["2. DocId转换"]
+        direction TB
+        C1[获取BaseDocId] --&gt; C2[计算LocalDocId&lt;br/&gt;LocalDocId = GlobalDocId - BaseDocId]
+        C2 --&gt; C3[验证有效性&lt;br/&gt;0 &lt;= LocalDocId &lt; docCount]
     end
     
-    subgraph Query["Segment内查询"]
-        Q1[使用LocalDocId查询&lt;br/&gt;IndexReader.Get]
-        Q2[倒排索引查询&lt;br/&gt;InvertedIndexer]
-        Q3[正排索引查询&lt;br/&gt;AttributeIndexer]
-        Q4[返回文档数据]
-        
-        C3 --&gt; Q1
-        Q1 --&gt; Q2
-        Q1 --&gt; Q3
-        Q2 --&gt; Q4
+    Convert --&gt; Query[Segment内查询]
+    
+    subgraph Query["3. Segment内查询"]
+        direction TB
+        Q1[使用LocalDocId查询&lt;br/&gt;IndexReader.Get] --&gt; Q2[InvertedIndexer&lt;br/&gt;倒排索引]
+        Q1 --&gt; Q3[AttributeIndexer&lt;br/&gt;正排索引]
+        Q2 --&gt; Q4[返回文档数据]
         Q3 --&gt; Q4
     end
     
+    Query --&gt; Result[返回查询结果]
+    
     subgraph Example["转换示例"]
-        E1[GlobalDocId = 1500]
-        E2[Segment1: BaseDocId=0, docCount=1000&lt;br/&gt;范围: 0-999, 不在范围内]
-        E3[Segment2: BaseDocId=1000, docCount=2000&lt;br/&gt;范围: 1000-2999, 在范围内]
-        E4[LocalDocId = 1500 - 1000 = 500]
-        E5[在Segment2内使用LocalDocId=500查询]
+        direction TB
+        E1["GlobalDocId = 1500"]
+        E2["Segment1: BaseDocId=0, docCount=1000&lt;br/&gt;范围: 0-999 不在范围内"]
+        E3["Segment2: BaseDocId=1000, docCount=2000&lt;br/&gt;范围: 1000-2999 在范围内"]
+        E4["LocalDocId = 1500 - 1000 = 500"]
+        E5["在Segment2内查询&lt;br/&gt;LocalDocId=500"]
         
         E1 --&gt; E2
         E2 --&gt; E3
@@ -15329,13 +15404,16 @@
         E4 --&gt; E5
     end
     
-    Q4 --&gt; R[返回查询结果]
-    
-    style Locate fill:#e3f2fd
-    style Convert fill:#fff3e0
-    style Query fill:#f3e5f5
-    style Example fill:#f5f5f5
-    style R fill:#e8f5e9
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Locate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Convert fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Query fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Result fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Example fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    style L3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style L4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Q4 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -15367,22 +15445,38 @@
 
 <p><strong>Segment 创建流程</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[创建SegmentMeta] --&gt; B[设置SegmentId/Directory/Schema]
-    B --&gt; C[调用ITabletFactory]
-    C --&gt; D{Segment类型}
-    D --&gt;|MemSegment| E[CreateMemSegment]
-    D --&gt;|DiskSegment| F[CreateDiskSegment]
-    E --&gt; G[调用Open初始化]
-    F --&gt; G
-    G --&gt; H[添加到TabletData]
-    H --&gt; I[Segment列表更新]
+<pre><code class="language-mermaid">flowchart TD
+    Start[开始创建Segment] --&gt; CreateMeta[创建SegmentMeta&lt;br/&gt;设置元数据]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style D fill:#e8f5e9
-    style G fill:#f3e5f5
-    style H fill:#fce4ec
+    CreateMeta --&gt; SetMeta[设置SegmentMeta属性&lt;br/&gt;SegmentId/Directory/Schema&lt;br/&gt;SegmentStatus等]
+    
+    SetMeta --&gt; CallFactory[调用ITabletFactory&lt;br/&gt;根据类型创建Segment]
+    
+    CallFactory --&gt; TypeSelect{Segment类型选择}
+    
+    TypeSelect --&gt;|MemSegment| CreateMem[CreateMemSegment&lt;br/&gt;创建内存段&lt;br/&gt;传入SegmentMeta]
+    TypeSelect --&gt;|DiskSegment| CreateDisk[CreateDiskSegment&lt;br/&gt;创建磁盘段&lt;br/&gt;传入SegmentMeta和BuildResource]
+    
+    CreateMem --&gt; Init[调用Open初始化&lt;br/&gt;加载Schema和配置&lt;br/&gt;初始化Indexer]
+    CreateDisk --&gt; Init
+    
+    Init --&gt; AddToTablet[添加到TabletData&lt;br/&gt;TabletData.AddSegment]
+    
+    AddToTablet --&gt; UpdateList[Segment列表更新&lt;br/&gt;_segments列表添加新Segment&lt;br/&gt;保持SegmentId有序]
+    
+    UpdateList --&gt; End[Segment创建完成]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CreateMeta fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style SetMeta fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style CallFactory fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style TypeSelect fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CreateMem fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CreateDisk fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Init fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style AddToTablet fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style UpdateList fill:#fce4ec,stroke:#c2185b,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -15471,25 +15565,80 @@
 
 <p>在查询场景中，需要遍历多个 Segment：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[查询请求] --&gt; B[TabletData]
-    B --&gt; C[获取Segment列表]
-    C --&gt; D[Segment1]
-    C --&gt; E[Segment2]
-    C --&gt; F[Segment3]
-    D --&gt; G[并行查询]
-    E --&gt; G
-    F --&gt; G
-    G --&gt; H[结果合并]
-    H --&gt; I[DocId转换]
-    I --&gt; J[局部DocId转全局DocId]
-    J --&gt; K[返回结果]
+<pre><code class="language-mermaid">flowchart TD
+    Start[查询请求] --&gt; GetTabletData[TabletData.GetSegment&lt;br/&gt;获取Segment列表]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style G fill:#e8f5e9
-    style H fill:#f3e5f5
-    style K fill:#fce4ec
+    GetTabletData --&gt; GetList[获取所有已构建的Segment&lt;br/&gt;ST_BUILT状态的Segment]
+    
+    GetList --&gt; ParallelQueryStart[并行查询各Segment]
+    
+    subgraph ParallelQueryGroup["并行查询阶段"]
+        direction LR
+        Q1[Segment1查询&lt;br/&gt;使用LocalDocId]
+        Q2[Segment2查询&lt;br/&gt;使用LocalDocId]
+        Q3[Segment3查询&lt;br/&gt;使用LocalDocId]
+        Q4[更多Segment...]
+    end
+    
+    ParallelQueryStart --&gt; Q1
+    ParallelQueryStart --&gt; Q2
+    ParallelQueryStart --&gt; Q3
+    ParallelQueryStart --&gt; Q4
+    
+    Q1 --&gt; MergeStart[结果合并]
+    Q2 --&gt; MergeStart
+    Q3 --&gt; MergeStart
+    Q4 --&gt; MergeStart
+    
+    subgraph MergeGroup["结果合并阶段"]
+        direction TB
+        M1[收集各Segment结果&lt;br/&gt;Result1, Result2, Result3...]
+        M2[DocId去重&lt;br/&gt;避免重复文档]
+        M3[按相关性分数排序&lt;br/&gt;或按指定字段排序]
+        M4[分页处理&lt;br/&gt;offset/limit]
+        
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+    end
+    
+    MergeStart --&gt; M1
+    M4 --&gt; DocIdConvertStart[DocId转换]
+    
+    subgraph DocIdConvertGroup["DocId转换阶段"]
+        direction TB
+        D1[获取每个Segment的BaseDocId&lt;br/&gt;前面所有Segment的docCount之和]
+        D2[转换LocalDocId为GlobalDocId&lt;br/&gt;GlobalDocId = BaseDocId + LocalDocId]
+        D3[验证GlobalDocId有效性]
+        
+        D1 --&gt; D2
+        D2 --&gt; D3
+    end
+    
+    DocIdConvertStart --&gt; D1
+    D3 --&gt; Return[返回查询结果&lt;br/&gt;包含GlobalDocId和文档数据]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetTabletData fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style GetList fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style ParallelQueryStart fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style ParallelQueryGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Q1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Q2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Q3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Q4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style MergeStart fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style MergeGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style M1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style M2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style M3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style M4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style DocIdConvertStart fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style DocIdConvertGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style D2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style D3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style Return fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ol>
