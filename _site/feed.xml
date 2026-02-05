@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-05T17:32:35+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-05T19:38:27+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
 
@@ -15619,39 +15619,49 @@
 <p><strong>IndexLib 整体架构</strong>：</p>
 
 <pre><code class="language-mermaid">flowchart TB
-    subgraph Application["应用层"]
+    subgraph Application["应用层 Application Layer"]
+        direction LR
         Havenask["Havenask&lt;br/&gt;业务应用"]
     end
     
-    subgraph Framework["框架层"]
-        Tablet["Tablet&lt;br/&gt;索引表"]
-        Segment["Segment&lt;br/&gt;索引段"]
-        Version["Version&lt;br/&gt;版本管理"]
+    subgraph Framework["框架层 Framework Layer"]
+        direction LR
+        Tablet["Tablet&lt;br/&gt;索引表&lt;br/&gt;管理索引生命周期"]
+        Segment["Segment&lt;br/&gt;索引段&lt;br/&gt;基本存储单元"]
+        Version["Version&lt;br/&gt;版本管理&lt;br/&gt;记录Segment列表"]
+        Tablet --&gt;|包含多个| Segment
+        Tablet --&gt;|维护| Version
+        Version --&gt;|记录| Segment
     end
     
-    subgraph Index["索引层"]
-        Normal["Normal Index&lt;br/&gt;普通索引"]
-        KKV["KKV Index&lt;br/&gt;键值对索引"]
-        KV["KV Index&lt;br/&gt;键值索引"]
+    subgraph Index["索引层 Index Layer"]
+        direction LR
+        Normal["Normal Index&lt;br/&gt;普通索引&lt;br/&gt;全文检索"]
+        KKV["KKV Index&lt;br/&gt;键值对索引&lt;br/&gt;多值存储"]
+        KV["KV Index&lt;br/&gt;键值索引&lt;br/&gt;简单存储"]
+        Normal -.-&gt;|可选实现| KKV
+        KKV -.-&gt;|可选实现| KV
     end
     
-    subgraph Document["文档层"]
-        Doc["Document&lt;br/&gt;文档"]
-        Field["Field&lt;br/&gt;字段"]
+    subgraph Document["文档层 Document Layer"]
+        direction LR
+        Doc["Document&lt;br/&gt;文档&lt;br/&gt;索引基本单位"]
+        Field["Field&lt;br/&gt;字段&lt;br/&gt;文档组成部分"]
+        Doc --&gt;|包含多个| Field
     end
     
-    subgraph FileSystem["文件系统层"]
-        Directory["Directory&lt;br/&gt;目录"]
-        File["File&lt;br/&gt;文件"]
+    subgraph FileSystem["文件系统层 File System Layer"]
+        direction LR
+        Directory["Directory&lt;br/&gt;目录&lt;br/&gt;文件组织"]
+        File["File&lt;br/&gt;文件&lt;br/&gt;数据存储"]
+        Directory --&gt;|包含| File
     end
     
-    Application --&gt; Framework
-    Framework --&gt; Index
-    Index --&gt; Document
-    Document --&gt; FileSystem
-    
-    Tablet --&gt; Segment
-    Tablet --&gt; Version
+    Application --&gt;|使用| Framework
+    Framework --&gt;|构建| Index
+    Index --&gt;|处理| Document
+    Document --&gt;|持久化| FileSystem
+    FileSystem -.-&gt;|加载| Framework
 </code></pre>
 
 <h2 id="1-indexlib-是什么">1. IndexLib 是什么</h2>
@@ -15674,22 +15684,44 @@
 
 <p>IndexLib 采用清晰的分层架构：</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────┐
-      Application Layer              (Havenask, 业务应用)
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-      Framework Layer                (Tablet, Segment, Version)
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-      Index Layer                    (Normal, KKV, KV)
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-      Document Layer                 (Document, Field)
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-      File System Layer              (Directory, File)
-└─────────────────────────────────────┘
-</code></pre></div></div>
+<pre><code class="language-mermaid">flowchart TB
+    subgraph App["应用层 Application Layer"]
+        direction LR
+        Havenask["Havenask&lt;br/&gt;业务应用"]
+    end
+    
+    subgraph Framework["框架层 Framework Layer"]
+        direction LR
+        Tablet["Tablet&lt;br/&gt;索引表管理"] --- Segment["Segment&lt;br/&gt;索引段存储"] --- Version["Version&lt;br/&gt;版本控制"]
+    end
+    
+    subgraph Index["索引层 Index Layer"]
+        direction LR
+        Normal["Normal Index&lt;br/&gt;全文检索索引"] --- KKV["KKV Index&lt;br/&gt;键值对索引"] --- KV["KV Index&lt;br/&gt;键值索引"]
+    end
+    
+    subgraph Document["文档层 Document Layer"]
+        direction LR
+        Doc["Document&lt;br/&gt;文档对象"] --- Field["Field&lt;br/&gt;字段定义"]
+    end
+    
+    subgraph FileSystem["文件系统层 File System Layer"]
+        direction LR
+        Directory["Directory&lt;br/&gt;目录抽象"] --- File["File&lt;br/&gt;文件操作"]
+    end
+    
+    App --&gt;|调用| Framework
+    Framework --&gt;|构建| Index
+    Index --&gt;|处理| Document
+    Document --&gt;|持久化| FileSystem
+    FileSystem -.-&gt;|加载| Framework
+    
+    style App fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Framework fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Index fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Document fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style FileSystem fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+</code></pre>
 
 <p><strong>各层职责</strong>：</p>
 
@@ -15709,64 +15741,74 @@
 <pre><code class="language-mermaid">classDiagram
     class ITablet {
         &lt;&lt;interface&gt;&gt;
-        + Open()
-        + Build()
-        + Flush()
-        + Seal()
-        + Commit()
-        + GetTabletReader()
+        +Open()
+        +Build()
+        +Flush()
+        +Seal()
+        +Commit()
+        +GetTabletReader()
     }
     
     class TabletData {
-        - Version _onDiskVersion
-        - vector_Segment _segments
-        - ResourceMap _resourceMap
-        + CreateSlice()
-        + GetSegment()
+        -Version _onDiskVersion
+        -vector~Segment~ _segments
+        -ResourceMap _resourceMap
+        +CreateSlice()
+        +GetSegment()
+        +GetSegmentWithBaseDocid()
+        +UpdateVersion()
     }
     
     class Segment {
         &lt;&lt;abstract&gt;&gt;
-        + GetSegmentId()
-        + GetSegmentStatus()
-        + GetIndexer()
+        +GetSegmentId()
+        +GetSegmentStatus()
+        +GetIndexer()
+        +GetDocCount()
     }
     
     class MemSegment {
-        + Build()
-        + NeedDump()
-        + CreateSegmentDumpItems()
-        + Seal()
+        -map~string,IIndexer~ _indexers
+        +Build()
+        +NeedDump()
+        +CreateSegmentDumpItems()
+        +Seal()
+        +EvaluateCurrentMemUsed()
     }
     
     class DiskSegment {
-        + Open()
-        + Reopen()
+        -map~string,IIndexer~ _indexers
+        +Open()
+        +Reopen()
+        +GetIndexer()
     }
     
     class Version {
-        - versionid_t _versionId
-        - set_SegmentInVersion _segments
-        - Locator _locator
-        + AddSegment()
-        + GetVersionId()
-        + GetLocator()
+        -versionid_t _versionId
+        -vector~SegmentInVersion~ _segments
+        -Locator _locator
+        +AddSegment()
+        +GetVersionId()
+        +GetLocator()
+        +IncVersionId()
     }
     
     class TabletReader {
-        - map_IndexReaderKey_IIndexReader _indexReaderMap
-        + Open()
-        + Search()
-        + GetIndexReader()
+        -map~IndexReaderKey,IIndexReader~ _indexReaderMap
+        +Open()
+        +Search()
+        +GetIndexReader()
+        +CreateIndexReader()
     }
     
     ITablet --&gt; TabletData : 管理
-    TabletData --&gt; Segment : 包含多个
+    TabletData "1" *-- "many" Segment : 包含
     Segment &lt;|-- MemSegment : 继承
     Segment &lt;|-- DiskSegment : 继承
-    TabletData --&gt; Version : 包含
+    TabletData "1" --&gt; "1" Version : 包含
     TabletReader --&gt; TabletData : 读取
     TabletReader --&gt; Segment : 查询
+    ITablet ..&gt; TabletReader : 创建
 </code></pre>
 
 <p><strong>核心组件职责</strong>：</p>
@@ -15938,33 +15980,124 @@
 
 <p><strong>Tablet 的生命周期流程</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-tablet-lifecycle.svg" alt="Tablet 生命周期：从 Open 到 Commit 的完整流程" /></p>
+<p>Tablet 生命周期：从 Open 到 Commit 的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始]) --&gt; Open[Open&lt;br/&gt;打开索引&lt;br/&gt;加载Schema和配置]
+    
+    Open --&gt; Build[Build&lt;br/&gt;开始构建&lt;br/&gt;接收文档批次]
+    
+    Build --&gt; Building{持续构建}
+    
+    Building --&gt;|接收文档| WriteDoc[写入文档&lt;br/&gt;写入MemSegment&lt;br/&gt;更新索引]
+    
+    WriteDoc --&gt; CheckMem{检查内存}
+    
+    CheckMem --&gt;|内存充足| Building
+    CheckMem --&gt;|需要转储| Flush[Flush&lt;br/&gt;触发转储&lt;br/&gt;NeedDump返回true]
+    
+    Flush --&gt; Dump[转储MemSegment&lt;br/&gt;创建DiskSegment&lt;br/&gt;更新TabletData]
+    
+    Dump --&gt; Building
+    
+    Building --&gt;|需要封存| Seal[Seal&lt;br/&gt;封存Segment&lt;br/&gt;标记为只读]
+    
+    Seal --&gt; WaitDump{等待转储完成}
+    
+    WaitDump --&gt;|转储完成| Commit[Commit&lt;br/&gt;提交版本&lt;br/&gt;创建新Version]
+    
+    Commit --&gt; PrepareVersion[准备Version&lt;br/&gt;收集Segment列表&lt;br/&gt;更新Locator]
+    
+    PrepareVersion --&gt; CreateFence[创建Fence目录&lt;br/&gt;保证原子性]
+    
+    CreateFence --&gt; WriteVersion[写入Version文件&lt;br/&gt;序列化为JSON]
+    
+    WriteVersion --&gt; AtomicSwitch[原子切换&lt;br/&gt;重命名Fence目录]
+    
+    AtomicSwitch --&gt; UpdateTablet[更新TabletData&lt;br/&gt;切换到新版本]
+    
+    UpdateTablet --&gt; Continue{继续构建?}
+    
+    Continue --&gt;|是| Building
+    Continue --&gt;|否| Reopen[Reopen&lt;br/&gt;重新打开&lt;br/&gt;加载新版本]
+    
+    Reopen --&gt; Building
+    
+    Building --&gt;|关闭索引| End([结束])
+    
+    style Open fill:#e3f2fd
+    style Build fill:#fff3e0
+    style Flush fill:#f3e5f5
+    style Seal fill:#e8f5e9
+    style Commit fill:#fce4ec
+    style PrepareVersion fill:#fff9c4
+    style AtomicSwitch fill:#ffccbc
+</code></pre>
 
 <p><strong>Tablet 生命周期状态图</strong>：</p>
 
 <pre><code class="language-mermaid">stateDiagram-v2
-    [*] --&gt; Open: 打开索引
-    Open --&gt; Building: 开始构建
-    Building --&gt; Building: 持续构建
-    Building --&gt; Flushing: 触发转储
+    [*] --&gt; Open: Open()
+    
+    Open --&gt; Building: Build()
+    
+    state Building {
+        [*] --&gt; Receiving: 接收文档
+        Receiving --&gt; Writing: 写入MemSegment
+        Writing --&gt; Checking: 检查内存
+        Checking --&gt; Receiving: 继续接收
+        Checking --&gt; [*]: 触发转储
+    }
+    
+    Building --&gt; Flushing: NeedDump()
+    
+    state Flushing {
+        [*] --&gt; Dumping: 转储MemSegment
+        Dumping --&gt; Creating: 创建DiskSegment
+        Creating --&gt; Updating: 更新TabletData
+        Updating --&gt; [*]
+    }
+    
     Flushing --&gt; Building: 转储完成
-    Building --&gt; Sealing: 封存 Segment
+    
+    Building --&gt; Sealing: Seal()
+    
+    state Sealing {
+        [*] --&gt; SealingSegment: 封存Segment
+        SealingSegment --&gt; Waiting: 等待转储完成
+        Waiting --&gt; [*]
+    }
+    
     Sealing --&gt; Committing: 提交版本
+    
+    state Committing {
+        [*] --&gt; Preparing: 准备Version
+        Preparing --&gt; WritingVersion: 写入Version文件
+        WritingVersion --&gt; AtomicSwitch: 原子切换
+        AtomicSwitch --&gt; UpdatingData: 更新TabletData
+        UpdatingData --&gt; [*]
+    }
+    
     Committing --&gt; Building: 继续构建
     Committing --&gt; Reopening: 重新打开
+    
     Reopening --&gt; Building: 加载新版本
+    
     Building --&gt; [*]: 关闭索引
+    
     note right of Building
-        接收文档
-        写入 MemSegment
+        核心构建状态
+        持续接收和写入文档
     end note
+    
     note right of Flushing
-        转储 MemSegment
-        创建 DiskSegment
+        异步转储过程
+        不阻塞构建
     end note
+    
     note right of Committing
-        更新 Version
-        持久化到磁盘
+        Fence机制保证原子性
+        版本号递增
     end note
 </code></pre>
 
@@ -15986,28 +16119,36 @@
 <pre><code class="language-mermaid">classDiagram
     class Segment {
         &lt;&lt;abstract&gt;&gt;
-        +GetSegmentId()
-        +GetSegmentStatus()
-        +GetIndexer()
+        # segmentid_t _segmentId
+        # SegmentStatus _status
+        + GetSegmentId() segmentid_t
+        + GetDocCount() uint32_t
+        + GetSegmentStatus() SegmentStatus
+        + GetIndexer(string) IIndexer
     }
     
     class MemSegment {
-        +Build()
-        +NeedDump()
-        +CreateSegmentDumpItems()
-        +Seal()
+        - map~string,IIndexer~ _indexers
+        + Build(IDocumentBatch) Status
+        + NeedDump() bool
+        + CreateSegmentDumpItems() vector~SegmentDumpItem~
+        + Seal() void
+        + EvaluateCurrentMemUsed() size_t
     }
     
     class DiskSegment {
-        +Open()
-        +Reopen()
+        - map~string,IIndexer~ _indexers
+        + Open(string) Status
+        + Reopen() Status
+        + GetIndexer(string) IIndexer
     }
     
     Segment &lt;|-- MemSegment : 继承
     Segment &lt;|-- DiskSegment : 继承
     
-    note for MemSegment "内存段&lt;br/&gt;用于实时写入"
-    note for DiskSegment "磁盘段&lt;br/&gt;用于持久化存储"
+    note for Segment "抽象基类&lt;br/&gt;定义Segment通用接口&lt;br/&gt;管理SegmentId和状态"
+    note for MemSegment "内存段&lt;br/&gt;实时写入和构建&lt;br/&gt;支持转储到磁盘"
+    note for DiskSegment "磁盘段&lt;br/&gt;持久化存储&lt;br/&gt;支持查询和重新打开"
 </code></pre>
 
 <p>从图中可以看到，Segment 有两种类型：</p>
@@ -16399,48 +16540,43 @@
 
 <p><strong>Version 演进</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph V1["Version 1&lt;br/&gt;versionId=1"]
-        V1_S1[Segment 1&lt;br/&gt;schemaId=0]
-        V1_S2[Segment 2&lt;br/&gt;schemaId=0]
-        V1_S3[Segment 3&lt;br/&gt;schemaId=0]
-        V1_L[Locator&lt;br/&gt;timestamp=100]
+<pre><code class="language-mermaid">flowchart LR
+    subgraph V1["Version 1&lt;br/&gt;versionId=1&lt;br/&gt;timestamp=100"]
+        direction TB
+        V1_S1[Segment 1]
+        V1_S2[Segment 2]
+        V1_S3[Segment 3]
+        V1_L[Locator&lt;br/&gt;ts=100]
         V1_S1 --- V1_S2
         V1_S2 --- V1_S3
         V1_S3 --- V1_L
     end
     
-    subgraph Commit1["Commit操作"]
-        C1[新增Segment 4]
-        C2[更新Locator&lt;br/&gt;timestamp=200]
-        C3[VersionId递增&lt;br/&gt;1 → 2]
-    end
+    V1 --&gt;|Commit| Commit1[Commit操作&lt;br/&gt;新增Segment 4&lt;br/&gt;更新Locator ts=200&lt;br/&gt;versionId: 1→2]
     
-    subgraph V2["Version 2&lt;br/&gt;versionId=2"]
-        V2_S1[Segment 1&lt;br/&gt;schemaId=0]
-        V2_S2[Segment 2&lt;br/&gt;schemaId=0]
-        V2_S3[Segment 3&lt;br/&gt;schemaId=0]
-        V2_S4[Segment 4&lt;br/&gt;schemaId=0]
-        V2_L[Locator&lt;br/&gt;timestamp=200]
+    subgraph V2["Version 2&lt;br/&gt;versionId=2&lt;br/&gt;timestamp=200"]
+        direction TB
+        V2_S1[Segment 1]
+        V2_S2[Segment 2]
+        V2_S3[Segment 3]
+        V2_S4[Segment 4&lt;br/&gt;新增]
+        V2_L[Locator&lt;br/&gt;ts=200]
         V2_S1 --- V2_S2
         V2_S2 --- V2_S3
         V2_S3 --- V2_S4
         V2_S4 --- V2_L
     end
     
-    subgraph Commit2["Commit操作"]
-        C4[新增Segment 5]
-        C5[更新Locator&lt;br/&gt;timestamp=300]
-        C6[VersionId递增&lt;br/&gt;2 → 3]
-    end
+    V2 --&gt;|Commit| Commit2[Commit操作&lt;br/&gt;新增Segment 5&lt;br/&gt;更新Locator ts=300&lt;br/&gt;versionId: 2→3]
     
-    subgraph V3["Version 3&lt;br/&gt;versionId=3"]
-        V3_S1[Segment 1&lt;br/&gt;schemaId=0]
-        V3_S2[Segment 2&lt;br/&gt;schemaId=0]
-        V3_S3[Segment 3&lt;br/&gt;schemaId=0]
-        V3_S4[Segment 4&lt;br/&gt;schemaId=0]
-        V3_S5[Segment 5&lt;br/&gt;schemaId=0]
-        V3_L[Locator&lt;br/&gt;timestamp=300]
+    subgraph V3["Version 3&lt;br/&gt;versionId=3&lt;br/&gt;timestamp=300"]
+        direction TB
+        V3_S1[Segment 1]
+        V3_S2[Segment 2]
+        V3_S3[Segment 3]
+        V3_S4[Segment 4]
+        V3_S5[Segment 5&lt;br/&gt;新增]
+        V3_L[Locator&lt;br/&gt;ts=300]
         V3_S1 --- V3_S2
         V3_S2 --- V3_S3
         V3_S3 --- V3_S4
@@ -16448,38 +16584,33 @@
         V3_S5 --- V3_L
     end
     
-    subgraph Merge["Merge操作"]
-        M1[合并Segment 1,2,3,4,5]
-        M2[创建Segment 6&lt;br/&gt;合并后]
-        M3[删除旧Segment&lt;br/&gt;1,2,3,4,5]
-        M4[更新Locator&lt;br/&gt;timestamp=400]
-        M5[VersionId递增&lt;br/&gt;3 → 4]
-        M1 --&gt; M2
-        M2 --&gt; M3
-        M3 --&gt; M4
-        M4 --&gt; M5
-    end
+    V3 --&gt;|Merge| Merge[Merge操作&lt;br/&gt;合并Segment 1-5&lt;br/&gt;创建Segment 6&lt;br/&gt;删除旧Segment&lt;br/&gt;更新Locator ts=400&lt;br/&gt;versionId: 3→4]
     
-    subgraph V4["Version 4&lt;br/&gt;versionId=4"]
-        V4_S6[Segment 6&lt;br/&gt;schemaId=0&lt;br/&gt;合并后]
-        V4_L[Locator&lt;br/&gt;timestamp=400]
+    subgraph V4["Version 4&lt;br/&gt;versionId=4&lt;br/&gt;timestamp=400"]
+        direction TB
+        V4_S6[Segment 6&lt;br/&gt;合并后]
+        V4_L[Locator&lt;br/&gt;ts=400]
         V4_S6 --- V4_L
     end
     
-    V1 --&gt;|Commit| Commit1
-    Commit1 --&gt; V2
-    V2 --&gt;|Commit| Commit2
-    Commit2 --&gt; V3
-    V3 --&gt;|Merge| Merge
-    Merge --&gt; V4
+    V1_S1 -.-&gt;|复用| V2_S1
+    V1_S2 -.-&gt;|复用| V2_S2
+    V1_S3 -.-&gt;|复用| V2_S3
+    V2_S1 -.-&gt;|复用| V3_S1
+    V2_S2 -.-&gt;|复用| V3_S2
+    V2_S3 -.-&gt;|复用| V3_S3
+    V2_S4 -.-&gt;|复用| V3_S4
     
-    style V1 fill:#e3f2fd
-    style V2 fill:#fff3e0
-    style V3 fill:#f3e5f5
-    style V4 fill:#e8f5e9
-    style Commit1 fill:#fff9c4
-    style Commit2 fill:#fff9c4
-    style Merge fill:#fce4ec
+    style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style V4 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style Commit1 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Commit2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Merge fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style V2_S4 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V3_S5 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V4_S6 fill:#4caf50,stroke:#1b5e20,stroke-width:2px
 </code></pre>
 
 <p>版本演进示例：</p>
@@ -16829,33 +16960,32 @@
 
 <p><strong>Locator 的比较逻辑</strong>：</p>
 
-<p><strong>Locator 比较逻辑</strong>：</p>
-
 <pre><code class="language-mermaid">flowchart TD
-    A[Locator A vs Locator B] --&gt; B{比较 timestamp}
+    Start[Locator A vs Locator B&lt;br/&gt;IsFasterThan比较] --&gt; Step1{Step 1: 比较 timestamp}
     
-    B --&gt;|A.timestamp &gt; B.timestamp| C1{比较 hashId}
-    B --&gt;|A.timestamp &lt; B.timestamp| D[B 更快&lt;br/&gt;LCR_SLOWER]
-    B --&gt;|A.timestamp == B.timestamp| E{比较 concurrentIdx}
+    Step1 --&gt;|A.timestamp &gt; B.timestamp| Step2{Step 2: 比较 hashId集合}
+    Step1 --&gt;|A.timestamp &lt; B.timestamp| Result1[B 更快&lt;br/&gt;LCR_SLOWER&lt;br/&gt;A 落后于 B]
+    Step1 --&gt;|A.timestamp == B.timestamp| Step3{Step 3: 比较 concurrentIdx}
     
-    C1 --&gt;|A 包含所有 B 的 hashId| F[A 更快&lt;br/&gt;LCR_FULLY_FASTER]
-    C1 --&gt;|A 部分包含 B 的 hashId| G[A 部分更快&lt;br/&gt;LCR_PARTIAL_FASTER]
-    C1 --&gt;|A 不包含 B 的 hashId| D
+    Step2 --&gt;|A 包含所有 B 的 hashId&lt;br/&gt;A.progress 覆盖 B.progress| Result2[A 更快&lt;br/&gt;LCR_FULLY_FASTER&lt;br/&gt;A 完全领先 B]
+    Step2 --&gt;|A 部分包含 B 的 hashId&lt;br/&gt;A.progress 部分覆盖 B.progress| Result3[A 部分更快&lt;br/&gt;LCR_PARTIAL_FASTER&lt;br/&gt;A 部分领先 B]
+    Step2 --&gt;|A 不包含 B 的 hashId&lt;br/&gt;A.progress 未覆盖 B.progress| Result1
     
-    E --&gt;|A.concurrentIdx &gt; B.concurrentIdx| F
-    E --&gt;|A.concurrentIdx &lt; B.concurrentIdx| D
-    E --&gt;|A.concurrentIdx == B.concurrentIdx| H{比较 sourceIdx}
+    Step3 --&gt;|A.concurrentIdx &gt; B.concurrentIdx| Result2
+    Step3 --&gt;|A.concurrentIdx &lt; B.concurrentIdx| Result1
+    Step3 --&gt;|A.concurrentIdx == B.concurrentIdx| Step4{Step 4: 比较 sourceIdx}
     
-    H --&gt;|A.sourceIdx &gt;= B.sourceIdx| F
-    H --&gt;|A.sourceIdx &lt; B.sourceIdx| D
+    Step4 --&gt;|A.sourceIdx &gt;= B.sourceIdx| Result2
+    Step4 --&gt;|A.sourceIdx &lt; B.sourceIdx| Result1
     
-    style B fill:#e3f2fd
-    style C1 fill:#e3f2fd
-    style E fill:#fff3e0
-    style H fill:#fff3e0
-    style F fill:#e8f5e9
-    style G fill:#fff9c4
-    style D fill:#ffebee
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Step1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step4 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Result1 fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Result2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Result3 fill:#fff9c4,stroke:#f57f17,stroke-width:2px
 </code></pre>
 
 <p>比较示例：</p>
@@ -16877,28 +17007,59 @@
 
 <p>Locator 的比较是增量更新的核心，通过比较两个 Locator 可以判断数据是否已处理。比较算法需要考虑多个维度：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[Locator A] --&gt; B[IsFasterThan Locator B?]
-    B --&gt; C{比较 timestamp}
-    C --&gt;|A.timestamp &lt; B.timestamp| D[LCR_SLOWER]
-    C --&gt;|A.timestamp &gt; B.timestamp| E{比较 hashId}
-    C --&gt;|A.timestamp == B.timestamp| F{比较 concurrentIdx}
+<pre><code class="language-mermaid">flowchart TD
+    Start[比较 Locator A 和 Locator B] --&gt; TS{ timestamp 比较&lt;br/&gt;A.ts vs B.ts}
     
-    E --&gt;|A 包含所有 B 的 hashId| G[LCR_FULLY_FASTER]
-    E --&gt;|A 部分包含 B 的 hashId| H[LCR_PARTIAL_FASTER]
-    E --&gt;|A 不包含 B 的 hashId| D
+    subgraph Level1["第一层：timestamp 比较结果"]
+        direction LR
+        TS --&gt;|A.ts &lt; B.ts| SLOWER1[LCR_SLOWER]
+        TS --&gt;|A.ts &gt; B.ts| Branch1[进入分支1]
+        TS --&gt;|A.ts == B.ts| Branch2[进入分支2]
+    end
     
-    F --&gt;|A.concurrentIdx &gt; B.concurrentIdx| G
-    F --&gt;|A.concurrentIdx &lt; B.concurrentIdx| D
-    F --&gt;|A.concurrentIdx == B.concurrentIdx| I{比较 sourceIdx}
+    subgraph Level2["第二层：hashId 集合检查（分支1）"]
+        direction LR
+        Branch1 --&gt; HashCheck{hashId 集合&lt;br/&gt;A.progress 覆盖 B.progress?}
+        HashCheck --&gt;|完全覆盖| FASTER1[LCR_FULLY_FASTER]
+        HashCheck --&gt;|部分覆盖| PARTIAL1[LCR_PARTIAL_FASTER]
+        HashCheck --&gt;|未覆盖| SLOWER2[LCR_SLOWER]
+    end
     
-    I --&gt;|A.sourceIdx &gt;= B.sourceIdx| G
-    I --&gt;|A.sourceIdx &lt; B.sourceIdx| D
+    subgraph Level3["第二层：concurrentIdx 比较（分支2）"]
+        direction LR
+        Branch2 --&gt; ConcurrentCheck{concurrentIdx&lt;br/&gt;A.concurrentIdx vs B.concurrentIdx}
+        ConcurrentCheck --&gt;|A &gt; B| FASTER2[LCR_FULLY_FASTER]
+        ConcurrentCheck --&gt;|A &lt; B| SLOWER3[LCR_SLOWER]
+        ConcurrentCheck --&gt;|A == B| Branch3[进入分支3]
+    end
     
-    style B fill:#e3f2fd
-    style G fill:#e8f5e9
-    style H fill:#fff3e0
-    style D fill:#ffebee
+    subgraph Level4["第三层：sourceIdx 比较（分支3）"]
+        direction LR
+        Branch3 --&gt; SourceCheck{sourceIdx&lt;br/&gt;A.sourceIdx vs B.sourceIdx}
+        SourceCheck --&gt;|A &gt;= B| FASTER3[LCR_FULLY_FASTER]
+        SourceCheck --&gt;|A &lt; B| SLOWER4[LCR_SLOWER]
+    end
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style TS fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Level1 fill:#f5f5f5,stroke:#757575,stroke-width:1px
+    style Level2 fill:#f5f5f5,stroke:#757575,stroke-width:1px
+    style Level3 fill:#f5f5f5,stroke:#757575,stroke-width:1px
+    style Level4 fill:#f5f5f5,stroke:#757575,stroke-width:1px
+    style HashCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ConcurrentCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SourceCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SLOWER1 fill:#ffebee,stroke:#c62828,stroke-width:3px
+    style SLOWER2 fill:#ffebee,stroke:#c62828,stroke-width:3px
+    style SLOWER3 fill:#ffebee,stroke:#c62828,stroke-width:3px
+    style SLOWER4 fill:#ffebee,stroke:#c62828,stroke-width:3px
+    style FASTER1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style FASTER2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style FASTER3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style PARTIAL1 fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style Branch1 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
+    style Branch2 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
+    style Branch3 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
 </code></pre>
 
 <p><strong>性能优化</strong>：</p>
@@ -16934,94 +17095,56 @@
 
 <p><strong>TabletReader 查询流程</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Input["输入阶段"]
-        A1[JSON 查询请求]
-        A2[解析JSON查询&lt;br/&gt;QueryParser]
-        A3[提取查询类型&lt;br/&gt;TermQuery/RangeQuery等]
-        A4[提取查询条件&lt;br/&gt;term/范围/排序字段]
-        A5[创建内部Query对象]
-        
-        A1 --&gt; A2
-        A2 --&gt; A3
-        A3 --&gt; A4
-        A4 --&gt; A5
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Input["1. 输入阶段"]
+        direction TB
+        A1[JSON 查询请求] --&gt; A2[解析JSON查询&lt;br/&gt;QueryParser]
+        A2 --&gt; A3[提取查询类型和条件&lt;br/&gt;TermQuery/RangeQuery等]
+        A3 --&gt; A4[创建内部Query对象]
     end
     
-    subgraph Reader["IndexReader获取"]
-        B1[GetIndexReader&lt;br/&gt;indexType, indexName]
-        B2{缓存中存在?}
-        B3[返回缓存的IndexReader]
-        B4[创建新的IndexReader]
-        B5[InvertedIndexReader&lt;br/&gt;倒排索引]
-        B6[AttributeReader&lt;br/&gt;正排索引]
-        B7[PrimaryKeyReader&lt;br/&gt;主键索引]
-        B8[缓存IndexReader]
-        
-        A5 --&gt; B1
-        B1 --&gt; B2
-        B2 --&gt;|是| B3
-        B2 --&gt;|否| B4
-        B4 --&gt; B5
-        B4 --&gt; B6
-        B4 --&gt; B7
-        B4 --&gt; B8
-        B3 --&gt; C1
-        B5 --&gt; C1
-        B6 --&gt; C1
-        B7 --&gt; C1
+    subgraph Reader["2. IndexReader获取"]
+        direction TB
+        B1[GetIndexReader&lt;br/&gt;indexType, indexName] --&gt; B2{缓存中存在?}
+        B2 --&gt;|是| B3[返回缓存的IndexReader]
+        B2 --&gt;|否| B4[创建新的IndexReader&lt;br/&gt;InvertedIndexReader&lt;br/&gt;AttributeReader&lt;br/&gt;PrimaryKeyReader]
+        B4 --&gt; B5[缓存IndexReader]
+        B3 --&gt; B6[IndexReader就绪]
+        B5 --&gt; B6
     end
     
-    subgraph Query["查询执行阶段"]
-        C1[TabletData.CreateSlice&lt;br/&gt;ST_BUILT获取Segment列表]
-        C2[遍历Segment]
-        C3[Segment1查询]
-        C4[Segment2查询]
-        C5[Segment3查询]
-        C6[并行查询执行]
-        C7[DocId转换&lt;br/&gt;GlobalDocId → LocalDocId]
-        C8[IndexReader.Search&lt;br/&gt;执行索引查询]
-        
-        C1 --&gt; C2
-        C2 --&gt; C3
-        C2 --&gt; C4
-        C2 --&gt; C5
-        C3 --&gt; C6
-        C4 --&gt; C6
-        C5 --&gt; C6
-        C6 --&gt; C7
-        C7 --&gt; C8
+    subgraph Query["3. 查询执行阶段"]
+        direction TB
+        C1[TabletData.CreateSlice&lt;br/&gt;获取Segment列表] --&gt; C2[遍历Segment]
+        C2 --&gt; C3[并行查询各Segment&lt;br/&gt;Segment1/Segment2/Segment3]
+        C3 --&gt; C4[DocId转换&lt;br/&gt;GlobalDocId → LocalDocId]
+        C4 --&gt; C5[IndexReader.Search&lt;br/&gt;执行索引查询]
     end
     
-    subgraph Process["结果处理阶段"]
-        D1[收集各Segment结果&lt;br/&gt;Result1, Result2, Result3]
-        D2[DocId去重&lt;br/&gt;避免重复文档]
-        D3[按相关性分数排序&lt;br/&gt;或按指定字段排序]
-        D4[分页处理&lt;br/&gt;offset/limit]
-        D5[聚合统计&lt;br/&gt;总数/平均值等]
-        
-        C8 --&gt; D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D3 --&gt; D4
-        D4 --&gt; D5
+    subgraph Process["4. 结果处理阶段"]
+        direction TB
+        D1[收集各Segment结果] --&gt; D2[DocId去重]
+        D2 --&gt; D3[排序&lt;br/&gt;相关性分数或指定字段]
+        D3 --&gt; D4[分页处理&lt;br/&gt;offset/limit]
+        D4 --&gt; D5[聚合统计&lt;br/&gt;可选]
     end
     
-    subgraph Output["输出阶段"]
-        E1[字段选择&lt;br/&gt;根据查询条件]
-        E2[序列化为JSON&lt;br/&gt;Jsonizable]
-        E3[返回JSON结果]
-        
-        D5 --&gt; E1
-        E1 --&gt; E2
-        E2 --&gt; E3
+    subgraph Output["5. 输出阶段"]
+        direction TB
+        E1[字段选择] --&gt; E2[序列化为JSON]
+        E2 --&gt; E3[返回JSON结果]
     end
     
-    style Input fill:#e3f2fd
-    style Reader fill:#fff9c4
-    style Query fill:#fff3e0
-    style Process fill:#f3e5f5
-    style Output fill:#e8f5e9
+    Input --&gt;|Query对象| Reader
+    Reader --&gt;|IndexReader| Query
+    Query --&gt;|查询结果| Process
+    Process --&gt;|处理后的结果| Output
+    
+    style Input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Reader fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Process fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p>从图中可以看到查询流程：</p>
