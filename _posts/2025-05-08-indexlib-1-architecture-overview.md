@@ -12,7 +12,44 @@ date: 2025-05-08
 最近因为工作需要，我开始深入接触 IndexLib 这个阿里巴巴 Havenask 搜索引擎的核心索引库。IndexLib 是一个高性能、可扩展的 C++ 索引引擎，代码量庞大、设计精良，但文档相对较少。为了更好地理解决其设计理念和实现细节，我决定通过详细阅读源码的方式来学习，并将学习过程中的理解和思考整理成系列文章。
 
 
-![IndexLib 整体架构：从 Tablet 到 Segment 的分层设计](/images/diagrams/indexlib-architecture-overview.svg)
+**IndexLib 整体架构**：
+
+```mermaid
+flowchart TB
+    subgraph Application["应用层"]
+        Havenask["Havenask<br/>业务应用"]
+    end
+    
+    subgraph Framework["框架层"]
+        Tablet["Tablet<br/>索引表"]
+        Segment["Segment<br/>索引段"]
+        Version["Version<br/>版本管理"]
+    end
+    
+    subgraph Index["索引层"]
+        Normal["Normal Index<br/>普通索引"]
+        KKV["KKV Index<br/>键值对索引"]
+        KV["KV Index<br/>键值索引"]
+    end
+    
+    subgraph Document["文档层"]
+        Doc["Document<br/>文档"]
+        Field["Field<br/>字段"]
+    end
+    
+    subgraph FileSystem["文件系统层"]
+        Directory["Directory<br/>目录"]
+        File["File<br/>文件"]
+    end
+    
+    Application --> Framework
+    Framework --> Index
+    Index --> Document
+    Document --> FileSystem
+    
+    Tablet --> Segment
+    Tablet --> Version
+```
 
 ## 1. IndexLib 是什么
 
@@ -312,7 +349,35 @@ stateDiagram-v2
 
 **Segment** 是索引的基本存储单元，一个 Tablet 包含多个 Segment。让我们先通过图来理解 Segment 的类型和关系：
 
-![Segment 类型：MemSegment 和 DiskSegment 的关系](/images/diagrams/indexlib-segment-types.svg)
+**Segment 类型关系**：
+
+```mermaid
+classDiagram
+    class Segment {
+        <<abstract>>
+        +GetSegmentId()
+        +GetSegmentStatus()
+        +GetIndexer()
+    }
+    
+    class MemSegment {
+        +Build()
+        +NeedDump()
+        +CreateSegmentDumpItems()
+        +Seal()
+    }
+    
+    class DiskSegment {
+        +Open()
+        +Reopen()
+    }
+    
+    Segment <|-- MemSegment : 继承
+    Segment <|-- DiskSegment : 继承
+    
+    note for MemSegment "内存段<br/>用于实时写入"
+    note for DiskSegment "磁盘段<br/>用于持久化存储"
+```
 
 从图中可以看到，Segment 有两种类型：
 - **MemSegment**：内存段，用于实时写入
@@ -343,7 +408,83 @@ public:
 
 **MemSegment 的工作流程**：
 
-![MemSegment 工作流程：从 Build 到 Dump 的完整过程](/images/diagrams/indexlib-memsegment-workflow.svg)
+**MemSegment 工作流程**：
+
+```mermaid
+flowchart TD
+    subgraph Input["输入阶段"]
+        A1[接收文档批次<br/>IDocumentBatch]
+        A2[文档验证<br/>格式/Schema验证]
+        A1 --> A2
+    end
+    
+    subgraph Build["构建阶段"]
+        B1[分配DocId<br/>BaseDocId + LocalDocId]
+        B2[写入Indexer]
+        B3[倒排索引<br/>InvertedIndexer]
+        B4[正排索引<br/>AttributeIndexer]
+        B5[主键索引<br/>PrimaryKeyIndexer]
+        B6[更新SegmentInfo<br/>docCount/Locator]
+        B7[评估内存使用<br/>EvaluateCurrentMemUsed]
+        B8{转储条件检查<br/>NeedDump?}
+        
+        A2 --> B1
+        B1 --> B2
+        B2 --> B3
+        B2 --> B4
+        B2 --> B5
+        B3 --> B6
+        B4 --> B6
+        B5 --> B6
+        B6 --> B7
+        B7 --> B8
+        B8 -->|否| B1
+    end
+    
+    subgraph Dump["转储阶段"]
+        D1[设置状态<br/>ST_BUILDING → ST_DUMPING]
+        D2[创建转储项<br/>CreateSegmentDumpItems]
+        D3[索引文件转储]
+        D4[元数据文件转储]
+        D5[异步转储到磁盘<br/>Dump]
+        D6[创建DiskSegment]
+        D7[Seal封存<br/>标记为只读]
+        
+        B8 -->|是| D1
+        D1 --> D2
+        D2 --> D3
+        D2 --> D4
+        D3 --> D5
+        D4 --> D5
+        D5 --> D6
+        D6 --> D7
+    end
+    
+    subgraph Output["输出阶段"]
+        E1[DiskSegment<br/>状态: ST_BUILT]
+        E2[更新TabletData<br/>添加DiskSegment]
+        E3[释放MemSegment内存]
+        
+        D7 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Conditions["转储条件"]
+        C1[内存使用 > 阈值<br/>默认80%]
+        C2[文档数 > 阈值<br/>默认100万]
+        C3[时间间隔 > 阈值<br/>默认5分钟]
+        B8 -.-> C1
+        B8 -.-> C2
+        B8 -.-> C3
+    end
+    
+    style Input fill:#e3f2fd
+    style Build fill:#fff3e0
+    style Dump fill:#f3e5f5
+    style Output fill:#e8f5e9
+    style Conditions fill:#f5f5f5
+```
 
 1. **Build**：接收文档批次，写入内存中的索引结构
 2. **NeedDump**：检查是否达到转储条件（内存阈值、文档数量等）
@@ -396,7 +537,71 @@ public:
 
 **DiskSegment 的加载策略**：
 
-![DiskSegment 加载策略：NORMAL vs LAZY 模式](/images/diagrams/indexlib-disksegment-loading.svg)
+**DiskSegment 加载策略**：
+
+```mermaid
+flowchart TD
+    A[DiskSegment.Open] --> B{OpenMode选择}
+    
+    subgraph Normal["NORMAL 模式<br/>适合在线查询"]
+        N1[读取SegmentInfo<br/>元数据信息]
+        N2[立即加载所有索引]
+        N3[倒排索引<br/>InvertedIndex]
+        N4[正排索引<br/>AttributeIndex]
+        N5[主键索引<br/>PrimaryKeyIndex]
+        N6[摘要索引<br/>SummaryIndex]
+        N7[所有索引在内存<br/>查询延迟低]
+        
+        B -->|NORMAL| N1
+        N1 --> N2
+        N2 --> N3
+        N2 --> N4
+        N2 --> N5
+        N2 --> N6
+        N3 --> N7
+        N4 --> N7
+        N5 --> N7
+        N6 --> N7
+    end
+    
+    subgraph Lazy["LAZY 模式<br/>适合离线场景"]
+        L1[读取SegmentInfo<br/>元数据信息]
+        L2[延迟加载索引<br/>不加载索引数据]
+        L3[查询请求到达]
+        L4[GetIndexer调用]
+        L5{索引已加载?}
+        L6[按需加载索引]
+        L7[索引数据加载到内存]
+        L8[返回IndexReader]
+        
+        B -->|LAZY| L1
+        L1 --> L2
+        L2 --> L3
+        L3 --> L4
+        L4 --> L5
+        L5 -->|否| L6
+        L5 -->|是| L8
+        L6 --> L7
+        L7 --> L8
+    end
+    
+    subgraph Memory["内存管理"]
+        M1[MemoryQuotaController<br/>内存配额控制]
+        M2[检查内存配额]
+        M3[分配内存]
+        M4[缓存管理]
+        
+        N2 -.-> M1
+        L6 -.-> M1
+        M1 --> M2
+        M2 --> M3
+        M3 --> M4
+    end
+    
+    style Normal fill:#e3f2fd
+    style Lazy fill:#fff3e0
+    style Memory fill:#f5f5f5
+```
 
 - **NORMAL 模式**：立即加载所有索引数据到内存，适合在线查询场景
 - **LAZY 模式**：按需加载，只在查询时加载相关索引，适合离线场景，节省内存
@@ -425,7 +630,28 @@ public:
 
 **Segment 的状态转换**：
 
-![Segment 状态转换：从 MemSegment 到 DiskSegment 的完整流程](/images/diagrams/indexlib-segment-lifecycle.svg)
+**Segment 状态转换**：
+
+```mermaid
+stateDiagram-v2
+    [*] --> ST_BUILDING: MemSegment创建
+    ST_BUILDING --> ST_DUMPING: 触发转储
+    ST_DUMPING --> ST_BUILT: 转储完成
+    ST_BUILT --> ST_SEALED: 封存
+    ST_SEALED --> [*]: 合并或删除
+    note right of ST_BUILDING
+        内存段构建中
+        接收文档写入
+    end note
+    note right of ST_DUMPING
+        转储到磁盘
+        创建DiskSegment
+    end note
+    note right of ST_BUILT
+        磁盘段已构建
+        可以参与查询
+    end note
+```
 
 状态转换的代码逻辑（`framework/Segment.h`）：
 
@@ -447,7 +673,33 @@ enum class SegmentStatus {
 
 Version 管理索引的版本信息。让我们先通过图理解 Version 的结构：
 
-![Version 的结构：包含 VersionId、Segments、Locator 等关键信息](/images/diagrams/indexlib-version-structure.svg)
+**Version 的结构**：
+
+```mermaid
+classDiagram
+    class Version {
+        -versionid_t _versionId
+        -set_SegmentInVersion _segments
+        -Locator _locator
+        +AddSegment()
+        +GetVersionId()
+        +GetLocator()
+    }
+    
+    class SegmentInVersion {
+        -segmentid_t _segmentId
+        -schemavid_t _schemaId
+    }
+    
+    class Locator {
+        -int64_t _timestamp
+        -int32_t _concurrentIdx
+        -int32_t _hashId
+    }
+    
+    Version "1" *-- "many" SegmentInVersion : 包含
+    Version "1" --> "1" Locator : 包含
+```
 
 从图中可以看到，Version 记录：
 - **VersionId**：版本号，单调递增
@@ -490,7 +742,91 @@ private:
 
 **Version 的演进过程**：
 
-![Version 演进：从 V1 到 V2 的版本变化](/images/diagrams/indexlib-version-evolution.svg)
+**Version 演进**：
+
+```mermaid
+flowchart TD
+    subgraph V1["Version 1<br/>versionId=1"]
+        V1_S1[Segment 1<br/>schemaId=0]
+        V1_S2[Segment 2<br/>schemaId=0]
+        V1_S3[Segment 3<br/>schemaId=0]
+        V1_L[Locator<br/>timestamp=100]
+        V1_S1 --- V1_S2
+        V1_S2 --- V1_S3
+        V1_S3 --- V1_L
+    end
+    
+    subgraph Commit1["Commit操作"]
+        C1[新增Segment 4]
+        C2[更新Locator<br/>timestamp=200]
+        C3[VersionId递增<br/>1 → 2]
+    end
+    
+    subgraph V2["Version 2<br/>versionId=2"]
+        V2_S1[Segment 1<br/>schemaId=0]
+        V2_S2[Segment 2<br/>schemaId=0]
+        V2_S3[Segment 3<br/>schemaId=0]
+        V2_S4[Segment 4<br/>schemaId=0]
+        V2_L[Locator<br/>timestamp=200]
+        V2_S1 --- V2_S2
+        V2_S2 --- V2_S3
+        V2_S3 --- V2_S4
+        V2_S4 --- V2_L
+    end
+    
+    subgraph Commit2["Commit操作"]
+        C4[新增Segment 5]
+        C5[更新Locator<br/>timestamp=300]
+        C6[VersionId递增<br/>2 → 3]
+    end
+    
+    subgraph V3["Version 3<br/>versionId=3"]
+        V3_S1[Segment 1<br/>schemaId=0]
+        V3_S2[Segment 2<br/>schemaId=0]
+        V3_S3[Segment 3<br/>schemaId=0]
+        V3_S4[Segment 4<br/>schemaId=0]
+        V3_S5[Segment 5<br/>schemaId=0]
+        V3_L[Locator<br/>timestamp=300]
+        V3_S1 --- V3_S2
+        V3_S2 --- V3_S3
+        V3_S3 --- V3_S4
+        V3_S4 --- V3_S5
+        V3_S5 --- V3_L
+    end
+    
+    subgraph Merge["Merge操作"]
+        M1[合并Segment 1,2,3,4,5]
+        M2[创建Segment 6<br/>合并后]
+        M3[删除旧Segment<br/>1,2,3,4,5]
+        M4[更新Locator<br/>timestamp=400]
+        M5[VersionId递增<br/>3 → 4]
+        M1 --> M2
+        M2 --> M3
+        M3 --> M4
+        M4 --> M5
+    end
+    
+    subgraph V4["Version 4<br/>versionId=4"]
+        V4_S6[Segment 6<br/>schemaId=0<br/>合并后]
+        V4_L[Locator<br/>timestamp=400]
+        V4_S6 --- V4_L
+    end
+    
+    V1 -->|Commit| Commit1
+    Commit1 --> V2
+    V2 -->|Commit| Commit2
+    Commit2 --> V3
+    V3 -->|Merge| Merge
+    Merge --> V4
+    
+    style V1 fill:#e3f2fd
+    style V2 fill:#fff3e0
+    style V3 fill:#f3e5f5
+    style V4 fill:#e8f5e9
+    style Commit1 fill:#fff9c4
+    style Commit2 fill:#fff9c4
+    style Merge fill:#fce4ec
+```
 
 版本演进示例：
 - **V1**：包含 Segment [1, 2]，Locator 记录处理到 timestamp=100
@@ -565,7 +901,37 @@ sequenceDiagram
 
 `TabletData` 管理 Tablet 的所有数据。让我们先通过图理解其结构：
 
-![TabletData 的结构：包含 Segments、Version、ResourceMap](/images/diagrams/indexlib-tabletdata-structure.svg)
+**TabletData 的结构**：
+
+```mermaid
+classDiagram
+    class TabletData {
+        -Version _onDiskVersion
+        -vector_Segment _segments
+        -ResourceMap _resourceMap
+        +CreateSlice()
+        +GetSegment()
+    }
+    
+    class Version {
+        -versionid_t _versionId
+        -set_SegmentInVersion _segments
+    }
+    
+    class Segment {
+        <<abstract>>
+        +GetSegmentId()
+    }
+    
+    class ResourceMap {
+        -MemoryPool _memoryPool
+        -Cache _cache
+    }
+    
+    TabletData "1" --> "1" Version : 包含
+    TabletData "1" *-- "many" Segment : 包含
+    TabletData "1" --> "1" ResourceMap : 包含
+```
 
 从图中可以看到，TabletData 包含：
 - **Segments**：所有 Segment 的列表（MemSegment + DiskSegment）
@@ -598,7 +964,72 @@ private:
 
 **Slice 机制的使用场景**：
 
-![TabletData Slice 机制：按状态筛选 Segment](/images/diagrams/indexlib-tabletdata-slice.svg)
+**TabletData Slice 机制**：
+
+```mermaid
+flowchart TD
+    A[TabletData] --> B[CreateSlice<br/>创建切片视图]
+    B --> C{筛选条件<br/>SegmentStatus}
+    
+    subgraph Segments["Segment 列表<br/>_segments"]
+        S1[MemSegment1<br/>ST_BUILDING]
+        S2[MemSegment2<br/>ST_DUMPING]
+        S3[DiskSegment1<br/>ST_BUILT]
+        S4[DiskSegment2<br/>ST_BUILT]
+        S5[DiskSegment3<br/>ST_SEALED]
+    end
+    
+    subgraph Filter["筛选结果"]
+        F1[ST_BUILT<br/>已构建的Segment]
+        F2[ST_BUILDING<br/>构建中的Segment]
+        F3[ST_DUMPING<br/>转储中的Segment]
+        F4[ST_SEALED<br/>已封存的Segment]
+        F5[无筛选<br/>所有Segment]
+        
+        C -->|ST_BUILT| F1
+        C -->|ST_BUILDING| F2
+        C -->|ST_DUMPING| F3
+        C -->|ST_SEALED| F4
+        C -->|无参数| F5
+    end
+    
+    subgraph Usage["使用场景"]
+        U1[查询场景<br/>TabletReader.Search]
+        U2[写入场景<br/>TabletWriter.Build]
+        U3[合并场景<br/>MergeTask]
+        U4[监控场景<br/>Metrics统计]
+        U5[管理场景<br/>Segment管理]
+        
+        F1 --> U1
+        F2 --> U2
+        F3 --> U4
+        F4 --> U3
+        F5 --> U5
+    end
+    
+    subgraph Slice["Slice特性"]
+        SL1[轻量级视图<br/>不复制数据]
+        SL2[迭代器支持<br/>begin/end/rbegin/rend]
+        SL3[线程安全<br/>支持并发访问]
+        SL4[按需筛选<br/>延迟计算]
+        
+        B -.-> SL1
+        B -.-> SL2
+        B -.-> SL3
+        B -.-> SL4
+    end
+    
+    S3 --> F1
+    S4 --> F1
+    S1 --> F2
+    S2 --> F3
+    S5 --> F4
+    
+    style Segments fill:#e3f2fd
+    style Filter fill:#fff3e0
+    style Usage fill:#f3e5f5
+    style Slice fill:#f5f5f5
+```
 
 ```cpp
 // 获取所有已构建的 Segment（用于查询）
@@ -667,7 +1098,27 @@ auto allSegments = tabletData->CreateSlice();
 
 Locator 是增量更新的核心，记录数据的位置信息。让我们先通过图理解 Locator 的结构：
 
-![Locator 的结构：包含 timestamp、concurrentIdx、hashId 等信息](/images/diagrams/indexlib-locator-structure.svg)
+**Locator 的结构**：
+
+```mermaid
+classDiagram
+    class Locator {
+        -int64_t _timestamp
+        -int32_t _concurrentIdx
+        -int32_t _hashId
+        -int32_t _sourceIdx
+        +IsFasterThan()
+        +Update()
+    }
+    
+    class Progress {
+        -int64_t _from
+        -int64_t _to
+        -int64_t _offset
+    }
+    
+    Locator "1" *-- "many" Progress : 包含多个进度
+```
 
 从图中可以看到，Locator 包含：
 - **timestamp**：时间戳，记录数据的时间位置
@@ -708,7 +1159,35 @@ private:
 
 **Locator 的比较逻辑**：
 
-![Locator 比较：判断数据是否已处理的逻辑](/images/diagrams/indexlib-locator-compare.svg)
+**Locator 比较逻辑**：
+
+```mermaid
+flowchart TD
+    A[Locator A vs Locator B] --> B{比较 timestamp}
+    
+    B -->|A.timestamp > B.timestamp| C1{比较 hashId}
+    B -->|A.timestamp < B.timestamp| D[B 更快<br/>LCR_SLOWER]
+    B -->|A.timestamp == B.timestamp| E{比较 concurrentIdx}
+    
+    C1 -->|A 包含所有 B 的 hashId| F[A 更快<br/>LCR_FULLY_FASTER]
+    C1 -->|A 部分包含 B 的 hashId| G[A 部分更快<br/>LCR_PARTIAL_FASTER]
+    C1 -->|A 不包含 B 的 hashId| D
+    
+    E -->|A.concurrentIdx > B.concurrentIdx| F
+    E -->|A.concurrentIdx < B.concurrentIdx| D
+    E -->|A.concurrentIdx == B.concurrentIdx| H{比较 sourceIdx}
+    
+    H -->|A.sourceIdx >= B.sourceIdx| F
+    H -->|A.sourceIdx < B.sourceIdx| D
+    
+    style B fill:#e3f2fd
+    style C1 fill:#e3f2fd
+    style E fill:#fff3e0
+    style H fill:#fff3e0
+    style F fill:#e8f5e9
+    style G fill:#fff9c4
+    style D fill:#ffebee
+```
 
 比较示例：
 - **Locator A**：timestamp=100, hashId=0
@@ -778,7 +1257,98 @@ enum class LocatorCompareResult {
 
 TabletReader 提供索引查询接口。让我们先通过图理解查询流程：
 
-![TabletReader 查询流程：从 JSON 查询到结果返回](/images/diagrams/indexlib-tabletreader-query-flow.svg)
+**TabletReader 查询流程**：
+
+```mermaid
+flowchart TD
+    subgraph Input["输入阶段"]
+        A1[JSON 查询请求]
+        A2[解析JSON查询<br/>QueryParser]
+        A3[提取查询类型<br/>TermQuery/RangeQuery等]
+        A4[提取查询条件<br/>term/范围/排序字段]
+        A5[创建内部Query对象]
+        
+        A1 --> A2
+        A2 --> A3
+        A3 --> A4
+        A4 --> A5
+    end
+    
+    subgraph Reader["IndexReader获取"]
+        B1[GetIndexReader<br/>indexType, indexName]
+        B2{缓存中存在?}
+        B3[返回缓存的IndexReader]
+        B4[创建新的IndexReader]
+        B5[InvertedIndexReader<br/>倒排索引]
+        B6[AttributeReader<br/>正排索引]
+        B7[PrimaryKeyReader<br/>主键索引]
+        B8[缓存IndexReader]
+        
+        A5 --> B1
+        B1 --> B2
+        B2 -->|是| B3
+        B2 -->|否| B4
+        B4 --> B5
+        B4 --> B6
+        B4 --> B7
+        B4 --> B8
+        B3 --> C1
+        B5 --> C1
+        B6 --> C1
+        B7 --> C1
+    end
+    
+    subgraph Query["查询执行阶段"]
+        C1[TabletData.CreateSlice<br/>ST_BUILT获取Segment列表]
+        C2[遍历Segment]
+        C3[Segment1查询]
+        C4[Segment2查询]
+        C5[Segment3查询]
+        C6[并行查询执行]
+        C7[DocId转换<br/>GlobalDocId → LocalDocId]
+        C8[IndexReader.Search<br/>执行索引查询]
+        
+        C1 --> C2
+        C2 --> C3
+        C2 --> C4
+        C2 --> C5
+        C3 --> C6
+        C4 --> C6
+        C5 --> C6
+        C6 --> C7
+        C7 --> C8
+    end
+    
+    subgraph Process["结果处理阶段"]
+        D1[收集各Segment结果<br/>Result1, Result2, Result3]
+        D2[DocId去重<br/>避免重复文档]
+        D3[按相关性分数排序<br/>或按指定字段排序]
+        D4[分页处理<br/>offset/limit]
+        D5[聚合统计<br/>总数/平均值等]
+        
+        C8 --> D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+    
+    subgraph Output["输出阶段"]
+        E1[字段选择<br/>根据查询条件]
+        E2[序列化为JSON<br/>Jsonizable]
+        E3[返回JSON结果]
+        
+        D5 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    style Input fill:#e3f2fd
+    style Reader fill:#fff9c4
+    style Query fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Output fill:#e8f5e9
+```
 
 从图中可以看到查询流程：
 1. 解析 JSON 查询
@@ -824,7 +1394,67 @@ protected:
 
 **IndexReader 缓存机制**：
 
-![TabletReader IndexReader 缓存：避免重复创建](/images/diagrams/indexlib-tabletreader-cache.svg)
+**TabletReader IndexReader 缓存**：
+
+```mermaid
+flowchart TD
+    A[GetIndexReader请求<br/>indexType, indexName] --> B[构建缓存Key<br/>pair indexType, indexName]
+    B --> C{在_indexReaderMap中查找}
+    
+    subgraph Cache["缓存命中路径"]
+        C1[找到缓存的IndexReader]
+        C2[返回shared_ptr<br/>共享使用]
+        C3[避免重复创建<br/>提高性能]
+        
+        C -->|存在| C1
+        C1 --> C2
+        C2 --> C3
+    end
+    
+    subgraph Create["缓存未命中路径"]
+        D1[未找到缓存]
+        D2[调用DoGetIndexReader<br/>子类实现]
+        D3[创建IndexReader实例]
+        D4[InvertedIndexReader<br/>倒排索引]
+        D5[AttributeReader<br/>正排索引]
+        D6[PrimaryKeyReader<br/>主键索引]
+        D7[初始化IndexReader<br/>Open方法]
+        D8[加载索引数据<br/>按需加载]
+        D9[缓存到_indexReaderMap<br/>shared_ptr管理]
+        
+        C -->|不存在| D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D3 --> D5
+        D3 --> D6
+        D4 --> D7
+        D5 --> D7
+        D6 --> D7
+        D7 --> D8
+        D8 --> D9
+    end
+    
+    subgraph CacheInfo["缓存信息"]
+        CI1[缓存Key<br/>indexType + indexName]
+        CI2[缓存Value<br/>shared_ptr IIndexReader]
+        CI3[生命周期<br/>与TabletReader相同]
+        CI4[线程安全<br/>支持并发查询]
+        
+        B -.-> CI1
+        C1 -.-> CI2
+        C2 -.-> CI3
+        C2 -.-> CI4
+    end
+    
+    C3 --> E[返回IndexReader]
+    D9 --> E
+    
+    style Cache fill:#e3f2fd
+    style Create fill:#fff3e0
+    style CacheInfo fill:#f5f5f5
+    style E fill:#f3e5f5
+```
 
 - **缓存 Key**：`(indexType, indexName)` 对
 - **缓存 Value**：`IIndexReader` 指针

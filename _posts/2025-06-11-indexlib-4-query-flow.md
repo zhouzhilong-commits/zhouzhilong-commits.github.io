@@ -9,8 +9,6 @@ date: 2025-06-11
 
 在上一篇文章中，我们深入了解了索引构建的完整流程。本文将继续深入，详细解析查询流程的实现，这是理解 IndexLib 如何从索引中查询数据的关键。
 
-![查询流程概览：从 JSON 查询到结果返回的完整过程](/images/diagrams/indexlib-query-complete-flow.svg)
-
 **查询流程图**：
 
 ```mermaid
@@ -54,8 +52,6 @@ IndexLib 的查询流程包括以下核心步骤：
 6. **返回结果**：序列化为 JSON 格式返回
 
 让我们先通过图来理解整个流程：
-
-![查询流程概览：TabletReader 与 IndexReader 的交互](/images/diagrams/indexlib-query-flow-overview.svg)
 
 **组件交互序列图**：
 
@@ -162,7 +158,24 @@ protected:
 
 **TabletReader 的关键组件**：
 
-![TabletReader 的结构：包含 Schema、IndexReaderMap、TabletData 等](/images/diagrams/indexlib-tabletreader-structure.svg)
+```mermaid
+graph LR
+    A[TabletReader] --> B[Schema]
+    A --> C[IndexReaderMap]
+    A --> D[TabletData]
+    A --> E[ReadResource]
+    
+    B --> F[索引Schema定义]
+    C --> G[IndexReader缓存]
+    D --> H[所有Segment]
+    E --> I[内存配额/缓存]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+    style E fill:#fce4ec
+```
 
 - **Schema**：索引的 Schema 定义，用于查询验证和字段解析
 - **IndexReaderMap**：IndexReader 的缓存，避免重复创建
@@ -172,8 +185,6 @@ protected:
 ### 2.2 TabletReader::Open()
 
 `Open()` 方法初始化 TabletReader，准备查询：
-
-![TabletReader::Open() 流程：初始化 TabletData 和读取资源](/images/diagrams/indexlib-tabletreader-open.svg)
 
 **Open 流程**：
 
@@ -231,8 +242,6 @@ sequenceDiagram
 ### 2.3 TabletReader::Search()
 
 `Search()` 方法是查询的入口，将 JSON 查询转换为结果：
-
-![TabletReader::Search() 流程：从 JSON 查询到结果返回](/images/diagrams/indexlib-tabletreader-search.svg)
 
 **Search 流程**：
 
@@ -314,8 +323,6 @@ sequenceDiagram
 ### 2.4 IndexReader 缓存机制
 
 `TabletReader` 维护 IndexReader 的缓存，避免重复创建：
-
-![TabletReader IndexReader 缓存：避免重复创建](/images/diagrams/indexlib-tabletreader-cache.svg)
 
 **缓存机制**：
 
@@ -423,7 +430,23 @@ public:
 
 **IIndexReader 的关键方法**：
 
-![IIndexReader 接口：提供索引查询的抽象](/images/diagrams/indexlib-indexreader-interface.svg)
+```mermaid
+graph LR
+    A[IIndexReader] --> B[Open]
+    A --> C[Search]
+    A --> D[GetStatistics]
+    
+    B --> E[初始化IndexReader]
+    B --> F[加载索引数据]
+    C --> G[查询索引]
+    C --> H[返回查询结果]
+    D --> I[获取统计信息]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 - **Open**：初始化 IndexReader，加载索引数据
 - **Search**：根据查询条件查询索引，返回查询结果
@@ -433,7 +456,27 @@ public:
 
 IndexLib 支持多种类型的 IndexReader：
 
-![不同类型的 IndexReader：倒排索引、正排索引、主键索引等](/images/diagrams/indexlib-indexreader-types.svg)
+```mermaid
+graph LR
+    A[IndexReader类型] --> B[InvertedIndexReader]
+    A --> C[AttributeReader]
+    A --> D[PrimaryKeyIndexReader]
+    A --> E[SummaryReader]
+    A --> F[DeletionMapReader]
+    
+    B --> G[全文检索]
+    C --> H[属性查询]
+    D --> I[主键查询]
+    E --> J[获取摘要]
+    F --> K[过滤删除文档]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+    style E fill:#fce4ec
+    style F fill:#fff9c4
+```
 
 **IndexReader 类型**：
 - **InvertedIndexReader**：倒排索引 Reader，用于全文检索
@@ -446,7 +489,64 @@ IndexLib 支持多种类型的 IndexReader：
 
 `InvertedIndexReader` 是倒排索引的查询接口：
 
-![InvertedIndexReader：倒排索引查询的实现](/images/diagrams/indexlib-inverted-indexreader.svg)
+```mermaid
+flowchart TD
+    A[查询请求<br/>Query对象] --> B[解析查询类型<br/>TermQuery/RangeQuery等]
+    
+    subgraph Parse["查询解析"]
+        B1[提取查询Term<br/>分词处理]
+        B2[提取查询条件<br/>范围/布尔等]
+        B3[创建内部Query对象]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+    end
+    
+    subgraph Search["索引查找"]
+        C1[在倒排索引中查找Term<br/>InvertedIndex]
+        C2[获取Term的倒排列表<br/>PostingList]
+        C3[DocId列表<br/>包含该Term的文档]
+        C4[位置信息<br/>Term在文档中的位置]
+        B3 --> C1
+        C1 --> C2
+        C2 --> C3
+        C2 --> C4
+    end
+    
+    subgraph Filter["过滤处理"]
+        D1[通过DeletionMap过滤<br/>过滤已删除文档]
+        D2[范围查询过滤<br/>如果包含范围条件]
+        D3[布尔查询处理<br/>AND/OR/NOT]
+        C3 --> D1
+        C4 --> D1
+        D1 --> D2
+        D2 --> D3
+    end
+    
+    subgraph Score["相关性计算"]
+        E1[计算相关性分数<br/>TF-IDF/BM25等]
+        E2[位置信息加权<br/>短语查询]
+        E3[字段权重<br/>不同字段权重不同]
+        D3 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Result["返回结果"]
+        F1[DocId列表<br/>匹配的文档ID]
+        F2[相关性分数<br/>排序依据]
+        F3[位置信息<br/>用于高亮显示]
+        E3 --> F1
+        E3 --> F2
+        E3 --> F3
+    end
+    
+    style Parse fill:#e3f2fd
+    style Search fill:#fff3e0
+    style Filter fill:#e8f5e9
+    style Score fill:#f3e5f5
+    style Result fill:#fce4ec
+```
 
 **倒排索引查询流程**：
 1. **解析查询**：解析 term 查询、范围查询等
@@ -459,7 +559,64 @@ IndexLib 支持多种类型的 IndexReader：
 
 `AttributeReader` 是正排索引的查询接口：
 
-![AttributeReader：正排索引查询的实现](/images/diagrams/indexlib-attribute-reader.svg)
+```mermaid
+flowchart TD
+    A[查询请求<br/>GlobalDocId + 属性名] --> B[定位Segment<br/>根据GlobalDocId]
+    
+    subgraph Locate["定位阶段"]
+        B1[遍历TabletData中的Segment]
+        B2[计算每个Segment的BaseDocId<br/>累加前面Segment的docCount]
+        B3{GlobalDocId在范围内?<br/>BaseDocId <= GlobalDocId < BaseDocId + docCount}
+        B4[找到对应Segment]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+        B3 -->|是| B4
+        B3 -->|否| B1
+    end
+    
+    subgraph Convert["DocId转换"]
+        C1[计算LocalDocId<br/>LocalDocId = GlobalDocId - BaseDocId]
+        C2[验证LocalDocId有效性<br/>0 <= LocalDocId < docCount]
+        B4 --> C1
+        C1 --> C2
+    end
+    
+    subgraph Read["读取属性"]
+        D1[根据属性名获取AttributeIndexer<br/>GetAttributeReader]
+        D2[定位属性数据位置<br/>根据LocalDocId]
+        D3[读取属性值<br/>从磁盘或内存]
+        D4[数据类型转换<br/>整数/浮点数/字符串等]
+        D5[解压缩<br/>如果使用了压缩]
+        C2 --> D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+    
+    subgraph Return["返回结果"]
+        E1[返回属性值<br/>AttributeValue]
+        E2[支持批量读取<br/>多个DocId一次读取]
+        D5 --> E1
+        E1 --> E2
+    end
+    
+    subgraph Optimize["性能优化"]
+        O1[缓存常用属性<br/>减少磁盘IO]
+        O2[批量读取<br/>减少IO次数]
+        O3[预读机制<br/>预读相邻数据]
+        D3 -.-> O1
+        D3 -.-> O2
+        D3 -.-> O3
+    end
+    
+    style Locate fill:#e3f2fd
+    style Convert fill:#fff3e0
+    style Read fill:#e8f5e9
+    style Return fill:#f3e5f5
+    style Optimize fill:#f5f5f5
+```
 
 **正排索引查询流程**：
 1. **定位 DocId**：根据全局 DocId 定位到对应的 Segment
@@ -473,7 +630,67 @@ IndexLib 支持多种类型的 IndexReader：
 
 查询解析将 JSON 格式的查询转换为内部查询对象：
 
-![查询解析：从 JSON 到内部查询对象](/images/diagrams/indexlib-query-parsing.svg)
+```mermaid
+flowchart TD
+    A[JSON查询字符串<br/>jsonQuery] --> B[解析JSON<br/>JsonParser]
+    
+    subgraph Parse["JSON解析"]
+        B1[解析JSON对象<br/>提取字段]
+        B2[验证JSON格式<br/>格式检查]
+        B3[提取查询类型字段<br/>queryType]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+    end
+    
+    subgraph Extract["提取查询信息"]
+        C1[提取查询类型<br/>TermQuery/RangeQuery/BoolQuery等]
+        C2[提取查询条件<br/>term/范围/排序字段]
+        C3[提取排序信息<br/>sortField/sortOrder]
+        C4[提取分页信息<br/>offset/limit]
+        C5[提取聚合信息<br/>aggregation]
+        B3 --> C1
+        C1 --> C2
+        C1 --> C3
+        C1 --> C4
+        C1 --> C5
+    end
+    
+    subgraph Create["创建查询对象"]
+        D1[创建TermQuery对象<br/>term查询]
+        D2[创建RangeQuery对象<br/>范围查询]
+        D3[创建BoolQuery对象<br/>布尔查询]
+        D4[创建Query对象<br/>组合查询]
+        C2 --> D1
+        C2 --> D2
+        C2 --> D3
+        D1 --> D4
+        D2 --> D4
+        D3 --> D4
+    end
+    
+    subgraph Validate["验证查询"]
+        E1[Schema验证<br/>字段是否存在]
+        E2[类型验证<br/>字段类型匹配]
+        E3[范围验证<br/>查询条件有效性]
+        D4 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Result["查询对象"]
+        F1[内部Query对象<br/>用于后续查询]
+        F2[包含所有查询信息<br/>类型/条件/排序等]
+        E3 --> F1
+        F1 --> F2
+    end
+    
+    style Parse fill:#e3f2fd
+    style Extract fill:#fff3e0
+    style Create fill:#e8f5e9
+    style Validate fill:#f3e5f5
+    style Result fill:#fce4ec
+```
 
 **查询解析流程**：
 1. **解析 JSON**：解析 JSON 格式的查询字符串
@@ -485,7 +702,68 @@ IndexLib 支持多种类型的 IndexReader：
 
 查询时需要遍历多个 Segment，可以并行查询以提高性能：
 
-![多 Segment 并行查询：提高查询性能](/images/diagrams/indexlib-multi-segment-query.svg)
+```mermaid
+flowchart TD
+    A[查询请求<br/>Query对象] --> B[TabletData.CreateSlice<br/>ST_BUILT获取Segment列表]
+    
+    subgraph Segments["Segment列表"]
+        S1[Segment1<br/>docCount=1000<br/>BaseDocId=0]
+        S2[Segment2<br/>docCount=2000<br/>BaseDocId=1000]
+        S3[Segment3<br/>docCount=1500<br/>BaseDocId=3000]
+        B --> S1
+        B --> S2
+        B --> S3
+    end
+    
+    subgraph Parallel["并行查询执行"]
+        P1[Segment1查询<br/>IndexReader.Search]
+        P2[Segment2查询<br/>IndexReader.Search]
+        P3[Segment3查询<br/>IndexReader.Search]
+        P4[线程池执行<br/>并发查询]
+        P5[收集查询结果<br/>Result1, Result2, Result3]
+        P6[错误处理<br/>单个Segment失败不影响其他]
+        
+        S1 --> P1
+        S2 --> P2
+        S3 --> P3
+        P1 --> P4
+        P2 --> P4
+        P3 --> P4
+        P4 --> P5
+        P5 --> P6
+    end
+    
+    subgraph Merge["结果合并"]
+        M1[DocId去重<br/>避免重复文档]
+        M2[按相关性分数排序<br/>或按指定字段排序]
+        M3[分页处理<br/>offset/limit]
+        M4[聚合统计<br/>总数/平均值等]
+        P6 --> M1
+        M1 --> M2
+        M2 --> M3
+        M3 --> M4
+    end
+    
+    subgraph Performance["性能优化"]
+        PF1[并行度控制<br/>线程池大小配置]
+        PF2[结果流式合并<br/>边查询边合并]
+        PF3[索引剪枝<br/>跳过不相关Segment]
+        PF4[Locator剪枝<br/>判断Segment是否包含结果]
+        
+        P4 -.-> PF1
+        M1 -.-> PF2
+        B -.-> PF3
+        B -.-> PF4
+    end
+    
+    M4 --> R[返回合并结果<br/>QueryResult]
+    
+    style Segments fill:#e3f2fd
+    style Parallel fill:#fff3e0
+    style Merge fill:#f3e5f5
+    style Performance fill:#f5f5f5
+    style R fill:#e8f5e9
+```
 
 **并行查询流程**：
 1. **获取 Segment 列表**：`TabletData->CreateSlice(ST_BUILT)` 获取所有已构建的 Segment
@@ -496,7 +774,73 @@ IndexLib 支持多种类型的 IndexReader：
 
 查询时需要将全局 DocId 转换为局部 DocId：
 
-![DocId 转换：全局 DocId 到局部 DocId 的转换过程](/images/diagrams/indexlib-docid-conversion.svg)
+```mermaid
+flowchart TD
+    A[查询请求<br/>GlobalDocId] --> B[TabletData.GetSegment<br/>遍历Segment列表]
+    
+    subgraph Locate["定位Segment"]
+        L1[遍历所有Segment<br/>按顺序查找]
+        L2[计算每个Segment的BaseDocId<br/>累加前面Segment的docCount]
+        L3{GlobalDocId在范围内?<br/>BaseDocId <= GlobalDocId < BaseDocId + docCount}
+        L4[找到对应Segment]
+        L5[继续遍历下一个Segment]
+        
+        B --> L1
+        L1 --> L2
+        L2 --> L3
+        L3 -->|是| L4
+        L3 -->|否| L5
+        L5 --> L1
+    end
+    
+    subgraph Convert["DocId转换"]
+        C1[获取Segment的BaseDocId<br/>前面所有Segment的docCount之和]
+        C2[计算LocalDocId<br/>LocalDocId = GlobalDocId - BaseDocId]
+        C3[验证LocalDocId有效性<br/>0 <= LocalDocId < docCount]
+        C4[验证失败处理<br/>返回错误]
+        L4 --> C1
+        C1 --> C2
+        C2 --> C3
+        C3 -->|无效| C4
+    end
+    
+    subgraph Query["Segment内查询"]
+        Q1[使用LocalDocId查询<br/>IndexReader.Get]
+        Q2[倒排索引查询<br/>InvertedIndexer]
+        Q3[正排索引查询<br/>AttributeIndexer]
+        Q4[主键索引查询<br/>PrimaryKeyIndexer]
+        Q5[返回文档数据<br/>Document]
+        C3 -->|有效| Q1
+        Q1 --> Q2
+        Q1 --> Q3
+        Q1 --> Q4
+        Q2 --> Q5
+        Q3 --> Q5
+        Q4 --> Q5
+    end
+    
+    subgraph Example["转换示例"]
+        E1[GlobalDocId = 1500]
+        E2[Segment1: BaseDocId=0, docCount=1000<br/>范围: 0-999, 不在范围内]
+        E3[Segment2: BaseDocId=1000, docCount=2000<br/>范围: 1000-2999, 在范围内]
+        E4[LocalDocId = 1500 - 1000 = 500]
+        E5[在Segment2内使用LocalDocId=500查询]
+        
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+        E4 --> E5
+    end
+    
+    Q5 --> R[返回查询结果]
+    C4 --> R
+    
+    style Locate fill:#e3f2fd
+    style Convert fill:#fff3e0
+    style Query fill:#f3e5f5
+    style Example fill:#f5f5f5
+    style R fill:#e8f5e9
+```
 
 **DocId 转换流程**：
 1. **定位 Segment**：根据全局 DocId 找到对应的 Segment
@@ -508,30 +852,96 @@ IndexLib 支持多种类型的 IndexReader：
 
 查询结果需要合并，包括去重、排序等：
 
-![结果合并：去重、排序、分页等处理](/images/diagrams/indexlib-query-result-merge.svg)
-
 **结果合并流程**：
 
 结果合并是查询流程的关键步骤，需要高效地处理大量查询结果。让我们通过流程图来理解结果合并的详细过程：
 
 ```mermaid
-graph TD
-    A[多个Segment的查询结果] --> B[结果收集]
-    B --> C[DocId去重]
-    C --> D{是否需要排序?}
-    D -->|是| E[按相关性分数排序]
-    D -->|否| F[按DocId排序]
-    E --> G[分页处理]
-    F --> G
-    G --> H{是否需要聚合?}
-    H -->|是| I[计算聚合统计]
-    H -->|否| J[返回结果]
-    I --> J
+flowchart TD
+    A["多个Segment的查询结果<br/>Result1, Result2, Result3"] --> B["结果收集<br/>收集所有Segment结果"]
     
-    style C fill:#e3f2fd
-    style E fill:#fff3e0
-    style G fill:#f3e5f5
-    style I fill:#e8f5e9
+    subgraph Collect["结果收集"]
+        B1["收集DocId列表<br/>来自各Segment"]
+        B2["收集相关性分数<br/>用于排序"]
+        B3["收集位置信息<br/>用于高亮"]
+        B --> B1
+        B --> B2
+        B --> B3
+    end
+    
+    subgraph Dedup["去重处理"]
+        C1["DocId去重<br/>避免重复文档"]
+        C2["去重算法选择<br/>set或unordered_set或双指针"]
+        C3["有序结果优化<br/>双指针算法时间复杂度O n"]
+        C4["无序结果<br/>hash set时间复杂度O n"]
+        B1 --> C1
+        C1 --> C2
+        C2 -->|有序| C3
+        C2 -->|无序| C4
+    end
+    
+    subgraph Sort["排序处理"]
+        D1{"是否需要排序?"}
+        D2["按相关性分数排序<br/>相关性高的在前"]
+        D3["按指定字段排序<br/>时间或数值等"]
+        D4["按DocId排序<br/>默认排序"]
+        D5["排序算法<br/>堆排序或快速排序"]
+        D6["Top-K优化<br/>只对Top-K排序"]
+        C3 --> D1
+        C4 --> D1
+        D1 -->|是| D2
+        D1 -->|是| D3
+        D1 -->|否| D4
+        D2 --> D5
+        D3 --> D5
+        D5 --> D6
+    end
+    
+    subgraph Page["分页处理"]
+        E1["计算分页范围<br/>offset到offset加limit"]
+        E2["截取结果<br/>只返回需要的文档"]
+        E3["分页缓存<br/>缓存分页结果"]
+        D6 --> E1
+        D4 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Aggregate["聚合统计"]
+        F1{"是否需要聚合?"}
+        F2["总数统计<br/>匹配文档总数"]
+        F3["平均值统计<br/>字段平均值"]
+        F4["分组统计<br/>按字段分组"]
+        F5["并行计算聚合<br/>减少开销"]
+        E3 --> F1
+        F1 -->|是| F2
+        F1 -->|是| F3
+        F1 -->|是| F4
+        F2 --> F5
+        F3 --> F5
+        F4 --> F5
+    end
+    
+    subgraph Optimize["合并优化"]
+        O1["堆合并<br/>时间复杂度O n log k适合Top-K"]
+        O2["并行合并<br/>充分利用多核CPU"]
+        O3["流式合并<br/>边查询边合并"]
+        O4["减少内存占用<br/>提高响应速度"]
+        C1 -.-> O1
+        D5 -.-> O2
+        B1 -.-> O3
+        O3 -.-> O4
+    end
+    
+    F1 -->|否| G["返回结果<br/>QueryResult"]
+    F5 --> G
+    
+    style Collect fill:#e3f2fd
+    style Dedup fill:#fff3e0
+    style Sort fill:#e8f5e9
+    style Page fill:#f3e5f5
+    style Aggregate fill:#fce4ec
+    style Optimize fill:#f5f5f5
 ```
 
 **结果合并流程详解**：
@@ -606,7 +1016,27 @@ public:
 
 **NormalTabletReader 的关键组件**：
 
-![NormalTabletReader 的结构：包含各种 IndexReader](/images/diagrams/indexlib-normal-tabletreader-structure.svg)
+```mermaid
+graph LR
+    A[NormalTabletReader] --> B[MultiFieldIndexReader]
+    A --> C[DeletionMapReader]
+    A --> D[PrimaryKeyReader]
+    A --> E[SummaryReader]
+    A --> F[AttributeReader]
+    
+    B --> G[多字段倒排索引]
+    C --> H[删除映射]
+    D --> I[主键索引]
+    E --> J[摘要]
+    F --> K[属性]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+    style E fill:#fce4ec
+    style F fill:#fff9c4
+```
 
 - **MultiFieldIndexReader**：多字段倒排索引 Reader
 - **DeletionMapReader**：删除映射 Reader
@@ -618,7 +1048,23 @@ public:
 
 `DoOpen()` 方法初始化 NormalTabletReader：
 
-![NormalTabletReader::DoOpen() 流程：初始化各种 IndexReader](/images/diagrams/indexlib-normal-tabletreader-open.svg)
+```mermaid
+graph LR
+    A[初始化TabletData] --> B[创建MultiFieldIndexReader]
+    B --> C[创建DeletionMapReader]
+    C --> D[创建PrimaryKeyReader]
+    D --> E[创建SummaryReader]
+    E --> F[创建AttributeReader]
+    
+    G[DoOpen流程] --> A
+    F --> H[完成初始化]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+    style G fill:#fce4ec
+```
 
 **DoOpen 流程**：
 1. **初始化 TabletData**：保存 TabletData 的引用
@@ -632,7 +1078,20 @@ public:
 
 `Search()` 方法实现标准表的查询：
 
-![NormalTabletReader::Search() 流程：标准表查询的实现](/images/diagrams/indexlib-normal-tabletreader-search.svg)
+```mermaid
+graph LR
+    A[解析查询] --> B[获取IndexReader]
+    B --> C[遍历Segment]
+    C --> D[并行查询]
+    D --> E[过滤删除文档]
+    E --> F[合并结果]
+    F --> G[返回结果]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#e8f5e9
+    style F fill:#f3e5f5
+```
 
 **Search 流程**：
 1. **解析查询**：将 JSON 查询解析为内部查询对象
@@ -649,7 +1108,21 @@ public:
 
 查询剪枝可以减少不必要的查询：
 
-![查询剪枝：减少不必要的查询](/images/diagrams/indexlib-query-pruning.svg)
+```mermaid
+graph LR
+    A[查询剪枝] --> B[Locator剪枝]
+    A --> C[范围剪枝]
+    A --> D[索引剪枝]
+    
+    B --> E[判断Segment是否包含结果]
+    C --> F[减少查询范围]
+    D --> G[跳过不相关索引]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **查询剪枝策略**：
 - **Locator 剪枝**：通过 Locator 判断哪些 Segment 可能包含查询结果
@@ -660,7 +1133,21 @@ public:
 
 查询缓存可以提高查询性能：
 
-![查询缓存：缓存查询结果，提高查询性能](/images/diagrams/indexlib-query-cache.svg)
+```mermaid
+graph LR
+    A[查询缓存] --> B[结果缓存]
+    A --> C[索引缓存]
+    A --> D[统计缓存]
+    
+    B --> E[避免重复查询]
+    C --> F[减少IO操作]
+    D --> G[减少计算开销]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **查询缓存机制**：
 - **结果缓存**：缓存查询结果，避免重复查询
@@ -671,7 +1158,21 @@ public:
 
 并行查询可以提高查询性能：
 
-![并行查询优化：提高查询并发度](/images/diagrams/indexlib-query-parallel-optimization.svg)
+```mermaid
+graph LR
+    A[并行查询优化] --> B[Segment并行]
+    A --> C[索引并行]
+    A --> D[结果并行合并]
+    
+    B --> E[多个Segment并行查询]
+    C --> F[多个索引并行查询]
+    D --> G[查询结果并行合并]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **并行查询优化**：
 - **Segment 并行**：多个 Segment 可以并行查询
@@ -684,7 +1185,21 @@ public:
 
 索引加载优化可以减少查询延迟：
 
-![索引加载优化：按需加载、懒加载等](/images/diagrams/indexlib-query-index-loading.svg)
+```mermaid
+graph LR
+    A[索引加载优化] --> B[按需加载]
+    A --> C[懒加载]
+    A --> D[预加载]
+    
+    B --> E[只加载查询需要的索引]
+    C --> F[查询时才加载]
+    D --> G[预加载常用索引]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **索引加载优化**：
 - **按需加载**：只加载查询需要的索引
@@ -695,7 +1210,21 @@ public:
 
 内存优化可以减少内存使用：
 
-![查询内存优化：内存池、缓存控制等](/images/diagrams/indexlib-query-memory-optimization.svg)
+```mermaid
+graph LR
+    A[内存优化] --> B[内存池]
+    A --> C[缓存控制]
+    A --> D[内存回收]
+    
+    B --> E[减少内存分配开销]
+    C --> F[避免内存溢出]
+    D --> G[及时回收内存]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **内存优化策略**：
 - **内存池**：使用内存池减少内存分配开销
@@ -706,7 +1235,21 @@ public:
 
 IO 优化可以减少 IO 操作：
 
-![查询 IO 优化：批量读取、预读等](/images/diagrams/indexlib-query-io-optimization.svg)
+```mermaid
+graph LR
+    A[IO优化] --> B[批量读取]
+    A --> C[预读]
+    A --> D[IO合并]
+    
+    B --> E[减少IO次数]
+    C --> F[预读可能需要的数据]
+    D --> G[减少IO开销]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **IO 优化策略**：
 - **批量读取**：批量读取索引数据，减少 IO 次数
@@ -719,7 +1262,20 @@ IO 优化可以减少 IO 操作：
 
 在全文检索场景中，查询流程：
 
-![全文检索场景：从 term 查询到结果返回](/images/diagrams/indexlib-query-fulltext-scenario.svg)
+```mermaid
+graph LR
+    A[解析查询] --> B[获取InvertedIndexReader]
+    B --> C[查找term]
+    C --> D[获取倒排列表]
+    D --> E[过滤删除文档]
+    E --> F[计算相关性]
+    F --> G[排序返回]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **全文检索流程**：
 1. **解析查询**：解析 term 查询
@@ -734,7 +1290,19 @@ IO 优化可以减少 IO 操作：
 
 在属性查询场景中，查询流程：
 
-![属性查询场景：从属性查询到结果返回](/images/diagrams/indexlib-query-attribute-scenario.svg)
+```mermaid
+graph LR
+    A[解析查询] --> B[获取AttributeReader]
+    B --> C[遍历Segment]
+    C --> D[查询属性]
+    D --> E[过滤匹配]
+    E --> F[返回结果]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style F fill:#f3e5f5
+```
 
 **属性查询流程**：
 1. **解析查询**：解析属性查询条件

@@ -9,7 +9,28 @@ date: 2025-07-14
 
 在上一篇文章中，我们深入了解了内存管理与资源控制的机制。本文将继续深入，详细解析索引类型的实现，这是理解 IndexLib 如何支持不同类型索引的关键。
 
-![索引类型概览：Normal、KV、KKV 三种索引类型的特点和应用场景](/images/diagrams/indexlib-index-types-overview.svg)
+索引类型概览：Normal、KV、KKV 三种索引类型的特点和应用场景：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 1. 索引类型概览
 
@@ -23,7 +44,28 @@ IndexLib 支持三种主要的索引类型：
 
 让我们先通过图来理解三种索引类型的区别：
 
-![索引类型对比：Normal、KV、KKV 的数据模型和查询方式](/images/diagrams/indexlib-index-types-comparison.svg)
+索引类型对比：Normal、KV、KKV 的数据模型和查询方式：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 1.2 索引类型的选择
 
@@ -109,7 +151,28 @@ classDiagram
 
 NormalTable 是标准表，支持完整的索引功能：
 
-![NormalTable 的特点：支持全文检索、倒排索引、正排索引等](/images/diagrams/indexlib-normal-table-features.svg)
+NormalTable 的特点：支持全文检索、倒排索引、正排索引等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **主要特点**：
 - **全文检索**：支持倒排索引，实现全文检索
@@ -122,7 +185,28 @@ NormalTable 是标准表，支持完整的索引功能：
 
 NormalTable 的架构：
 
-![NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件](/images/diagrams/indexlib-normal-table-architecture.svg)
+NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **核心组件**：
 
@@ -192,7 +276,28 @@ classDiagram
 
 NormalTable 的查询方式：
 
-![NormalTable 的查询：全文检索、属性查询、主键查询等](/images/diagrams/indexlib-normal-table-query.svg)
+NormalTable 的查询：全文检索、属性查询、主键查询等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **查询方式**：
 
@@ -267,7 +372,28 @@ sequenceDiagram
 
 KVTable 是键值表，支持简单的键值存储：
 
-![KVTable 的特点：支持主键查询、简单的键值存储](/images/diagrams/indexlib-kv-table-features.svg)
+KVTable 的特点：支持主键查询、简单的键值存储：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **主要特点**：
 - **主键查询**：支持主键查询，快速定位数据
@@ -279,7 +405,28 @@ KVTable 是键值表，支持简单的键值存储：
 
 KVTable 的架构：
 
-![KVTable 的架构：KVTabletReader、KVTabletWriter 等组件](/images/diagrams/indexlib-kv-table-architecture.svg)
+KVTable 的架构：KVTabletReader、KVTabletWriter 等组件：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **核心组件**：
 - **KVTabletReader**：KV 表查询器，支持主键查询
@@ -291,7 +438,28 @@ KVTable 的架构：
 
 KVTable 的查询方式：
 
-![KVTable 的查询：主键查询、属性查询等](/images/diagrams/indexlib-kv-table-query.svg)
+KVTable 的查询：主键查询、属性查询等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **查询方式**：
 - **主键查询**：通过主键快速定位数据
@@ -317,7 +485,28 @@ KVTable 的查询方式：
 
 KKVTable 是键键值表，支持主键+排序键查询：
 
-![KKVTable 的特点：支持主键+排序键查询、多值存储](/images/diagrams/indexlib-kkv-table-features.svg)
+KKVTable 的特点：支持主键+排序键查询、多值存储：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **主要特点**：
 - **主键+排序键查询**：支持主键+排序键查询，实现多值存储
@@ -329,7 +518,28 @@ KKVTable 是键键值表，支持主键+排序键查询：
 
 KKVTable 的架构：
 
-![KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件](/images/diagrams/indexlib-kkv-table-architecture.svg)
+KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **核心组件**：
 - **KKVTabletReader**：KKV 表查询器，支持主键+排序键查询
@@ -341,7 +551,28 @@ KKVTable 的架构：
 
 KKVTable 的查询方式：
 
-![KKVTable 的查询：主键+排序键查询、范围查询等](/images/diagrams/indexlib-kkv-table-query.svg)
+KKVTable 的查询：主键+排序键查询、范围查询等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **查询方式**：
 - **主键查询**：通过主键查询所有值
@@ -368,7 +599,28 @@ KKVTable 的查询方式：
 
 不同索引类型的 TabletReader 实现差异：
 
-![TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletReader](/images/diagrams/indexlib-tablet-reader-differences.svg)
+TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletReader：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **实现差异**：
 - **NormalTabletReader**：支持全文检索、属性查询、主键查询等多种查询方式
@@ -379,7 +631,28 @@ KKVTable 的查询方式：
 
 不同索引类型的 TabletWriter 实现差异：
 
-![TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWriter](/images/diagrams/indexlib-tablet-writer-differences.svg)
+TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWriter：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **实现差异**：
 - **NormalTabletWriter**：支持文档构建、倒排索引构建、正排索引构建等
@@ -390,7 +663,28 @@ KKVTable 的查询方式：
 
 不同索引类型的索引构建差异：
 
-![索引构建的差异：Normal、KV、KKV 的索引构建流程](/images/diagrams/indexlib-index-build-differences.svg)
+索引构建的差异：Normal、KV、KKV 的索引构建流程：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **构建差异**：
 - **NormalTable**：需要构建倒排索引、正排索引、主键索引等多种索引
@@ -403,7 +697,28 @@ KKVTable 的查询方式：
 
 选择 NormalTable 的场景：
 
-![选择 NormalTable 的场景：全文检索、复杂查询等场景](/images/diagrams/indexlib-normal-table-scenarios.svg)
+选择 NormalTable 的场景：全文检索、复杂查询等场景：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **适用场景**：
 - **全文检索**：需要全文检索功能
@@ -415,7 +730,28 @@ KKVTable 的查询方式：
 
 选择 KVTable 的场景：
 
-![选择 KVTable 的场景：简单的键值存储、主键查询等场景](/images/diagrams/indexlib-kv-table-scenarios.svg)
+选择 KVTable 的场景：简单的键值存储、主键查询等场景：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **适用场景**：
 - **简单存储**：只需要简单的键值存储
@@ -427,7 +763,28 @@ KKVTable 的查询方式：
 
 选择 KKVTable 的场景：
 
-![选择 KKVTable 的场景：多值存储、主键+排序键查询等场景](/images/diagrams/indexlib-kkv-table-scenarios.svg)
+选择 KKVTable 的场景：多值存储、主键+排序键查询等场景：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **适用场景**：
 - **多值存储**：一个主键需要对应多个值
@@ -441,7 +798,28 @@ KKVTable 的查询方式：
 
 不同索引类型的查询性能对比：
 
-![查询性能对比：Normal、KV、KKV 的查询性能特点](/images/diagrams/indexlib-index-performance-comparison.svg)
+查询性能对比：Normal、KV、KKV 的查询性能特点：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **性能特点**：
 - **NormalTable**：全文检索性能高，复杂查询性能中等
@@ -452,7 +830,28 @@ KKVTable 的查询方式：
 
 不同索引类型的存储性能对比：
 
-![存储性能对比：Normal、KV、KKV 的存储性能特点](/images/diagrams/indexlib-index-storage-comparison.svg)
+存储性能对比：Normal、KV、KKV 的存储性能特点：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **存储特点**：
 - **NormalTable**：存储空间较大，需要存储多种索引
@@ -463,7 +862,28 @@ KKVTable 的查询方式：
 
 不同索引类型的构建性能对比：
 
-![构建性能对比：Normal、KV、KKV 的构建性能特点](/images/diagrams/indexlib-index-build-performance-comparison.svg)
+构建性能对比：Normal、KV、KKV 的构建性能特点：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **构建特点**：
 - **NormalTable**：构建时间较长，需要构建多种索引
@@ -476,7 +896,28 @@ KKVTable 的查询方式：
 
 IndexLib 支持自定义索引类型：
 
-![自定义索引类型：通过实现接口扩展索引类型](/images/diagrams/indexlib-custom-index-type.svg)
+自定义索引类型：通过实现接口扩展索引类型：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **扩展方式**：
 - **实现 TabletReader**：实现自定义的 TabletReader
@@ -488,7 +929,28 @@ IndexLib 支持自定义索引类型：
 
 索引类型的演进：
 
-![索引类型的演进：从 Normal 到 KV、KKV 的演进过程](/images/diagrams/indexlib-index-type-evolution.svg)
+索引类型的演进：从 Normal 到 KV、KKV 的演进过程：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **演进过程**：
 - **NormalTable**：最早的索引类型，支持完整的索引功能
@@ -501,7 +963,28 @@ IndexLib 支持自定义索引类型：
 
 索引类型的统一接口设计：
 
-![统一的接口设计：ITabletReader、ITabletWriter 等统一接口](/images/diagrams/indexlib-unified-interface-design.svg)
+统一的接口设计：ITabletReader、ITabletWriter 等统一接口：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **ITabletReader**：统一的查询接口，不同索引类型实现不同的查询逻辑
@@ -512,7 +995,28 @@ IndexLib 支持自定义索引类型：
 
 索引类型的灵活扩展设计：
 
-![灵活的扩展设计：支持自定义索引类型和扩展功能](/images/diagrams/indexlib-flexible-extension-design.svg)
+灵活的扩展设计：支持自定义索引类型和扩展功能：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **接口抽象**：通过接口抽象支持不同的索引类型实现
@@ -523,7 +1027,28 @@ IndexLib 支持自定义索引类型：
 
 索引类型的性能优化设计：
 
-![性能优化设计：针对不同索引类型的性能优化策略](/images/diagrams/indexlib-index-performance-optimization-design.svg)
+性能优化设计：针对不同索引类型的性能优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **针对性优化**：针对不同索引类型的特点进行性能优化

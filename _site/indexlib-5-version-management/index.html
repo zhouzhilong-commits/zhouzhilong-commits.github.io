@@ -596,7 +596,7 @@
 
 
   
-	  9 分钟阅读
+	  21 分钟阅读
 	
 </p>
           
@@ -617,7 +617,66 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了查询流程的实现。本文将继续深入，详细解析版本管理和增量更新的机制，这是理解 IndexLib 如何管理索引版本和实现增量更新的关键。</p>
 
-<p><img src="/images/diagrams/indexlib-version-management-overview.svg" alt="版本管理与增量更新概览：Version 与 Locator 的协同工作" /></p>
+<p>版本管理与增量更新概览：Version 与 Locator 的协同工作：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Input["数据输入"]
+        A[数据源&lt;br/&gt;DataSource]
+        B[文档流&lt;br/&gt;Document Stream]
+        A --&gt; B
+    end
+    
+    subgraph Version["版本管理"]
+        C[Version&lt;br/&gt;版本信息]
+        D[VersionId&lt;br/&gt;版本号递增]
+        E[Segments&lt;br/&gt;Segment列表]
+        F[Schema演进&lt;br/&gt;SchemaId映射]
+        C --&gt; D
+        C --&gt; E
+        C --&gt; F
+    end
+    
+    subgraph Locator["位置信息"]
+        G[Locator&lt;br/&gt;数据处理位置]
+        H[Timestamp&lt;br/&gt;时间戳]
+        I[MultiProgress&lt;br/&gt;多进度信息]
+        J[HashId&lt;br/&gt;分片标识]
+        G --&gt; H
+        G --&gt; I
+        I --&gt; J
+    end
+    
+    subgraph Update["增量更新"]
+        K[IsFasterThan&lt;br/&gt;比较判断]
+        L[数据过滤&lt;br/&gt;过滤已处理]
+        M[处理新数据&lt;br/&gt;构建索引]
+        N[更新Locator&lt;br/&gt;记录进度]
+        K --&gt; L
+        L --&gt; M
+        M --&gt; N
+    end
+    
+    subgraph Commit["版本提交"]
+        O[VersionCommitter&lt;br/&gt;版本提交器]
+        P[Fence机制&lt;br/&gt;原子性保证]
+        Q[持久化&lt;br/&gt;写入磁盘]
+        O --&gt; P
+        P --&gt; Q
+    end
+    
+    B --&gt; G
+    G --&gt; K
+    K --&gt; C
+    N --&gt; C
+    C --&gt; O
+    Q --&gt; E
+    
+    style Input fill:#e3f2fd
+    style Version fill:#fff3e0
+    style Locator fill:#f3e5f5
+    style Update fill:#e8f5e9
+    style Commit fill:#fce4ec
+</code></pre>
 
 <h2 id="1-版本管理概览">1. 版本管理概览</h2>
 
@@ -634,7 +693,65 @@
 
 <p>让我们先通过图来理解版本管理的整体架构：</p>
 
-<p><img src="/images/diagrams/indexlib-version-architecture.svg" alt="版本管理架构：Version、Locator、Segment 的关系" /></p>
+<p>版本管理架构：Version、Locator、Segment 的关系：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Version["Version 版本信息"]
+        V1[VersionId&lt;br/&gt;版本号单调递增]
+        V2[Segments&lt;br/&gt;Segment列表]
+        V3[Locator&lt;br/&gt;位置信息]
+        V4[Timestamp&lt;br/&gt;时间戳]
+        V5[Sealed&lt;br/&gt;封存状态]
+        V6[SchemaId&lt;br/&gt;Schema标识]
+        V1 --&gt; V2
+        V1 --&gt; V3
+        V1 --&gt; V4
+        V1 --&gt; V5
+        V1 --&gt; V6
+    end
+    
+    subgraph Segment["Segment 索引段"]
+        S1[SegmentId&lt;br/&gt;段标识]
+        S2[SchemaId&lt;br/&gt;段Schema]
+        S3[IndexFiles&lt;br/&gt;索引文件]
+        S4[SegmentInfo&lt;br/&gt;段信息]
+        S1 --&gt; S2
+        S1 --&gt; S3
+        S1 --&gt; S4
+    end
+    
+    subgraph Locator["Locator 位置信息"]
+        L1[SourceId&lt;br/&gt;数据源标识]
+        L2[Timestamp&lt;br/&gt;时间戳]
+        L3[ConcurrentIdx&lt;br/&gt;并发索引]
+        L4[HashId&lt;br/&gt;分片标识]
+        L5[MultiProgress&lt;br/&gt;多进度信息]
+        L1 --&gt; L2
+        L2 --&gt; L3
+        L3 --&gt; L4
+        L4 --&gt; L5
+    end
+    
+    subgraph Commit["版本提交"]
+        C1[VersionCommitter&lt;br/&gt;提交器]
+        C2[Fence目录&lt;br/&gt;临时目录]
+        C3[原子切换&lt;br/&gt;重命名操作]
+        C4[持久化&lt;br/&gt;写入磁盘]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+    end
+    
+    V2 --&gt;|包含| S1
+    V3 --&gt;|包含| L1
+    V1 --&gt;|提交| C1
+    C4 --&gt;|更新| V1
+    
+    style Version fill:#e3f2fd
+    style Segment fill:#fff3e0
+    style Locator fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <h3 id="12-版本管理的作用">1.2 版本管理的作用</h3>
 
@@ -761,7 +878,42 @@
 
 <p><strong>Version 的关键字段</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-version-structure.svg" alt="Version 的结构：包含 VersionId、Segments、Locator 等关键信息" /></p>
+<p>Version 的结构：包含 VersionId、Segments、Locator 等关键信息：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Version["Version 对象"]
+        V[Version&lt;br/&gt;版本信息]
+    end
+    
+    subgraph Fields["核心字段"]
+        F1[VersionId&lt;br/&gt;版本号&lt;br/&gt;单调递增]
+        F2[Segments&lt;br/&gt;Segment列表&lt;br/&gt;vector SegmentInVersion]
+        F3[Locator&lt;br/&gt;位置信息&lt;br/&gt;用于增量更新]
+        F4[Timestamp&lt;br/&gt;时间戳&lt;br/&gt;版本创建时间]
+        F5[Sealed&lt;br/&gt;封存状态&lt;br/&gt;是否封存]
+        F6[SchemaId&lt;br/&gt;Schema标识&lt;br/&gt;当前Schema版本]
+        F7[FenceName&lt;br/&gt;Fence名称&lt;br/&gt;临时目录名]
+    end
+    
+    subgraph SegmentInVersion["SegmentInVersion 结构"]
+        S1[SegmentId&lt;br/&gt;段标识&lt;br/&gt;INVALID_SEGMENTID]
+        S2[SchemaId&lt;br/&gt;段Schema&lt;br/&gt;DEFAULT_SCHEMAID]
+        S1 --&gt; S2
+    end
+    
+    V --&gt; F1
+    V --&gt; F2
+    V --&gt; F3
+    V --&gt; F4
+    V --&gt; F5
+    V --&gt; F6
+    V --&gt; F7
+    F2 --&gt;|包含| S1
+    
+    style Version fill:#e3f2fd
+    style Fields fill:#fff3e0
+    style SegmentInVersion fill:#f3e5f5
+</code></pre>
 
 <ul>
   <li><strong>VersionId</strong>：版本号，单调递增，每次 Commit 时递增</li>
@@ -775,7 +927,58 @@
 
 <p>每次 Commit 都会创建新版本，版本号递增：</p>
 
-<p><img src="/images/diagrams/indexlib-version-evolution.svg" alt="Version 演进：从 V1 到 V2 的版本变化" /></p>
+<p>Version 演进：从 V1 到 V2 的版本变化：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph V1["Version 1"]
+        V1_ID[VersionId: 1]
+        V1_SEG[Segments: 1, 2]
+        V1_LOC[Locator: timestamp=100]
+        V1_SCHEMA[SchemaId: 0]
+        V1_ID --&gt; V1_SEG
+        V1_ID --&gt; V1_LOC
+        V1_ID --&gt; V1_SCHEMA
+    end
+    
+    subgraph Commit["Commit 操作"]
+        C1[收集Segment]
+        C2[更新Locator]
+        C3[递增VersionId]
+        C4[创建新版本]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+    end
+    
+    subgraph V2["Version 2"]
+        V2_ID[VersionId: 2]
+        V2_SEG[Segments: 1, 2, 3]
+        V2_LOC[Locator: timestamp=200]
+        V2_SCHEMA[SchemaId: 0]
+        V2_ID --&gt; V2_SEG
+        V2_ID --&gt; V2_LOC
+        V2_ID --&gt; V2_SCHEMA
+    end
+    
+    subgraph V3["Version 3"]
+        V3_ID[VersionId: 3]
+        V3_SEG[Segments: 4]
+        V3_LOC[Locator: timestamp=300]
+        V3_SCHEMA[SchemaId: 0]
+        V3_ID --&gt; V3_SEG
+        V3_ID --&gt; V3_LOC
+        V3_ID --&gt; V3_SCHEMA
+    end
+    
+    V1 --&gt;|Commit| Commit
+    Commit --&gt; V2
+    V2 --&gt;|Merge| V3
+    
+    style V1 fill:#e3f2fd
+    style Commit fill:#fff3e0
+    style V2 fill:#f3e5f5
+    style V3 fill:#e8f5e9
+</code></pre>
 
 <p><strong>版本演进示例</strong>：</p>
 <ul>
@@ -855,7 +1058,61 @@
 
 <p>Version 需要持久化到磁盘，通过 Fence 机制保证原子性：</p>
 
-<p><img src="/images/diagrams/indexlib-version-persistence.svg" alt="Version 持久化：通过 Fence 机制保证原子性" /></p>
+<p>Version 持久化：通过 Fence 机制保证原子性：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Prepare["准备阶段"]
+        P1[PrepareVersion&lt;br/&gt;准备版本信息]
+        P2[CollectSegments&lt;br/&gt;收集Segment列表]
+        P3[PrepareLocator&lt;br/&gt;准备Locator信息]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph Fence["Fence 机制"]
+        F1[CreateFenceDirectory&lt;br/&gt;创建临时目录&lt;br/&gt;version.fence.timestamp]
+        F2[WriteVersionFile&lt;br/&gt;写入版本文件&lt;br/&gt;序列化为JSON]
+        F3[IncVersionId&lt;br/&gt;递增版本号]
+        F4[AtomicRename&lt;br/&gt;原子重命名&lt;br/&gt;fence目录到正式目录]
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; F4
+    end
+    
+    subgraph Persist["持久化"]
+        PE1[序列化Version&lt;br/&gt;JSON格式]
+        PE2[写入version文件&lt;br/&gt;version.0]
+        PE3[写入元数据&lt;br/&gt;时间戳、Locator]
+        PE1 --&gt; PE2
+        PE2 --&gt; PE3
+    end
+    
+    subgraph Update["更新内存"]
+        U1[UpdateTabletData&lt;br/&gt;更新TabletData]
+        U2[更新Version引用&lt;br/&gt;切换到新版本]
+        U1 --&gt; U2
+    end
+    
+    subgraph Error["错误处理"]
+        E1{提交失败?}
+        E2[CleanupFence&lt;br/&gt;清理临时目录]
+        E3[不影响已有版本&lt;br/&gt;保证一致性]
+        E1 --&gt;|是| E2
+        E2 --&gt; E3
+    end
+    
+    P3 --&gt; F1
+    F2 --&gt; PE1
+    PE3 --&gt; F3
+    F4 --&gt; U1
+    U2 --&gt; E1
+    
+    style Prepare fill:#e3f2fd
+    style Fence fill:#fff3e0
+    style Persist fill:#f3e5f5
+    style Update fill:#e8f5e9
+    style Error fill:#fce4ec
+</code></pre>
 
 <p><strong>持久化流程</strong>：</p>
 
@@ -941,7 +1198,55 @@
 
 <p>Version 的加载通过 <code class="language-plaintext highlighter-rouge">VersionLoader</code> 实现：</p>
 
-<p><img src="/images/diagrams/indexlib-version-loading.svg" alt="Version 加载：从磁盘加载版本信息" /></p>
+<p>Version 加载：从磁盘加载版本信息：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Load["加载阶段"]
+        L1[VersionLoader.Load&lt;br/&gt;加载版本]
+        L2[读取版本文件&lt;br/&gt;version.0, version.1等]
+        L3[解析JSON&lt;br/&gt;反序列化Version]
+        L1 --&gt; L2
+        L2 --&gt; L3
+    end
+    
+    subgraph Validate["验证阶段"]
+        V1[ValidateVersion&lt;br/&gt;验证版本有效性]
+        V2[检查Segment存在性&lt;br/&gt;Segment文件是否存在]
+        V3[检查Schema兼容性&lt;br/&gt;Schema版本映射]
+        V4[检查Locator有效性&lt;br/&gt;Locator格式正确]
+        V1 --&gt; V2
+        V2 --&gt; V3
+        V3 --&gt; V4
+    end
+    
+    subgraph Segment["加载Segment"]
+        S1[根据Segment列表&lt;br/&gt;加载Segment]
+        S2[OpenSegment&lt;br/&gt;打开Segment文件]
+        S3[加载索引文件&lt;br/&gt;按需加载]
+        S4[创建DiskSegment&lt;br/&gt;DiskSegment对象]
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S3 --&gt; S4
+    end
+    
+    subgraph Init["初始化TabletData"]
+        I1[UpdateVersion&lt;br/&gt;更新Version]
+        I2[设置Segment列表&lt;br/&gt;添加到TabletData]
+        I3[初始化查询器&lt;br/&gt;准备查询]
+        I1 --&gt; I2
+        I2 --&gt; I3
+    end
+    
+    L3 --&gt; V1
+    V4 --&gt; S1
+    S4 --&gt; I1
+    I3 --&gt; End[完成加载]
+    
+    style Load fill:#e3f2fd
+    style Validate fill:#fff3e0
+    style Segment fill:#f3e5f5
+    style Init fill:#e8f5e9
+</code></pre>
 
 <p><strong>加载流程</strong>：</p>
 <ol>
@@ -957,7 +1262,57 @@
 
 <p>Locator 是增量更新的核心，记录数据的位置信息：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-role.svg" alt="Locator 的作用：记录数据处理位置，支持增量更新" /></p>
+<p>Locator 的作用：记录数据处理位置，支持增量更新：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Role["Locator 核心作用"]
+        R1[增量更新&lt;br/&gt;判断数据是否已处理]
+        R2[数据一致性&lt;br/&gt;保证不重复不丢失]
+        R3[进度追踪&lt;br/&gt;记录每个HashId进度]
+        R4[并发控制&lt;br/&gt;处理时间戳相同情况]
+    end
+    
+    subgraph Compare["比较机制"]
+        C1[IsFasterThan&lt;br/&gt;比较两个Locator]
+        C2[LCR_FULLY_FASTER&lt;br/&gt;完全更快]
+        C3[LCR_SLOWER&lt;br/&gt;更慢]
+        C4[LCR_PARTIAL_FASTER&lt;br/&gt;部分更快]
+        C5[LCR_INVALID&lt;br/&gt;无效比较]
+        C1 --&gt; C2
+        C1 --&gt; C3
+        C1 --&gt; C4
+        C1 --&gt; C5
+    end
+    
+    subgraph Update["更新机制"]
+        U1[Update&lt;br/&gt;更新Locator]
+        U2[条件检查&lt;br/&gt;新Locator必须更快]
+        U3[更新MultiProgress&lt;br/&gt;记录最新进度]
+        U4[保证一致性&lt;br/&gt;只向前推进]
+        U1 --&gt; U2
+        U2 --&gt; U3
+        U3 --&gt; U4
+    end
+    
+    subgraph Application["应用场景"]
+        A1[实时写入&lt;br/&gt;实时接收数据流]
+        A2[批量更新&lt;br/&gt;批量处理数据]
+        A3[多数据源&lt;br/&gt;支持多数据源场景]
+        A4[故障恢复&lt;br/&gt;故障恢复时判断]
+    end
+    
+    R1 --&gt; C1
+    R2 --&gt; U1
+    R3 --&gt; A1
+    R4 --&gt; A2
+    C2 --&gt; A3
+    U4 --&gt; A4
+    
+    style Role fill:#e3f2fd
+    style Compare fill:#fff3e0
+    style Update fill:#f3e5f5
+    style Application fill:#e8f5e9
+</code></pre>
 
 <p><strong>Locator 的关键作用</strong>：</p>
 <ol>
@@ -1005,7 +1360,50 @@
 
 <p><strong>Locator 的关键字段</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-structure.svg" alt="Locator 的结构：包含 timestamp、concurrentIdx、hashId 等信息" /></p>
+<p>Locator 的结构：包含 timestamp、concurrentIdx、hashId 等信息：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Locator["Locator 对象"]
+        L[Locator&lt;br/&gt;位置信息]
+    end
+    
+    subgraph Fields["核心字段"]
+        F1[SourceId&lt;br/&gt;数据源标识&lt;br/&gt;uint64_t _src]
+        F2[MinOffset&lt;br/&gt;最小偏移量&lt;br/&gt;Progress::Offset]
+        F3[MultiProgress&lt;br/&gt;多进度信息&lt;br/&gt;每个HashId的进度]
+        F4[UserData&lt;br/&gt;用户数据&lt;br/&gt;string _userData]
+    end
+    
+    subgraph DocInfo["DocInfo 文档信息"]
+        D1[Timestamp&lt;br/&gt;时间戳&lt;br/&gt;int64_t]
+        D2[ConcurrentIdx&lt;br/&gt;并发索引&lt;br/&gt;uint32_t]
+        D3[HashId&lt;br/&gt;分片标识&lt;br/&gt;uint16_t]
+        D4[SourceIdx&lt;br/&gt;数据源索引&lt;br/&gt;uint8_t]
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+    end
+    
+    subgraph Progress["Progress 进度信息"]
+        P1[Offset&lt;br/&gt;偏移量]
+        P2[Timestamp&lt;br/&gt;时间戳]
+        P3[ConcurrentIdx&lt;br/&gt;并发索引]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    L --&gt; F1
+    L --&gt; F2
+    L --&gt; F3
+    L --&gt; F4
+    F3 --&gt;|包含| P1
+    D1 --&gt;|用于| F3
+    
+    style Locator fill:#e3f2fd
+    style Fields fill:#fff3e0
+    style DocInfo fill:#f3e5f5
+    style Progress fill:#e8f5e9
+</code></pre>
 
 <ul>
   <li><strong>timestamp</strong>：时间戳，记录数据的时间位置</li>
@@ -1019,7 +1417,7 @@
 
 <p>Locator 的比较逻辑用于判断数据是否已处理：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-compare.svg" alt="Locator 比较：判断数据是否已处理的逻辑" /></p>
+<p>Locator 比较：判断数据是否已处理的逻辑（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>比较示例</strong>：</p>
 <ul>
@@ -1118,7 +1516,46 @@
 
 <p>Locator 的更新通过 <code class="language-plaintext highlighter-rouge">Update()</code> 方法实现：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-update.svg" alt="Locator 更新：更新数据处理位置" /></p>
+<p>Locator 更新：更新数据处理位置：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Input["输入"]
+        I1[新Locator&lt;br/&gt;New Locator]
+        I2[当前Locator&lt;br/&gt;Current Locator]
+    end
+    
+    subgraph Check["检查条件"]
+        C1[IsFasterThan&lt;br/&gt;比较新Locator和当前Locator]
+        C2{新Locator是否&lt;br/&gt;完全更快?}
+        C1 --&gt; C2
+    end
+    
+    subgraph Update["更新操作"]
+        U1[更新MultiProgress&lt;br/&gt;更新每个HashId的进度]
+        U2[更新MinOffset&lt;br/&gt;更新最小偏移量]
+        U3[更新UserData&lt;br/&gt;更新用户数据]
+        U4[保证一致性&lt;br/&gt;只向前推进]
+        U1 --&gt; U2
+        U2 --&gt; U3
+        U3 --&gt; U4
+    end
+    
+    subgraph Result["结果"]
+        R1[更新成功&lt;br/&gt;Locator已更新]
+        R2[更新失败&lt;br/&gt;保持原Locator]
+    end
+    
+    I1 --&gt; C1
+    I2 --&gt; C1
+    C2 --&gt;|是| U1
+    C2 --&gt;|否| R2
+    U4 --&gt; R1
+    
+    style Input fill:#e3f2fd
+    style Check fill:#fff3e0
+    style Update fill:#f3e5f5
+    style Result fill:#e8f5e9
+</code></pre>
 
 <p><strong>更新逻辑</strong>：</p>
 <ul>
@@ -1133,7 +1570,7 @@
 
 <p>增量更新通过 Locator 判断哪些数据已处理：</p>
 
-<p><img src="/images/diagrams/indexlib-incremental-update-flow.svg" alt="增量更新流程：通过 Locator 判断数据是否已处理" /></p>
+<p>增量更新流程：通过 Locator 判断数据是否已处理（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>增量更新流程图</strong>：</p>
 
@@ -1169,7 +1606,50 @@
 
 <p>增量更新的判断通过 Locator 比较实现：</p>
 
-<p><img src="/images/diagrams/indexlib-incremental-update-judge.svg" alt="增量更新判断：通过 Locator 比较判断数据是否已处理" /></p>
+<p>增量更新判断：通过 Locator 比较判断数据是否已处理：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Input["输入"]
+        I1[数据Locator&lt;br/&gt;Data Locator]
+        I2[版本Locator&lt;br/&gt;Version Locator]
+    end
+    
+    subgraph Compare["比较判断"]
+        C1[IsFasterThan&lt;br/&gt;比较两个Locator]
+        C2{比较结果}
+    end
+    
+    subgraph Result["判断结果"]
+        R1[LCR_FULLY_FASTER&lt;br/&gt;数据已处理&lt;br/&gt;跳过数据]
+        R2[LCR_SLOWER&lt;br/&gt;数据未处理&lt;br/&gt;需要处理]
+        R3[LCR_PARTIAL_FASTER&lt;br/&gt;部分数据已处理&lt;br/&gt;需要部分处理]
+        R4[LCR_INVALID&lt;br/&gt;数据源不同&lt;br/&gt;无法比较]
+    end
+    
+    subgraph Action["处理动作"]
+        A1[跳过数据&lt;br/&gt;不处理]
+        A2[处理新数据&lt;br/&gt;构建索引]
+        A3[部分处理&lt;br/&gt;处理未处理部分]
+        A4[无法判断&lt;br/&gt;需要人工处理]
+    end
+    
+    I1 --&gt; C1
+    I2 --&gt; C1
+    C1 --&gt; C2
+    C2 --&gt;|完全更快| R1
+    C2 --&gt;|更慢| R2
+    C2 --&gt;|部分更快| R3
+    C2 --&gt;|无效| R4
+    R1 --&gt; A1
+    R2 --&gt; A2
+    R3 --&gt; A3
+    R4 --&gt; A4
+    
+    style Input fill:#e3f2fd
+    style Compare fill:#fff3e0
+    style Result fill:#f3e5f5
+    style Action fill:#e8f5e9
+</code></pre>
 
 <p><strong>判断逻辑</strong>：</p>
 <ul>
@@ -1183,7 +1663,58 @@
 
 <p>增量更新适用于以下场景：</p>
 
-<p><img src="/images/diagrams/indexlib-incremental-update-scenarios.svg" alt="增量更新场景：实时写入、批量更新等" /></p>
+<p>增量更新场景：实时写入、批量更新等：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Realtime["实时写入场景"]
+        R1[实时接收数据流&lt;br/&gt;Continuous Data Stream]
+        R2[检查Locator&lt;br/&gt;IsFasterThan判断]
+        R3[处理新数据&lt;br/&gt;只处理未处理数据]
+        R4[更新Locator&lt;br/&gt;记录最新进度]
+        R5[定期Commit&lt;br/&gt;提交版本]
+        R1 --&gt; R2
+        R2 --&gt; R3
+        R3 --&gt; R4
+        R4 --&gt; R5
+    end
+    
+    subgraph Batch["批量更新场景"]
+        B1[批量读取数据源&lt;br/&gt;Batch Read]
+        B2[检查Locator&lt;br/&gt;过滤已处理数据]
+        B3[处理新数据&lt;br/&gt;批量构建索引]
+        B4[更新Locator&lt;br/&gt;更新进度]
+        B5[批量Commit&lt;br/&gt;提交版本]
+        B1 --&gt; B2
+        B2 --&gt; B3
+        B3 --&gt; B4
+        B4 --&gt; B5
+    end
+    
+    subgraph MultiSource["多数据源场景"]
+        M1[多个数据源&lt;br/&gt;Multiple Data Sources]
+        M2[区分SourceIdx&lt;br/&gt;区分数据源]
+        M3[分别处理&lt;br/&gt;独立处理每个数据源]
+        M4[保证一致性&lt;br/&gt;数据不重复不丢失]
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+    end
+    
+    subgraph Recovery["故障恢复场景"]
+        F1[故障恢复&lt;br/&gt;Failure Recovery]
+        F2[检查Locator&lt;br/&gt;判断需要重新处理的数据]
+        F3[重新处理&lt;br/&gt;处理未处理数据]
+        F4[恢复完成&lt;br/&gt;恢复正常状态]
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; F4
+    end
+    
+    style Realtime fill:#e3f2fd
+    style Batch fill:#fff3e0
+    style MultiSource fill:#f3e5f5
+    style Recovery fill:#e8f5e9
+</code></pre>
 
 <p><strong>使用场景</strong>：</p>
 <ul>
@@ -1199,7 +1730,7 @@
 
 <p>版本提交通过 <code class="language-plaintext highlighter-rouge">VersionCommitter</code> 实现：</p>
 
-<p><img src="/images/diagrams/indexlib-version-commit-flow.svg" alt="版本提交流程：从准备到持久化的完整过程" /></p>
+<p>版本提交流程：从准备到持久化的完整过程（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>版本提交流程图</strong>：</p>
 
@@ -1234,7 +1765,7 @@
 
 <p>版本加载通过 <code class="language-plaintext highlighter-rouge">VersionLoader</code> 实现：</p>
 
-<p><img src="/images/diagrams/indexlib-version-load-flow.svg" alt="版本加载流程：从磁盘加载版本信息" /></p>
+<p>版本加载流程：从磁盘加载版本信息（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>加载流程</strong>：</p>
 <ol>
@@ -1249,7 +1780,54 @@
 
 <p>版本回滚支持回滚到历史版本：</p>
 
-<p><img src="/images/diagrams/indexlib-version-rollback.svg" alt="版本回滚：回滚到历史版本" /></p>
+<p>版本回滚：回滚到历史版本：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Select["选择目标版本"]
+        S1[选择目标版本&lt;br/&gt;Select Target Version]
+        S2[验证版本存在性&lt;br/&gt;检查版本文件]
+        S3[验证版本有效性&lt;br/&gt;检查Segment存在]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph Load["加载目标版本"]
+        L1[加载Version&lt;br/&gt;Load Version]
+        L2[加载Segment列表&lt;br/&gt;Load Segment List]
+        L3[加载Locator&lt;br/&gt;Load Locator]
+        L4[加载Schema映射&lt;br/&gt;Load Schema RoadMap]
+        L1 --&gt; L2
+        L2 --&gt; L3
+        L3 --&gt; L4
+    end
+    
+    subgraph Restore["恢复状态"]
+        R1[更新TabletData&lt;br/&gt;Update TabletData]
+        R2[设置Version&lt;br/&gt;Set Version]
+        R3[设置Segment列表&lt;br/&gt;Set Segment List]
+        R4[初始化查询器&lt;br/&gt;Initialize Readers]
+        R1 --&gt; R2
+        R2 --&gt; R3
+        R3 --&gt; R4
+    end
+    
+    subgraph Result["回滚结果"]
+        RE1[回滚成功&lt;br/&gt;Rollback Success]
+        RE2[恢复到目标版本&lt;br/&gt;Restored to Target Version]
+        RE3[查询恢复正常&lt;br/&gt;Query Service Restored]
+        RE1 --&gt; RE2
+        RE2 --&gt; RE3
+    end
+    
+    S3 --&gt; L1
+    L4 --&gt; R1
+    R4 --&gt; RE1
+    
+    style Select fill:#e3f2fd
+    style Load fill:#fff3e0
+    style Restore fill:#f3e5f5
+    style Result fill:#e8f5e9
+</code></pre>
 
 <p><strong>回滚流程</strong>：</p>
 <ol>
@@ -1265,7 +1843,51 @@
 
 <p>IndexLib 支持 Schema 演进，每个 Segment 可以有不同的 Schema：</p>
 
-<p><img src="/images/diagrams/indexlib-schema-evolution.svg" alt="Schema 演进：支持 Schema 变更，每个 Segment 记录自己的 SchemaId" /></p>
+<p>Schema 演进：支持 Schema 变更，每个 Segment 记录自己的 SchemaId：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Schema["Schema 演进机制"]
+        S1[Segment SchemaId&lt;br/&gt;每个Segment记录自己的SchemaId]
+        S2[Schema版本映射&lt;br/&gt;SchemaVersionRoadMap]
+        S3[兼容性检查&lt;br/&gt;Schema兼容性验证]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph Version["版本演进"]
+        V1[Version 1&lt;br/&gt;SchemaId: 0]
+        V2[Version 2&lt;br/&gt;SchemaId: 0]
+        V3[Version 3&lt;br/&gt;SchemaId: 1]
+        V1 --&gt;|Schema变更| V2
+        V2 --&gt;|新Segment使用新Schema| V3
+    end
+    
+    subgraph Segment["Segment Schema"]
+        SE1[Segment 1&lt;br/&gt;SchemaId: 0]
+        SE2[Segment 2&lt;br/&gt;SchemaId: 0]
+        SE3[Segment 3&lt;br/&gt;SchemaId: 1]
+        SE4[Segment 4&lt;br/&gt;SchemaId: 1]
+    end
+    
+    subgraph Compatibility["兼容性保证"]
+        C1[向后兼容&lt;br/&gt;新Schema向后兼容旧Schema]
+        C2[渐进式迁移&lt;br/&gt;新Segment使用新Schema]
+        C3[旧Segment保持&lt;br/&gt;旧Segment保持原样]
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    V1 --&gt; SE1
+    V2 --&gt; SE2
+    V3 --&gt; SE3
+    V3 --&gt; SE4
+    S3 --&gt; C1
+    
+    style Schema fill:#e3f2fd
+    style Version fill:#fff3e0
+    style Segment fill:#f3e5f5
+    style Compatibility fill:#e8f5e9
+</code></pre>
 
 <p><strong>Schema 演进机制</strong>：</p>
 <ul>
@@ -1278,7 +1900,52 @@
 
 <p>Schema 变更的流程：</p>
 
-<p><img src="/images/diagrams/indexlib-schema-change-flow.svg" alt="Schema 变更流程：从 Schema 变更到版本提交" /></p>
+<p>Schema 变更流程：从 Schema 变更到版本提交：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Check["检查兼容性"]
+        C1[检查新Schema&lt;br/&gt;Check New Schema]
+        C2[检查兼容性&lt;br/&gt;Check Compatibility]
+        C3{兼容性检查&lt;br/&gt;通过?}
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Seal["Seal 当前Segment"]
+        S1[Seal当前Segment&lt;br/&gt;Seal Current Segment]
+        S2[停止接收新文档&lt;br/&gt;Stop Receiving Documents]
+        S3[等待转储完成&lt;br/&gt;Wait for Dump]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph Create["创建新Segment"]
+        CR1[使用新Schema&lt;br/&gt;Use New Schema]
+        CR2[创建新MemSegment&lt;br/&gt;Create New MemSegment]
+        CR3[开始接收新文档&lt;br/&gt;Start Receiving Documents]
+        CR1 --&gt; CR2
+        CR2 --&gt; CR3
+    end
+    
+    subgraph Commit["提交版本"]
+        CO1[更新SchemaId&lt;br/&gt;Update SchemaId]
+        CO2[更新SchemaVersionRoadMap&lt;br/&gt;Update RoadMap]
+        CO3[提交Version&lt;br/&gt;Commit Version]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    C3 --&gt;|通过| S1
+    C3 --&gt;|失败| Error[Schema变更失败]
+    S3 --&gt; CR1
+    CR3 --&gt; CO1
+    CO3 --&gt; Success[Schema变更成功]
+    
+    style Check fill:#e3f2fd
+    style Seal fill:#fff3e0
+    style Create fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <p><strong>变更流程</strong>：</p>
 <ol>
@@ -1294,7 +1961,51 @@
 
 <p>版本清理用于清理不再需要的旧版本文件：</p>
 
-<p><img src="/images/diagrams/indexlib-version-cleanup.svg" alt="版本清理：清理不再需要的旧版本文件" /></p>
+<p>版本清理：清理不再需要的旧版本文件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Identify["识别清理目标"]
+        I1[保留版本列表&lt;br/&gt;Keep Recent N Versions]
+        I2[识别旧版本&lt;br/&gt;Identify Old Versions]
+        I3[检查版本引用&lt;br/&gt;Check Version References]
+        I1 --&gt; I2
+        I2 --&gt; I3
+    end
+    
+    subgraph CleanSegment["清理Segment"]
+        CS1[检查Segment引用&lt;br/&gt;Check Segment References]
+        CS2{Segment是否&lt;br/&gt;被引用?}
+        CS3[清理Segment文件&lt;br/&gt;Delete Segment Files]
+        CS4[清理索引文件&lt;br/&gt;Delete Index Files]
+        CS1 --&gt; CS2
+        CS2 --&gt;|否| CS3
+        CS3 --&gt; CS4
+    end
+    
+    subgraph CleanVersion["清理版本文件"]
+        CV1[清理版本文件&lt;br/&gt;Delete Version Files]
+        CV2[清理Fence目录&lt;br/&gt;Delete Fence Directories]
+        CV3[清理元数据&lt;br/&gt;Delete Metadata]
+        CV1 --&gt; CV2
+        CV2 --&gt; CV3
+    end
+    
+    subgraph Result["清理结果"]
+        R1[释放存储空间&lt;br/&gt;Free Storage Space]
+        R2[保持系统稳定&lt;br/&gt;Maintain System Stability]
+        R1 --&gt; R2
+    end
+    
+    I3 --&gt; CS1
+    CS2 --&gt;|是| Skip[跳过清理]
+    CS4 --&gt; CV1
+    CV3 --&gt; R1
+    
+    style Identify fill:#e3f2fd
+    style CleanSegment fill:#fff3e0
+    style CleanVersion fill:#f3e5f5
+    style Result fill:#e8f5e9
+</code></pre>
 
 <p><strong>清理机制</strong>：</p>
 <ul>
@@ -1307,7 +2018,50 @@
 
 <p>版本清理的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-version-cleanup-strategy.svg" alt="版本清理策略：保留版本数量、清理时机等" /></p>
+<p>版本清理策略：保留版本数量、清理时机等：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Strategy["清理策略"]
+        S1[保留版本数&lt;br/&gt;Keep N Versions]
+        S2[清理时机&lt;br/&gt;Cleanup Timing]
+        S3[清理范围&lt;br/&gt;Cleanup Scope]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph Keep["保留策略"]
+        K1[保留最近N个版本&lt;br/&gt;Keep Recent N Versions]
+        K2[保留活跃版本&lt;br/&gt;Keep Active Versions]
+        K3[保留重要版本&lt;br/&gt;Keep Important Versions]
+    end
+    
+    subgraph Timing["清理时机"]
+        T1[Commit时清理&lt;br/&gt;Cleanup on Commit]
+        T2[定期清理&lt;br/&gt;Periodic Cleanup]
+        T3[手动清理&lt;br/&gt;Manual Cleanup]
+    end
+    
+    subgraph Scope["清理范围"]
+        SC1[版本文件&lt;br/&gt;Version Files]
+        SC2[Segment文件&lt;br/&gt;Segment Files]
+        SC3[索引文件&lt;br/&gt;Index Files]
+        SC4[元数据文件&lt;br/&gt;Metadata Files]
+    end
+    
+    S1 --&gt; K1
+    S2 --&gt; T1
+    S3 --&gt; SC1
+    K1 --&gt; T1
+    T1 --&gt; SC1
+    SC1 --&gt; SC2
+    SC2 --&gt; SC3
+    SC3 --&gt; SC4
+    
+    style Strategy fill:#e3f2fd
+    style Keep fill:#fff3e0
+    style Timing fill:#f3e5f5
+    style Scope fill:#e8f5e9
+</code></pre>
 
 <p><strong>清理策略</strong>：</p>
 <ul>
@@ -1322,7 +2076,51 @@
 
 <p>在实时写入场景中，增量更新的应用：</p>
 
-<p><img src="/images/diagrams/indexlib-incremental-realtime-scenario.svg" alt="实时写入场景中的增量更新：通过 Locator 判断数据是否已处理" /></p>
+<p>实时写入场景中的增量更新：通过 Locator 判断数据是否已处理：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Receive["接收数据"]
+        R1[实时接收数据流&lt;br/&gt;Receive Data Stream]
+        R2[解析文档&lt;br/&gt;Parse Documents]
+        R3[提取Locator&lt;br/&gt;Extract Locator]
+        R1 --&gt; R2
+        R2 --&gt; R3
+    end
+    
+    subgraph Check["检查Locator"]
+        C1[获取Version Locator&lt;br/&gt;Get Version Locator]
+        C2[IsFasterThan比较&lt;br/&gt;Compare Locators]
+        C3{数据是否&lt;br/&gt;已处理?}
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Process["处理新数据"]
+        P1[处理新数据&lt;br/&gt;Process New Data]
+        P2[构建索引&lt;br/&gt;Build Index]
+        P3[更新Locator&lt;br/&gt;Update Locator]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph Commit["提交版本"]
+        CO1[定期Commit&lt;br/&gt;Periodic Commit]
+        CO2[更新Version Locator&lt;br/&gt;Update Version Locator]
+        CO3[持久化版本&lt;br/&gt;Persist Version]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    R3 --&gt; C1
+    C3 --&gt;|未处理| P1
+    C3 --&gt;|已处理| Skip[跳过数据]
+    P3 --&gt; CO1
+    
+    style Receive fill:#e3f2fd
+    style Check fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <p><strong>实时写入流程</strong>：</p>
 <ol>
@@ -1337,7 +2135,50 @@
 
 <p>在批量更新场景中，增量更新的应用：</p>
 
-<p><img src="/images/diagrams/indexlib-incremental-batch-scenario.svg" alt="批量更新场景中的增量更新：批量处理数据，避免重复处理" /></p>
+<p>批量更新场景中的增量更新：批量处理数据，避免重复处理：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Read["读取数据源"]
+        RD1[批量读取数据&lt;br/&gt;Batch Read Data]
+        RD2[解析文档&lt;br/&gt;Parse Documents]
+        RD3[提取Locator&lt;br/&gt;Extract Locators]
+        RD1 --&gt; RD2
+        RD2 --&gt; RD3
+    end
+    
+    subgraph Filter["过滤已处理数据"]
+        F1[获取Version Locator&lt;br/&gt;Get Version Locator]
+        F2[批量比较Locator&lt;br/&gt;Batch Compare Locators]
+        F3[过滤已处理数据&lt;br/&gt;Filter Processed Data]
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    subgraph Process["处理新数据"]
+        P1[批量处理新数据&lt;br/&gt;Batch Process New Data]
+        P2[批量构建索引&lt;br/&gt;Batch Build Index]
+        P3[更新Locator&lt;br/&gt;Update Locator]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph Commit["提交版本"]
+        CO1[批量Commit&lt;br/&gt;Batch Commit]
+        CO2[更新Version Locator&lt;br/&gt;Update Version Locator]
+        CO3[持久化版本&lt;br/&gt;Persist Version]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    RD3 --&gt; F1
+    F3 --&gt; P1
+    P3 --&gt; CO1
+    
+    style Read fill:#e3f2fd
+    style Filter fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <p><strong>批量更新流程</strong>：</p>
 <ol>
@@ -1355,7 +2196,49 @@
 
 <p>版本管理的原子性通过 Fence 机制保证：</p>
 
-<p><img src="/images/diagrams/indexlib-version-atomicity.svg" alt="版本管理的原子性：通过 Fence 机制保证版本提交的原子性" /></p>
+<p>版本管理的原子性：通过 Fence 机制保证版本提交的原子性：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Fence["Fence 机制"]
+        F1[创建Fence目录&lt;br/&gt;Create Fence Directory]
+        F2[写入版本文件&lt;br/&gt;Write Version File]
+        F3[原子重命名&lt;br/&gt;Atomic Rename]
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    subgraph Atomicity["原子性保证"]
+        A1[要么全部成功&lt;br/&gt;All or Nothing]
+        A2[要么全部失败&lt;br/&gt;Rollback on Failure]
+        A3[避免部分写入&lt;br/&gt;Avoid Partial Write]
+        A1 --&gt; A2
+        A2 --&gt; A3
+    end
+    
+    subgraph Error["错误处理"]
+        E1[提交失败&lt;br/&gt;Commit Failure]
+        E2[清理Fence目录&lt;br/&gt;Cleanup Fence]
+        E3[不影响已有版本&lt;br/&gt;No Impact on Existing]
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Advantage["设计优势"]
+        AD1[原子性&lt;br/&gt;Atomicity]
+        AD2[性能高&lt;br/&gt;High Performance]
+        AD3[可靠性&lt;br/&gt;Reliability]
+        AD4[简单性&lt;br/&gt;Simplicity]
+    end
+    
+    F3 --&gt; A1
+    A3 --&gt; E1
+    E3 --&gt; AD1
+    
+    style Fence fill:#e3f2fd
+    style Atomicity fill:#fff3e0
+    style Error fill:#f3e5f5
+    style Advantage fill:#e8f5e9
+</code></pre>
 
 <p><strong>原子性保证</strong>：</p>
 <ul>
@@ -1368,7 +2251,49 @@
 
 <p>版本管理保证数据一致性：</p>
 
-<p><img src="/images/diagrams/indexlib-version-consistency.svg" alt="版本管理的数据一致性：通过 Locator 保证数据不重复、不丢失" /></p>
+<p>版本管理的数据一致性：通过 Locator 保证数据不重复、不丢失：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Consistency["数据一致性保证"]
+        C1[不重复保证&lt;br/&gt;No Duplication]
+        C2[不丢失保证&lt;br/&gt;No Loss]
+        C3[多数据源支持&lt;br/&gt;Multi-Source Support]
+    end
+    
+    subgraph Locator["Locator 机制"]
+        L1[Locator比较&lt;br/&gt;Locator Comparison]
+        L2[IsFasterThan&lt;br/&gt;判断数据是否已处理]
+        L3[Update机制&lt;br/&gt;保证只向前推进]
+        L1 --&gt; L2
+        L2 --&gt; L3
+    end
+    
+    subgraph MultiSource["多数据源支持"]
+        M1[SourceIdx区分&lt;br/&gt;Distinguish by SourceIdx]
+        M2[独立处理&lt;br/&gt;Independent Processing]
+        M3[保证一致性&lt;br/&gt;Ensure Consistency]
+        M1 --&gt; M2
+        M2 --&gt; M3
+    end
+    
+    subgraph Concurrent["并发控制"]
+        CO1[ConcurrentIdx&lt;br/&gt;处理时间戳相同]
+        CO2[HashId分片&lt;br/&gt;Sharding by HashId]
+        CO3[保证顺序&lt;br/&gt;Ensure Order]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    C1 --&gt; L1
+    C2 --&gt; L3
+    C3 --&gt; M1
+    L3 --&gt; CO1
+    
+    style Consistency fill:#e3f2fd
+    style Locator fill:#fff3e0
+    style MultiSource fill:#f3e5f5
+    style Concurrent fill:#e8f5e9
+</code></pre>
 
 <p><strong>数据一致性保证</strong>：</p>
 <ul>
@@ -1381,7 +2306,50 @@
 
 <p>版本管理的性能优化：</p>
 
-<p><img src="/images/diagrams/indexlib-version-performance.svg" alt="版本管理的性能优化：版本缓存、懒加载等" /></p>
+<p>版本管理的性能优化：版本缓存、懒加载等：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Cache["版本缓存"]
+        CA1[缓存常用版本&lt;br/&gt;Cache Common Versions]
+        CA2[LRU淘汰策略&lt;br/&gt;LRU Eviction]
+        CA3[减少磁盘读取&lt;br/&gt;Reduce Disk Reads]
+        CA1 --&gt; CA2
+        CA2 --&gt; CA3
+    end
+    
+    subgraph Lazy["懒加载"]
+        L1[按需加载版本&lt;br/&gt;Load on Demand]
+        L2[减少启动时间&lt;br/&gt;Reduce Startup Time]
+        L3[并行加载&lt;br/&gt;Parallel Loading]
+        L1 --&gt; L2
+        L2 --&gt; L3
+    end
+    
+    subgraph Batch["批量操作"]
+        B1[批量处理版本&lt;br/&gt;Batch Process Versions]
+        B2[批量清理&lt;br/&gt;Batch Cleanup]
+        B3[提高效率&lt;br/&gt;Improve Efficiency]
+        B1 --&gt; B2
+        B2 --&gt; B3
+    end
+    
+    subgraph Optimize["优化策略"]
+        O1[快速路径&lt;br/&gt;Fast Path]
+        O2[短路优化&lt;br/&gt;Short Circuit]
+        O3[缓存优化&lt;br/&gt;Cache Optimization]
+        O1 --&gt; O2
+        O2 --&gt; O3
+    end
+    
+    CA3 --&gt; L1
+    L3 --&gt; B1
+    B3 --&gt; O1
+    
+    style Cache fill:#e3f2fd
+    style Lazy fill:#fff3e0
+    style Batch fill:#f3e5f5
+    style Optimize fill:#e8f5e9
+</code></pre>
 
 <p><strong>性能优化策略</strong>：</p>
 <ul>
@@ -1596,114 +2564,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

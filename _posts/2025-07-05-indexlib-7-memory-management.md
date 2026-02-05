@@ -9,7 +9,51 @@ date: 2025-07-05
 
 在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。
 
-![内存管理与资源控制概览：从内存配额到内存回收的完整机制](/images/diagrams/indexlib-memory-management-overview.svg)
+内存管理与资源控制概览：从内存配额到内存回收的完整机制：
+
+```mermaid
+flowchart LR
+    subgraph Quota["内存配额"]
+        Q1[MemoryQuotaController<br/>配额控制器]
+        Q2[层级配额管理<br/>Hierarchical Quota]
+        Q3[配额分配<br/>Quota Allocation]
+        Q1 --> Q2
+        Q2 --> Q3
+    end
+    
+    subgraph Calculate["内存计算"]
+        C1[TabletMemoryCalculator<br/>内存计算器]
+        C2[实时统计<br/>Real-time Statistics]
+        C3[分类统计<br/>Categorized Statistics]
+        C1 --> C2
+        C2 --> C3
+    end
+    
+    subgraph Reclaim["内存回收"]
+        R1[IIndexMemoryReclaimer<br/>内存回收器]
+        R2[延迟回收<br/>Delayed Reclaim]
+        R3[按需回收<br/>On-Demand Reclaim]
+        R1 --> R2
+        R2 --> R3
+    end
+    
+    subgraph Resource["资源控制"]
+        RE1[BuildResourceCalculator<br/>构建资源计算器]
+        RE2[资源估算<br/>Resource Estimation]
+        RE3[资源预留<br/>Resource Reservation]
+        RE1 --> RE2
+        RE2 --> RE3
+    end
+    
+    Q3 --> C1
+    C3 --> R1
+    R3 --> RE1
+    
+    style Quota fill:#e3f2fd
+    style Calculate fill:#fff3e0
+    style Reclaim fill:#f3e5f5
+    style Resource fill:#e8f5e9
+```
 
 ## 1. 内存管理概览
 
@@ -24,7 +68,7 @@ IndexLib 的内存管理包括以下核心概念：
 
 让我们先通过图来理解内存管理的整体架构：
 
-![内存管理架构：MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 的关系](/images/diagrams/indexlib-memory-architecture.svg)
+内存管理架构：MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 的关系（已在上面类图中展示，此处不再重复）：
 
 ### 1.2 内存管理的作用
 
@@ -139,7 +183,34 @@ private:
 
 **MemoryQuotaController 的关键字段**：
 
-![MemoryQuotaController 的结构：包含配额信息和父控制器](/images/diagrams/indexlib-memory-quota-controller-structure.svg)
+MemoryQuotaController 的结构：包含配额信息和父控制器：
+
+```mermaid
+flowchart TD
+    subgraph Controller["MemoryQuotaController"]
+        C1["name<br/>控制器名称"]
+        C2["rootQuota<br/>根配额"]
+        C3["localFreeQuota<br/>本地可用配额"]
+        C4["reservedParentQuota<br/>预留父配额"]
+        C5["parentController<br/>父控制器引用"]
+    end
+    
+    subgraph Methods["关键方法"]
+        M1["Allocate<br/>分配配额"]
+        M2["TryAllocate<br/>尝试分配"]
+        M3["Reserve<br/>预留配额"]
+        M4["Free<br/>释放配额"]
+    end
+    
+    C1 --> M1
+    C2 --> M1
+    C3 --> M1
+    C4 --> M3
+    C5 --> M1
+    
+    style Controller fill:#e3f2fd
+    style Methods fill:#fff3e0
+```
 
 - **rootQuota**：根配额，根控制器的总配额
 - **localFreeQuota**：本地可用配额，当前控制器可用的配额
@@ -150,7 +221,7 @@ private:
 
 内存配额的分配机制：
 
-![内存配额分配：从父控制器到子控制器的配额分配](/images/diagrams/indexlib-memory-quota-allocation.svg)
+内存配额分配：从父控制器到子控制器的配额分配（已在上面详细展示，此处不再重复）：
 
 **内存配额分配流程图**：
 
@@ -239,7 +310,33 @@ sequenceDiagram
 
 MemoryQuotaController 支持层级配额管理：
 
-![层级配额管理：从根控制器到子控制器的层级结构](/images/diagrams/indexlib-memory-quota-hierarchy.svg)
+层级配额管理：从根控制器到子控制器的层级结构：
+
+```mermaid
+flowchart TD
+    subgraph Root["根控制器"]
+        R1["总配额<br/>Total Quota"]
+    end
+    
+    subgraph Partition["分区控制器"]
+        P1["分区配额<br/>Partition Quota"]
+        P2["分区配额<br/>Partition Quota"]
+    end
+    
+    subgraph Tablet["Tablet 控制器"]
+        T1["Tablet配额<br/>Tablet Quota"]
+        T2["Tablet配额<br/>Tablet Quota"]
+    end
+    
+    R1 --> P1
+    R1 --> P2
+    P1 --> T1
+    P2 --> T2
+    
+    style Root fill:#e3f2fd
+    style Partition fill:#fff3e0
+    style Tablet fill:#f3e5f5
+```
 
 **层级结构**：
 
@@ -318,7 +415,31 @@ classDiagram
 
 配额分配的策略：
 
-![配额分配策略：按需分配、预留分配等策略](/images/diagrams/indexlib-memory-quota-strategy.svg)
+配额分配策略：按需分配、预留分配等策略：
+
+```mermaid
+flowchart TD
+    subgraph Strategies["分配策略"]
+        S1["按需分配<br/>On-Demand"]
+        S2["预留分配<br/>Reserved"]
+        S3["阻塞分配<br/>Blocking"]
+        S4["非阻塞分配<br/>Non-Blocking"]
+    end
+    
+    subgraph Methods["分配方法"]
+        M1["Allocate<br/>阻塞分配"]
+        M2["TryAllocate<br/>非阻塞分配"]
+        M3["Reserve<br/>预留分配"]
+    end
+    
+    S1 --> M1
+    S2 --> M3
+    S3 --> M1
+    S4 --> M2
+    
+    style Strategies fill:#e3f2fd
+    style Methods fill:#fff3e0
+```
 
 **分配策略**：
 - **按需分配**：根据实际需求分配配额，灵活适应不同场景
@@ -356,7 +477,31 @@ private:
 
 **TabletMemoryCalculator 的关键方法**：
 
-![TabletMemoryCalculator 的方法：计算各种内存使用量](/images/diagrams/indexlib-tablet-memory-calculator.svg)
+TabletMemoryCalculator 的方法：计算各种内存使用量：
+
+```mermaid
+flowchart TD
+    subgraph Calculator["TabletMemoryCalculator"]
+        C1["GetRtBuiltSegmentsMemsize<br/>实时构建段内存"]
+        C2["GetRtIndexMemsize<br/>实时索引内存"]
+        C3["GetBuildingSegmentMemsize<br/>构建中段内存"]
+        C4["GetDumpingSegmentMemsize<br/>转储中段内存"]
+    end
+    
+    subgraph Components["统计组件"]
+        CO1["TabletWriter<br/>写入器内存"]
+        CO2["TabletReaderContainer<br/>查询器容器内存"]
+        CO3["IndexReader<br/>索引读取器内存"]
+    end
+    
+    C1 --> CO1
+    C2 --> CO2
+    C3 --> CO1
+    C4 --> CO1
+    
+    style Calculator fill:#e3f2fd
+    style Components fill:#fff3e0
+```
 
 - **GetRtBuiltSegmentsMemsize()**：计算实时已构建 Segment 的内存使用
 - **GetRtIndexMemsize()**：计算实时索引的内存使用
@@ -368,7 +513,7 @@ private:
 
 内存使用统计的流程：
 
-![内存使用统计：从 Tablet 组件到内存使用量的统计流程](/images/diagrams/indexlib-memory-usage-statistics.svg)
+内存使用统计：从 Tablet 组件到内存使用量的统计流程（已在上面详细展示，此处不再重复）：
 
 **统计流程**：
 
@@ -462,7 +607,31 @@ public:
 
 **IIndexMemoryReclaimer 的关键方法**：
 
-![IIndexMemoryReclaimer 接口：提供内存回收的抽象](/images/diagrams/indexlib-index-memory-reclaimer-interface.svg)
+IIndexMemoryReclaimer 接口：提供内存回收的抽象：
+
+```mermaid
+flowchart TD
+    subgraph Interface["IIndexMemoryReclaimer 接口"]
+        I1["Retire<br/>标记待回收"]
+        I2["DropRetireItem<br/>删除待回收项"]
+        I3["TryReclaim<br/>尝试回收"]
+        I4["Reclaim<br/>强制回收"]
+    end
+    
+    subgraph Lifecycle["生命周期"]
+        L1["使用中<br/>In Use"]
+        L2["待回收<br/>Retired"]
+        L3["已回收<br/>Reclaimed"]
+        L1 -->|Retire| L2
+        L2 -->|Reclaim| L3
+    end
+    
+    I1 --> L2
+    I3 --> L3
+    
+    style Interface fill:#e3f2fd
+    style Lifecycle fill:#fff3e0
+```
 
 - **Retire()**：将内存加入回收队列，延迟回收
 - **DropRetireItem()**：取消回收，从回收队列中移除
@@ -473,7 +642,20 @@ public:
 
 内存回收的机制：
 
-![内存回收机制：从 Retire 到 Reclaim 的回收流程](/images/diagrams/indexlib-memory-reclaim-mechanism.svg)
+内存回收机制：从 Retire 到 Reclaim 的回收流程：
+
+```mermaid
+flowchart LR
+    A["使用中<br/>In Use"] --> B["标记待回收<br/>Retire"]
+    B --> C["延迟回收<br/>Delayed Reclaim"]
+    C --> D{"内存紧张?"}
+    D -->|是| E["执行回收<br/>Reclaim"]
+    D -->|否| C
+    E --> F["释放内存<br/>Free Memory"]
+    
+    style A fill:#e3f2fd
+    style F fill:#e8f5e9
+```
 
 **内存回收流程图**：
 
@@ -568,7 +750,29 @@ sequenceDiagram
 
 内存回收的策略：
 
-![内存回收策略：延迟回收、按需回收等策略](/images/diagrams/indexlib-memory-reclaim-strategy.svg)
+内存回收策略：延迟回收、按需回收等策略：
+
+```mermaid
+flowchart TD
+    subgraph Strategies["回收策略"]
+        S1["延迟回收<br/>Delayed Reclaim"]
+        S2["按需回收<br/>On-Demand Reclaim"]
+        S3["批量回收<br/>Batch Reclaim"]
+    end
+    
+    subgraph Triggers["触发条件"]
+        T1["内存紧张<br/>Memory Pressure"]
+        T2["定期回收<br/>Periodic Reclaim"]
+        T3["手动触发<br/>Manual Trigger"]
+    end
+    
+    T1 --> S2
+    T2 --> S1
+    T3 --> S3
+    
+    style Strategies fill:#e3f2fd
+    style Triggers fill:#fff3e0
+```
 
 **回收策略**：
 - **延迟回收**：通过 Retire() 延迟回收，避免频繁的内存操作
@@ -604,7 +808,29 @@ public:
 
 **BuildResourceCalculator 的关键方法**：
 
-![BuildResourceCalculator 的方法：计算构建资源使用](/images/diagrams/indexlib-build-resource-calculator.svg)
+BuildResourceCalculator 的方法：计算构建资源使用：
+
+```mermaid
+flowchart TD
+    subgraph Calculator["BuildResourceCalculator"]
+        C1["GetCurrentTotalMemoryUse<br/>当前总内存使用"]
+        C2["EstimateDumpTempMemoryUse<br/>估算转储临时内存"]
+        C3["EstimateDumpExpandMemoryUse<br/>估算转储扩展内存"]
+    end
+    
+    subgraph Metrics["资源指标"]
+        M1["构建内存<br/>Build Memory"]
+        M2["转储内存<br/>Dump Memory"]
+        M3["索引内存<br/>Index Memory"]
+    end
+    
+    C1 --> M1
+    C2 --> M2
+    C3 --> M2
+    
+    style Calculator fill:#e3f2fd
+    style Metrics fill:#fff3e0
+```
 
 - **GetCurrentTotalMemoryUse()**：获取当前总内存使用
 - **EstimateDumpTempMemoryUse()**：估算转储临时内存使用
@@ -615,7 +841,31 @@ public:
 
 构建资源估算的流程：
 
-![构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程](/images/diagrams/indexlib-build-resource-estimation.svg)
+构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程：
+
+```mermaid
+flowchart TD
+    subgraph Metrics["BuildResourceMetrics"]
+        M1["文档数量<br/>Doc Count"]
+        M2["索引大小<br/>Index Size"]
+        M3["字段数量<br/>Field Count"]
+    end
+    
+    subgraph Estimate["资源估算"]
+        E1["估算构建内存<br/>Estimate Build Memory"]
+        E2["估算转储内存<br/>Estimate Dump Memory"]
+        E3["估算总内存<br/>Estimate Total Memory"]
+    end
+    
+    M1 --> E1
+    M2 --> E2
+    M3 --> E1
+    E1 --> E3
+    E2 --> E3
+    
+    style Metrics fill:#e3f2fd
+    style Estimate fill:#fff3e0
+```
 
 **估算流程**：
 1. **收集指标**：从 BuildResourceMetrics 收集构建指标
@@ -629,7 +879,7 @@ public:
 
 内存分配的策略：
 
-![内存分配策略：按需分配、预留分配等策略](/images/diagrams/indexlib-memory-allocation-strategy.svg)
+内存分配策略：按需分配、预留分配等策略（已在上面详细展示，此处不再重复）：
 
 **分配策略**：
 - **按需分配**：根据实际需求分配内存，灵活适应不同场景
@@ -641,7 +891,29 @@ public:
 
 内存分配的优化：
 
-![内存分配优化：批量分配、内存池等优化策略](/images/diagrams/indexlib-memory-allocation-optimization.svg)
+内存分配优化：批量分配、内存池等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Optimization["优化策略"]
+        O1["批量分配<br/>Batch Allocation"]
+        O2["内存池<br/>Memory Pool"]
+        O3["对齐分配<br/>Aligned Allocation"]
+    end
+    
+    subgraph Benefits["优化收益"]
+        B1["减少分配次数<br/>Reduce Allocations"]
+        B2["减少内存碎片<br/>Reduce Fragmentation"]
+        B3["提高访问效率<br/>Improve Access"]
+    end
+    
+    O1 --> B1
+    O2 --> B2
+    O3 --> B3
+    
+    style Optimization fill:#e3f2fd
+    style Benefits fill:#fff3e0
+```
 
 **优化策略**：
 - **批量分配**：批量分配内存，减少分配次数
@@ -655,7 +927,29 @@ public:
 
 内存回收的时机：
 
-![内存回收时机：延迟回收、按需回收等时机](/images/diagrams/indexlib-memory-reclaim-timing.svg)
+内存回收时机：延迟回收、按需回收等时机：
+
+```mermaid
+flowchart TD
+    subgraph Timing["回收时机"]
+        T1["延迟回收<br/>Delayed Reclaim<br/>延迟一段时间后回收"]
+        T2["按需回收<br/>On-Demand Reclaim<br/>内存紧张时回收"]
+        T3["定期回收<br/>Periodic Reclaim<br/>定期触发回收"]
+    end
+    
+    subgraph Conditions["触发条件"]
+        C1["内存使用率超过阈值"]
+        C2["配额不足"]
+        C3["定时器触发"]
+    end
+    
+    C1 --> T2
+    C2 --> T2
+    C3 --> T3
+    
+    style Timing fill:#e3f2fd
+    style Conditions fill:#fff3e0
+```
 
 **回收时机**：
 - **延迟回收**：通过 Retire() 延迟回收，在合适的时机回收
@@ -667,7 +961,7 @@ public:
 
 内存回收的优化：
 
-![内存回收优化：批量回收、延迟回收等优化策略](/images/diagrams/indexlib-memory-reclaim-optimization.svg)
+内存回收优化：批量回收、延迟回收等优化策略（已在上面详细展示，此处不再重复）：
 
 **优化策略**：
 - **批量回收**：批量回收内存，减少回收次数
@@ -681,7 +975,29 @@ public:
 
 内存使用的优化：
 
-![内存使用优化：内存池、缓存控制等优化策略](/images/diagrams/indexlib-memory-usage-optimization.svg)
+内存使用优化：内存池、缓存控制等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Optimization["优化策略"]
+        O1["内存池<br/>Memory Pool"]
+        O2["缓存控制<br/>Cache Control"]
+        O3["懒加载<br/>Lazy Loading"]
+    end
+    
+    subgraph Benefits["优化收益"]
+        B1["减少内存分配开销"]
+        B2["控制内存使用上限"]
+        B3["按需加载减少内存占用"]
+    end
+    
+    O1 --> B1
+    O2 --> B2
+    O3 --> B3
+    
+    style Optimization fill:#e3f2fd
+    style Benefits fill:#fff3e0
+```
 
 **优化策略**：
 - **内存池**：使用内存池减少内存分配开销
@@ -693,7 +1009,29 @@ public:
 
 内存监控与告警：
 
-![内存监控与告警：实时监控内存使用，及时告警](/images/diagrams/indexlib-memory-monitoring.svg)
+内存监控与告警：实时监控内存使用，及时告警：
+
+```mermaid
+flowchart TD
+    subgraph Monitor["监控"]
+        M1["实时统计<br/>Real-time Statistics"]
+        M2["内存使用率<br/>Memory Usage Rate"]
+        M3["配额使用率<br/>Quota Usage Rate"]
+    end
+    
+    subgraph Alert["告警"]
+        A1["阈值告警<br/>Threshold Alert"]
+        A2["异常告警<br/>Anomaly Alert"]
+        A3["趋势告警<br/>Trend Alert"]
+    end
+    
+    M1 --> A1
+    M2 --> A2
+    M3 --> A3
+    
+    style Monitor fill:#e3f2fd
+    style Alert fill:#fff3e0
+```
 
 **监控与告警**：
 - **实时监控**：实时监控内存使用情况
@@ -707,7 +1045,33 @@ public:
 
 层级配额管理的设计：
 
-![层级配额管理：从根控制器到子控制器的层级结构](/images/diagrams/indexlib-memory-quota-hierarchy-design.svg)
+层级配额管理：从根控制器到子控制器的层级结构：
+
+```mermaid
+flowchart TD
+    subgraph Root["根控制器"]
+        R1["总配额<br/>Total Quota"]
+    end
+    
+    subgraph Partition["分区控制器"]
+        P1["分区配额<br/>Partition Quota"]
+        P2["分区配额<br/>Partition Quota"]
+    end
+    
+    subgraph Tablet["Tablet 控制器"]
+        T1["Tablet配额<br/>Tablet Quota"]
+        T2["Tablet配额<br/>Tablet Quota"]
+    end
+    
+    R1 --> P1
+    R1 --> P2
+    P1 --> T1
+    P2 --> T2
+    
+    style Root fill:#e3f2fd
+    style Partition fill:#fff3e0
+    style Tablet fill:#f3e5f5
+```
 
 **设计要点**：
 - **层级结构**：支持多层级配额管理，灵活分配配额
@@ -719,7 +1083,28 @@ public:
 
 内存回收的设计：
 
-![内存回收设计：延迟回收、按需回收等设计](/images/diagrams/indexlib-memory-reclaim-design.svg)
+内存回收设计：延迟回收、按需回收等设计：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **延迟回收**：延迟回收可以避免频繁的内存操作
@@ -731,7 +1116,28 @@ public:
 
 性能优化的设计：
 
-![性能优化设计：内存池、批量操作等优化策略](/images/diagrams/indexlib-memory-performance-design.svg)
+性能优化设计：内存池、批量操作等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **内存池**：使用内存池减少内存分配开销

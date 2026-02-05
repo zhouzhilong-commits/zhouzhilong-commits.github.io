@@ -596,7 +596,7 @@
 
 
   
-	  18 分钟阅读
+	  21 分钟阅读
 	
 </p>
           
@@ -617,7 +617,27 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-overview.svg" alt="文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制" /></p>
+<p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h2 id="1-文件系统抽象概览">1. 文件系统抽象概览</h2>
 
@@ -733,7 +753,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-filesystem-architecture.svg" alt="文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系" /></p>
+<p>文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="12-文件系统抽象的作用">1.2 文件系统抽象的作用</h3>
 
@@ -962,7 +1002,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-filesystem-interface.svg" alt="IFileSystem 接口：提供文件系统的基本操作" /></p>
+<p>IFileSystem 接口：提供文件系统的基本操作：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="22-逻辑路径与物理路径">2.2 逻辑路径与物理路径</h3>
 
@@ -1057,13 +1117,53 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-logical-physical-path.svg" alt="逻辑路径与物理路径：从物理路径到逻辑路径的映射" /></p>
+<p>逻辑路径与物理路径：从物理路径到逻辑路径的映射：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="23-文件系统类型">2.3 文件系统类型</h3>
 
 <p>IndexLib 支持多种文件系统类型：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-types.svg" alt="文件系统类型：本地文件系统、分布式文件系统等" /></p>
+<p>文件系统类型：本地文件系统、分布式文件系统等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>文件系统类型</strong>：</p>
 <ul>
@@ -1134,7 +1234,27 @@
 
 <p><strong>IDirectory 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-directory-interface.svg" alt="IDirectory 接口：提供目录和文件的操作" /></p>
+<p>IDirectory 接口：提供目录和文件的操作：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>CreateFileWriter()</strong>：创建文件写入器</li>
@@ -1153,7 +1273,27 @@
 
 <p>目录操作的流程：</p>
 
-<p><img src="/images/diagrams/indexlib-directory-operations.svg" alt="目录操作流程：从创建目录到文件操作的完整流程" /></p>
+<p>目录操作流程：从创建目录到文件操作的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>操作流程</strong>：</p>
 <ol>
@@ -1361,7 +1501,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-file-reader-interface.svg" alt="FileReader 接口：提供文件读取功能" /></p>
+<p>FileReader 接口：提供文件读取功能：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="42-filewriter文件写入器">4.2 FileWriter：文件写入器</h3>
 
@@ -1593,7 +1753,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-file-writer-interface.svg" alt="FileWriter 接口：提供文件写入功能" /></p>
+<p>FileWriter 接口：提供文件写入功能：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h2 id="5-storage存储抽象">5. Storage：存储抽象</h2>
 
@@ -1639,7 +1819,27 @@
 
 <p><strong>Storage 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-storage-abstract.svg" alt="Storage 抽象：提供底层存储操作" /></p>
+<p>Storage 抽象：提供底层存储操作：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>CreateInputStorage()</strong>：创建输入存储，用于读取</li>
@@ -1654,7 +1854,27 @@
 
 <p>IndexLib 支持多种存储类型：</p>
 
-<p><img src="/images/diagrams/indexlib-storage-types.svg" alt="存储类型：本地存储、分布式存储等" /></p>
+<p>存储类型：本地存储、分布式存储等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>存储类型</strong>：</p>
 <ul>
@@ -1880,7 +2100,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-package-format.svg" alt="Package 格式：将多个文件打包成一个文件" /></p>
+<p>Package 格式：将多个文件打包成一个文件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="62-archive-格式">6.2 Archive 格式</h3>
 
@@ -1966,7 +2206,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-archive-format.svg" alt="Archive 格式：归档存储格式的特点和应用" /></p>
+<p>Archive 格式：归档存储格式的特点和应用：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="63-压缩格式">6.3 压缩格式</h3>
 
@@ -2089,7 +2349,27 @@
   </li>
 </ol>
 
-<p><img src="/images/diagrams/indexlib-compress-format.svg" alt="压缩格式：支持多种压缩算法" /></p>
+<p>压缩格式：支持多种压缩算法：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h2 id="7-文件系统缓存">7. 文件系统缓存</h2>
 
@@ -2097,7 +2377,27 @@
 
 <p>文件系统缓存的机制：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-cache.svg" alt="文件系统缓存：通过缓存提高文件访问性能" /></p>
+<p>文件系统缓存：通过缓存提高文件访问性能：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>缓存机制</strong>：</p>
 <ul>
@@ -2111,7 +2411,27 @@
 
 <p>文件系统缓存的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-cache-strategy.svg" alt="文件系统缓存策略：LRU、LFU 等缓存策略" /></p>
+<p>文件系统缓存策略：LRU、LFU 等缓存策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>缓存策略</strong>：</p>
 <ul>
@@ -2127,7 +2447,27 @@
 
 <p>文件系统 IO 的优化：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-io-optimization.svg" alt="文件系统 IO 优化：批量 IO、异步 IO 等优化策略" /></p>
+<p>文件系统 IO 优化：批量 IO、异步 IO 等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>IO 优化策略</strong>：</p>
 <ul>
@@ -2141,7 +2481,27 @@
 
 <p>文件系统存储的优化：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-storage-optimization.svg" alt="文件系统存储优化：压缩、打包等优化策略" /></p>
+<p>文件系统存储优化：压缩、打包等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>存储优化策略</strong>：</p>
 <ul>
@@ -2157,7 +2517,27 @@
 
 <p>文件系统的统一接口设计：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-unified-interface.svg" alt="统一接口设计：通过统一接口屏蔽底层存储差异" /></p>
+<p>统一接口设计：通过统一接口屏蔽底层存储差异：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -2171,7 +2551,27 @@
 
 <p>逻辑路径的设计：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-logical-path-design.svg" alt="逻辑路径设计：通过逻辑路径管理文件和版本" /></p>
+<p>逻辑路径设计：通过逻辑路径管理文件和版本：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -2185,7 +2585,27 @@
 
 <p>文件系统性能优化的设计：</p>
 
-<p><img src="/images/diagrams/indexlib-filesystem-performance-design.svg" alt="文件系统性能优化设计：缓存、预取、批量 IO 等优化策略" /></p>
+<p>文件系统性能优化设计：缓存、预取、批量 IO 等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -2255,114 +2675,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

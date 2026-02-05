@@ -596,7 +596,7 @@
 
 
   
-	  13 分钟阅读
+	  20 分钟阅读
 	
 </p>
           
@@ -619,7 +619,43 @@
 
 <p>最近因为工作需要，我开始深入接触 IndexLib 这个阿里巴巴 Havenask 搜索引擎的核心索引库。IndexLib 是一个高性能、可扩展的 C++ 索引引擎，代码量庞大、设计精良，但文档相对较少。为了更好地理解决其设计理念和实现细节，我决定通过详细阅读源码的方式来学习，并将学习过程中的理解和思考整理成系列文章。</p>
 
-<p><img src="/images/diagrams/indexlib-architecture-overview.svg" alt="IndexLib 整体架构：从 Tablet 到 Segment 的分层设计" /></p>
+<p><strong>IndexLib 整体架构</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Application["应用层"]
+        Havenask["Havenask&lt;br/&gt;业务应用"]
+    end
+    
+    subgraph Framework["框架层"]
+        Tablet["Tablet&lt;br/&gt;索引表"]
+        Segment["Segment&lt;br/&gt;索引段"]
+        Version["Version&lt;br/&gt;版本管理"]
+    end
+    
+    subgraph Index["索引层"]
+        Normal["Normal Index&lt;br/&gt;普通索引"]
+        KKV["KKV Index&lt;br/&gt;键值对索引"]
+        KV["KV Index&lt;br/&gt;键值索引"]
+    end
+    
+    subgraph Document["文档层"]
+        Doc["Document&lt;br/&gt;文档"]
+        Field["Field&lt;br/&gt;字段"]
+    end
+    
+    subgraph FileSystem["文件系统层"]
+        Directory["Directory&lt;br/&gt;目录"]
+        File["File&lt;br/&gt;文件"]
+    end
+    
+    Application --&gt; Framework
+    Framework --&gt; Index
+    Index --&gt; Document
+    Document --&gt; FileSystem
+    
+    Tablet --&gt; Segment
+    Tablet --&gt; Version
+</code></pre>
 
 <h2 id="1-indexlib-是什么">1. IndexLib 是什么</h2>
 
@@ -948,7 +984,34 @@
 
 <p><strong>Segment</strong> 是索引的基本存储单元，一个 Tablet 包含多个 Segment。让我们先通过图来理解 Segment 的类型和关系：</p>
 
-<p><img src="/images/diagrams/indexlib-segment-types.svg" alt="Segment 类型：MemSegment 和 DiskSegment 的关系" /></p>
+<p><strong>Segment 类型关系</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Segment {
+        &lt;&lt;abstract&gt;&gt;
+        +GetSegmentId()
+        +GetSegmentStatus()
+        +GetIndexer()
+    }
+    
+    class MemSegment {
+        +Build()
+        +NeedDump()
+        +CreateSegmentDumpItems()
+        +Seal()
+    }
+    
+    class DiskSegment {
+        +Open()
+        +Reopen()
+    }
+    
+    Segment &lt;|-- MemSegment : 继承
+    Segment &lt;|-- DiskSegment : 继承
+    
+    note for MemSegment "内存段&lt;br/&gt;用于实时写入"
+    note for DiskSegment "磁盘段&lt;br/&gt;用于持久化存储"
+</code></pre>
 
 <p>从图中可以看到，Segment 有两种类型：</p>
 <ul>
@@ -980,7 +1043,82 @@
 
 <p><strong>MemSegment 的工作流程</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-memsegment-workflow.svg" alt="MemSegment 工作流程：从 Build 到 Dump 的完整过程" /></p>
+<p><strong>MemSegment 工作流程</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Input["输入阶段"]
+        A1[接收文档批次&lt;br/&gt;IDocumentBatch]
+        A2[文档验证&lt;br/&gt;格式/Schema验证]
+        A1 --&gt; A2
+    end
+    
+    subgraph Build["构建阶段"]
+        B1[分配DocId&lt;br/&gt;BaseDocId + LocalDocId]
+        B2[写入Indexer]
+        B3[倒排索引&lt;br/&gt;InvertedIndexer]
+        B4[正排索引&lt;br/&gt;AttributeIndexer]
+        B5[主键索引&lt;br/&gt;PrimaryKeyIndexer]
+        B6[更新SegmentInfo&lt;br/&gt;docCount/Locator]
+        B7[评估内存使用&lt;br/&gt;EvaluateCurrentMemUsed]
+        B8{转储条件检查&lt;br/&gt;NeedDump?}
+        
+        A2 --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt; B3
+        B2 --&gt; B4
+        B2 --&gt; B5
+        B3 --&gt; B6
+        B4 --&gt; B6
+        B5 --&gt; B6
+        B6 --&gt; B7
+        B7 --&gt; B8
+        B8 --&gt;|否| B1
+    end
+    
+    subgraph Dump["转储阶段"]
+        D1[设置状态&lt;br/&gt;ST_BUILDING → ST_DUMPING]
+        D2[创建转储项&lt;br/&gt;CreateSegmentDumpItems]
+        D3[索引文件转储]
+        D4[元数据文件转储]
+        D5[异步转储到磁盘&lt;br/&gt;Dump]
+        D6[创建DiskSegment]
+        D7[Seal封存&lt;br/&gt;标记为只读]
+        
+        B8 --&gt;|是| D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D2 --&gt; D4
+        D3 --&gt; D5
+        D4 --&gt; D5
+        D5 --&gt; D6
+        D6 --&gt; D7
+    end
+    
+    subgraph Output["输出阶段"]
+        E1[DiskSegment&lt;br/&gt;状态: ST_BUILT]
+        E2[更新TabletData&lt;br/&gt;添加DiskSegment]
+        E3[释放MemSegment内存]
+        
+        D7 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Conditions["转储条件"]
+        C1[内存使用 &gt; 阈值&lt;br/&gt;默认80%]
+        C2[文档数 &gt; 阈值&lt;br/&gt;默认100万]
+        C3[时间间隔 &gt; 阈值&lt;br/&gt;默认5分钟]
+        B8 -.-&gt; C1
+        B8 -.-&gt; C2
+        B8 -.-&gt; C3
+    end
+    
+    style Input fill:#e3f2fd
+    style Build fill:#fff3e0
+    style Dump fill:#f3e5f5
+    style Output fill:#e8f5e9
+    style Conditions fill:#f5f5f5
+</code></pre>
 
 <ol>
   <li><strong>Build</strong>：接收文档批次，写入内存中的索引结构</li>
@@ -1045,7 +1183,70 @@
 
 <p><strong>DiskSegment 的加载策略</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-disksegment-loading.svg" alt="DiskSegment 加载策略：NORMAL vs LAZY 模式" /></p>
+<p><strong>DiskSegment 加载策略</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[DiskSegment.Open] --&gt; B{OpenMode选择}
+    
+    subgraph Normal["NORMAL 模式&lt;br/&gt;适合在线查询"]
+        N1[读取SegmentInfo&lt;br/&gt;元数据信息]
+        N2[立即加载所有索引]
+        N3[倒排索引&lt;br/&gt;InvertedIndex]
+        N4[正排索引&lt;br/&gt;AttributeIndex]
+        N5[主键索引&lt;br/&gt;PrimaryKeyIndex]
+        N6[摘要索引&lt;br/&gt;SummaryIndex]
+        N7[所有索引在内存&lt;br/&gt;查询延迟低]
+        
+        B --&gt;|NORMAL| N1
+        N1 --&gt; N2
+        N2 --&gt; N3
+        N2 --&gt; N4
+        N2 --&gt; N5
+        N2 --&gt; N6
+        N3 --&gt; N7
+        N4 --&gt; N7
+        N5 --&gt; N7
+        N6 --&gt; N7
+    end
+    
+    subgraph Lazy["LAZY 模式&lt;br/&gt;适合离线场景"]
+        L1[读取SegmentInfo&lt;br/&gt;元数据信息]
+        L2[延迟加载索引&lt;br/&gt;不加载索引数据]
+        L3[查询请求到达]
+        L4[GetIndexer调用]
+        L5{索引已加载?}
+        L6[按需加载索引]
+        L7[索引数据加载到内存]
+        L8[返回IndexReader]
+        
+        B --&gt;|LAZY| L1
+        L1 --&gt; L2
+        L2 --&gt; L3
+        L3 --&gt; L4
+        L4 --&gt; L5
+        L5 --&gt;|否| L6
+        L5 --&gt;|是| L8
+        L6 --&gt; L7
+        L7 --&gt; L8
+    end
+    
+    subgraph Memory["内存管理"]
+        M1[MemoryQuotaController&lt;br/&gt;内存配额控制]
+        M2[检查内存配额]
+        M3[分配内存]
+        M4[缓存管理]
+        
+        N2 -.-&gt; M1
+        L6 -.-&gt; M1
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+    end
+    
+    style Normal fill:#e3f2fd
+    style Lazy fill:#fff3e0
+    style Memory fill:#f5f5f5
+</code></pre>
 
 <ul>
   <li><strong>NORMAL 模式</strong>：立即加载所有索引数据到内存，适合在线查询场景</li>
@@ -1087,7 +1288,27 @@
 
 <p><strong>Segment 的状态转换</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-segment-lifecycle.svg" alt="Segment 状态转换：从 MemSegment 到 DiskSegment 的完整流程" /></p>
+<p><strong>Segment 状态转换</strong>：</p>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; ST_BUILDING: MemSegment创建
+    ST_BUILDING --&gt; ST_DUMPING: 触发转储
+    ST_DUMPING --&gt; ST_BUILT: 转储完成
+    ST_BUILT --&gt; ST_SEALED: 封存
+    ST_SEALED --&gt; [*]: 合并或删除
+    note right of ST_BUILDING
+        内存段构建中
+        接收文档写入
+    end note
+    note right of ST_DUMPING
+        转储到磁盘
+        创建DiskSegment
+    end note
+    note right of ST_BUILT
+        磁盘段已构建
+        可以参与查询
+    end note
+</code></pre>
 
 <p>状态转换的代码逻辑（<code class="language-plaintext highlighter-rouge">framework/Segment.h</code>）：</p>
 
@@ -1110,7 +1331,32 @@
 
 <p>Version 管理索引的版本信息。让我们先通过图理解 Version 的结构：</p>
 
-<p><img src="/images/diagrams/indexlib-version-structure.svg" alt="Version 的结构：包含 VersionId、Segments、Locator 等关键信息" /></p>
+<p><strong>Version 的结构</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Version {
+        -versionid_t _versionId
+        -set_SegmentInVersion _segments
+        -Locator _locator
+        +AddSegment()
+        +GetVersionId()
+        +GetLocator()
+    }
+    
+    class SegmentInVersion {
+        -segmentid_t _segmentId
+        -schemavid_t _schemaId
+    }
+    
+    class Locator {
+        -int64_t _timestamp
+        -int32_t _concurrentIdx
+        -int32_t _hashId
+    }
+    
+    Version "1" *-- "many" SegmentInVersion : 包含
+    Version "1" --&gt; "1" Locator : 包含
+</code></pre>
 
 <p>从图中可以看到，Version 记录：</p>
 <ul>
@@ -1154,7 +1400,90 @@
 
 <p><strong>Version 的演进过程</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-version-evolution.svg" alt="Version 演进：从 V1 到 V2 的版本变化" /></p>
+<p><strong>Version 演进</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph V1["Version 1&lt;br/&gt;versionId=1"]
+        V1_S1[Segment 1&lt;br/&gt;schemaId=0]
+        V1_S2[Segment 2&lt;br/&gt;schemaId=0]
+        V1_S3[Segment 3&lt;br/&gt;schemaId=0]
+        V1_L[Locator&lt;br/&gt;timestamp=100]
+        V1_S1 --- V1_S2
+        V1_S2 --- V1_S3
+        V1_S3 --- V1_L
+    end
+    
+    subgraph Commit1["Commit操作"]
+        C1[新增Segment 4]
+        C2[更新Locator&lt;br/&gt;timestamp=200]
+        C3[VersionId递增&lt;br/&gt;1 → 2]
+    end
+    
+    subgraph V2["Version 2&lt;br/&gt;versionId=2"]
+        V2_S1[Segment 1&lt;br/&gt;schemaId=0]
+        V2_S2[Segment 2&lt;br/&gt;schemaId=0]
+        V2_S3[Segment 3&lt;br/&gt;schemaId=0]
+        V2_S4[Segment 4&lt;br/&gt;schemaId=0]
+        V2_L[Locator&lt;br/&gt;timestamp=200]
+        V2_S1 --- V2_S2
+        V2_S2 --- V2_S3
+        V2_S3 --- V2_S4
+        V2_S4 --- V2_L
+    end
+    
+    subgraph Commit2["Commit操作"]
+        C4[新增Segment 5]
+        C5[更新Locator&lt;br/&gt;timestamp=300]
+        C6[VersionId递增&lt;br/&gt;2 → 3]
+    end
+    
+    subgraph V3["Version 3&lt;br/&gt;versionId=3"]
+        V3_S1[Segment 1&lt;br/&gt;schemaId=0]
+        V3_S2[Segment 2&lt;br/&gt;schemaId=0]
+        V3_S3[Segment 3&lt;br/&gt;schemaId=0]
+        V3_S4[Segment 4&lt;br/&gt;schemaId=0]
+        V3_S5[Segment 5&lt;br/&gt;schemaId=0]
+        V3_L[Locator&lt;br/&gt;timestamp=300]
+        V3_S1 --- V3_S2
+        V3_S2 --- V3_S3
+        V3_S3 --- V3_S4
+        V3_S4 --- V3_S5
+        V3_S5 --- V3_L
+    end
+    
+    subgraph Merge["Merge操作"]
+        M1[合并Segment 1,2,3,4,5]
+        M2[创建Segment 6&lt;br/&gt;合并后]
+        M3[删除旧Segment&lt;br/&gt;1,2,3,4,5]
+        M4[更新Locator&lt;br/&gt;timestamp=400]
+        M5[VersionId递增&lt;br/&gt;3 → 4]
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+        M4 --&gt; M5
+    end
+    
+    subgraph V4["Version 4&lt;br/&gt;versionId=4"]
+        V4_S6[Segment 6&lt;br/&gt;schemaId=0&lt;br/&gt;合并后]
+        V4_L[Locator&lt;br/&gt;timestamp=400]
+        V4_S6 --- V4_L
+    end
+    
+    V1 --&gt;|Commit| Commit1
+    Commit1 --&gt; V2
+    V2 --&gt;|Commit| Commit2
+    Commit2 --&gt; V3
+    V3 --&gt;|Merge| Merge
+    Merge --&gt; V4
+    
+    style V1 fill:#e3f2fd
+    style V2 fill:#fff3e0
+    style V3 fill:#f3e5f5
+    style V4 fill:#e8f5e9
+    style Commit1 fill:#fff9c4
+    style Commit2 fill:#fff9c4
+    style Merge fill:#fce4ec
+</code></pre>
 
 <p>版本演进示例：</p>
 <ul>
@@ -1243,7 +1572,36 @@
 
 <p><code class="language-plaintext highlighter-rouge">TabletData</code> 管理 Tablet 的所有数据。让我们先通过图理解其结构：</p>
 
-<p><img src="/images/diagrams/indexlib-tabletdata-structure.svg" alt="TabletData 的结构：包含 Segments、Version、ResourceMap" /></p>
+<p><strong>TabletData 的结构</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class TabletData {
+        -Version _onDiskVersion
+        -vector_Segment _segments
+        -ResourceMap _resourceMap
+        +CreateSlice()
+        +GetSegment()
+    }
+    
+    class Version {
+        -versionid_t _versionId
+        -set_SegmentInVersion _segments
+    }
+    
+    class Segment {
+        &lt;&lt;abstract&gt;&gt;
+        +GetSegmentId()
+    }
+    
+    class ResourceMap {
+        -MemoryPool _memoryPool
+        -Cache _cache
+    }
+    
+    TabletData "1" --&gt; "1" Version : 包含
+    TabletData "1" *-- "many" Segment : 包含
+    TabletData "1" --&gt; "1" ResourceMap : 包含
+</code></pre>
 
 <p>从图中可以看到，TabletData 包含：</p>
 <ul>
@@ -1277,7 +1635,71 @@
 
 <p><strong>Slice 机制的使用场景</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-tabletdata-slice.svg" alt="TabletData Slice 机制：按状态筛选 Segment" /></p>
+<p><strong>TabletData Slice 机制</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[TabletData] --&gt; B[CreateSlice&lt;br/&gt;创建切片视图]
+    B --&gt; C{筛选条件&lt;br/&gt;SegmentStatus}
+    
+    subgraph Segments["Segment 列表&lt;br/&gt;_segments"]
+        S1[MemSegment1&lt;br/&gt;ST_BUILDING]
+        S2[MemSegment2&lt;br/&gt;ST_DUMPING]
+        S3[DiskSegment1&lt;br/&gt;ST_BUILT]
+        S4[DiskSegment2&lt;br/&gt;ST_BUILT]
+        S5[DiskSegment3&lt;br/&gt;ST_SEALED]
+    end
+    
+    subgraph Filter["筛选结果"]
+        F1[ST_BUILT&lt;br/&gt;已构建的Segment]
+        F2[ST_BUILDING&lt;br/&gt;构建中的Segment]
+        F3[ST_DUMPING&lt;br/&gt;转储中的Segment]
+        F4[ST_SEALED&lt;br/&gt;已封存的Segment]
+        F5[无筛选&lt;br/&gt;所有Segment]
+        
+        C --&gt;|ST_BUILT| F1
+        C --&gt;|ST_BUILDING| F2
+        C --&gt;|ST_DUMPING| F3
+        C --&gt;|ST_SEALED| F4
+        C --&gt;|无参数| F5
+    end
+    
+    subgraph Usage["使用场景"]
+        U1[查询场景&lt;br/&gt;TabletReader.Search]
+        U2[写入场景&lt;br/&gt;TabletWriter.Build]
+        U3[合并场景&lt;br/&gt;MergeTask]
+        U4[监控场景&lt;br/&gt;Metrics统计]
+        U5[管理场景&lt;br/&gt;Segment管理]
+        
+        F1 --&gt; U1
+        F2 --&gt; U2
+        F3 --&gt; U4
+        F4 --&gt; U3
+        F5 --&gt; U5
+    end
+    
+    subgraph Slice["Slice特性"]
+        SL1[轻量级视图&lt;br/&gt;不复制数据]
+        SL2[迭代器支持&lt;br/&gt;begin/end/rbegin/rend]
+        SL3[线程安全&lt;br/&gt;支持并发访问]
+        SL4[按需筛选&lt;br/&gt;延迟计算]
+        
+        B -.-&gt; SL1
+        B -.-&gt; SL2
+        B -.-&gt; SL3
+        B -.-&gt; SL4
+    end
+    
+    S3 --&gt; F1
+    S4 --&gt; F1
+    S1 --&gt; F2
+    S2 --&gt; F3
+    S5 --&gt; F4
+    
+    style Segments fill:#e3f2fd
+    style Filter fill:#fff3e0
+    style Usage fill:#f3e5f5
+    style Slice fill:#f5f5f5
+</code></pre>
 
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 获取所有已构建的 Segment（用于查询）</span>
 <span class="k">auto</span> <span class="n">builtSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_BUILT</span><span class="p">);</span>
@@ -1349,7 +1771,26 @@
 
 <p>Locator 是增量更新的核心，记录数据的位置信息。让我们先通过图理解 Locator 的结构：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-structure.svg" alt="Locator 的结构：包含 timestamp、concurrentIdx、hashId 等信息" /></p>
+<p><strong>Locator 的结构</strong>：</p>
+
+<pre><code class="language-mermaid">classDiagram
+    class Locator {
+        -int64_t _timestamp
+        -int32_t _concurrentIdx
+        -int32_t _hashId
+        -int32_t _sourceIdx
+        +IsFasterThan()
+        +Update()
+    }
+    
+    class Progress {
+        -int64_t _from
+        -int64_t _to
+        -int64_t _offset
+    }
+    
+    Locator "1" *-- "many" Progress : 包含多个进度
+</code></pre>
 
 <p>从图中可以看到，Locator 包含：</p>
 <ul>
@@ -1391,7 +1832,34 @@
 
 <p><strong>Locator 的比较逻辑</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-locator-compare.svg" alt="Locator 比较：判断数据是否已处理的逻辑" /></p>
+<p><strong>Locator 比较逻辑</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[Locator A vs Locator B] --&gt; B{比较 timestamp}
+    
+    B --&gt;|A.timestamp &gt; B.timestamp| C1{比较 hashId}
+    B --&gt;|A.timestamp &lt; B.timestamp| D[B 更快&lt;br/&gt;LCR_SLOWER]
+    B --&gt;|A.timestamp == B.timestamp| E{比较 concurrentIdx}
+    
+    C1 --&gt;|A 包含所有 B 的 hashId| F[A 更快&lt;br/&gt;LCR_FULLY_FASTER]
+    C1 --&gt;|A 部分包含 B 的 hashId| G[A 部分更快&lt;br/&gt;LCR_PARTIAL_FASTER]
+    C1 --&gt;|A 不包含 B 的 hashId| D
+    
+    E --&gt;|A.concurrentIdx &gt; B.concurrentIdx| F
+    E --&gt;|A.concurrentIdx &lt; B.concurrentIdx| D
+    E --&gt;|A.concurrentIdx == B.concurrentIdx| H{比较 sourceIdx}
+    
+    H --&gt;|A.sourceIdx &gt;= B.sourceIdx| F
+    H --&gt;|A.sourceIdx &lt; B.sourceIdx| D
+    
+    style B fill:#e3f2fd
+    style C1 fill:#e3f2fd
+    style E fill:#fff3e0
+    style H fill:#fff3e0
+    style F fill:#e8f5e9
+    style G fill:#fff9c4
+    style D fill:#ffebee
+</code></pre>
 
 <p>比较示例：</p>
 <ul>
@@ -1467,7 +1935,97 @@
 
 <p>TabletReader 提供索引查询接口。让我们先通过图理解查询流程：</p>
 
-<p><img src="/images/diagrams/indexlib-tabletreader-query-flow.svg" alt="TabletReader 查询流程：从 JSON 查询到结果返回" /></p>
+<p><strong>TabletReader 查询流程</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Input["输入阶段"]
+        A1[JSON 查询请求]
+        A2[解析JSON查询&lt;br/&gt;QueryParser]
+        A3[提取查询类型&lt;br/&gt;TermQuery/RangeQuery等]
+        A4[提取查询条件&lt;br/&gt;term/范围/排序字段]
+        A5[创建内部Query对象]
+        
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
+        A4 --&gt; A5
+    end
+    
+    subgraph Reader["IndexReader获取"]
+        B1[GetIndexReader&lt;br/&gt;indexType, indexName]
+        B2{缓存中存在?}
+        B3[返回缓存的IndexReader]
+        B4[创建新的IndexReader]
+        B5[InvertedIndexReader&lt;br/&gt;倒排索引]
+        B6[AttributeReader&lt;br/&gt;正排索引]
+        B7[PrimaryKeyReader&lt;br/&gt;主键索引]
+        B8[缓存IndexReader]
+        
+        A5 --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt;|是| B3
+        B2 --&gt;|否| B4
+        B4 --&gt; B5
+        B4 --&gt; B6
+        B4 --&gt; B7
+        B4 --&gt; B8
+        B3 --&gt; C1
+        B5 --&gt; C1
+        B6 --&gt; C1
+        B7 --&gt; C1
+    end
+    
+    subgraph Query["查询执行阶段"]
+        C1[TabletData.CreateSlice&lt;br/&gt;ST_BUILT获取Segment列表]
+        C2[遍历Segment]
+        C3[Segment1查询]
+        C4[Segment2查询]
+        C5[Segment3查询]
+        C6[并行查询执行]
+        C7[DocId转换&lt;br/&gt;GlobalDocId → LocalDocId]
+        C8[IndexReader.Search&lt;br/&gt;执行索引查询]
+        
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C2 --&gt; C4
+        C2 --&gt; C5
+        C3 --&gt; C6
+        C4 --&gt; C6
+        C5 --&gt; C6
+        C6 --&gt; C7
+        C7 --&gt; C8
+    end
+    
+    subgraph Process["结果处理阶段"]
+        D1[收集各Segment结果&lt;br/&gt;Result1, Result2, Result3]
+        D2[DocId去重&lt;br/&gt;避免重复文档]
+        D3[按相关性分数排序&lt;br/&gt;或按指定字段排序]
+        D4[分页处理&lt;br/&gt;offset/limit]
+        D5[聚合统计&lt;br/&gt;总数/平均值等]
+        
+        C8 --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D4 --&gt; D5
+    end
+    
+    subgraph Output["输出阶段"]
+        E1[字段选择&lt;br/&gt;根据查询条件]
+        E2[序列化为JSON&lt;br/&gt;Jsonizable]
+        E3[返回JSON结果]
+        
+        D5 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    style Input fill:#e3f2fd
+    style Reader fill:#fff9c4
+    style Query fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Output fill:#e8f5e9
+</code></pre>
 
 <p>从图中可以看到查询流程：</p>
 <ol>
@@ -1516,7 +2074,66 @@
 
 <p><strong>IndexReader 缓存机制</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-tabletreader-cache.svg" alt="TabletReader IndexReader 缓存：避免重复创建" /></p>
+<p><strong>TabletReader IndexReader 缓存</strong>：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[GetIndexReader请求&lt;br/&gt;indexType, indexName] --&gt; B[构建缓存Key&lt;br/&gt;pair indexType, indexName]
+    B --&gt; C{在_indexReaderMap中查找}
+    
+    subgraph Cache["缓存命中路径"]
+        C1[找到缓存的IndexReader]
+        C2[返回shared_ptr&lt;br/&gt;共享使用]
+        C3[避免重复创建&lt;br/&gt;提高性能]
+        
+        C --&gt;|存在| C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Create["缓存未命中路径"]
+        D1[未找到缓存]
+        D2[调用DoGetIndexReader&lt;br/&gt;子类实现]
+        D3[创建IndexReader实例]
+        D4[InvertedIndexReader&lt;br/&gt;倒排索引]
+        D5[AttributeReader&lt;br/&gt;正排索引]
+        D6[PrimaryKeyReader&lt;br/&gt;主键索引]
+        D7[初始化IndexReader&lt;br/&gt;Open方法]
+        D8[加载索引数据&lt;br/&gt;按需加载]
+        D9[缓存到_indexReaderMap&lt;br/&gt;shared_ptr管理]
+        
+        C --&gt;|不存在| D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D3 --&gt; D5
+        D3 --&gt; D6
+        D4 --&gt; D7
+        D5 --&gt; D7
+        D6 --&gt; D7
+        D7 --&gt; D8
+        D8 --&gt; D9
+    end
+    
+    subgraph CacheInfo["缓存信息"]
+        CI1[缓存Key&lt;br/&gt;indexType + indexName]
+        CI2[缓存Value&lt;br/&gt;shared_ptr IIndexReader]
+        CI3[生命周期&lt;br/&gt;与TabletReader相同]
+        CI4[线程安全&lt;br/&gt;支持并发查询]
+        
+        B -.-&gt; CI1
+        C1 -.-&gt; CI2
+        C2 -.-&gt; CI3
+        C2 -.-&gt; CI4
+    end
+    
+    C3 --&gt; E[返回IndexReader]
+    D9 --&gt; E
+    
+    style Cache fill:#e3f2fd
+    style Create fill:#fff3e0
+    style CacheInfo fill:#f5f5f5
+    style E fill:#f3e5f5
+</code></pre>
 
 <ul>
   <li><strong>缓存 Key</strong>：<code class="language-plaintext highlighter-rouge">(indexType, indexName)</code> 对</li>
@@ -2060,114 +2677,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

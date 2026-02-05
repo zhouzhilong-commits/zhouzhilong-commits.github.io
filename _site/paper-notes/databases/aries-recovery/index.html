@@ -1582,114 +1582,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

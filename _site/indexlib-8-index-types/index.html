@@ -596,7 +596,7 @@
 
 
   
-	  4 分钟阅读
+	  9 分钟阅读
 	
 </p>
           
@@ -617,7 +617,27 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了内存管理与资源控制的机制。本文将继续深入，详细解析索引类型的实现，这是理解 IndexLib 如何支持不同类型索引的关键。</p>
 
-<p><img src="/images/diagrams/indexlib-index-types-overview.svg" alt="索引类型概览：Normal、KV、KKV 三种索引类型的特点和应用场景" /></p>
+<p>索引类型概览：Normal、KV、KKV 三种索引类型的特点和应用场景：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h2 id="1-索引类型概览">1. 索引类型概览</h2>
 
@@ -633,7 +653,27 @@
 
 <p>让我们先通过图来理解三种索引类型的区别：</p>
 
-<p><img src="/images/diagrams/indexlib-index-types-comparison.svg" alt="索引类型对比：Normal、KV、KKV 的数据模型和查询方式" /></p>
+<p>索引类型对比：Normal、KV、KKV 的数据模型和查询方式：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <h3 id="12-索引类型的选择">1.2 索引类型的选择</h3>
 
@@ -727,7 +767,27 @@
 
 <p>NormalTable 是标准表，支持完整的索引功能：</p>
 
-<p><img src="/images/diagrams/indexlib-normal-table-features.svg" alt="NormalTable 的特点：支持全文检索、倒排索引、正排索引等" /></p>
+<p>NormalTable 的特点：支持全文检索、倒排索引、正排索引等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>主要特点</strong>：</p>
 <ul>
@@ -742,7 +802,27 @@
 
 <p>NormalTable 的架构：</p>
 
-<p><img src="/images/diagrams/indexlib-normal-table-architecture.svg" alt="NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件" /></p>
+<p>NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>核心组件</strong>：</p>
 
@@ -824,7 +904,27 @@
 
 <p>NormalTable 的查询方式：</p>
 
-<p><img src="/images/diagrams/indexlib-normal-table-query.svg" alt="NormalTable 的查询：全文检索、属性查询、主键查询等" /></p>
+<p>NormalTable 的查询：全文检索、属性查询、主键查询等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>查询方式</strong>：</p>
 
@@ -909,7 +1009,27 @@
 
 <p>KVTable 是键值表，支持简单的键值存储：</p>
 
-<p><img src="/images/diagrams/indexlib-kv-table-features.svg" alt="KVTable 的特点：支持主键查询、简单的键值存储" /></p>
+<p>KVTable 的特点：支持主键查询、简单的键值存储：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>主要特点</strong>：</p>
 <ul>
@@ -923,7 +1043,27 @@
 
 <p>KVTable 的架构：</p>
 
-<p><img src="/images/diagrams/indexlib-kv-table-architecture.svg" alt="KVTable 的架构：KVTabletReader、KVTabletWriter 等组件" /></p>
+<p>KVTable 的架构：KVTabletReader、KVTabletWriter 等组件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>核心组件</strong>：</p>
 <ul>
@@ -937,7 +1077,27 @@
 
 <p>KVTable 的查询方式：</p>
 
-<p><img src="/images/diagrams/indexlib-kv-table-query.svg" alt="KVTable 的查询：主键查询、属性查询等" /></p>
+<p>KVTable 的查询：主键查询、属性查询等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>查询方式</strong>：</p>
 <ul>
@@ -964,7 +1124,27 @@
 
 <p>KKVTable 是键键值表，支持主键+排序键查询：</p>
 
-<p><img src="/images/diagrams/indexlib-kkv-table-features.svg" alt="KKVTable 的特点：支持主键+排序键查询、多值存储" /></p>
+<p>KKVTable 的特点：支持主键+排序键查询、多值存储：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>主要特点</strong>：</p>
 <ul>
@@ -978,7 +1158,27 @@
 
 <p>KKVTable 的架构：</p>
 
-<p><img src="/images/diagrams/indexlib-kkv-table-architecture.svg" alt="KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件" /></p>
+<p>KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>核心组件</strong>：</p>
 <ul>
@@ -992,7 +1192,27 @@
 
 <p>KKVTable 的查询方式：</p>
 
-<p><img src="/images/diagrams/indexlib-kkv-table-query.svg" alt="KKVTable 的查询：主键+排序键查询、范围查询等" /></p>
+<p>KKVTable 的查询：主键+排序键查询、范围查询等：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>查询方式</strong>：</p>
 <ul>
@@ -1020,7 +1240,27 @@
 
 <p>不同索引类型的 TabletReader 实现差异：</p>
 
-<p><img src="/images/diagrams/indexlib-tablet-reader-differences.svg" alt="TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletReader" /></p>
+<p>TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletReader：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>实现差异</strong>：</p>
 <ul>
@@ -1033,7 +1273,27 @@
 
 <p>不同索引类型的 TabletWriter 实现差异：</p>
 
-<p><img src="/images/diagrams/indexlib-tablet-writer-differences.svg" alt="TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWriter" /></p>
+<p>TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWriter：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>实现差异</strong>：</p>
 <ul>
@@ -1046,7 +1306,27 @@
 
 <p>不同索引类型的索引构建差异：</p>
 
-<p><img src="/images/diagrams/indexlib-index-build-differences.svg" alt="索引构建的差异：Normal、KV、KKV 的索引构建流程" /></p>
+<p>索引构建的差异：Normal、KV、KKV 的索引构建流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>构建差异</strong>：</p>
 <ul>
@@ -1061,7 +1341,27 @@
 
 <p>选择 NormalTable 的场景：</p>
 
-<p><img src="/images/diagrams/indexlib-normal-table-scenarios.svg" alt="选择 NormalTable 的场景：全文检索、复杂查询等场景" /></p>
+<p>选择 NormalTable 的场景：全文检索、复杂查询等场景：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>适用场景</strong>：</p>
 <ul>
@@ -1075,7 +1375,27 @@
 
 <p>选择 KVTable 的场景：</p>
 
-<p><img src="/images/diagrams/indexlib-kv-table-scenarios.svg" alt="选择 KVTable 的场景：简单的键值存储、主键查询等场景" /></p>
+<p>选择 KVTable 的场景：简单的键值存储、主键查询等场景：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>适用场景</strong>：</p>
 <ul>
@@ -1089,7 +1409,27 @@
 
 <p>选择 KKVTable 的场景：</p>
 
-<p><img src="/images/diagrams/indexlib-kkv-table-scenarios.svg" alt="选择 KKVTable 的场景：多值存储、主键+排序键查询等场景" /></p>
+<p>选择 KKVTable 的场景：多值存储、主键+排序键查询等场景：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>适用场景</strong>：</p>
 <ul>
@@ -1105,7 +1445,27 @@
 
 <p>不同索引类型的查询性能对比：</p>
 
-<p><img src="/images/diagrams/indexlib-index-performance-comparison.svg" alt="查询性能对比：Normal、KV、KKV 的查询性能特点" /></p>
+<p>查询性能对比：Normal、KV、KKV 的查询性能特点：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>性能特点</strong>：</p>
 <ul>
@@ -1118,7 +1478,27 @@
 
 <p>不同索引类型的存储性能对比：</p>
 
-<p><img src="/images/diagrams/indexlib-index-storage-comparison.svg" alt="存储性能对比：Normal、KV、KKV 的存储性能特点" /></p>
+<p>存储性能对比：Normal、KV、KKV 的存储性能特点：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>存储特点</strong>：</p>
 <ul>
@@ -1131,7 +1511,27 @@
 
 <p>不同索引类型的构建性能对比：</p>
 
-<p><img src="/images/diagrams/indexlib-index-build-performance-comparison.svg" alt="构建性能对比：Normal、KV、KKV 的构建性能特点" /></p>
+<p>构建性能对比：Normal、KV、KKV 的构建性能特点：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>构建特点</strong>：</p>
 <ul>
@@ -1146,7 +1546,27 @@
 
 <p>IndexLib 支持自定义索引类型：</p>
 
-<p><img src="/images/diagrams/indexlib-custom-index-type.svg" alt="自定义索引类型：通过实现接口扩展索引类型" /></p>
+<p>自定义索引类型：通过实现接口扩展索引类型：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>扩展方式</strong>：</p>
 <ul>
@@ -1160,7 +1580,27 @@
 
 <p>索引类型的演进：</p>
 
-<p><img src="/images/diagrams/indexlib-index-type-evolution.svg" alt="索引类型的演进：从 Normal 到 KV、KKV 的演进过程" /></p>
+<p>索引类型的演进：从 Normal 到 KV、KKV 的演进过程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>演进过程</strong>：</p>
 <ul>
@@ -1175,7 +1615,27 @@
 
 <p>索引类型的统一接口设计：</p>
 
-<p><img src="/images/diagrams/indexlib-unified-interface-design.svg" alt="统一的接口设计：ITabletReader、ITabletWriter 等统一接口" /></p>
+<p>统一的接口设计：ITabletReader、ITabletWriter 等统一接口：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1188,7 +1648,27 @@
 
 <p>索引类型的灵活扩展设计：</p>
 
-<p><img src="/images/diagrams/indexlib-flexible-extension-design.svg" alt="灵活的扩展设计：支持自定义索引类型和扩展功能" /></p>
+<p>灵活的扩展设计：支持自定义索引类型和扩展功能：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1201,7 +1681,27 @@
 
 <p>索引类型的性能优化设计：</p>
 
-<p><img src="/images/diagrams/indexlib-index-performance-optimization-design.svg" alt="性能优化设计：针对不同索引类型的性能优化策略" /></p>
+<p>性能优化设计：针对不同索引类型的性能优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1388,114 +1888,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

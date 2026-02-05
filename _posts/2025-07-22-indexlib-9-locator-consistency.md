@@ -9,7 +9,28 @@ date: 2025-07-22
 
 在上一篇文章中，我们深入了解了索引类型的实现。本文将继续深入，详细解析 Locator 的实现细节和数据一致性保证机制，这是理解 IndexLib 如何保证数据不重复、不丢失的关键。
 
-![Locator 与数据一致性概览：从 Locator 结构到数据一致性保证的完整机制](/images/diagrams/indexlib-locator-consistency-overview.svg)
+Locator 与数据一致性概览：从 Locator 结构到数据一致性保证的完整机制：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 1. Locator 深入解析
 
@@ -154,7 +175,28 @@ private:
 
 **Locator 的关键字段**：
 
-![Locator 的完整结构：包含所有关键字段和 DocInfo 结构](/images/diagrams/indexlib-locator-complete-structure.svg)
+Locator 的完整结构：包含所有关键字段和 DocInfo 结构：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 - **_src**：数据源标识，用于区分不同的数据源。每个数据源有唯一的 `_src`，不同数据源的 Locator 无法比较
 - **_minOffset**：最小偏移量，记录所有 hashId 中最小的 timestamp 和 concurrentIdx，用于快速判断整体进度
@@ -186,7 +228,28 @@ typedef std::vector<ProgressVector> MultiProgress;  // 多个 hashId 范围的�
 
 **Progress 的关键字段**：
 
-![Progress 的结构：包含 from、to、offset 等字段](/images/diagrams/indexlib-progress-structure.svg)
+Progress 的结构：包含 from、to、offset 等字段：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 - **from/to**：HashId 范围，用于分片处理
 - **offset**：偏移量，包含 timestamp 和 concurrentIdx
@@ -197,7 +260,28 @@ typedef std::vector<ProgressVector> MultiProgress;  // 多个 hashId 范围的�
 
 `DocInfo` 是文档信息，记录文档在数据源中的位置：
 
-![DocInfo 的结构：包含 timestamp、concurrentIdx、hashId、sourceIdx 等字段](/images/diagrams/indexlib-docinfo-structure.svg)
+DocInfo 的结构：包含 timestamp、concurrentIdx、hashId、sourceIdx 等字段：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **DocInfo 的关键字段**：
 - **timestamp**：时间戳，记录数据的时间位置
@@ -331,7 +415,28 @@ LocatorCompareResult Locator::IsFasterThan(const Locator& other,
    - 使用位运算优化 Progress 的比较
    - 减少比较开销，提高比较性能
 
-![IsFasterThan() 方法：比较两个 Locator 的实现逻辑](/images/diagrams/indexlib-locator-compare-logic.svg)
+IsFasterThan() 方法：比较两个 Locator 的实现逻辑：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 2.2 CompareProgress() 方法
 
@@ -409,7 +514,28 @@ LocatorCompareResult Locator::CompareProgress(const ProgressVector& pv1,
 
 Locator 比较结果的语义：
 
-![Locator 比较结果的语义：不同结果的含义和应用场景](/images/diagrams/indexlib-locator-compare-result-semantics.svg)
+Locator 比较结果的语义：不同结果的含义和应用场景：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **比较结果详解**：
 
@@ -440,7 +566,28 @@ stateDiagram-v2
 
 多进度比较的实现：
 
-![多进度比较：比较 MultiProgress 中每个 hashId 的进度](/images/diagrams/indexlib-multi-progress-compare.svg)
+多进度比较：比较 MultiProgress 中每个 hashId 的进度：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **多进度比较的序列图**：
 
@@ -634,13 +781,55 @@ void Locator::UpdateMinOffset()
 3. **进度合并**：支持合并多个 Progress，保留更大的进度，支持并行处理和分片处理
 4. **最小偏移量维护**：自动维护 `_minOffset`，用于快速判断整体进度
 
-![Update() 方法：更新 Locator 的实现逻辑](/images/diagrams/indexlib-locator-update-logic.svg)
+Update() 方法：更新 Locator 的实现逻辑：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 3.2 更新时机
 
 Locator 的更新时机：
 
-![Locator 的更新时机：在数据处理完成后更新 Locator](/images/diagrams/indexlib-locator-update-timing.svg)
+Locator 的更新时机：在数据处理完成后更新 Locator：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **更新时机的序列图**：
 
@@ -773,7 +962,28 @@ std::string Locator::Serialize() const
 6. **UserData**：用户数据，先写入大小（4 字节），再写入数据内容
 7. **Legacy 标志**：是否遗留 Locator（1 字节）
 
-![Locator 的序列化：将 Locator 序列化为字符串](/images/diagrams/indexlib-locator-serialize.svg)
+Locator 的序列化：将 Locator 序列化为字符串：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 4.2 Deserialize() 方法
 
@@ -934,7 +1144,28 @@ Status Locator::DeserializeV2(autil::DataBuffer& buffer)
 3. **数据验证**：反序列化后验证数据的有效性，确保 Locator 正确
 4. **压缩支持**：支持压缩的序列化数据，减少存储空间和网络传输
 
-![Locator 的反序列化：从字符串反序列化为 Locator](/images/diagrams/indexlib-locator-deserialize.svg)
+Locator 的反序列化：从字符串反序列化为 Locator：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 5. 数据一致性保证
 
@@ -1042,7 +1273,28 @@ Status TabletWriter::Build(const Document& doc)
    - 保证增量更新的正确性
    - 提高处理效率
 
-![数据不重复保证：通过 Locator 比较避免重复处理数据](/images/diagrams/indexlib-data-no-duplicate.svg)
+数据不重复保证：通过 Locator 比较避免重复处理数据：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 5.2 数据不丢失保证
 
@@ -1127,7 +1379,28 @@ Status VersionCommitter::Commit(const TabletData& tabletData,
    - 版本提交时，Locator 被持久化
    - 版本加载时，Locator 被恢复
 
-![数据不丢失保证：通过 Locator 记录处理位置，保证数据不丢失](/images/diagrams/indexlib-data-no-lost.svg)
+数据不丢失保证：通过 Locator 记录处理位置，保证数据不丢失：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 5.3 多数据源一致性
 
@@ -1213,7 +1486,28 @@ public:
    - 版本提交时，所有数据源的 Locator 都被持久化
    - 版本加载时，所有数据源的 Locator 都被恢复
 
-![多数据源一致性：通过 sourceIdx 区分数据源，保证多数据源场景的数据一致性](/images/diagrams/indexlib-multi-source-consistency.svg)
+多数据源一致性：通过 sourceIdx 区分数据源，保证多数据源场景的数据一致性：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 6. Locator 的高级特性
 
@@ -1221,7 +1515,28 @@ public:
 
 Locator 支持分片处理：
 
-![分片处理支持：通过 hashId 支持分片处理](/images/diagrams/indexlib-locator-sharding.svg)
+分片处理支持：通过 hashId 支持分片处理：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **分片机制**：
 - **HashId 范围**：通过 Progress 的 from/to 定义 HashId 范围
@@ -1233,7 +1548,28 @@ Locator 支持分片处理：
 
 Locator 支持并发控制：
 
-![并发控制：通过 concurrentIdx 处理时间戳相同的情况](/images/diagrams/indexlib-locator-concurrency.svg)
+并发控制：通过 concurrentIdx 处理时间戳相同的情况：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **并发机制**：
 - **Timestamp**：时间戳，记录数据的时间位置
@@ -1245,7 +1581,28 @@ Locator 支持并发控制：
 
 Locator 支持用户数据：
 
-![用户数据支持：通过 _userData 存储自定义信息](/images/diagrams/indexlib-locator-user-data.svg)
+用户数据支持：通过 _userData 存储自定义信息：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **用户数据机制**：
 - **自定义信息**：通过 `_userData` 存储自定义信息
@@ -1259,7 +1616,28 @@ Locator 支持用户数据：
 
 在实时写入场景中，Locator 的应用：
 
-![实时写入场景中的 Locator：通过 Locator 判断数据是否已处理](/images/diagrams/indexlib-locator-realtime-application.svg)
+实时写入场景中的 Locator：通过 Locator 判断数据是否已处理：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **应用流程**：
 1. **接收数据**：实时接收数据流
@@ -1272,7 +1650,28 @@ Locator 支持用户数据：
 
 在批量更新场景中，Locator 的应用：
 
-![批量更新场景中的 Locator：批量处理数据，避免重复处理](/images/diagrams/indexlib-locator-batch-application.svg)
+批量更新场景中的 Locator：批量处理数据，避免重复处理：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **应用流程**：
 1. **读取数据源**：从数据源批量读取数据
@@ -1286,7 +1685,28 @@ Locator 支持用户数据：
 
 在故障恢复场景中，Locator 的应用：
 
-![故障恢复场景中的 Locator：通过 Locator 判断需要重新处理的数据](/images/diagrams/indexlib-locator-recovery-application.svg)
+故障恢复场景中的 Locator：通过 Locator 判断需要重新处理的数据：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **应用流程**：
 1. **加载版本**：加载故障前的版本，获取 Locator
@@ -1430,7 +1850,28 @@ public:
    - 使用位运算优化 Progress 的比较
    - 减少比较开销，提高比较性能
 
-![Locator 比较的性能优化：优化比较算法，提高比较效率](/images/diagrams/indexlib-locator-compare-optimization.svg)
+Locator 比较的性能优化：优化比较算法，提高比较效率：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 8.2 序列化性能优化
 
@@ -1506,7 +1947,28 @@ std::string Locator::SerializeCompressed() const
    - 新版本可以读取旧版本的 Locator
    - 旧版本可以读取新版本的 Locator（如果兼容）
 
-![Locator 序列化的性能优化：优化序列化格式，提高序列化效率](/images/diagrams/indexlib-locator-serialize-optimization.svg)
+Locator 序列化的性能优化：优化序列化格式，提高序列化效率：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 8.3 内存优化
 
@@ -1635,7 +2097,28 @@ classDiagram
 
 Locator 的设计遵循以下核心原则，确保简单、高效、可靠、可扩展：
 
-![Locator 的设计原则：简单、高效、可靠的设计原则](/images/diagrams/indexlib-locator-design-principles.svg)
+Locator 的设计原则：简单、高效、可靠的设计原则：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计原则详解**：
 
@@ -1701,7 +2184,28 @@ flowchart TD
    - 旧版本可以识别新版本，并跳过不支持的字段
    - 保证数据不会因为版本升级而丢失
 
-![Locator 的兼容性设计：支持遗留 Locator 和版本兼容](/images/diagrams/indexlib-locator-compatibility.svg)
+Locator 的兼容性设计：支持遗留 Locator 和版本兼容：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 9.3 线程安全设计
 
@@ -1780,7 +2284,28 @@ public:
 };
 ```
 
-![Locator 的线程安全设计：支持并发访问，保证线程安全](/images/diagrams/indexlib-locator-thread-safety.svg)
+Locator 的线程安全设计：支持并发访问，保证线程安全：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 10. 小结
 

@@ -596,7 +596,7 @@
 
 
   
-	  7 分钟阅读
+	  11 分钟阅读
 	
 </p>
           
@@ -617,7 +617,50 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了 Segment 合并策略的实现。本文将继续深入，详细解析内存管理与资源控制的机制，这是理解 IndexLib 如何高效管理内存和资源的关键。</p>
 
-<p><img src="/images/diagrams/indexlib-memory-management-overview.svg" alt="内存管理与资源控制概览：从内存配额到内存回收的完整机制" /></p>
+<p>内存管理与资源控制概览：从内存配额到内存回收的完整机制：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Quota["内存配额"]
+        Q1[MemoryQuotaController&lt;br/&gt;配额控制器]
+        Q2[层级配额管理&lt;br/&gt;Hierarchical Quota]
+        Q3[配额分配&lt;br/&gt;Quota Allocation]
+        Q1 --&gt; Q2
+        Q2 --&gt; Q3
+    end
+    
+    subgraph Calculate["内存计算"]
+        C1[TabletMemoryCalculator&lt;br/&gt;内存计算器]
+        C2[实时统计&lt;br/&gt;Real-time Statistics]
+        C3[分类统计&lt;br/&gt;Categorized Statistics]
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Reclaim["内存回收"]
+        R1[IIndexMemoryReclaimer&lt;br/&gt;内存回收器]
+        R2[延迟回收&lt;br/&gt;Delayed Reclaim]
+        R3[按需回收&lt;br/&gt;On-Demand Reclaim]
+        R1 --&gt; R2
+        R2 --&gt; R3
+    end
+    
+    subgraph Resource["资源控制"]
+        RE1[BuildResourceCalculator&lt;br/&gt;构建资源计算器]
+        RE2[资源估算&lt;br/&gt;Resource Estimation]
+        RE3[资源预留&lt;br/&gt;Resource Reservation]
+        RE1 --&gt; RE2
+        RE2 --&gt; RE3
+    end
+    
+    Q3 --&gt; C1
+    C3 --&gt; R1
+    R3 --&gt; RE1
+    
+    style Quota fill:#e3f2fd
+    style Calculate fill:#fff3e0
+    style Reclaim fill:#f3e5f5
+    style Resource fill:#e8f5e9
+</code></pre>
 
 <h2 id="1-内存管理概览">1. 内存管理概览</h2>
 
@@ -634,7 +677,7 @@
 
 <p>让我们先通过图来理解内存管理的整体架构：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-architecture.svg" alt="内存管理架构：MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 的关系" /></p>
+<p>内存管理架构：MemoryQuotaController、TabletMemoryCalculator、IIndexMemoryReclaimer 的关系（已在上面类图中展示，此处不再重复）：</p>
 
 <h3 id="12-内存管理的作用">1.2 内存管理的作用</h3>
 
@@ -758,7 +801,33 @@
 
 <p><strong>MemoryQuotaController 的关键字段</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-quota-controller-structure.svg" alt="MemoryQuotaController 的结构：包含配额信息和父控制器" /></p>
+<p>MemoryQuotaController 的结构：包含配额信息和父控制器：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Controller["MemoryQuotaController"]
+        C1["name&lt;br/&gt;控制器名称"]
+        C2["rootQuota&lt;br/&gt;根配额"]
+        C3["localFreeQuota&lt;br/&gt;本地可用配额"]
+        C4["reservedParentQuota&lt;br/&gt;预留父配额"]
+        C5["parentController&lt;br/&gt;父控制器引用"]
+    end
+    
+    subgraph Methods["关键方法"]
+        M1["Allocate&lt;br/&gt;分配配额"]
+        M2["TryAllocate&lt;br/&gt;尝试分配"]
+        M3["Reserve&lt;br/&gt;预留配额"]
+        M4["Free&lt;br/&gt;释放配额"]
+    end
+    
+    C1 --&gt; M1
+    C2 --&gt; M1
+    C3 --&gt; M1
+    C4 --&gt; M3
+    C5 --&gt; M1
+    
+    style Controller fill:#e3f2fd
+    style Methods fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>rootQuota</strong>：根配额，根控制器的总配额</li>
@@ -771,7 +840,7 @@
 
 <p>内存配额的分配机制：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-quota-allocation.svg" alt="内存配额分配：从父控制器到子控制器的配额分配" /></p>
+<p>内存配额分配：从父控制器到子控制器的配额分配（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>内存配额分配流程图</strong>：</p>
 
@@ -871,7 +940,32 @@
 
 <p>MemoryQuotaController 支持层级配额管理：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-quota-hierarchy.svg" alt="层级配额管理：从根控制器到子控制器的层级结构" /></p>
+<p>层级配额管理：从根控制器到子控制器的层级结构：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Root["根控制器"]
+        R1["总配额&lt;br/&gt;Total Quota"]
+    end
+    
+    subgraph Partition["分区控制器"]
+        P1["分区配额&lt;br/&gt;Partition Quota"]
+        P2["分区配额&lt;br/&gt;Partition Quota"]
+    end
+    
+    subgraph Tablet["Tablet 控制器"]
+        T1["Tablet配额&lt;br/&gt;Tablet Quota"]
+        T2["Tablet配额&lt;br/&gt;Tablet Quota"]
+    end
+    
+    R1 --&gt; P1
+    R1 --&gt; P2
+    P1 --&gt; T1
+    P2 --&gt; T2
+    
+    style Root fill:#e3f2fd
+    style Partition fill:#fff3e0
+    style Tablet fill:#f3e5f5
+</code></pre>
 
 <p><strong>层级结构</strong>：</p>
 
@@ -962,7 +1056,30 @@
 
 <p>配额分配的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-quota-strategy.svg" alt="配额分配策略：按需分配、预留分配等策略" /></p>
+<p>配额分配策略：按需分配、预留分配等策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Strategies["分配策略"]
+        S1["按需分配&lt;br/&gt;On-Demand"]
+        S2["预留分配&lt;br/&gt;Reserved"]
+        S3["阻塞分配&lt;br/&gt;Blocking"]
+        S4["非阻塞分配&lt;br/&gt;Non-Blocking"]
+    end
+    
+    subgraph Methods["分配方法"]
+        M1["Allocate&lt;br/&gt;阻塞分配"]
+        M2["TryAllocate&lt;br/&gt;非阻塞分配"]
+        M3["Reserve&lt;br/&gt;预留分配"]
+    end
+    
+    S1 --&gt; M1
+    S2 --&gt; M3
+    S3 --&gt; M1
+    S4 --&gt; M2
+    
+    style Strategies fill:#e3f2fd
+    style Methods fill:#fff3e0
+</code></pre>
 
 <p><strong>分配策略</strong>：</p>
 <ul>
@@ -1001,7 +1118,30 @@
 
 <p><strong>TabletMemoryCalculator 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-tablet-memory-calculator.svg" alt="TabletMemoryCalculator 的方法：计算各种内存使用量" /></p>
+<p>TabletMemoryCalculator 的方法：计算各种内存使用量：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Calculator["TabletMemoryCalculator"]
+        C1["GetRtBuiltSegmentsMemsize&lt;br/&gt;实时构建段内存"]
+        C2["GetRtIndexMemsize&lt;br/&gt;实时索引内存"]
+        C3["GetBuildingSegmentMemsize&lt;br/&gt;构建中段内存"]
+        C4["GetDumpingSegmentMemsize&lt;br/&gt;转储中段内存"]
+    end
+    
+    subgraph Components["统计组件"]
+        CO1["TabletWriter&lt;br/&gt;写入器内存"]
+        CO2["TabletReaderContainer&lt;br/&gt;查询器容器内存"]
+        CO3["IndexReader&lt;br/&gt;索引读取器内存"]
+    end
+    
+    C1 --&gt; CO1
+    C2 --&gt; CO2
+    C3 --&gt; CO1
+    C4 --&gt; CO1
+    
+    style Calculator fill:#e3f2fd
+    style Components fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>GetRtBuiltSegmentsMemsize()</strong>：计算实时已构建 Segment 的内存使用</li>
@@ -1015,7 +1155,7 @@
 
 <p>内存使用统计的流程：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-usage-statistics.svg" alt="内存使用统计：从 Tablet 组件到内存使用量的统计流程" /></p>
+<p>内存使用统计：从 Tablet 组件到内存使用量的统计流程（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>统计流程</strong>：</p>
 
@@ -1120,7 +1260,30 @@
 
 <p><strong>IIndexMemoryReclaimer 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-index-memory-reclaimer-interface.svg" alt="IIndexMemoryReclaimer 接口：提供内存回收的抽象" /></p>
+<p>IIndexMemoryReclaimer 接口：提供内存回收的抽象：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Interface["IIndexMemoryReclaimer 接口"]
+        I1["Retire&lt;br/&gt;标记待回收"]
+        I2["DropRetireItem&lt;br/&gt;删除待回收项"]
+        I3["TryReclaim&lt;br/&gt;尝试回收"]
+        I4["Reclaim&lt;br/&gt;强制回收"]
+    end
+    
+    subgraph Lifecycle["生命周期"]
+        L1["使用中&lt;br/&gt;In Use"]
+        L2["待回收&lt;br/&gt;Retired"]
+        L3["已回收&lt;br/&gt;Reclaimed"]
+        L1 --&gt;|Retire| L2
+        L2 --&gt;|Reclaim| L3
+    end
+    
+    I1 --&gt; L2
+    I3 --&gt; L3
+    
+    style Interface fill:#e3f2fd
+    style Lifecycle fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>Retire()</strong>：将内存加入回收队列，延迟回收</li>
@@ -1133,7 +1296,19 @@
 
 <p>内存回收的机制：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-reclaim-mechanism.svg" alt="内存回收机制：从 Retire 到 Reclaim 的回收流程" /></p>
+<p>内存回收机制：从 Retire 到 Reclaim 的回收流程：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    A["使用中&lt;br/&gt;In Use"] --&gt; B["标记待回收&lt;br/&gt;Retire"]
+    B --&gt; C["延迟回收&lt;br/&gt;Delayed Reclaim"]
+    C --&gt; D{"内存紧张?"}
+    D --&gt;|是| E["执行回收&lt;br/&gt;Reclaim"]
+    D --&gt;|否| C
+    E --&gt; F["释放内存&lt;br/&gt;Free Memory"]
+    
+    style A fill:#e3f2fd
+    style F fill:#e8f5e9
+</code></pre>
 
 <p><strong>内存回收流程图</strong>：</p>
 
@@ -1239,7 +1414,28 @@
 
 <p>内存回收的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-reclaim-strategy.svg" alt="内存回收策略：延迟回收、按需回收等策略" /></p>
+<p>内存回收策略：延迟回收、按需回收等策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Strategies["回收策略"]
+        S1["延迟回收&lt;br/&gt;Delayed Reclaim"]
+        S2["按需回收&lt;br/&gt;On-Demand Reclaim"]
+        S3["批量回收&lt;br/&gt;Batch Reclaim"]
+    end
+    
+    subgraph Triggers["触发条件"]
+        T1["内存紧张&lt;br/&gt;Memory Pressure"]
+        T2["定期回收&lt;br/&gt;Periodic Reclaim"]
+        T3["手动触发&lt;br/&gt;Manual Trigger"]
+    end
+    
+    T1 --&gt; S2
+    T2 --&gt; S1
+    T3 --&gt; S3
+    
+    style Strategies fill:#e3f2fd
+    style Triggers fill:#fff3e0
+</code></pre>
 
 <p><strong>回收策略</strong>：</p>
 <ul>
@@ -1276,7 +1472,28 @@
 
 <p><strong>BuildResourceCalculator 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-build-resource-calculator.svg" alt="BuildResourceCalculator 的方法：计算构建资源使用" /></p>
+<p>BuildResourceCalculator 的方法：计算构建资源使用：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Calculator["BuildResourceCalculator"]
+        C1["GetCurrentTotalMemoryUse&lt;br/&gt;当前总内存使用"]
+        C2["EstimateDumpTempMemoryUse&lt;br/&gt;估算转储临时内存"]
+        C3["EstimateDumpExpandMemoryUse&lt;br/&gt;估算转储扩展内存"]
+    end
+    
+    subgraph Metrics["资源指标"]
+        M1["构建内存&lt;br/&gt;Build Memory"]
+        M2["转储内存&lt;br/&gt;Dump Memory"]
+        M3["索引内存&lt;br/&gt;Index Memory"]
+    end
+    
+    C1 --&gt; M1
+    C2 --&gt; M2
+    C3 --&gt; M2
+    
+    style Calculator fill:#e3f2fd
+    style Metrics fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>GetCurrentTotalMemoryUse()</strong>：获取当前总内存使用</li>
@@ -1289,7 +1506,30 @@
 
 <p>构建资源估算的流程：</p>
 
-<p><img src="/images/diagrams/indexlib-build-resource-estimation.svg" alt="构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程" /></p>
+<p>构建资源估算：从 BuildResourceMetrics 到资源使用量的估算流程：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Metrics["BuildResourceMetrics"]
+        M1["文档数量&lt;br/&gt;Doc Count"]
+        M2["索引大小&lt;br/&gt;Index Size"]
+        M3["字段数量&lt;br/&gt;Field Count"]
+    end
+    
+    subgraph Estimate["资源估算"]
+        E1["估算构建内存&lt;br/&gt;Estimate Build Memory"]
+        E2["估算转储内存&lt;br/&gt;Estimate Dump Memory"]
+        E3["估算总内存&lt;br/&gt;Estimate Total Memory"]
+    end
+    
+    M1 --&gt; E1
+    M2 --&gt; E2
+    M3 --&gt; E1
+    E1 --&gt; E3
+    E2 --&gt; E3
+    
+    style Metrics fill:#e3f2fd
+    style Estimate fill:#fff3e0
+</code></pre>
 
 <p><strong>估算流程</strong>：</p>
 <ol>
@@ -1305,7 +1545,7 @@
 
 <p>内存分配的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-allocation-strategy.svg" alt="内存分配策略：按需分配、预留分配等策略" /></p>
+<p>内存分配策略：按需分配、预留分配等策略（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>分配策略</strong>：</p>
 <ul>
@@ -1319,7 +1559,28 @@
 
 <p>内存分配的优化：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-allocation-optimization.svg" alt="内存分配优化：批量分配、内存池等优化策略" /></p>
+<p>内存分配优化：批量分配、内存池等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Optimization["优化策略"]
+        O1["批量分配&lt;br/&gt;Batch Allocation"]
+        O2["内存池&lt;br/&gt;Memory Pool"]
+        O3["对齐分配&lt;br/&gt;Aligned Allocation"]
+    end
+    
+    subgraph Benefits["优化收益"]
+        B1["减少分配次数&lt;br/&gt;Reduce Allocations"]
+        B2["减少内存碎片&lt;br/&gt;Reduce Fragmentation"]
+        B3["提高访问效率&lt;br/&gt;Improve Access"]
+    end
+    
+    O1 --&gt; B1
+    O2 --&gt; B2
+    O3 --&gt; B3
+    
+    style Optimization fill:#e3f2fd
+    style Benefits fill:#fff3e0
+</code></pre>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1335,7 +1596,28 @@
 
 <p>内存回收的时机：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-reclaim-timing.svg" alt="内存回收时机：延迟回收、按需回收等时机" /></p>
+<p>内存回收时机：延迟回收、按需回收等时机：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Timing["回收时机"]
+        T1["延迟回收&lt;br/&gt;Delayed Reclaim&lt;br/&gt;延迟一段时间后回收"]
+        T2["按需回收&lt;br/&gt;On-Demand Reclaim&lt;br/&gt;内存紧张时回收"]
+        T3["定期回收&lt;br/&gt;Periodic Reclaim&lt;br/&gt;定期触发回收"]
+    end
+    
+    subgraph Conditions["触发条件"]
+        C1["内存使用率超过阈值"]
+        C2["配额不足"]
+        C3["定时器触发"]
+    end
+    
+    C1 --&gt; T2
+    C2 --&gt; T2
+    C3 --&gt; T3
+    
+    style Timing fill:#e3f2fd
+    style Conditions fill:#fff3e0
+</code></pre>
 
 <p><strong>回收时机</strong>：</p>
 <ul>
@@ -1349,7 +1631,7 @@
 
 <p>内存回收的优化：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-reclaim-optimization.svg" alt="内存回收优化：批量回收、延迟回收等优化策略" /></p>
+<p>内存回收优化：批量回收、延迟回收等优化策略（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1365,7 +1647,28 @@
 
 <p>内存使用的优化：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-usage-optimization.svg" alt="内存使用优化：内存池、缓存控制等优化策略" /></p>
+<p>内存使用优化：内存池、缓存控制等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Optimization["优化策略"]
+        O1["内存池&lt;br/&gt;Memory Pool"]
+        O2["缓存控制&lt;br/&gt;Cache Control"]
+        O3["懒加载&lt;br/&gt;Lazy Loading"]
+    end
+    
+    subgraph Benefits["优化收益"]
+        B1["减少内存分配开销"]
+        B2["控制内存使用上限"]
+        B3["按需加载减少内存占用"]
+    end
+    
+    O1 --&gt; B1
+    O2 --&gt; B2
+    O3 --&gt; B3
+    
+    style Optimization fill:#e3f2fd
+    style Benefits fill:#fff3e0
+</code></pre>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1379,7 +1682,28 @@
 
 <p>内存监控与告警：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-monitoring.svg" alt="内存监控与告警：实时监控内存使用，及时告警" /></p>
+<p>内存监控与告警：实时监控内存使用，及时告警：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Monitor["监控"]
+        M1["实时统计&lt;br/&gt;Real-time Statistics"]
+        M2["内存使用率&lt;br/&gt;Memory Usage Rate"]
+        M3["配额使用率&lt;br/&gt;Quota Usage Rate"]
+    end
+    
+    subgraph Alert["告警"]
+        A1["阈值告警&lt;br/&gt;Threshold Alert"]
+        A2["异常告警&lt;br/&gt;Anomaly Alert"]
+        A3["趋势告警&lt;br/&gt;Trend Alert"]
+    end
+    
+    M1 --&gt; A1
+    M2 --&gt; A2
+    M3 --&gt; A3
+    
+    style Monitor fill:#e3f2fd
+    style Alert fill:#fff3e0
+</code></pre>
 
 <p><strong>监控与告警</strong>：</p>
 <ul>
@@ -1395,7 +1719,32 @@
 
 <p>层级配额管理的设计：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-quota-hierarchy-design.svg" alt="层级配额管理：从根控制器到子控制器的层级结构" /></p>
+<p>层级配额管理：从根控制器到子控制器的层级结构：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Root["根控制器"]
+        R1["总配额&lt;br/&gt;Total Quota"]
+    end
+    
+    subgraph Partition["分区控制器"]
+        P1["分区配额&lt;br/&gt;Partition Quota"]
+        P2["分区配额&lt;br/&gt;Partition Quota"]
+    end
+    
+    subgraph Tablet["Tablet 控制器"]
+        T1["Tablet配额&lt;br/&gt;Tablet Quota"]
+        T2["Tablet配额&lt;br/&gt;Tablet Quota"]
+    end
+    
+    R1 --&gt; P1
+    R1 --&gt; P2
+    P1 --&gt; T1
+    P2 --&gt; T2
+    
+    style Root fill:#e3f2fd
+    style Partition fill:#fff3e0
+    style Tablet fill:#f3e5f5
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1409,7 +1758,27 @@
 
 <p>内存回收的设计：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-reclaim-design.svg" alt="内存回收设计：延迟回收、按需回收等设计" /></p>
+<p>内存回收设计：延迟回收、按需回收等设计：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1423,7 +1792,27 @@
 
 <p>性能优化的设计：</p>
 
-<p><img src="/images/diagrams/indexlib-memory-performance-design.svg" alt="性能优化设计：内存池、批量操作等优化策略" /></p>
+<p>性能优化设计：内存池、批量操作等优化策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --&gt; D
+    B --&gt; E
+    C --&gt; D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+</code></pre>
 
 <p><strong>设计要点</strong>：</p>
 <ul>
@@ -1618,114 +2007,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

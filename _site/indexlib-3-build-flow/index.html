@@ -596,7 +596,7 @@
 
 
   
-	  9 分钟阅读
+	  20 分钟阅读
 	
 </p>
           
@@ -616,8 +616,6 @@
 
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。</p>
-
-<p><img src="/images/diagrams/indexlib-build-complete-flow.svg" alt="索引构建完整流程：从 Build 到 Commit 的各个阶段" /></p>
 
 <p><strong>索引构建流程图</strong>：</p>
 
@@ -666,8 +664,6 @@
 </ol>
 
 <p>让我们先通过图来理解整个流程：</p>
-
-<p><img src="/images/diagrams/indexlib-build-flow-overview.svg" alt="索引构建流程概览：Build、Flush、Seal、Commit 的关系" /></p>
 
 <p><strong>流程关系图</strong>：</p>
 
@@ -748,7 +744,84 @@
 
 <p>Build 阶段负责接收文档批次，将文档写入内存中的索引结构。让我们先通过图来理解 Build 流程：</p>
 
-<p><img src="/images/diagrams/indexlib-build-process.svg" alt="Build 流程：从文档批次到内存索引的构建过程" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Input["输入阶段"]
+        A1[接收文档批次&lt;br/&gt;IDocumentBatch]
+        A2[批次大小配置&lt;br/&gt;平衡内存和性能]
+        A1 --&gt; A2
+    end
+    
+    subgraph Validate["验证阶段"]
+        B1[文档格式验证&lt;br/&gt;格式检查]
+        B2[Schema验证&lt;br/&gt;字段定义检查]
+        B3[数据有效性验证&lt;br/&gt;数值范围/字符串长度]
+        A2 --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt; B3
+    end
+    
+    subgraph DocId["DocId分配阶段"]
+        C1[获取BaseDocId&lt;br/&gt;前面所有Segment的docCount之和]
+        C2[分配LocalDocId&lt;br/&gt;从0开始递增]
+        C3[计算GlobalDocId&lt;br/&gt;BaseDocId + LocalDocId]
+        B3 --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Indexer["写入Indexer阶段"]
+        D1[解析文档&lt;br/&gt;提取字段和Term]
+        D2[写入倒排索引&lt;br/&gt;InvertedIndexer]
+        D3[写入正排索引&lt;br/&gt;AttributeIndexer]
+        D4[写入主键索引&lt;br/&gt;PrimaryKeyIndexer]
+        D5[写入摘要索引&lt;br/&gt;SummaryIndexer]
+        C3 --&gt; D1
+        D1 --&gt; D2
+        D1 --&gt; D3
+        D1 --&gt; D4
+        D1 --&gt; D5
+    end
+    
+    subgraph Update["更新阶段"]
+        E1[更新SegmentInfo&lt;br/&gt;docCount递增]
+        E2[更新Locator&lt;br/&gt;记录数据处理位置]
+        E3[更新时间戳&lt;br/&gt;最后处理时间]
+        D2 --&gt; E1
+        D3 --&gt; E1
+        D4 --&gt; E1
+        D5 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Check["检查阶段"]
+        F1[评估内存使用&lt;br/&gt;EvaluateCurrentMemUsed]
+        F2{转储条件检查&lt;br/&gt;NeedDump?}
+        F3[内存阈值检查&lt;br/&gt;默认80%]
+        F4[文档数阈值检查&lt;br/&gt;默认100万]
+        F5[时间阈值检查&lt;br/&gt;默认5分钟]
+        E3 --&gt; F1
+        F1 --&gt; F2
+        F2 -.-&gt; F3
+        F2 -.-&gt; F4
+        F2 -.-&gt; F5
+        F2 --&gt;|否| A1
+        F2 --&gt;|是| G1
+    end
+    
+    subgraph Flush["Flush触发"]
+        G1[触发Flush&lt;br/&gt;创建SegmentDumper]
+        F2 --&gt; G1
+    end
+    
+    style Input fill:#e3f2fd
+    style Validate fill:#fff9c4
+    style DocId fill:#fff3e0
+    style Indexer fill:#e8f5e9
+    style Update fill:#f3e5f5
+    style Check fill:#fce4ec
+    style Flush fill:#ffebee
+</code></pre>
 
 <p>Build 流程包括以下步骤：</p>
 
@@ -933,7 +1006,57 @@
 
 <p><strong>DocId 分配机制</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-build-docid-allocation.svg" alt="DocId 分配：全局 DocId 的计算和分配" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[文档写入&lt;br/&gt;IDocumentBatch] --&gt; B[获取当前MemSegment&lt;br/&gt;_normalBuildingSegment]
+    B --&gt; C[获取BaseDocId&lt;br/&gt;_buildingSegmentBaseDocId]
+    
+    subgraph BaseDocId["BaseDocId计算"]
+        C1[遍历TabletData中的Segment]
+        C2[累加前面Segment的docCount]
+        C3[BaseDocId = sum(docCount)]
+        C --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph LocalDocId["LocalDocId分配"]
+        D1[获取当前MemSegment的docCount]
+        D2[LocalDocId = docCount&lt;br/&gt;从0开始]
+        D3[LocalDocId递增&lt;br/&gt;每个文档+1]
+        D4[更新docCount&lt;br/&gt;docCount++]
+        C3 --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+    end
+    
+    subgraph GlobalDocId["GlobalDocId计算"]
+        E1[GlobalDocId = BaseDocId + LocalDocId]
+        E2[全局唯一文档ID&lt;br/&gt;在整个Tablet范围内]
+        E3[写入Indexer&lt;br/&gt;使用GlobalDocId]
+        D4 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Example["分配示例"]
+        EX1[Segment1: docCount=1000&lt;br/&gt;BaseDocId=0]
+        EX2[Segment2: docCount=2000&lt;br/&gt;BaseDocId=1000]
+        EX3[Segment3: 当前构建中&lt;br/&gt;BaseDocId=3000]
+        EX4[新文档: LocalDocId=0&lt;br/&gt;GlobalDocId=3000]
+        EX5[新文档: LocalDocId=1&lt;br/&gt;GlobalDocId=3001]
+        
+        EX1 --&gt; EX2
+        EX2 --&gt; EX3
+        EX3 --&gt; EX4
+        EX4 --&gt; EX5
+    end
+    
+    style BaseDocId fill:#e3f2fd
+    style LocalDocId fill:#fff3e0
+    style GlobalDocId fill:#e8f5e9
+    style Example fill:#f5f5f5
+</code></pre>
 
 <ul>
   <li><strong>BaseDocId</strong>：当前 MemSegment 的全局 DocId 起始值</li>
@@ -945,7 +1068,77 @@
 
 <p>文档写入各个 Indexer 的过程：</p>
 
-<p><img src="/images/diagrams/indexlib-build-write-indexer.svg" alt="文档写入 Indexer：倒排索引、正排索引等的构建" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[文档对象&lt;br/&gt;IDocument] --&gt; B[解析文档&lt;br/&gt;DocumentParser]
+    
+    subgraph Parse["解析阶段"]
+        B1[提取字段&lt;br/&gt;ExtractFields]
+        B2[提取Term&lt;br/&gt;分词处理]
+        B3[数据转换&lt;br/&gt;转换为索引格式]
+        B --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt; B3
+    end
+    
+    subgraph Inverted["倒排索引写入"]
+        C1[InvertedIndexer.BuildDocument&lt;br/&gt;doc, docId]
+        C2[提取文本字段的Term]
+        C3[建立Term到文档映射&lt;br/&gt;Term → DocId]
+        C4[更新PostingList&lt;br/&gt;倒排列表]
+        C5[记录位置信息&lt;br/&gt;用于短语查询]
+        B3 --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+        C4 --&gt; C5
+    end
+    
+    subgraph Attribute["正排索引写入"]
+        D1[AttributeIndexer.BuildDocument&lt;br/&gt;doc, docId]
+        D2[按字段存储属性值]
+        D3[支持多种数据类型&lt;br/&gt;整数/浮点数/字符串]
+        D4[压缩存储&lt;br/&gt;减少内存占用]
+        B3 --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+    end
+    
+    subgraph Primary["主键索引写入"]
+        E1[PrimaryKeyIndexer.BuildDocument&lt;br/&gt;doc, docId]
+        E2[提取主键字段]
+        E3[建立主键到DocId映射&lt;br/&gt;PrimaryKey → DocId]
+        B3 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Summary["摘要索引写入"]
+        F1[SummaryIndexer.BuildDocument&lt;br/&gt;doc, docId]
+        F2[生成文档摘要&lt;br/&gt;用于搜索结果展示]
+        F3[存储摘要信息&lt;br/&gt;减少查询时的磁盘IO]
+        B3 --&gt; F1
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    subgraph Complete["完成阶段"]
+        G1[所有Indexer写入完成]
+        G2[更新SegmentInfo&lt;br/&gt;docCount/Locator]
+        C5 --&gt; G1
+        D4 --&gt; G1
+        E3 --&gt; G1
+        F3 --&gt; G1
+        G1 --&gt; G2
+    end
+    
+    style Parse fill:#e3f2fd
+    style Inverted fill:#fff3e0
+    style Attribute fill:#e8f5e9
+    style Primary fill:#f3e5f5
+    style Summary fill:#fce4ec
+    style Complete fill:#f5f5f5
+</code></pre>
 
 <p><strong>写入流程</strong>：</p>
 
@@ -1029,31 +1222,80 @@
 
 <p>Build 阶段需要严格控制内存使用，避免内存溢出。关键机制：</p>
 
-<p><img src="/images/diagrams/indexlib-build-memory-control.svg" alt="Build 内存控制：估算、评估、触发转储" /></p>
-
 <p><strong>内存控制机制</strong>：</p>
 
 <p>内存控制是保证系统稳定性的关键。让我们通过流程图来理解完整的内存控制机制：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始构建] --&gt; B[EstimateMemUsed]
-    B --&gt; C{内存配额检查}
-    C --&gt;|配额不足| D[返回NoMem]
-    C --&gt;|配额充足| E[分配内存]
-    E --&gt; F[Build文档]
-    F --&gt; G[EvaluateCurrentMemUsed]
-    G --&gt; H{内存使用检查}
-    H --&gt;|未超阈值| I{文档数检查}
-    H --&gt;|超过阈值| J[返回NeedDump]
-    I --&gt;|未超阈值| F
-    I --&gt;|超过阈值| J
-    J --&gt; K[触发转储]
-    K --&gt; L[释放内存]
+<pre><code class="language-mermaid">flowchart TD
+    A[开始构建&lt;br/&gt;Build调用] --&gt; B[估算内存使用&lt;br/&gt;EstimateMemUsed]
     
-    style C fill:#e3f2fd
-    style H fill:#fff3e0
-    style J fill:#f3e5f5
-    style K fill:#e8f5e9
+    subgraph Estimate["内存估算"]
+        B1[根据Schema估算&lt;br/&gt;字段类型/数量]
+        B2[根据文档数估算&lt;br/&gt;批次大小]
+        B3[根据索引类型估算&lt;br/&gt;倒排/正排/主键]
+        B4[估算值略大于实际值&lt;br/&gt;保证安全]
+        B --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt; B3
+        B3 --&gt; B4
+    end
+    
+    subgraph Check["配额检查"]
+        C1[MemoryQuotaController&lt;br/&gt;内存配额控制器]
+        C2{内存配额充足?}
+        C3[返回NoMem&lt;br/&gt;拒绝写入]
+        C4[分配内存&lt;br/&gt;预留内存空间]
+        B4 --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt;|否| C3
+        C2 --&gt;|是| C4
+    end
+    
+    subgraph Build["构建过程"]
+        D1[Build文档&lt;br/&gt;写入Indexer]
+        D2[评估实际内存使用&lt;br/&gt;EvaluateCurrentMemUsed]
+        D3[统计所有Indexer内存&lt;br/&gt;采样评估减少开销]
+        C4 --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+    end
+    
+    subgraph Monitor["内存监控"]
+        E1{内存使用检查}
+        E2[警告阈值: 70%&lt;br/&gt;发出警告]
+        E3[转储阈值: 80%&lt;br/&gt;触发转储]
+        E4[拒绝阈值: 95%&lt;br/&gt;拒绝新写入]
+        E5{文档数检查&lt;br/&gt;默认100万}
+        E6{时间检查&lt;br/&gt;默认5分钟}
+        D3 --&gt; E1
+        E1 --&gt; E2
+        E1 --&gt; E3
+        E1 --&gt; E4
+        E1 --&gt; E5
+        E1 --&gt; E6
+    end
+    
+    subgraph Dump["转储触发"]
+        F1[返回NeedDump&lt;br/&gt;触发转储]
+        F2[异步转储&lt;br/&gt;不阻塞写入]
+        F3[释放MemSegment内存]
+        E3 --&gt; F1
+        E5 --&gt;|超过阈值| F1
+        E6 --&gt;|超过阈值| F1
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; D1
+    end
+    
+    E1 --&gt;|未超阈值| D1
+    E5 --&gt;|未超阈值| D1
+    E6 --&gt;|未超阈值| D1
+    
+    style Estimate fill:#e3f2fd
+    style Check fill:#fff9c4
+    style Build fill:#fff3e0
+    style Monitor fill:#f3e5f5
+    style Dump fill:#e8f5e9
 </code></pre>
 
 <p><strong>内存控制机制详解</strong>：</p>
@@ -1122,7 +1364,84 @@
 
 <p>Flush 阶段负责将内存数据刷新到磁盘，创建 DiskSegment。让我们先通过图来理解 Flush 流程：</p>
 
-<p><img src="/images/diagrams/indexlib-flush-process.svg" alt="Flush 流程：从 MemSegment 到 DiskSegment 的转储过程" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[Flush调用&lt;br/&gt;或自动触发] --&gt; B[检查转储条件&lt;br/&gt;NeedDump检查]
+    
+    subgraph Conditions["转储条件判断"]
+        C1{内存使用检查&lt;br/&gt;默认阈值80%}
+        C2{文档数检查&lt;br/&gt;默认阈值100万}
+        C3{时间检查&lt;br/&gt;默认阈值5分钟}
+        C4[OR策略: 任一满足即触发]
+        C5[AND策略: 全部满足才触发]
+        C6[优先级策略: 内存优先]
+        
+        B --&gt; C1
+        B --&gt; C2
+        B --&gt; C3
+        C1 --&gt; C4
+        C2 --&gt; C4
+        C3 --&gt; C4
+        C4 --&gt; C5
+        C5 --&gt; C6
+    end
+    
+    subgraph Create["创建Dumper"]
+        D1[创建SegmentDumper&lt;br/&gt;CreateSegmentDumper]
+        D2[准备转储参数&lt;br/&gt;内存配额/IO配额]
+        D3[预留转储资源&lt;br/&gt;避免资源竞争]
+        D4[创建转储项列表&lt;br/&gt;索引文件/元数据文件]
+        C6 --&gt;|满足条件| D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+    end
+    
+    subgraph Dump["执行转储"]
+        E1[设置Segment状态&lt;br/&gt;ST_BUILDING → ST_DUMPING]
+        E2[创建转储项&lt;br/&gt;CreateSegmentDumpItems]
+        E3[索引文件转储&lt;br/&gt;倒排/正排/主键索引]
+        E4[元数据文件转储&lt;br/&gt;SegmentInfo/SegmentMetrics]
+        E5[异步转储到磁盘&lt;br/&gt;Dump方法]
+        E6[文件组织&lt;br/&gt;Package/Archive格式]
+        D4 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E2 --&gt; E4
+        E3 --&gt; E5
+        E4 --&gt; E5
+        E5 --&gt; E6
+    end
+    
+    subgraph CreateDisk["创建DiskSegment"]
+        F1[创建SegmentMeta&lt;br/&gt;元数据信息]
+        F2[创建DiskSegment&lt;br/&gt;从转储文件]
+        F3[初始化DiskSegment&lt;br/&gt;Open方法]
+        F4[根据OpenMode加载&lt;br/&gt;NORMAL/LAZY]
+        E6 --&gt; F1
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; F4
+    end
+    
+    subgraph Update["更新TabletData"]
+        G1[Reopen TabletData&lt;br/&gt;更新版本]
+        G2[添加DiskSegment&lt;br/&gt;AddSegment]
+        G3[移除MemSegment&lt;br/&gt;RemoveSegment]
+        G4[释放MemSegment内存]
+        F4 --&gt; G1
+        G1 --&gt; G2
+        G2 --&gt; G3
+        G3 --&gt; G4
+    end
+    
+    C6 --&gt;|不满足| A
+    
+    style Conditions fill:#e3f2fd
+    style Create fill:#fff9c4
+    style Dump fill:#fff3e0
+    style CreateDisk fill:#e8f5e9
+    style Update fill:#f3e5f5
+</code></pre>
 
 <p>Flush 流程包括以下步骤：</p>
 
@@ -1257,7 +1576,75 @@
 
 <p><strong>转储流程</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-flush-dumper-flow.svg" alt="SegmentDumper 转储流程：从创建到完成的完整过程" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[CreateSegmentDumper&lt;br/&gt;创建转储器] --&gt; B[初始化SegmentDumper&lt;br/&gt;保存MemSegment引用]
+    
+    subgraph Init["初始化阶段"]
+        B1[设置Segment状态&lt;br/&gt;ST_BUILDING → ST_DUMPING]
+        B2[准备转储参数&lt;br/&gt;dumpExpandMemSize]
+        B3[创建MetricsReporter&lt;br/&gt;监控转储进度]
+        B --&gt; B1
+        B1 --&gt; B2
+        B2 --&gt; B3
+    end
+    
+    subgraph CreateItems["创建转储项"]
+        C1[调用CreateSegmentDumpItems&lt;br/&gt;MemSegment方法]
+        C2[创建索引文件转储项&lt;br/&gt;倒排/正排/主键索引]
+        C3[创建元数据文件转储项&lt;br/&gt;SegmentInfo/SegmentMetrics]
+        C4[创建摘要文件转储项&lt;br/&gt;SummaryIndex]
+        C5[转储项列表&lt;br/&gt;DumpItems]
+        B3 --&gt; C1
+        C1 --&gt; C2
+        C1 --&gt; C3
+        C1 --&gt; C4
+        C2 --&gt; C5
+        C3 --&gt; C5
+        C4 --&gt; C5
+    end
+    
+    subgraph Dump["执行转储"]
+        D1[调用Dump方法&lt;br/&gt;SegmentDumper.Dump]
+        D2[遍历每个DumpItem]
+        D3[写入索引文件&lt;br/&gt;磁盘IO操作]
+        D4[写入元数据文件&lt;br/&gt;SegmentInfo等]
+        D5[文件组织&lt;br/&gt;Package/Archive格式]
+        D6[原子性保证&lt;br/&gt;要么全部成功要么全部失败]
+        C5 --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D2 --&gt; D4
+        D3 --&gt; D5
+        D4 --&gt; D5
+        D5 --&gt; D6
+    end
+    
+    subgraph CreateDisk["创建DiskSegment"]
+        E1[获取转储的SegmentMeta&lt;br/&gt;GetDumpedSegmentMeta]
+        E2[创建DiskSegment&lt;br/&gt;从转储文件]
+        E3[初始化DiskSegment&lt;br/&gt;Open方法]
+        E4[根据OpenMode加载&lt;br/&gt;NORMAL/LAZY]
+        D6 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E3 --&gt; E4
+    end
+    
+    subgraph Update["更新状态"]
+        F1[Segment状态更新&lt;br/&gt;ST_DUMPING → ST_BUILT]
+        F2[更新TabletData&lt;br/&gt;添加DiskSegment]
+        F3[移除MemSegment&lt;br/&gt;释放内存]
+        E4 --&gt; F1
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    style Init fill:#e3f2fd
+    style CreateItems fill:#fff9c4
+    style Dump fill:#fff3e0
+    style CreateDisk fill:#e8f5e9
+    style Update fill:#f3e5f5
+</code></pre>
 
 <ol>
   <li><strong>创建 Dumper</strong>：<code class="language-plaintext highlighter-rouge">CreateSegmentDumper()</code> 创建转储器</li>
@@ -1271,7 +1658,61 @@
 
 <p>转储是异步的，不会阻塞新的写入。关键设计：</p>
 
-<p><img src="/images/diagrams/indexlib-flush-async-dump.svg" alt="异步转储机制：不阻塞写入，提高吞吐量" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[MemSegment1达到转储条件&lt;br/&gt;NeedDump返回true] --&gt; B[创建SegmentDumper&lt;br/&gt;CreateSegmentDumper]
+    B --&gt; C[加入转储队列&lt;br/&gt;DumpQueue.Enqueue]
+    
+    subgraph Async["异步转储机制"]
+        D1[转储线程池&lt;br/&gt;DumpThreadPool]
+        D2[从队列取出Dumper&lt;br/&gt;Dequeue]
+        D3[执行转储&lt;br/&gt;Dumper.Dump]
+        D4[写入磁盘&lt;br/&gt;异步IO操作]
+        D5[创建DiskSegment&lt;br/&gt;转储完成]
+        C --&gt; D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D4 --&gt; D5
+    end
+    
+    subgraph Continue["继续写入"]
+        E1[创建新MemSegment2&lt;br/&gt;CreateNewMemSegment]
+        E2[设置状态ST_BUILDING&lt;br/&gt;开始接收新文档]
+        E3[继续Build操作&lt;br/&gt;不阻塞写入]
+        E4[写入新文档批次&lt;br/&gt;IDocumentBatch]
+        B --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E3 --&gt; E4
+    end
+    
+    subgraph Control["资源控制"]
+        F1[DumpControl&lt;br/&gt;转储任务控制]
+        F2[并发度限制&lt;br/&gt;限制同时转储任务数]
+        F3[优先级调度&lt;br/&gt;重要任务优先]
+        F4[资源监控&lt;br/&gt;内存/IO使用监控]
+        D1 -.-&gt; F1
+        F1 --&gt; F2
+        F1 --&gt; F3
+        F1 --&gt; F4
+    end
+    
+    subgraph Advantages["异步优势"]
+        G1[不阻塞写入&lt;br/&gt;写入延迟低]
+        G2[提高吞吐量&lt;br/&gt;写入和转储并行]
+        G3[资源控制&lt;br/&gt;避免资源竞争]
+        G4[用户体验好&lt;br/&gt;请求立即返回]
+        E3 -.-&gt; G1
+        D3 -.-&gt; G2
+        F1 -.-&gt; G3
+        E3 -.-&gt; G4
+    end
+    
+    style Async fill:#e3f2fd
+    style Continue fill:#fff3e0
+    style Control fill:#e8f5e9
+    style Advantages fill:#f3e5f5
+</code></pre>
 
 <p><strong>异步转储的优势</strong>：</p>
 
@@ -1340,7 +1781,23 @@
 
 <p>转储需要额外的内存空间，通过 <code class="language-plaintext highlighter-rouge">DumpExpandMemSize</code> 控制：</p>
 
-<p><img src="/images/diagrams/indexlib-flush-memory-cost.svg" alt="转储内存成本：DumpExpandMemSize 的控制机制" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[转储内存成本] --&gt; B[估算转储内存]
+    B --&gt; C[EstimateDumpMemUsed]
+    C --&gt; D[检查内存配额]
+    D --&gt; E{配额充足?}
+    E --&gt;|是| F[执行转储]
+    E --&gt;|否| G[等待或拒绝]
+    F --&gt; H[控制转储并发]
+    
+    I[DumpExpandMemSize] --&gt; J[控制转储内存上限]
+    J --&gt; K[避免内存溢出]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style I fill:#f3e5f5
+</code></pre>
 
 <p><strong>内存成本控制</strong>：</p>
 <ul>
@@ -1355,7 +1812,76 @@
 
 <p>Seal 阶段负责封存 Segment，标记为只读，不再接收新文档。让我们先通过图来理解 Seal 流程：</p>
 
-<p><img src="/images/diagrams/indexlib-seal-process.svg" alt="Seal 流程：封存 Segment，标记为只读" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[Seal调用&lt;br/&gt;MemSegment.Seal] --&gt; B[检查Segment状态&lt;br/&gt;ST_BUILDING]
+    
+    subgraph Seal["封存操作"]
+        C1[标记为只读&lt;br/&gt;不再接收新文档]
+        C2[设置状态标志&lt;br/&gt;_sealed = true]
+        C3[检查Segment数据&lt;br/&gt;docCount &gt; 0?]
+        B --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Dump["有数据时转储"]
+        D1{有数据?&lt;br/&gt;docCount &gt; 0}
+        D2[触发转储&lt;br/&gt;Flush操作]
+        D3[创建SegmentDumper&lt;br/&gt;CreateSegmentDumper]
+        D4[执行转储&lt;br/&gt;Dump方法]
+        D5[等待转储完成&lt;br/&gt;同步等待]
+        D6[创建DiskSegment&lt;br/&gt;从转储文件]
+        D7[更新状态&lt;br/&gt;ST_BUILT]
+        C3 --&gt; D1
+        D1 --&gt;|是| D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D4 --&gt; D5
+        D5 --&gt; D6
+        D6 --&gt; D7
+    end
+    
+    subgraph Empty["无数据时直接完成"]
+        E1[无数据&lt;br/&gt;docCount == 0]
+        E2[直接完成&lt;br/&gt;无需转储]
+        E3[更新状态&lt;br/&gt;ST_BUILT]
+        D1 --&gt;|否| E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Purpose["Seal的作用"]
+        P1[不再接收新文档&lt;br/&gt;写入保护]
+        P2[准备合并&lt;br/&gt;可以参与合并操作]
+        P3[保证一致性&lt;br/&gt;Segment内容不再变化]
+        P4[版本提交前置条件&lt;br/&gt;Commit前必须Seal]
+        C1 -.-&gt; P1
+        D7 -.-&gt; P2
+        E3 -.-&gt; P2
+        D7 -.-&gt; P3
+        E3 -.-&gt; P3
+        D7 -.-&gt; P4
+        E3 -.-&gt; P4
+    end
+    
+    subgraph Scenarios["使用场景"]
+        S1[合并前&lt;br/&gt;封存待合并Segment]
+        S2[版本提交前&lt;br/&gt;封存所有Segment]
+        S3[Schema变更前&lt;br/&gt;封存当前Segment]
+        P4 -.-&gt; S1
+        P4 -.-&gt; S2
+        P4 -.-&gt; S3
+    end
+    
+    D7 --&gt; F[完成Seal]
+    E3 --&gt; F
+    
+    style Seal fill:#e3f2fd
+    style Dump fill:#fff3e0
+    style Empty fill:#e8f5e9
+    style Purpose fill:#f3e5f5
+    style Scenarios fill:#f5f5f5
+</code></pre>
 
 <p>Seal 流程包括以下步骤：</p>
 
@@ -1391,7 +1917,20 @@
 
 <p>Seal 通常在以下场景使用：</p>
 
-<p><img src="/images/diagrams/indexlib-seal-scenarios.svg" alt="Seal 使用场景：合并前、版本提交前等" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[Seal使用场景] --&gt; B[合并前]
+    A --&gt; C[版本提交前]
+    A --&gt; D[Schema变更前]
+    
+    B --&gt; E[封存待合并Segment]
+    C --&gt; F[封存所有Segment]
+    D --&gt; G[封存当前Segment]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+</code></pre>
 
 <p><strong>使用场景</strong>：</p>
 <ul>
@@ -1406,7 +1945,85 @@
 
 <p>Commit 阶段负责提交新版本，更新 Version，持久化到磁盘。让我们先通过图来理解 Commit 流程：</p>
 
-<p><img src="/images/diagrams/indexlib-commit-process.svg" alt="Commit 流程：从版本准备到持久化的完整过程" /></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[Commit调用&lt;br/&gt;VersionCommitter.Commit] --&gt; B[检查提交条件&lt;br/&gt;NeedCommit检查]
+    
+    subgraph Conditions["提交条件判断"]
+        C1{有新Segment?&lt;br/&gt;有新增的DiskSegment}
+        C2{有数据变更?&lt;br/&gt;Locator更新}
+        C3{强制提交?&lt;br/&gt;forceCommit=true}
+        C4[OR策略: 任一满足即提交]
+        B --&gt; C1
+        B --&gt; C2
+        B --&gt; C3
+        C1 --&gt; C4
+        C2 --&gt; C4
+        C3 --&gt; C4
+    end
+    
+    subgraph Prepare["准备版本信息"]
+        D1[收集所有已构建Segment&lt;br/&gt;CreateSlice(ST_BUILT)]
+        D2[准备Segment列表&lt;br/&gt;SegmentInVersion]
+        D3[准备Locator&lt;br/&gt;最新数据处理位置]
+        D4[准备时间戳&lt;br/&gt;当前时间]
+        D5[计算新VersionId&lt;br/&gt;当前VersionId + 1]
+        C4 --&gt;|满足条件| D1
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D4 --&gt; D5
+    end
+    
+    subgraph Fence["Fence机制&lt;br/&gt;原子性保证"]
+        E1[创建Fence目录&lt;br/&gt;临时目录]
+        E2[写入Version文件&lt;br/&gt;版本信息]
+        E3[写入Segment列表&lt;br/&gt;SegmentInVersion]
+        E4[写入Locator&lt;br/&gt;位置信息]
+        E5[原子切换&lt;br/&gt;重命名为正式版本目录]
+        D5 --&gt; E1
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E3 --&gt; E4
+        E4 --&gt; E5
+    end
+    
+    subgraph Update["更新TabletData"]
+        F1[更新Version&lt;br/&gt;_onDiskVersion]
+        F2[更新Segment列表&lt;br/&gt;_segments]
+        F3[更新Locator&lt;br/&gt;最新位置信息]
+        E5 --&gt; F1
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    subgraph Cleanup["清理旧版本"]
+        G1[检查保留版本列表&lt;br/&gt;reservedVersions]
+        G2[删除不再需要的版本&lt;br/&gt;cleanVersion=true]
+        G3[清理旧Segment文件&lt;br/&gt;释放磁盘空间]
+        F3 --&gt; G1
+        G1 --&gt; G2
+        G2 --&gt; G3
+    end
+    
+    subgraph Atomic["原子性保证"]
+        H1[Fence目录机制&lt;br/&gt;临时目录]
+        H2[原子重命名&lt;br/&gt;rename操作]
+        H3[要么全部成功&lt;br/&gt;要么全部失败]
+        E5 -.-&gt; H1
+        H1 --&gt; H2
+        H2 --&gt; H3
+    end
+    
+    C4 --&gt;|不满足| A
+    G3 --&gt; I[Commit完成&lt;br/&gt;返回VersionMeta]
+    
+    style Conditions fill:#e3f2fd
+    style Prepare fill:#fff9c4
+    style Fence fill:#fff3e0
+    style Update fill:#e8f5e9
+    style Cleanup fill:#f3e5f5
+    style Atomic fill:#f5f5f5
+</code></pre>
 
 <p>Commit 流程包括以下步骤：</p>
 
@@ -1437,7 +2054,23 @@
 
 <p><strong>Commit 的关键步骤</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-commit-committer-flow.svg" alt="VersionCommitter 提交流程：从准备到持久化的详细步骤" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[准备版本信息] --&gt; B[收集Segment列表]
+    B --&gt; C[准备Locator]
+    C --&gt; D[创建Fence目录]
+    D --&gt; E[写入Version]
+    E --&gt; F[原子切换]
+    F --&gt; G[更新TabletData]
+    
+    H[Fence机制] --&gt; I[临时目录]
+    I --&gt; J[原子重命名]
+    J --&gt; K[保证原子性]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style F fill:#e8f5e9
+    style H fill:#f3e5f5
+</code></pre>
 
 <ol>
   <li><strong>准备版本信息</strong>：收集所有已构建的 Segment，准备 Locator</li>
@@ -1451,7 +2084,21 @@
 
 <p>Fence 机制保证版本提交的原子性：</p>
 
-<p><img src="/images/diagrams/indexlib-commit-fence.svg" alt="Fence 机制：保证版本提交的原子性" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[创建Fence目录] --&gt; B[写入Version]
+    B --&gt; C[原子切换]
+    C --&gt; D[重命名为正式版本]
+    
+    E[Fence目录] --&gt; F[临时目录]
+    F --&gt; G[原子操作]
+    G --&gt; H[要么全部成功]
+    G --&gt; I[要么全部失败]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>Fence 机制</strong>：</p>
 <ul>
@@ -1496,7 +2143,24 @@
 
 <p>每次 Commit 都会创建新版本，版本号递增：</p>
 
-<p><img src="/images/diagrams/indexlib-commit-version-evolution.svg" alt="版本演进：从 V1 到 V2 的版本变化" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[V1] --&gt; B["Segment 1,2&lt;br/&gt;Locator: timestamp=100"]
+    B --&gt; C[Commit]
+    C --&gt; D[V2]
+    D --&gt; E["Segment 1,2,3&lt;br/&gt;Locator: timestamp=200"]
+    E --&gt; F[Commit]
+    F --&gt; G[V3]
+    G --&gt; H["Segment 4&lt;br/&gt;Locator: timestamp=300"]
+    
+    I[版本演进] --&gt; J[版本号递增]
+    I --&gt; K[Segment列表变化]
+    I --&gt; L[Locator更新]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style G fill:#e8f5e9
+    style I fill:#f3e5f5
+</code></pre>
 
 <p><strong>版本演进示例</strong>：</p>
 <ul>
@@ -1511,7 +2175,23 @@
 
 <p>在实时写入场景中，完整的构建流程：</p>
 
-<p><img src="/images/diagrams/indexlib-build-realtime-scenario.svg" alt="实时写入场景：从 Build 到 Commit 的完整流程" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[持续Build] --&gt; B[文档写入MemSegment]
+    B --&gt; C{达到阈值?}
+    C --&gt;|是| D[定期Flush]
+    C --&gt;|否| A
+    D --&gt; E[转储为DiskSegment]
+    E --&gt; F[创建新MemSegment]
+    F --&gt; A
+    E --&gt; G[定期Seal]
+    G --&gt; H[定期Commit]
+    H --&gt; I[更新Version]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style G fill:#e8f5e9
+    style H fill:#f3e5f5
+</code></pre>
 
 <p><strong>流程示例</strong>：</p>
 <ol>
@@ -1526,7 +2206,22 @@
 
 <p>在批量构建场景中，完整的构建流程：</p>
 
-<p><img src="/images/diagrams/indexlib-build-batch-scenario.svg" alt="批量构建场景：一次性构建大量文档" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[批量Build] --&gt; B[一次性构建大量文档]
+    B --&gt; C[Flush]
+    C --&gt; D[转储为DiskSegment]
+    D --&gt; E[Seal所有Segment]
+    E --&gt; F[Commit最终版本]
+    
+    G[批量场景特点] --&gt; H[一次性构建]
+    G --&gt; I[完成后转储]
+    G --&gt; J[一次性提交]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>流程示例</strong>：</p>
 <ol>
@@ -1542,7 +2237,24 @@
 
 <p>IndexLib 的构建流程支持异步和并发：</p>
 
-<p><img src="/images/diagrams/indexlib-build-async-concurrent.svg" alt="构建流程的异步与并发：提高吞吐量" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[异步转储] --&gt; B[不阻塞写入]
+    C[并发构建] --&gt; D[多线程构建]
+    E[并发转储] --&gt; F[多个Segment并发转储]
+    
+    G[异步与并发] --&gt; A
+    G --&gt; C
+    G --&gt; E
+    
+    H[优势] --&gt; I[提高吞吐量]
+    H --&gt; J[充分利用资源]
+    H --&gt; K[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>异步与并发设计</strong>：</p>
 <ul>
@@ -1555,7 +2267,22 @@
 
 <p>构建流程需要严格控制内存使用：</p>
 
-<p><img src="/images/diagrams/indexlib-build-memory-management.svg" alt="构建流程的内存管理：估算、评估、控制" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[内存估算] --&gt; B[构建前估算]
+    C[内存评估] --&gt; D[构建中评估]
+    E[内存控制] --&gt; F[MemoryQuotaController]
+    G[触发转储] --&gt; H[达到阈值时转储]
+    
+    I[内存管理] --&gt; A
+    I --&gt; C
+    I --&gt; E
+    I --&gt; G
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style I fill:#f3e5f5
+</code></pre>
 
 <p><strong>内存管理机制</strong>：</p>
 <ul>
@@ -1569,7 +2296,23 @@
 
 <p>构建流程需要完善的错误处理：</p>
 
-<p><img src="/images/diagrams/indexlib-build-error-handling.svg" alt="构建流程的错误处理：重试、回滚等" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[重试机制] --&gt; B[构建失败时重试]
+    C[回滚机制] --&gt; D[转储失败时回滚]
+    E[原子性保证] --&gt; F[Fence保证版本提交原子性]
+    
+    G[错误处理] --&gt; A
+    G --&gt; C
+    G --&gt; E
+    
+    H[保证] --&gt; I[数据一致性]
+    H --&gt; J[系统稳定性]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>错误处理机制</strong>：</p>
 <ul>
@@ -1584,7 +2327,23 @@
 
 <p>构建性能优化的关键点：</p>
 
-<p><img src="/images/diagrams/indexlib-build-performance-optimization.svg" alt="构建性能优化：批量写入、并行构建等" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[批量写入] --&gt; B[减少调用开销]
+    C[并行构建] --&gt; D[提高构建速度]
+    E[内存优化] --&gt; F[减少内存分配]
+    
+    G[构建性能优化] --&gt; A
+    G --&gt; C
+    G --&gt; E
+    
+    H[优化效果] --&gt; I[提高吞吐量]
+    H --&gt; J[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1597,7 +2356,23 @@
 
 <p>转储性能优化的关键点：</p>
 
-<p><img src="/images/diagrams/indexlib-flush-performance-optimization.svg" alt="转储性能优化：异步转储、并发转储等" /></p>
+<pre><code class="language-mermaid">graph LR
+    A[异步转储] --&gt; B[不阻塞写入]
+    C[并发转储] --&gt; D[多个Segment并发]
+    E[IO优化] --&gt; F[减少IO开销]
+    
+    G[转储性能优化] --&gt; A
+    G --&gt; C
+    G --&gt; E
+    
+    H[优化效果] --&gt; I[提高吞吐量]
+    H --&gt; J[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+</code></pre>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1791,114 +2566,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

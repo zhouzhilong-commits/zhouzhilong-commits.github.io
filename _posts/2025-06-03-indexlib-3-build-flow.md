@@ -9,8 +9,6 @@ date: 2025-06-03
 
 在上一篇文章中，我们深入了解了 Tablet 和 Segment 的组织方式。本文将继续深入，详细解析索引构建的完整流程，这是理解 IndexLib 如何从文档构建索引的关键。
 
-![索引构建完整流程：从 Build 到 Commit 的各个阶段](/images/diagrams/indexlib-build-complete-flow.svg)
-
 **索引构建流程图**：
 
 ```mermaid
@@ -57,8 +55,6 @@ IndexLib 的索引构建流程包括四个核心阶段：
 4. **Commit**：提交新版本，更新 Version，持久化到磁盘
 
 让我们先通过图来理解整个流程：
-
-![索引构建流程概览：Build、Flush、Seal、Commit 的关系](/images/diagrams/indexlib-build-flow-overview.svg)
 
 **流程关系图**：
 
@@ -130,7 +126,85 @@ public:
 
 Build 阶段负责接收文档批次，将文档写入内存中的索引结构。让我们先通过图来理解 Build 流程：
 
-![Build 流程：从文档批次到内存索引的构建过程](/images/diagrams/indexlib-build-process.svg)
+```mermaid
+flowchart TD
+    subgraph Input["输入阶段"]
+        A1[接收文档批次<br/>IDocumentBatch]
+        A2[批次大小配置<br/>平衡内存和性能]
+        A1 --> A2
+    end
+    
+    subgraph Validate["验证阶段"]
+        B1[文档格式验证<br/>格式检查]
+        B2[Schema验证<br/>字段定义检查]
+        B3[数据有效性验证<br/>数值范围/字符串长度]
+        A2 --> B1
+        B1 --> B2
+        B2 --> B3
+    end
+    
+    subgraph DocId["DocId分配阶段"]
+        C1[获取BaseDocId<br/>前面所有Segment的docCount之和]
+        C2[分配LocalDocId<br/>从0开始递增]
+        C3[计算GlobalDocId<br/>BaseDocId + LocalDocId]
+        B3 --> C1
+        C1 --> C2
+        C2 --> C3
+    end
+    
+    subgraph Indexer["写入Indexer阶段"]
+        D1[解析文档<br/>提取字段和Term]
+        D2[写入倒排索引<br/>InvertedIndexer]
+        D3[写入正排索引<br/>AttributeIndexer]
+        D4[写入主键索引<br/>PrimaryKeyIndexer]
+        D5[写入摘要索引<br/>SummaryIndexer]
+        C3 --> D1
+        D1 --> D2
+        D1 --> D3
+        D1 --> D4
+        D1 --> D5
+    end
+    
+    subgraph Update["更新阶段"]
+        E1[更新SegmentInfo<br/>docCount递增]
+        E2[更新Locator<br/>记录数据处理位置]
+        E3[更新时间戳<br/>最后处理时间]
+        D2 --> E1
+        D3 --> E1
+        D4 --> E1
+        D5 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Check["检查阶段"]
+        F1[评估内存使用<br/>EvaluateCurrentMemUsed]
+        F2{转储条件检查<br/>NeedDump?}
+        F3[内存阈值检查<br/>默认80%]
+        F4[文档数阈值检查<br/>默认100万]
+        F5[时间阈值检查<br/>默认5分钟]
+        E3 --> F1
+        F1 --> F2
+        F2 -.-> F3
+        F2 -.-> F4
+        F2 -.-> F5
+        F2 -->|否| A1
+        F2 -->|是| G1
+    end
+    
+    subgraph Flush["Flush触发"]
+        G1[触发Flush<br/>创建SegmentDumper]
+        F2 --> G1
+    end
+    
+    style Input fill:#e3f2fd
+    style Validate fill:#fff9c4
+    style DocId fill:#fff3e0
+    style Indexer fill:#e8f5e9
+    style Update fill:#f3e5f5
+    style Check fill:#fce4ec
+    style Flush fill:#ffebee
+```
 
 Build 流程包括以下步骤：
 
@@ -291,7 +365,58 @@ private:
 
 **DocId 分配机制**：
 
-![DocId 分配：全局 DocId 的计算和分配](/images/diagrams/indexlib-build-docid-allocation.svg)
+```mermaid
+flowchart TD
+    A[文档写入<br/>IDocumentBatch] --> B[获取当前MemSegment<br/>_normalBuildingSegment]
+    B --> C[获取BaseDocId<br/>_buildingSegmentBaseDocId]
+    
+    subgraph BaseDocId["BaseDocId计算"]
+        C1[遍历TabletData中的Segment]
+        C2[累加前面Segment的docCount]
+        C3[BaseDocId = sum(docCount)]
+        C --> C1
+        C1 --> C2
+        C2 --> C3
+    end
+    
+    subgraph LocalDocId["LocalDocId分配"]
+        D1[获取当前MemSegment的docCount]
+        D2[LocalDocId = docCount<br/>从0开始]
+        D3[LocalDocId递增<br/>每个文档+1]
+        D4[更新docCount<br/>docCount++]
+        C3 --> D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+    end
+    
+    subgraph GlobalDocId["GlobalDocId计算"]
+        E1[GlobalDocId = BaseDocId + LocalDocId]
+        E2[全局唯一文档ID<br/>在整个Tablet范围内]
+        E3[写入Indexer<br/>使用GlobalDocId]
+        D4 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Example["分配示例"]
+        EX1[Segment1: docCount=1000<br/>BaseDocId=0]
+        EX2[Segment2: docCount=2000<br/>BaseDocId=1000]
+        EX3[Segment3: 当前构建中<br/>BaseDocId=3000]
+        EX4[新文档: LocalDocId=0<br/>GlobalDocId=3000]
+        EX5[新文档: LocalDocId=1<br/>GlobalDocId=3001]
+        
+        EX1 --> EX2
+        EX2 --> EX3
+        EX3 --> EX4
+        EX4 --> EX5
+    end
+    
+    style BaseDocId fill:#e3f2fd
+    style LocalDocId fill:#fff3e0
+    style GlobalDocId fill:#e8f5e9
+    style Example fill:#f5f5f5
+```
 
 - **BaseDocId**：当前 MemSegment 的全局 DocId 起始值
 - **LocalDocId**：在 MemSegment 内的局部 DocId（从 0 开始递增）
@@ -301,7 +426,78 @@ private:
 
 文档写入各个 Indexer 的过程：
 
-![文档写入 Indexer：倒排索引、正排索引等的构建](/images/diagrams/indexlib-build-write-indexer.svg)
+```mermaid
+flowchart TD
+    A[文档对象<br/>IDocument] --> B[解析文档<br/>DocumentParser]
+    
+    subgraph Parse["解析阶段"]
+        B1[提取字段<br/>ExtractFields]
+        B2[提取Term<br/>分词处理]
+        B3[数据转换<br/>转换为索引格式]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+    end
+    
+    subgraph Inverted["倒排索引写入"]
+        C1[InvertedIndexer.BuildDocument<br/>doc, docId]
+        C2[提取文本字段的Term]
+        C3[建立Term到文档映射<br/>Term → DocId]
+        C4[更新PostingList<br/>倒排列表]
+        C5[记录位置信息<br/>用于短语查询]
+        B3 --> C1
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+        C4 --> C5
+    end
+    
+    subgraph Attribute["正排索引写入"]
+        D1[AttributeIndexer.BuildDocument<br/>doc, docId]
+        D2[按字段存储属性值]
+        D3[支持多种数据类型<br/>整数/浮点数/字符串]
+        D4[压缩存储<br/>减少内存占用]
+        B3 --> D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+    end
+    
+    subgraph Primary["主键索引写入"]
+        E1[PrimaryKeyIndexer.BuildDocument<br/>doc, docId]
+        E2[提取主键字段]
+        E3[建立主键到DocId映射<br/>PrimaryKey → DocId]
+        B3 --> E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Summary["摘要索引写入"]
+        F1[SummaryIndexer.BuildDocument<br/>doc, docId]
+        F2[生成文档摘要<br/>用于搜索结果展示]
+        F3[存储摘要信息<br/>减少查询时的磁盘IO]
+        B3 --> F1
+        F1 --> F2
+        F2 --> F3
+    end
+    
+    subgraph Complete["完成阶段"]
+        G1[所有Indexer写入完成]
+        G2[更新SegmentInfo<br/>docCount/Locator]
+        C5 --> G1
+        D4 --> G1
+        E3 --> G1
+        F3 --> G1
+        G1 --> G2
+    end
+    
+    style Parse fill:#e3f2fd
+    style Inverted fill:#fff3e0
+    style Attribute fill:#e8f5e9
+    style Primary fill:#f3e5f5
+    style Summary fill:#fce4ec
+    style Complete fill:#f5f5f5
+```
 
 **写入流程**：
 
@@ -373,32 +569,81 @@ sequenceDiagram
 
 Build 阶段需要严格控制内存使用，避免内存溢出。关键机制：
 
-![Build 内存控制：估算、评估、触发转储](/images/diagrams/indexlib-build-memory-control.svg)
-
 **内存控制机制**：
 
 内存控制是保证系统稳定性的关键。让我们通过流程图来理解完整的内存控制机制：
 
 ```mermaid
-graph TD
-    A[开始构建] --> B[EstimateMemUsed]
-    B --> C{内存配额检查}
-    C -->|配额不足| D[返回NoMem]
-    C -->|配额充足| E[分配内存]
-    E --> F[Build文档]
-    F --> G[EvaluateCurrentMemUsed]
-    G --> H{内存使用检查}
-    H -->|未超阈值| I{文档数检查}
-    H -->|超过阈值| J[返回NeedDump]
-    I -->|未超阈值| F
-    I -->|超过阈值| J
-    J --> K[触发转储]
-    K --> L[释放内存]
+flowchart TD
+    A[开始构建<br/>Build调用] --> B[估算内存使用<br/>EstimateMemUsed]
     
-    style C fill:#e3f2fd
-    style H fill:#fff3e0
-    style J fill:#f3e5f5
-    style K fill:#e8f5e9
+    subgraph Estimate["内存估算"]
+        B1[根据Schema估算<br/>字段类型/数量]
+        B2[根据文档数估算<br/>批次大小]
+        B3[根据索引类型估算<br/>倒排/正排/主键]
+        B4[估算值略大于实际值<br/>保证安全]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+        B3 --> B4
+    end
+    
+    subgraph Check["配额检查"]
+        C1[MemoryQuotaController<br/>内存配额控制器]
+        C2{内存配额充足?}
+        C3[返回NoMem<br/>拒绝写入]
+        C4[分配内存<br/>预留内存空间]
+        B4 --> C1
+        C1 --> C2
+        C2 -->|否| C3
+        C2 -->|是| C4
+    end
+    
+    subgraph Build["构建过程"]
+        D1[Build文档<br/>写入Indexer]
+        D2[评估实际内存使用<br/>EvaluateCurrentMemUsed]
+        D3[统计所有Indexer内存<br/>采样评估减少开销]
+        C4 --> D1
+        D1 --> D2
+        D2 --> D3
+    end
+    
+    subgraph Monitor["内存监控"]
+        E1{内存使用检查}
+        E2[警告阈值: 70%<br/>发出警告]
+        E3[转储阈值: 80%<br/>触发转储]
+        E4[拒绝阈值: 95%<br/>拒绝新写入]
+        E5{文档数检查<br/>默认100万}
+        E6{时间检查<br/>默认5分钟}
+        D3 --> E1
+        E1 --> E2
+        E1 --> E3
+        E1 --> E4
+        E1 --> E5
+        E1 --> E6
+    end
+    
+    subgraph Dump["转储触发"]
+        F1[返回NeedDump<br/>触发转储]
+        F2[异步转储<br/>不阻塞写入]
+        F3[释放MemSegment内存]
+        E3 --> F1
+        E5 -->|超过阈值| F1
+        E6 -->|超过阈值| F1
+        F1 --> F2
+        F2 --> F3
+        F3 --> D1
+    end
+    
+    E1 -->|未超阈值| D1
+    E5 -->|未超阈值| D1
+    E6 -->|未超阈值| D1
+    
+    style Estimate fill:#e3f2fd
+    style Check fill:#fff9c4
+    style Build fill:#fff3e0
+    style Monitor fill:#f3e5f5
+    style Dump fill:#e8f5e9
 ```
 
 **内存控制机制详解**：
@@ -446,7 +691,85 @@ graph TD
 
 Flush 阶段负责将内存数据刷新到磁盘，创建 DiskSegment。让我们先通过图来理解 Flush 流程：
 
-![Flush 流程：从 MemSegment 到 DiskSegment 的转储过程](/images/diagrams/indexlib-flush-process.svg)
+```mermaid
+flowchart TD
+    A[Flush调用<br/>或自动触发] --> B[检查转储条件<br/>NeedDump检查]
+    
+    subgraph Conditions["转储条件判断"]
+        C1{内存使用检查<br/>默认阈值80%}
+        C2{文档数检查<br/>默认阈值100万}
+        C3{时间检查<br/>默认阈值5分钟}
+        C4[OR策略: 任一满足即触发]
+        C5[AND策略: 全部满足才触发]
+        C6[优先级策略: 内存优先]
+        
+        B --> C1
+        B --> C2
+        B --> C3
+        C1 --> C4
+        C2 --> C4
+        C3 --> C4
+        C4 --> C5
+        C5 --> C6
+    end
+    
+    subgraph Create["创建Dumper"]
+        D1[创建SegmentDumper<br/>CreateSegmentDumper]
+        D2[准备转储参数<br/>内存配额/IO配额]
+        D3[预留转储资源<br/>避免资源竞争]
+        D4[创建转储项列表<br/>索引文件/元数据文件]
+        C6 -->|满足条件| D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+    end
+    
+    subgraph Dump["执行转储"]
+        E1[设置Segment状态<br/>ST_BUILDING → ST_DUMPING]
+        E2[创建转储项<br/>CreateSegmentDumpItems]
+        E3[索引文件转储<br/>倒排/正排/主键索引]
+        E4[元数据文件转储<br/>SegmentInfo/SegmentMetrics]
+        E5[异步转储到磁盘<br/>Dump方法]
+        E6[文件组织<br/>Package/Archive格式]
+        D4 --> E1
+        E1 --> E2
+        E2 --> E3
+        E2 --> E4
+        E3 --> E5
+        E4 --> E5
+        E5 --> E6
+    end
+    
+    subgraph CreateDisk["创建DiskSegment"]
+        F1[创建SegmentMeta<br/>元数据信息]
+        F2[创建DiskSegment<br/>从转储文件]
+        F3[初始化DiskSegment<br/>Open方法]
+        F4[根据OpenMode加载<br/>NORMAL/LAZY]
+        E6 --> F1
+        F1 --> F2
+        F2 --> F3
+        F3 --> F4
+    end
+    
+    subgraph Update["更新TabletData"]
+        G1[Reopen TabletData<br/>更新版本]
+        G2[添加DiskSegment<br/>AddSegment]
+        G3[移除MemSegment<br/>RemoveSegment]
+        G4[释放MemSegment内存]
+        F4 --> G1
+        G1 --> G2
+        G2 --> G3
+        G3 --> G4
+    end
+    
+    C6 -->|不满足| A
+    
+    style Conditions fill:#e3f2fd
+    style Create fill:#fff9c4
+    style Dump fill:#fff3e0
+    style CreateDisk fill:#e8f5e9
+    style Update fill:#f3e5f5
+```
 
 Flush 流程包括以下步骤：
 
@@ -564,7 +887,76 @@ public:
 
 **转储流程**：
 
-![SegmentDumper 转储流程：从创建到完成的完整过程](/images/diagrams/indexlib-flush-dumper-flow.svg)
+```mermaid
+flowchart TD
+    A[CreateSegmentDumper<br/>创建转储器] --> B[初始化SegmentDumper<br/>保存MemSegment引用]
+    
+    subgraph Init["初始化阶段"]
+        B1[设置Segment状态<br/>ST_BUILDING → ST_DUMPING]
+        B2[准备转储参数<br/>dumpExpandMemSize]
+        B3[创建MetricsReporter<br/>监控转储进度]
+        B --> B1
+        B1 --> B2
+        B2 --> B3
+    end
+    
+    subgraph CreateItems["创建转储项"]
+        C1[调用CreateSegmentDumpItems<br/>MemSegment方法]
+        C2[创建索引文件转储项<br/>倒排/正排/主键索引]
+        C3[创建元数据文件转储项<br/>SegmentInfo/SegmentMetrics]
+        C4[创建摘要文件转储项<br/>SummaryIndex]
+        C5[转储项列表<br/>DumpItems]
+        B3 --> C1
+        C1 --> C2
+        C1 --> C3
+        C1 --> C4
+        C2 --> C5
+        C3 --> C5
+        C4 --> C5
+    end
+    
+    subgraph Dump["执行转储"]
+        D1[调用Dump方法<br/>SegmentDumper.Dump]
+        D2[遍历每个DumpItem]
+        D3[写入索引文件<br/>磁盘IO操作]
+        D4[写入元数据文件<br/>SegmentInfo等]
+        D5[文件组织<br/>Package/Archive格式]
+        D6[原子性保证<br/>要么全部成功要么全部失败]
+        C5 --> D1
+        D1 --> D2
+        D2 --> D3
+        D2 --> D4
+        D3 --> D5
+        D4 --> D5
+        D5 --> D6
+    end
+    
+    subgraph CreateDisk["创建DiskSegment"]
+        E1[获取转储的SegmentMeta<br/>GetDumpedSegmentMeta]
+        E2[创建DiskSegment<br/>从转储文件]
+        E3[初始化DiskSegment<br/>Open方法]
+        E4[根据OpenMode加载<br/>NORMAL/LAZY]
+        D6 --> E1
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+    end
+    
+    subgraph Update["更新状态"]
+        F1[Segment状态更新<br/>ST_DUMPING → ST_BUILT]
+        F2[更新TabletData<br/>添加DiskSegment]
+        F3[移除MemSegment<br/>释放内存]
+        E4 --> F1
+        F1 --> F2
+        F2 --> F3
+    end
+    
+    style Init fill:#e3f2fd
+    style CreateItems fill:#fff9c4
+    style Dump fill:#fff3e0
+    style CreateDisk fill:#e8f5e9
+    style Update fill:#f3e5f5
+```
 
 1. **创建 Dumper**：`CreateSegmentDumper()` 创建转储器
 2. **设置状态**：将 MemSegment 状态设置为 `ST_DUMPING`
@@ -576,7 +968,62 @@ public:
 
 转储是异步的，不会阻塞新的写入。关键设计：
 
-![异步转储机制：不阻塞写入，提高吞吐量](/images/diagrams/indexlib-flush-async-dump.svg)
+```mermaid
+flowchart TD
+    A[MemSegment1达到转储条件<br/>NeedDump返回true] --> B[创建SegmentDumper<br/>CreateSegmentDumper]
+    B --> C[加入转储队列<br/>DumpQueue.Enqueue]
+    
+    subgraph Async["异步转储机制"]
+        D1[转储线程池<br/>DumpThreadPool]
+        D2[从队列取出Dumper<br/>Dequeue]
+        D3[执行转储<br/>Dumper.Dump]
+        D4[写入磁盘<br/>异步IO操作]
+        D5[创建DiskSegment<br/>转储完成]
+        C --> D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+    
+    subgraph Continue["继续写入"]
+        E1[创建新MemSegment2<br/>CreateNewMemSegment]
+        E2[设置状态ST_BUILDING<br/>开始接收新文档]
+        E3[继续Build操作<br/>不阻塞写入]
+        E4[写入新文档批次<br/>IDocumentBatch]
+        B --> E1
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+    end
+    
+    subgraph Control["资源控制"]
+        F1[DumpControl<br/>转储任务控制]
+        F2[并发度限制<br/>限制同时转储任务数]
+        F3[优先级调度<br/>重要任务优先]
+        F4[资源监控<br/>内存/IO使用监控]
+        D1 -.-> F1
+        F1 --> F2
+        F1 --> F3
+        F1 --> F4
+    end
+    
+    subgraph Advantages["异步优势"]
+        G1[不阻塞写入<br/>写入延迟低]
+        G2[提高吞吐量<br/>写入和转储并行]
+        G3[资源控制<br/>避免资源竞争]
+        G4[用户体验好<br/>请求立即返回]
+        E3 -.-> G1
+        D3 -.-> G2
+        F1 -.-> G3
+        E3 -.-> G4
+    end
+    
+    style Async fill:#e3f2fd
+    style Continue fill:#fff3e0
+    style Control fill:#e8f5e9
+    style Advantages fill:#f3e5f5
+```
 
 **异步转储的优势**：
 
@@ -635,7 +1082,24 @@ sequenceDiagram
 
 转储需要额外的内存空间，通过 `DumpExpandMemSize` 控制：
 
-![转储内存成本：DumpExpandMemSize 的控制机制](/images/diagrams/indexlib-flush-memory-cost.svg)
+```mermaid
+graph LR
+    A[转储内存成本] --> B[估算转储内存]
+    B --> C[EstimateDumpMemUsed]
+    C --> D[检查内存配额]
+    D --> E{配额充足?}
+    E -->|是| F[执行转储]
+    E -->|否| G[等待或拒绝]
+    F --> H[控制转储并发]
+    
+    I[DumpExpandMemSize] --> J[控制转储内存上限]
+    J --> K[避免内存溢出]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style I fill:#f3e5f5
+```
 
 **内存成本控制**：
 - **估算转储内存**：`EstimateDumpMemUsed()` 估算转储所需内存
@@ -648,7 +1112,77 @@ sequenceDiagram
 
 Seal 阶段负责封存 Segment，标记为只读，不再接收新文档。让我们先通过图来理解 Seal 流程：
 
-![Seal 流程：封存 Segment，标记为只读](/images/diagrams/indexlib-seal-process.svg)
+```mermaid
+flowchart TD
+    A[Seal调用<br/>MemSegment.Seal] --> B[检查Segment状态<br/>ST_BUILDING]
+    
+    subgraph Seal["封存操作"]
+        C1[标记为只读<br/>不再接收新文档]
+        C2[设置状态标志<br/>_sealed = true]
+        C3[检查Segment数据<br/>docCount > 0?]
+        B --> C1
+        C1 --> C2
+        C2 --> C3
+    end
+    
+    subgraph Dump["有数据时转储"]
+        D1{有数据?<br/>docCount > 0}
+        D2[触发转储<br/>Flush操作]
+        D3[创建SegmentDumper<br/>CreateSegmentDumper]
+        D4[执行转储<br/>Dump方法]
+        D5[等待转储完成<br/>同步等待]
+        D6[创建DiskSegment<br/>从转储文件]
+        D7[更新状态<br/>ST_BUILT]
+        C3 --> D1
+        D1 -->|是| D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+        D5 --> D6
+        D6 --> D7
+    end
+    
+    subgraph Empty["无数据时直接完成"]
+        E1[无数据<br/>docCount == 0]
+        E2[直接完成<br/>无需转储]
+        E3[更新状态<br/>ST_BUILT]
+        D1 -->|否| E1
+        E1 --> E2
+        E2 --> E3
+    end
+    
+    subgraph Purpose["Seal的作用"]
+        P1[不再接收新文档<br/>写入保护]
+        P2[准备合并<br/>可以参与合并操作]
+        P3[保证一致性<br/>Segment内容不再变化]
+        P4[版本提交前置条件<br/>Commit前必须Seal]
+        C1 -.-> P1
+        D7 -.-> P2
+        E3 -.-> P2
+        D7 -.-> P3
+        E3 -.-> P3
+        D7 -.-> P4
+        E3 -.-> P4
+    end
+    
+    subgraph Scenarios["使用场景"]
+        S1[合并前<br/>封存待合并Segment]
+        S2[版本提交前<br/>封存所有Segment]
+        S3[Schema变更前<br/>封存当前Segment]
+        P4 -.-> S1
+        P4 -.-> S2
+        P4 -.-> S3
+    end
+    
+    D7 --> F[完成Seal]
+    E3 --> F
+    
+    style Seal fill:#e3f2fd
+    style Dump fill:#fff3e0
+    style Empty fill:#e8f5e9
+    style Purpose fill:#f3e5f5
+    style Scenarios fill:#f5f5f5
+```
 
 Seal 流程包括以下步骤：
 
@@ -681,7 +1215,21 @@ public:
 
 Seal 通常在以下场景使用：
 
-![Seal 使用场景：合并前、版本提交前等](/images/diagrams/indexlib-seal-scenarios.svg)
+```mermaid
+graph LR
+    A[Seal使用场景] --> B[合并前]
+    A --> C[版本提交前]
+    A --> D[Schema变更前]
+    
+    B --> E[封存待合并Segment]
+    C --> F[封存所有Segment]
+    D --> G[封存当前Segment]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9
+    style D fill:#f3e5f5
+```
 
 **使用场景**：
 - **合并前**：合并前需要封存所有待合并的 Segment
@@ -694,7 +1242,86 @@ Seal 通常在以下场景使用：
 
 Commit 阶段负责提交新版本，更新 Version，持久化到磁盘。让我们先通过图来理解 Commit 流程：
 
-![Commit 流程：从版本准备到持久化的完整过程](/images/diagrams/indexlib-commit-process.svg)
+```mermaid
+flowchart TD
+    A[Commit调用<br/>VersionCommitter.Commit] --> B[检查提交条件<br/>NeedCommit检查]
+    
+    subgraph Conditions["提交条件判断"]
+        C1{有新Segment?<br/>有新增的DiskSegment}
+        C2{有数据变更?<br/>Locator更新}
+        C3{强制提交?<br/>forceCommit=true}
+        C4[OR策略: 任一满足即提交]
+        B --> C1
+        B --> C2
+        B --> C3
+        C1 --> C4
+        C2 --> C4
+        C3 --> C4
+    end
+    
+    subgraph Prepare["准备版本信息"]
+        D1[收集所有已构建Segment<br/>CreateSlice(ST_BUILT)]
+        D2[准备Segment列表<br/>SegmentInVersion]
+        D3[准备Locator<br/>最新数据处理位置]
+        D4[准备时间戳<br/>当前时间]
+        D5[计算新VersionId<br/>当前VersionId + 1]
+        C4 -->|满足条件| D1
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+    
+    subgraph Fence["Fence机制<br/>原子性保证"]
+        E1[创建Fence目录<br/>临时目录]
+        E2[写入Version文件<br/>版本信息]
+        E3[写入Segment列表<br/>SegmentInVersion]
+        E4[写入Locator<br/>位置信息]
+        E5[原子切换<br/>重命名为正式版本目录]
+        D5 --> E1
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+        E4 --> E5
+    end
+    
+    subgraph Update["更新TabletData"]
+        F1[更新Version<br/>_onDiskVersion]
+        F2[更新Segment列表<br/>_segments]
+        F3[更新Locator<br/>最新位置信息]
+        E5 --> F1
+        F1 --> F2
+        F2 --> F3
+    end
+    
+    subgraph Cleanup["清理旧版本"]
+        G1[检查保留版本列表<br/>reservedVersions]
+        G2[删除不再需要的版本<br/>cleanVersion=true]
+        G3[清理旧Segment文件<br/>释放磁盘空间]
+        F3 --> G1
+        G1 --> G2
+        G2 --> G3
+    end
+    
+    subgraph Atomic["原子性保证"]
+        H1[Fence目录机制<br/>临时目录]
+        H2[原子重命名<br/>rename操作]
+        H3[要么全部成功<br/>要么全部失败]
+        E5 -.-> H1
+        H1 --> H2
+        H2 --> H3
+    end
+    
+    C4 -->|不满足| A
+    G3 --> I[Commit完成<br/>返回VersionMeta]
+    
+    style Conditions fill:#e3f2fd
+    style Prepare fill:#fff9c4
+    style Fence fill:#fff3e0
+    style Update fill:#e8f5e9
+    style Cleanup fill:#f3e5f5
+    style Atomic fill:#f5f5f5
+```
 
 Commit 流程包括以下步骤：
 
@@ -724,7 +1351,24 @@ public:
 
 **Commit 的关键步骤**：
 
-![VersionCommitter 提交流程：从准备到持久化的详细步骤](/images/diagrams/indexlib-commit-committer-flow.svg)
+```mermaid
+graph LR
+    A[准备版本信息] --> B[收集Segment列表]
+    B --> C[准备Locator]
+    C --> D[创建Fence目录]
+    D --> E[写入Version]
+    E --> F[原子切换]
+    F --> G[更新TabletData]
+    
+    H[Fence机制] --> I[临时目录]
+    I --> J[原子重命名]
+    J --> K[保证原子性]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style F fill:#e8f5e9
+    style H fill:#f3e5f5
+```
 
 1. **准备版本信息**：收集所有已构建的 Segment，准备 Locator
 2. **创建 Fence**：创建 Fence 目录，保证原子性
@@ -736,7 +1380,22 @@ public:
 
 Fence 机制保证版本提交的原子性：
 
-![Fence 机制：保证版本提交的原子性](/images/diagrams/indexlib-commit-fence.svg)
+```mermaid
+graph LR
+    A[创建Fence目录] --> B[写入Version]
+    B --> C[原子切换]
+    C --> D[重命名为正式版本]
+    
+    E[Fence目录] --> F[临时目录]
+    F --> G[原子操作]
+    G --> H[要么全部成功]
+    G --> I[要么全部失败]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **Fence 机制**：
 - **创建 Fence 目录**：在提交前创建临时目录（Fence）
@@ -778,7 +1437,25 @@ struct CommitOptions
 
 每次 Commit 都会创建新版本，版本号递增：
 
-![版本演进：从 V1 到 V2 的版本变化](/images/diagrams/indexlib-commit-version-evolution.svg)
+```mermaid
+graph LR
+    A[V1] --> B["Segment 1,2<br/>Locator: timestamp=100"]
+    B --> C[Commit]
+    C --> D[V2]
+    D --> E["Segment 1,2,3<br/>Locator: timestamp=200"]
+    E --> F[Commit]
+    F --> G[V3]
+    G --> H["Segment 4<br/>Locator: timestamp=300"]
+    
+    I[版本演进] --> J[版本号递增]
+    I --> K[Segment列表变化]
+    I --> L[Locator更新]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style G fill:#e8f5e9
+    style I fill:#f3e5f5
+```
 
 **版本演进示例**：
 - **V1**：包含 Segment [1, 2]，Locator 记录处理到 timestamp=100
@@ -791,7 +1468,24 @@ struct CommitOptions
 
 在实时写入场景中，完整的构建流程：
 
-![实时写入场景：从 Build 到 Commit 的完整流程](/images/diagrams/indexlib-build-realtime-scenario.svg)
+```mermaid
+graph LR
+    A[持续Build] --> B[文档写入MemSegment]
+    B --> C{达到阈值?}
+    C -->|是| D[定期Flush]
+    C -->|否| A
+    D --> E[转储为DiskSegment]
+    E --> F[创建新MemSegment]
+    F --> A
+    E --> G[定期Seal]
+    G --> H[定期Commit]
+    H --> I[更新Version]
+    
+    style A fill:#e3f2fd
+    style D fill:#fff3e0
+    style G fill:#e8f5e9
+    style H fill:#f3e5f5
+```
 
 **流程示例**：
 1. **持续 Build**：文档持续写入 MemSegment
@@ -804,7 +1498,23 @@ struct CommitOptions
 
 在批量构建场景中，完整的构建流程：
 
-![批量构建场景：一次性构建大量文档](/images/diagrams/indexlib-build-batch-scenario.svg)
+```mermaid
+graph LR
+    A[批量Build] --> B[一次性构建大量文档]
+    B --> C[Flush]
+    C --> D[转储为DiskSegment]
+    D --> E[Seal所有Segment]
+    E --> F[Commit最终版本]
+    
+    G[批量场景特点] --> H[一次性构建]
+    G --> I[完成后转储]
+    G --> J[一次性提交]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **流程示例**：
 1. **批量 Build**：一次性构建大量文档
@@ -818,7 +1528,25 @@ struct CommitOptions
 
 IndexLib 的构建流程支持异步和并发：
 
-![构建流程的异步与并发：提高吞吐量](/images/diagrams/indexlib-build-async-concurrent.svg)
+```mermaid
+graph LR
+    A[异步转储] --> B[不阻塞写入]
+    C[并发构建] --> D[多线程构建]
+    E[并发转储] --> F[多个Segment并发转储]
+    
+    G[异步与并发] --> A
+    G --> C
+    G --> E
+    
+    H[优势] --> I[提高吞吐量]
+    H --> J[充分利用资源]
+    H --> K[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **异步与并发设计**：
 - **异步转储**：转储是异步的，不阻塞写入
@@ -829,7 +1557,23 @@ IndexLib 的构建流程支持异步和并发：
 
 构建流程需要严格控制内存使用：
 
-![构建流程的内存管理：估算、评估、控制](/images/diagrams/indexlib-build-memory-management.svg)
+```mermaid
+graph LR
+    A[内存估算] --> B[构建前估算]
+    C[内存评估] --> D[构建中评估]
+    E[内存控制] --> F[MemoryQuotaController]
+    G[触发转储] --> H[达到阈值时转储]
+    
+    I[内存管理] --> A
+    I --> C
+    I --> E
+    I --> G
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style I fill:#f3e5f5
+```
 
 **内存管理机制**：
 - **内存估算**：构建前估算所需内存
@@ -841,7 +1585,24 @@ IndexLib 的构建流程支持异步和并发：
 
 构建流程需要完善的错误处理：
 
-![构建流程的错误处理：重试、回滚等](/images/diagrams/indexlib-build-error-handling.svg)
+```mermaid
+graph LR
+    A[重试机制] --> B[构建失败时重试]
+    C[回滚机制] --> D[转储失败时回滚]
+    E[原子性保证] --> F[Fence保证版本提交原子性]
+    
+    G[错误处理] --> A
+    G --> C
+    G --> E
+    
+    H[保证] --> I[数据一致性]
+    H --> J[系统稳定性]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **错误处理机制**：
 - **重试机制**：构建失败时可以重试
@@ -854,7 +1615,24 @@ IndexLib 的构建流程支持异步和并发：
 
 构建性能优化的关键点：
 
-![构建性能优化：批量写入、并行构建等](/images/diagrams/indexlib-build-performance-optimization.svg)
+```mermaid
+graph LR
+    A[批量写入] --> B[减少调用开销]
+    C[并行构建] --> D[提高构建速度]
+    E[内存优化] --> F[减少内存分配]
+    
+    G[构建性能优化] --> A
+    G --> C
+    G --> E
+    
+    H[优化效果] --> I[提高吞吐量]
+    H --> J[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **优化策略**：
 - **批量写入**：支持批量写入文档，减少调用开销
@@ -865,7 +1643,24 @@ IndexLib 的构建流程支持异步和并发：
 
 转储性能优化的关键点：
 
-![转储性能优化：异步转储、并发转储等](/images/diagrams/indexlib-flush-performance-optimization.svg)
+```mermaid
+graph LR
+    A[异步转储] --> B[不阻塞写入]
+    C[并发转储] --> D[多个Segment并发]
+    E[IO优化] --> F[减少IO开销]
+    
+    G[转储性能优化] --> A
+    G --> C
+    G --> E
+    
+    H[优化效果] --> I[提高吞吐量]
+    H --> J[降低延迟]
+    
+    style A fill:#e3f2fd
+    style C fill:#fff3e0
+    style E fill:#e8f5e9
+    style G fill:#f3e5f5
+```
 
 **优化策略**：
 - **异步转储**：转储不阻塞写入，提高吞吐量

@@ -596,7 +596,7 @@
 
 
   
-	  8 分钟阅读
+	  15 分钟阅读
 	
 </p>
           
@@ -617,7 +617,58 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了版本管理和增量更新的机制。本文将继续深入，详细解析 Segment 合并策略的实现，这是理解 IndexLib 如何优化索引结构和提高查询性能的关键。</p>
 
-<p><img src="/images/diagrams/indexlib-segment-merge-overview.svg" alt="Segment 合并策略概览：从合并策略到合并执行的完整流程" /></p>
+<p>Segment 合并策略概览：从合并策略到合并执行的完整流程：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Strategy["合并策略"]
+        S1[MergeStrategy&lt;br/&gt;策略接口]
+        S2[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
+        S3[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
+        S4[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
+        S1 --&gt; S2
+        S1 --&gt; S3
+        S1 --&gt; S4
+    end
+    
+    subgraph Plan["合并计划"]
+        P1[MergePlan&lt;br/&gt;合并计划]
+        P2[SegmentMergePlan&lt;br/&gt;Segment合并计划]
+        P3[目标版本&lt;br/&gt;Target Version]
+        P1 --&gt; P2
+        P1 --&gt; P3
+    end
+    
+    subgraph Execution["合并执行"]
+        E1[VersionMerger&lt;br/&gt;版本合并器]
+        E2[IndexMergeOperation&lt;br/&gt;合并操作]
+        E3[读取源Segment&lt;br/&gt;Read Source Segments]
+        E4[合并索引数据&lt;br/&gt;Merge Index Data]
+        E5[写入目标Segment&lt;br/&gt;Write Target Segment]
+        E1 --&gt; E2
+        E2 --&gt; E3
+        E3 --&gt; E4
+        E4 --&gt; E5
+    end
+    
+    subgraph Commit["版本提交"]
+        C1[创建新版本&lt;br/&gt;Create New Version]
+        C2[Fence机制&lt;br/&gt;原子性保证]
+        C3[提交版本&lt;br/&gt;Commit Version]
+        C4[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+    end
+    
+    S2 --&gt; P1
+    P2 --&gt; E1
+    E5 --&gt; C1
+    
+    style Strategy fill:#e3f2fd
+    style Plan fill:#fff3e0
+    style Execution fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <h2 id="1-segment-合并概览">1. Segment 合并概览</h2>
 
@@ -634,7 +685,7 @@
 
 <p>让我们先通过图来理解 Segment 合并的整体流程：</p>
 
-<p><img src="/images/diagrams/indexlib-segment-merge-flow.svg" alt="Segment 合并流程：从合并策略到合并执行的完整过程" /></p>
+<p>Segment 合并流程：从合并策略到合并执行的完整过程（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>Segment 合并流程图</strong>：</p>
 
@@ -773,7 +824,39 @@
 
 <p><strong>MergeStrategy 的关键方法</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-strategy-interface.svg" alt="MergeStrategy 接口：提供合并策略的抽象" /></p>
+<p>MergeStrategy 接口：提供合并策略的抽象：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Interface["MergeStrategy 接口"]
+        I1[MergeStrategy&lt;br/&gt;策略接口]
+        I2[GetName&lt;br/&gt;获取策略名称]
+        I3[CreateMergePlan&lt;br/&gt;创建合并计划]
+        I1 --&gt; I2
+        I1 --&gt; I3
+    end
+    
+    subgraph Context["IndexTaskContext"]
+        C1[当前版本&lt;br/&gt;Current Version]
+        C2[Segment列表&lt;br/&gt;Segment List]
+        C3[合并参数&lt;br/&gt;Merge Parameters]
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Result["返回结果"]
+        R1[Status&lt;br/&gt;状态码]
+        R2[MergePlan&lt;br/&gt;合并计划]
+        R1 --&gt; R2
+    end
+    
+    I3 --&gt; C1
+    C3 --&gt; I3
+    I3 --&gt; R1
+    
+    style Interface fill:#e3f2fd
+    style Context fill:#fff3e0
+    style Result fill:#f3e5f5
+</code></pre>
 
 <ul>
   <li><strong>GetName()</strong>：获取策略名称，用于标识不同的合并策略</li>
@@ -784,7 +867,40 @@
 
 <p>IndexLib 支持多种合并策略：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-strategy-types.svg" alt="合并策略类型：Optimize、Realtime、ShardBased 等" /></p>
+<p>合并策略类型：Optimize、Realtime、ShardBased 等：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Base["基础接口"]
+        B1[MergeStrategy&lt;br/&gt;策略接口]
+    end
+    
+    subgraph Strategies["合并策略实现"]
+        S1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;合并所有符合条件的Segment]
+        S2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
+        S3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并Segment]
+        S4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略&lt;br/&gt;针对KV表的优化合并]
+    end
+    
+    subgraph Features["策略特性"]
+        F1[全量合并&lt;br/&gt;Full Merge]
+        F2[实时合并&lt;br/&gt;Realtime Merge]
+        F3[分片合并&lt;br/&gt;Shard Merge]
+        F4[KV优化&lt;br/&gt;KV Optimize]
+    end
+    
+    B1 --&gt; S1
+    B1 --&gt; S2
+    B1 --&gt; S3
+    B1 --&gt; S4
+    S1 --&gt; F1
+    S2 --&gt; F2
+    S3 --&gt; F3
+    S4 --&gt; F4
+    
+    style Base fill:#e3f2fd
+    style Strategies fill:#fff3e0
+    style Features fill:#f3e5f5
+</code></pre>
 
 <p><strong>合并策略类型</strong>：</p>
 <ul>
@@ -825,7 +941,31 @@
 
 <p><strong>OptimizeMergeStrategy 的关键参数</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-optimize-merge-params.svg" alt="OptimizeMergeStrategy 参数：控制合并行为的关键参数" /></p>
+<p>OptimizeMergeStrategy 参数：控制合并行为的关键参数：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Params["OptimizeMergeParams 参数"]
+        P1[maxDocCount&lt;br/&gt;参与合并的最大文档数&lt;br/&gt;只有小于等于该值的Segment参与合并]
+        P2[afterMergeMaxDocCount&lt;br/&gt;合并后的最小文档数&lt;br/&gt;控制合并后Segment的大小]
+        P3[afterMergeMaxSegmentCount&lt;br/&gt;合并后的最大Segment数&lt;br/&gt;控制合并后Segment的数量]
+        P4[skipSingleMergedSegment&lt;br/&gt;是否跳过单个已合并的Segment&lt;br/&gt;避免重复合并]
+    end
+    
+    subgraph Impact["参数影响"]
+        I1[控制参与合并的Segment&lt;br/&gt;maxDocCount越大包含越多]
+        I2[控制合并后Segment大小&lt;br/&gt;afterMergeMaxDocCount越大Segment越大]
+        I3[控制合并后Segment数量&lt;br/&gt;afterMergeMaxSegmentCount越小Segment越少]
+        I4[控制合并策略&lt;br/&gt;skipSingleMergedSegment避免重复合并]
+    end
+    
+    P1 --&gt; I1
+    P2 --&gt; I2
+    P3 --&gt; I3
+    P4 --&gt; I4
+    
+    style Params fill:#e3f2fd
+    style Impact fill:#fff3e0
+</code></pre>
 
 <ul>
   <li><strong>maxDocCount</strong>：参与合并的 Segment 的最大文档数，只有小于等于该值的 Segment 才会参与合并</li>
@@ -838,7 +978,7 @@
 
 <p>合并策略的选择逻辑：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-strategy-selection.svg" alt="合并策略的选择逻辑：根据 Segment 特征选择合并策略" /></p>
+<p>合并策略的选择逻辑：根据 Segment 特征选择合并策略（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>选择逻辑</strong>：</p>
 
@@ -934,7 +1074,42 @@
 
 <p><strong>MergePlan 的关键字段</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-plan-structure.svg" alt="MergePlan 的结构：包含 SegmentMergePlan 列表和目标版本" /></p>
+<p>MergePlan 的结构：包含 SegmentMergePlan 列表和目标版本：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph MergePlan["MergePlan 对象"]
+        MP[MergePlan&lt;br/&gt;合并计划]
+    end
+    
+    subgraph Fields["核心字段"]
+        F1[SegmentMergePlan列表&lt;br/&gt;vector SegmentMergePlan&lt;br/&gt;每个计划合并一组Segment]
+        F2[目标版本&lt;br/&gt;Version targetVersion&lt;br/&gt;合并后的目标版本]
+    end
+    
+    subgraph SegmentMergePlan["SegmentMergePlan 结构"]
+        SM1[源Segment列表&lt;br/&gt;vector segmentid_t&lt;br/&gt;要合并的Segment]
+        SM2[目标Segment&lt;br/&gt;segmentid_t&lt;br/&gt;合并后的Segment]
+        SM1 --&gt; SM2
+    end
+    
+    subgraph TargetVersion["目标版本"]
+        TV1[VersionId&lt;br/&gt;版本号]
+        TV2[Segment列表&lt;br/&gt;合并后的Segment列表]
+        TV3[Locator&lt;br/&gt;位置信息]
+        TV1 --&gt; TV2
+        TV2 --&gt; TV3
+    end
+    
+    MP --&gt; F1
+    MP --&gt; F2
+    F1 --&gt; SM1
+    F2 --&gt; TV1
+    
+    style MergePlan fill:#e3f2fd
+    style Fields fill:#fff3e0
+    style SegmentMergePlan fill:#f3e5f5
+    style TargetVersion fill:#e8f5e9
+</code></pre>
 
 <ul>
   <li><strong>SegmentMergePlan 列表</strong>：每个 SegmentMergePlan 包含一组要合并的 Segment</li>
@@ -969,7 +1144,7 @@
 
 <p><strong>SegmentMergePlan 的关键字段</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-segment-merge-plan-structure.svg" alt="SegmentMergePlan 的结构：包含源 Segment 列表和目标 Segment" /></p>
+<p>SegmentMergePlan 的结构：包含源 Segment 列表和目标 Segment（已在上面详细展示，此处不再重复）：</p>
 
 <ul>
   <li><strong>源 Segment 列表</strong>：要合并的 Segment 列表</li>
@@ -980,7 +1155,7 @@
 
 <p>合并计划的创建流程：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-plan-creation.svg" alt="合并计划的创建流程：从收集 Segment 到创建合并计划" /></p>
+<p>合并计划的创建流程：从收集 Segment 到创建合并计划（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>创建流程</strong>：</p>
 <ol>
@@ -1030,7 +1205,40 @@
 
 <p><strong>VersionMerger 的关键组件</strong>：</p>
 
-<p><img src="/images/diagrams/indexlib-version-merger-structure.svg" alt="VersionMerger 的结构：管理合并流程和版本更新" /></p>
+<p>VersionMerger 的结构：管理合并流程和版本更新：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph VersionMerger["VersionMerger 对象"]
+        VM[VersionMerger&lt;br/&gt;版本合并器]
+    end
+    
+    subgraph Components["核心组件"]
+        C1[MergeController&lt;br/&gt;ITabletMergeController&lt;br/&gt;管理合并任务执行]
+        C2[PlanCreator&lt;br/&gt;IIndexTaskPlanCreator&lt;br/&gt;创建合并计划]
+        C3[CurrentBaseVersion&lt;br/&gt;Version&lt;br/&gt;当前基础版本]
+        C4[MergedVersionInfo&lt;br/&gt;合并后的版本信息&lt;br/&gt;包含基础版本和目标版本]
+    end
+    
+    subgraph Methods["关键方法"]
+        M1[ExecuteTask&lt;br/&gt;执行合并任务]
+        M2[Run&lt;br/&gt;运行合并流程]
+        M3[GetMergedVersionInfo&lt;br/&gt;获取合并后的版本信息]
+        M4[NeedCommit&lt;br/&gt;判断是否需要提交]
+    end
+    
+    VM --&gt; C1
+    VM --&gt; C2
+    VM --&gt; C3
+    VM --&gt; C4
+    C1 --&gt; M1
+    C2 --&gt; M2
+    C4 --&gt; M3
+    C3 --&gt; M4
+    
+    style VersionMerger fill:#e3f2fd
+    style Components fill:#fff3e0
+    style Methods fill:#f3e5f5
+</code></pre>
 
 <ul>
   <li><strong>MergeController</strong>：合并控制器，管理合并任务的执行</li>
@@ -1042,7 +1250,7 @@
 
 <p>合并执行的完整流程：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-execution-flow.svg" alt="合并执行流程：从创建合并计划到提交新版本" /></p>
+<p>合并执行流程：从创建合并计划到提交新版本（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>执行流程</strong>：</p>
 
@@ -1149,7 +1357,7 @@
 
 <p><code class="language-plaintext highlighter-rouge">IndexMergeOperation</code> 是合并操作，执行实际的合并工作：</p>
 
-<p><img src="/images/diagrams/indexlib-index-merge-operation.svg" alt="IndexMergeOperation：执行实际的合并工作" /></p>
+<p>IndexMergeOperation：执行实际的合并工作（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>合并操作的关键步骤</strong>：</p>
 
@@ -1247,7 +1455,7 @@
 
 <p>OptimizeMergeStrategy 的合并逻辑：</p>
 
-<p><img src="/images/diagrams/indexlib-optimize-merge-logic.svg" alt="OptimizeMergeStrategy 的合并逻辑：根据参数决定合并行为" /></p>
+<p>OptimizeMergeStrategy 的合并逻辑：根据参数决定合并行为（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>合并逻辑</strong>：</p>
 <ol>
@@ -1262,7 +1470,7 @@
 
 <p>合并参数对合并行为的影响：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-params-impact.svg" alt="合并参数的影响：maxDocCount、afterMergeMaxDocCount 等参数的作用" /></p>
+<p>合并参数的影响：maxDocCount、afterMergeMaxDocCount 等参数的作用（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>参数影响</strong>：</p>
 <ul>
@@ -1276,7 +1484,43 @@
 
 <p>不同场景下的合并策略选择：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-strategy-choice.svg" alt="合并策略的选择：根据场景选择不同的合并策略" /></p>
+<p>合并策略的选择：根据场景选择不同的合并策略：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Scenarios["应用场景"]
+        SC1[全量合并场景&lt;br/&gt;Full Merge Scenario]
+        SC2[实时合并场景&lt;br/&gt;Realtime Merge Scenario]
+        SC3[分片合并场景&lt;br/&gt;Shard Merge Scenario]
+        SC4[KV表场景&lt;br/&gt;KV Table Scenario]
+    end
+    
+    subgraph Strategies["合并策略"]
+        ST1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
+        ST2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
+        ST3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
+        ST4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略]
+    end
+    
+    subgraph Features["策略特点"]
+        F1[合并所有符合条件的Segment&lt;br/&gt;适用于全量合并]
+        F2[实时合并小Segment&lt;br/&gt;适用于实时场景]
+        F3[按分片合并Segment&lt;br/&gt;适用于分片场景]
+        F4[针对KV表优化&lt;br/&gt;适用于KV表]
+    end
+    
+    SC1 --&gt; ST1
+    SC2 --&gt; ST2
+    SC3 --&gt; ST3
+    SC4 --&gt; ST4
+    ST1 --&gt; F1
+    ST2 --&gt; F2
+    ST3 --&gt; F3
+    ST4 --&gt; F4
+    
+    style Scenarios fill:#e3f2fd
+    style Strategies fill:#fff3e0
+    style Features fill:#f3e5f5
+</code></pre>
 
 <p><strong>策略选择</strong>：</p>
 <ul>
@@ -1292,7 +1536,46 @@
 
 <p>合并的触发条件：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-trigger-conditions.svg" alt="合并触发条件：Segment 数量、大小等条件" /></p>
+<p>合并触发条件：Segment 数量、大小等条件：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Conditions["触发条件"]
+        C1[Segment数量&lt;br/&gt;Segment Count&lt;br/&gt;超过阈值时触发]
+        C2[Segment大小&lt;br/&gt;Segment Size&lt;br/&gt;小Segment数量过多时触发]
+        C3[查询性能&lt;br/&gt;Query Performance&lt;br/&gt;查询性能下降时触发]
+        C4[存储空间&lt;br/&gt;Storage Space&lt;br/&gt;存储空间不足时触发]
+        C5[手动触发&lt;br/&gt;Manual Trigger&lt;br/&gt;支持手动触发]
+    end
+    
+    subgraph Thresholds["阈值设置"]
+        T1[Segment数量阈值&lt;br/&gt;如100个Segment]
+        T2[小Segment数量阈值&lt;br/&gt;如50个小Segment]
+        T3[查询延迟阈值&lt;br/&gt;如P99延迟超过100ms]
+        T4[存储空间阈值&lt;br/&gt;如使用率超过80%]
+    end
+    
+    subgraph Actions["触发动作"]
+        A1[创建合并计划&lt;br/&gt;Create Merge Plan]
+        A2[提交合并任务&lt;br/&gt;Submit Merge Task]
+        A3[执行合并&lt;br/&gt;Execute Merge]
+    end
+    
+    C1 --&gt; T1
+    C2 --&gt; T2
+    C3 --&gt; T3
+    C4 --&gt; T4
+    C5 --&gt; A1
+    T1 --&gt; A1
+    T2 --&gt; A1
+    T3 --&gt; A1
+    T4 --&gt; A1
+    A1 --&gt; A2
+    A2 --&gt; A3
+    
+    style Conditions fill:#e3f2fd
+    style Thresholds fill:#fff3e0
+    style Actions fill:#f3e5f5
+</code></pre>
 
 <p><strong>触发条件</strong>：</p>
 <ul>
@@ -1307,7 +1590,43 @@
 
 <p>合并时机的选择：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-timing.svg" alt="合并时机的选择：在线合并、离线合并等" /></p>
+<p>合并时机的选择：在线合并、离线合并等：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Timing["合并时机"]
+        T1[在线合并&lt;br/&gt;Online Merge&lt;br/&gt;服务运行期间进行]
+        T2[离线合并&lt;br/&gt;Offline Merge&lt;br/&gt;服务停止时进行]
+        T3[定时合并&lt;br/&gt;Scheduled Merge&lt;br/&gt;定期触发合并]
+        T4[按需合并&lt;br/&gt;On-Demand Merge&lt;br/&gt;根据需求触发]
+    end
+    
+    subgraph Advantages["时机优势"]
+        A1[不影响服务可用性&lt;br/&gt;No Impact on Availability]
+        A2[更彻底优化索引&lt;br/&gt;More Thorough Optimization]
+        A3[保持索引结构优化&lt;br/&gt;Maintain Index Structure]
+        A4[灵活控制合并&lt;br/&gt;Flexible Control]
+    end
+    
+    subgraph Tradeoffs["权衡"]
+        TR1[可能影响查询性能&lt;br/&gt;May Impact Query Performance]
+        TR2[需要停止服务&lt;br/&gt;Require Service Stop]
+        TR3[固定时间触发&lt;br/&gt;Fixed Time Trigger]
+        TR4[需要手动干预&lt;br/&gt;Require Manual Intervention]
+    end
+    
+    T1 --&gt; A1
+    T2 --&gt; A2
+    T3 --&gt; A3
+    T4 --&gt; A4
+    T1 --&gt; TR1
+    T2 --&gt; TR2
+    T3 --&gt; TR3
+    T4 --&gt; TR4
+    
+    style Timing fill:#e3f2fd
+    style Advantages fill:#fff3e0
+    style Tradeoffs fill:#f3e5f5
+</code></pre>
 
 <p><strong>合并时机</strong>：</p>
 <ul>
@@ -1323,7 +1642,39 @@
 
 <p>合并性能优化的策略：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-performance-optimization.svg" alt="合并性能优化：并行合并、增量合并等策略" /></p>
+<p>合并性能优化：并行合并、增量合并等策略：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Optimization["优化策略"]
+        O1[并行合并&lt;br/&gt;Parallel Merge&lt;br/&gt;多个Segment并行合并]
+        O2[增量合并&lt;br/&gt;Incremental Merge&lt;br/&gt;只合并变更的Segment]
+        O3[合并优先级&lt;br/&gt;Merge Priority&lt;br/&gt;根据重要性设置优先级]
+        O4[资源控制&lt;br/&gt;Resource Control&lt;br/&gt;控制CPU、内存、IO资源]
+    end
+    
+    subgraph Parallel["并行合并"]
+        P1[Segment并行&lt;br/&gt;多个Segment并行合并]
+        P2[索引并行&lt;br/&gt;多个索引并行合并]
+        P3[IO并行&lt;br/&gt;读取和写入并行进行]
+    end
+    
+    subgraph Incremental["增量合并"]
+        I1[变更检测&lt;br/&gt;只检测变更的Segment]
+        I2[增量合并&lt;br/&gt;只合并变更的索引]
+        I3[增量写入&lt;br/&gt;只写入变更的数据]
+    end
+    
+    O1 --&gt; P1
+    O2 --&gt; I1
+    P1 --&gt; P2
+    P2 --&gt; P3
+    I1 --&gt; I2
+    I2 --&gt; I3
+    
+    style Optimization fill:#e3f2fd
+    style Parallel fill:#fff3e0
+    style Incremental fill:#f3e5f5
+</code></pre>
 
 <p><strong>优化策略</strong>：</p>
 <ul>
@@ -1337,7 +1688,46 @@
 
 <p>合并时的资源控制：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-resource-control.svg" alt="合并的资源控制：CPU、内存、IO 资源的控制" /></p>
+<p>合并的资源控制：CPU、内存、IO 资源的控制：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Resources["资源类型"]
+        R1[CPU控制&lt;br/&gt;CPU Control&lt;br/&gt;限制CPU使用率]
+        R2[内存控制&lt;br/&gt;Memory Control&lt;br/&gt;限制内存使用]
+        R3[IO控制&lt;br/&gt;IO Control&lt;br/&gt;限制IO带宽]
+        R4[并发控制&lt;br/&gt;Concurrency Control&lt;br/&gt;控制并发任务数]
+    end
+    
+    subgraph CPU["CPU控制"]
+        C1[限制CPU使用率&lt;br/&gt;如不超过50%]
+        C2[避免影响查询性能&lt;br/&gt;Avoid Impact on Query]
+        C3[动态调整&lt;br/&gt;Dynamic Adjustment]
+    end
+    
+    subgraph Memory["内存控制"]
+        M1[限制内存使用&lt;br/&gt;如不超过总内存的30%]
+        M2[避免内存溢出&lt;br/&gt;Avoid Memory Overflow]
+        M3[流式处理&lt;br/&gt;Streaming Processing]
+    end
+    
+    subgraph IO["IO控制"]
+        IO1[限制IO带宽&lt;br/&gt;如不超过总带宽的40%]
+        IO2[避免影响查询IO&lt;br/&gt;Avoid Impact on Query IO]
+        IO3[IO优先级&lt;br/&gt;IO Priority]
+    end
+    
+    R1 --&gt; C1
+    R2 --&gt; M1
+    R3 --&gt; IO1
+    C1 --&gt; C2
+    M1 --&gt; M2
+    IO1 --&gt; IO2
+    
+    style Resources fill:#e3f2fd
+    style CPU fill:#fff3e0
+    style Memory fill:#f3e5f5
+    style IO fill:#e8f5e9
+</code></pre>
 
 <p><strong>资源控制</strong>：</p>
 <ul>
@@ -1353,7 +1743,50 @@
 
 <p>在全量合并场景中，合并的应用：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-full-scenario.svg" alt="全量合并场景：合并所有符合条件的 Segment" /></p>
+<p>全量合并场景：合并所有符合条件的 Segment：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Collect["收集Segment"]
+        C1[收集所有Segment&lt;br/&gt;Collect All Segments]
+        C2[过滤Segment&lt;br/&gt;Filter Segments]
+        C3[符合条件的Segment&lt;br/&gt;Eligible Segments]
+        C1 --&gt; C2
+        C2 --&gt; C3
+    end
+    
+    subgraph Plan["创建合并计划"]
+        P1[创建合并计划&lt;br/&gt;Create Merge Plan]
+        P2[将所有Segment合并&lt;br/&gt;Merge All Segments]
+        P3[合并为少数大Segment&lt;br/&gt;Merge to Few Large Segments]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph Execute["执行合并"]
+        E1[执行合并操作&lt;br/&gt;Execute Merge]
+        E2[合并所有Segment&lt;br/&gt;Merge All Segments]
+        E3[创建目标Segment&lt;br/&gt;Create Target Segments]
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Commit["提交版本"]
+        CO1[提交新版本&lt;br/&gt;Commit New Version]
+        CO2[更新TabletData&lt;br/&gt;Update TabletData]
+        CO3[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    C3 --&gt; P1
+    P3 --&gt; E1
+    E3 --&gt; CO1
+    
+    style Collect fill:#e3f2fd
+    style Plan fill:#fff3e0
+    style Execute fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <p><strong>全量合并流程</strong>：</p>
 <ol>
@@ -1367,7 +1800,51 @@
 
 <p>在增量合并场景中，合并的应用：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-incremental-scenario.svg" alt="增量合并场景：只合并新增或变更的 Segment" /></p>
+<p>增量合并场景：只合并新增或变更的 Segment：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Identify["识别变更"]
+        I1[识别变更Segment&lt;br/&gt;Identify Changed Segments]
+        I2[新增Segment&lt;br/&gt;New Segments]
+        I3[变更Segment&lt;br/&gt;Changed Segments]
+        I1 --&gt; I2
+        I1 --&gt; I3
+    end
+    
+    subgraph Plan["创建合并计划"]
+        P1[创建合并计划&lt;br/&gt;Create Merge Plan]
+        P2[只合并变更Segment&lt;br/&gt;Merge Only Changed Segments]
+        P3[优化合并范围&lt;br/&gt;Optimize Merge Scope]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph Execute["执行合并"]
+        E1[执行合并操作&lt;br/&gt;Execute Merge]
+        E2[合并变更Segment&lt;br/&gt;Merge Changed Segments]
+        E3[创建目标Segment&lt;br/&gt;Create Target Segments]
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Commit["提交版本"]
+        CO1[提交新版本&lt;br/&gt;Commit New Version]
+        CO2[更新TabletData&lt;br/&gt;Update TabletData]
+        CO3[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
+        CO1 --&gt; CO2
+        CO2 --&gt; CO3
+    end
+    
+    I2 --&gt; P1
+    I3 --&gt; P1
+    P3 --&gt; E1
+    E3 --&gt; CO1
+    
+    style Identify fill:#e3f2fd
+    style Plan fill:#fff3e0
+    style Execute fill:#f3e5f5
+    style Commit fill:#e8f5e9
+</code></pre>
 
 <p><strong>增量合并流程</strong>：</p>
 <ol>
@@ -1383,7 +1860,49 @@
 
 <p>合并的原子性保证：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-atomicity.svg" alt="合并的原子性：通过 Fence 机制保证合并的原子性" /></p>
+<p>合并的原子性：通过 Fence 机制保证合并的原子性：</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Fence["Fence 机制"]
+        F1[创建Fence目录&lt;br/&gt;Create Fence Directory]
+        F2[写入合并结果&lt;br/&gt;Write Merge Result]
+        F3[原子重命名&lt;br/&gt;Atomic Rename]
+        F1 --&gt; F2
+        F2 --&gt; F3
+    end
+    
+    subgraph Atomicity["原子性保证"]
+        A1[要么全部成功&lt;br/&gt;All or Nothing]
+        A2[要么全部失败&lt;br/&gt;Rollback on Failure]
+        A3[避免部分写入&lt;br/&gt;Avoid Partial Write]
+        A1 --&gt; A2
+        A2 --&gt; A3
+    end
+    
+    subgraph Error["错误处理"]
+        E1[合并失败&lt;br/&gt;Merge Failure]
+        E2[清理Fence目录&lt;br/&gt;Cleanup Fence]
+        E3[不影响已有版本&lt;br/&gt;No Impact on Existing]
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    subgraph Advantage["设计优势"]
+        AD1[原子性&lt;br/&gt;Atomicity]
+        AD2[可靠性&lt;br/&gt;Reliability]
+        AD3[简单性&lt;br/&gt;Simplicity]
+        AD4[性能高&lt;br/&gt;High Performance]
+    end
+    
+    F3 --&gt; A1
+    A3 --&gt; E1
+    E3 --&gt; AD1
+    
+    style Fence fill:#e3f2fd
+    style Atomicity fill:#fff3e0
+    style Error fill:#f3e5f5
+    style Advantage fill:#e8f5e9
+</code></pre>
 
 <p><strong>原子性保证</strong>：</p>
 <ul>
@@ -1396,7 +1915,48 @@
 
 <p>合并的一致性保证：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-consistency.svg" alt="合并的一致性：保证合并后数据的一致性" /></p>
+<p>合并的一致性：保证合并后数据的一致性：</p>
+
+<pre><code class="language-mermaid">flowchart TD
+    subgraph Consistency["一致性保证"]
+        C1[数据完整性&lt;br/&gt;Data Integrity&lt;br/&gt;保证不丢失数据]
+        C2[索引一致性&lt;br/&gt;Index Consistency&lt;br/&gt;保证索引结构正确]
+        C3[版本一致性&lt;br/&gt;Version Consistency&lt;br/&gt;保证版本信息正确]
+    end
+    
+    subgraph Data["数据完整性"]
+        D1[文档去重&lt;br/&gt;Document Deduplication]
+        D2[数据校验&lt;br/&gt;Data Validation]
+        D3[完整性检查&lt;br/&gt;Integrity Check]
+        D1 --&gt; D2
+        D2 --&gt; D3
+    end
+    
+    subgraph Index["索引一致性"]
+        I1[索引结构正确&lt;br/&gt;Correct Index Structure]
+        I2[索引数据完整&lt;br/&gt;Complete Index Data]
+        I3[索引关系正确&lt;br/&gt;Correct Index Relations]
+        I1 --&gt; I2
+        I2 --&gt; I3
+    end
+    
+    subgraph Version["版本一致性"]
+        V1[版本号递增&lt;br/&gt;Version ID Increment]
+        V2[Segment列表正确&lt;br/&gt;Correct Segment List]
+        V3[Locator信息正确&lt;br/&gt;Correct Locator Info]
+        V1 --&gt; V2
+        V2 --&gt; V3
+    end
+    
+    C1 --&gt; D1
+    C2 --&gt; I1
+    C3 --&gt; V1
+    
+    style Consistency fill:#e3f2fd
+    style Data fill:#fff3e0
+    style Index fill:#f3e5f5
+    style Version fill:#e8f5e9
+</code></pre>
 
 <p><strong>一致性保证</strong>：</p>
 <ul>
@@ -1409,7 +1969,7 @@
 
 <p>合并的性能优化：</p>
 
-<p><img src="/images/diagrams/indexlib-merge-performance.svg" alt="合并的性能优化：并行合并、资源控制等优化策略" /></p>
+<p>合并的性能优化：并行合并、资源控制等优化策略（已在上面详细展示，此处不再重复）：</p>
 
 <p><strong>性能优化</strong>：</p>
 <ul>
@@ -1627,114 +2187,129 @@
 
 <!-- Mermaid.js for diagram rendering -->
 <!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
 <script>
-  // Initialize Mermaid
-  mermaid.initialize({ 
-    startOnLoad: false,  // We'll manually initialize after processing code blocks
-    // Use a consistent theme across the site; prefer global theming over per-diagram `style`
-    // (sequenceDiagram/classDiagram do NOT support `style` in Mermaid 10.9.5)
-    theme: 'base',
-    themeVariables: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
-      fontSize: "14px",
-
-      // Neutral, high-contrast palette
-      primaryColor: "#eef2ff",
-      primaryBorderColor: "#6366f1",
-      primaryTextColor: "#111827",
-
-      secondaryColor: "#ecfeff",
-      secondaryBorderColor: "#06b6d4",
-      secondaryTextColor: "#0f172a",
-
-      tertiaryColor: "#f0fdf4",
-      tertiaryBorderColor: "#22c55e",
-      tertiaryTextColor: "#0f172a",
-
-      lineColor: "#475569",
-
-      // Sequence diagram
-      actorBkg: "#eef2ff",
-      actorBorder: "#6366f1",
-      actorTextColor: "#111827",
-      noteBkgColor: "#fff7ed",
-      noteTextColor: "#0f172a",
-      noteBorderColor: "#fb923c"
-    },
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      actorMargin: 50,
-      width: 150,
-      height: 65,
-      boxMargin: 10,
-      boxTextMargin: 5,
-      noteMargin: 10,
-      messageMargin: 35,
-      mirrorActors: true,
-      bottomMarginAdj: 1,
-      useMaxWidth: true,
-      rightAngles: false,
-      showSequenceNumbers: false
-    },
-    state: {
-      useMaxWidth: true
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
     }
-  });
-
-  // Process mermaid code blocks after page load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all code blocks with language-mermaid or containing mermaid
-    const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
     
-    codeBlocks.forEach(function(codeBlock) {
-      // Get the parent pre element
-      const pre = codeBlock.parentElement;
-      if (pre && pre.tagName === 'PRE') {
-        // Create a div for mermaid
-        const mermaidDiv = document.createElement('div');
-        mermaidDiv.className = 'mermaid';
-        mermaidDiv.textContent = codeBlock.textContent;
-        
-        // Replace the pre element with the mermaid div
-        pre.parentNode.replaceChild(mermaidDiv, pre);
-      }
-    });
-    
-    // Also check for pre > code structure that might have mermaid content
-    const allPreCode = document.querySelectorAll('pre > code');
-    allPreCode.forEach(function(code) {
-      const pre = code.parentElement;
-      // Check if the code block contains mermaid syntax
-      const codeText = code.textContent.trim();
-      if (codeText && (
-        codeText.startsWith('graph ') || 
-        codeText.startsWith('sequenceDiagram') ||
-        codeText.startsWith('stateDiagram') ||
-        codeText.startsWith('classDiagram') ||
-        code.classList.contains('language-mermaid')
-      )) {
-        // Check if parent pre has class indicating mermaid
-        if (pre.classList.contains('language-mermaid') || 
-            code.classList.contains('language-mermaid') ||
-            codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
           const mermaidDiv = document.createElement('div');
           mermaidDiv.className = 'mermaid';
-          mermaidDiv.textContent = codeText;
+          mermaidDiv.textContent = codeBlock.textContent;
           pre.parentNode.replaceChild(mermaidDiv, pre);
         }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
       }
-    });
+    }
     
-    // Initialize Mermaid after processing
-    mermaid.run();
-  });
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
 </script>
 
 

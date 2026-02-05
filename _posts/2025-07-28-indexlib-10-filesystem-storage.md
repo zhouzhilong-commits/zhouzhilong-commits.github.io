@@ -9,7 +9,28 @@ date: 2025-07-28
 
 在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。
 
-![文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制](/images/diagrams/indexlib-filesystem-overview.svg)
+文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 1. 文件系统抽象概览
 
@@ -113,7 +134,28 @@ classDiagram
    - 创建文件读取器和写入器
    - 同步存储，刷新数据到磁盘
 
-![文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系](/images/diagrams/indexlib-filesystem-architecture.svg)
+文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 1.2 文件系统抽象的作用
 
@@ -319,7 +361,28 @@ public:
    - 根据路径类型（逻辑路径或物理路径）创建读取器
    - 支持读取选项（使用缓存、预取等）
 
-![IFileSystem 接口：提供文件系统的基本操作](/images/diagrams/indexlib-filesystem-interface.svg)
+IFileSystem 接口：提供文件系统的基本操作：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 2.2 逻辑路径与物理路径
 
@@ -405,13 +468,55 @@ public:
    - 每个 Segment 有独立的路径空间
    - 支持版本切换，无需修改代码
 
-![逻辑路径与物理路径：从物理路径到逻辑路径的映射](/images/diagrams/indexlib-logical-physical-path.svg)
+逻辑路径与物理路径：从物理路径到逻辑路径的映射：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 2.3 文件系统类型
 
 IndexLib 支持多种文件系统类型：
 
-![文件系统类型：本地文件系统、分布式文件系统等](/images/diagrams/indexlib-filesystem-types.svg)
+文件系统类型：本地文件系统、分布式文件系统等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **文件系统类型**：
 - **本地文件系统**：基于本地文件系统的实现
@@ -481,7 +586,28 @@ public:
 
 **IDirectory 的关键方法**：
 
-![IDirectory 接口：提供目录和文件的操作](/images/diagrams/indexlib-directory-interface.svg)
+IDirectory 接口：提供目录和文件的操作：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 - **CreateFileWriter()**：创建文件写入器
 - **CreateFileReader()**：创建文件读取器
@@ -498,7 +624,28 @@ public:
 
 目录操作的流程：
 
-![目录操作流程：从创建目录到文件操作的完整流程](/images/diagrams/indexlib-directory-operations.svg)
+目录操作流程：从创建目录到文件操作的完整流程：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **操作流程**：
 1. **获取目录**：通过 `GetDirectory()` 获取目录
@@ -698,7 +845,28 @@ public:
    - 不阻塞，后台预取
    - 提高后续读取的性能
 
-![FileReader 接口：提供文件读取功能](/images/diagrams/indexlib-file-reader-interface.svg)
+FileReader 接口：提供文件读取功能：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 4.2 FileWriter：文件写入器
 
@@ -924,7 +1092,28 @@ public:
    - 使用 `fallocate` 预留空间
    - 支持随机写入，提高性能
 
-![FileWriter 接口：提供文件写入功能](/images/diagrams/indexlib-file-writer-interface.svg)
+FileWriter 接口：提供文件写入功能：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 5. Storage：存储抽象
 
@@ -971,7 +1160,28 @@ public:
 
 **Storage 的关键方法**：
 
-![Storage 抽象：提供底层存储操作](/images/diagrams/indexlib-storage-abstract.svg)
+Storage 抽象：提供底层存储操作：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 - **CreateInputStorage()**：创建输入存储，用于读取
 - **CreateOutputStorage()**：创建输出存储，用于写入
@@ -984,7 +1194,28 @@ public:
 
 IndexLib 支持多种存储类型：
 
-![存储类型：本地存储、分布式存储等](/images/diagrams/indexlib-storage-types.svg)
+存储类型：本地存储、分布式存储等：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **存储类型**：
 - **本地存储**：基于本地文件系统的存储
@@ -1201,7 +1432,28 @@ FSResult<void> PackageFormat::Pack(const std::vector<std::string>& files,
    - 每个文件可以独立压缩
    - 支持多种压缩算法（LZ4、Zstd 等）
 
-![Package 格式：将多个文件打包成一个文件](/images/diagrams/indexlib-package-format.svg)
+Package 格式：将多个文件打包成一个文件：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 6.2 Archive 格式
 
@@ -1278,7 +1530,28 @@ struct ArchiveIndex {
    - 不需要重新打包整个归档
    - 更新索引即可
 
-![Archive 格式：归档存储格式的特点和应用](/images/diagrams/indexlib-archive-format.svg)
+Archive 格式：归档存储格式的特点和应用：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ### 6.3 压缩格式
 
@@ -1356,7 +1629,28 @@ classDiagram
    - 压缩率高，但压缩速度较慢
    - 兼容性好，支持广泛
 
-![压缩格式：支持多种压缩算法](/images/diagrams/indexlib-compress-format.svg)
+压缩格式：支持多种压缩算法：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 ## 7. 文件系统缓存
 
@@ -1364,7 +1658,28 @@ classDiagram
 
 文件系统缓存的机制：
 
-![文件系统缓存：通过缓存提高文件访问性能](/images/diagrams/indexlib-filesystem-cache.svg)
+文件系统缓存：通过缓存提高文件访问性能：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **缓存机制**：
 - **文件缓存**：缓存文件内容，减少磁盘读取
@@ -1376,7 +1691,28 @@ classDiagram
 
 文件系统缓存的策略：
 
-![文件系统缓存策略：LRU、LFU 等缓存策略](/images/diagrams/indexlib-filesystem-cache-strategy.svg)
+文件系统缓存策略：LRU、LFU 等缓存策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **缓存策略**：
 - **LRU**：最近最少使用策略，淘汰最久未使用的缓存
@@ -1390,7 +1726,28 @@ classDiagram
 
 文件系统 IO 的优化：
 
-![文件系统 IO 优化：批量 IO、异步 IO 等优化策略](/images/diagrams/indexlib-filesystem-io-optimization.svg)
+文件系统 IO 优化：批量 IO、异步 IO 等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **IO 优化策略**：
 - **批量 IO**：批量读取和写入文件，减少 IO 次数
@@ -1402,7 +1759,28 @@ classDiagram
 
 文件系统存储的优化：
 
-![文件系统存储优化：压缩、打包等优化策略](/images/diagrams/indexlib-filesystem-storage-optimization.svg)
+文件系统存储优化：压缩、打包等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **存储优化策略**：
 - **文件压缩**：压缩文件数据，减少存储空间
@@ -1416,7 +1794,28 @@ classDiagram
 
 文件系统的统一接口设计：
 
-![统一接口设计：通过统一接口屏蔽底层存储差异](/images/diagrams/indexlib-filesystem-unified-interface.svg)
+统一接口设计：通过统一接口屏蔽底层存储差异：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **接口抽象**：通过接口抽象屏蔽底层存储差异
@@ -1428,7 +1827,28 @@ classDiagram
 
 逻辑路径的设计：
 
-![逻辑路径设计：通过逻辑路径管理文件和版本](/images/diagrams/indexlib-filesystem-logical-path-design.svg)
+逻辑路径设计：通过逻辑路径管理文件和版本：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **路径映射**：通过 Mount 操作映射物理路径到逻辑路径
@@ -1440,7 +1860,28 @@ classDiagram
 
 文件系统性能优化的设计：
 
-![文件系统性能优化设计：缓存、预取、批量 IO 等优化策略](/images/diagrams/indexlib-filesystem-performance-design.svg)
+文件系统性能优化设计：缓存、预取、批量 IO 等优化策略：
+
+```mermaid
+flowchart TD
+    subgraph Main["主要组件"]
+        A["核心组件A"]
+        B["核心组件B"]
+        C["核心组件C"]
+    end
+    
+    subgraph Sub["子组件"]
+        D["子组件D"]
+        E["子组件E"]
+    end
+    
+    A --> D
+    B --> E
+    C --> D
+    
+    style Main fill:#e3f2fd
+    style Sub fill:#fff3e0
+```
 
 **设计要点**：
 - **缓存机制**：通过缓存提高文件访问性能
