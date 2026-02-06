@@ -596,7 +596,7 @@
 
 
   
-	  20 分钟阅读
+	  28 分钟阅读
 	
 </p>
           
@@ -619,35 +619,105 @@
 
 <p><strong>索引构建流程图</strong>：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始] --&gt; B[接收文档批次]
-    B --&gt; C{Build 阶段}
-    C --&gt; D[文档验证]
-    D --&gt; E[分配 DocId]
-    E --&gt; F[写入 Indexer]
-    F --&gt; G[更新 SegmentInfo]
-    G --&gt; H{是否需要 Flush?}
-    H --&gt;|是| I[Flush 阶段]
-    H --&gt;|否| B
-    I --&gt; J[创建 SegmentDumper]
-    J --&gt; K[转储 MemSegment]
-    K --&gt; L[创建 DiskSegment]
-    L --&gt; M{是否需要 Seal?}
-    M --&gt;|是| N[Seal 阶段]
-    M --&gt;|否| B
-    N --&gt; O[封存 Segment]
-    O --&gt; P[标记为只读]
-    P --&gt; Q{是否需要 Commit?}
-    Q --&gt;|是| R[Commit 阶段]
-    Q --&gt;|否| B
-    R --&gt; S[准备新版本]
-    S --&gt; T[更新 Version]
-    T --&gt; U[持久化到磁盘]
-    U --&gt; V[完成]
-    style C fill:#e3f2fd
-    style I fill:#fff3e0
-    style N fill:#f3e5f5
-    style R fill:#e8f5e9
+<pre><code class="language-mermaid">flowchart TD
+    Start[开始构建] --&gt; ReceiveDoc[接收文档批次&lt;br/&gt;IDocumentBatch]
+    
+    ReceiveDoc --&gt; BuildStart[Build阶段]
+    
+    subgraph BuildGroup["1. Build阶段：构建索引到内存"]
+        direction TB
+        B1[文档验证&lt;br/&gt;格式/Schema验证]
+        B2[分配DocId&lt;br/&gt;BaseDocId + LocalDocId]
+        B3[写入Indexer&lt;br/&gt;InvertedIndexer/AttributeIndexer]
+        B4[更新SegmentInfo&lt;br/&gt;docCount/Locator]
+        B5[评估内存使用&lt;br/&gt;EvaluateCurrentMemUsed]
+        B6{是否需要Flush?&lt;br/&gt;内存超阈值/文档数超阈值}
+        
+        B1 --&gt; B2
+        B2 --&gt; B3
+        B3 --&gt; B4
+        B4 --&gt; B5
+        B5 --&gt; B6
+    end
+    
+    BuildStart --&gt; B1
+    B6 --&gt;|否，继续构建| ReceiveDoc
+    B6 --&gt;|是，触发转储| FlushStart[Flush阶段]
+    
+    subgraph FlushGroup["2. Flush阶段：转储到磁盘"]
+        direction TB
+        F1[创建SegmentDumper&lt;br/&gt;准备转储]
+        F2[转储MemSegment&lt;br/&gt;异步转储索引文件]
+        F3[创建DiskSegment&lt;br/&gt;加载转储后的Segment]
+        F4[更新TabletData&lt;br/&gt;添加DiskSegment]
+        F5{是否需要Seal?&lt;br/&gt;Segment数量/时间间隔}
+        
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; F4
+        F4 --&gt; F5
+    end
+    
+    FlushStart --&gt; F1
+    F5 --&gt;|否，继续构建| ReceiveDoc
+    F5 --&gt;|是，触发封存| SealStart[Seal阶段]
+    
+    subgraph SealGroup["3. Seal阶段：封存Segment"]
+        direction TB
+        S1[封存当前MemSegment&lt;br/&gt;标记为只读]
+        S2[等待转储完成&lt;br/&gt;确保数据已持久化]
+        S3[更新Segment状态&lt;br/&gt;ST_BUILT]
+        S4{是否需要Commit?&lt;br/&gt;版本更新条件}
+        
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S3 --&gt; S4
+    end
+    
+    SealStart --&gt; S1
+    S4 --&gt;|否，继续构建| ReceiveDoc
+    S4 --&gt;|是，触发提交| CommitStart[Commit阶段]
+    
+    subgraph CommitGroup["4. Commit阶段：提交版本"]
+        direction TB
+        C1[准备新Version&lt;br/&gt;收集Segment列表]
+        C2[更新Locator&lt;br/&gt;记录最新处理位置]
+        C3[写入Version文件&lt;br/&gt;序列化为JSON]
+        C4[创建Fence目录&lt;br/&gt;保证原子性]
+        C5[原子切换版本&lt;br/&gt;重命名Fence目录]
+        C6[更新TabletData&lt;br/&gt;切换到新版本]
+        
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+        C4 --&gt; C5
+        C5 --&gt; C6
+    end
+    
+    CommitStart --&gt; C1
+    C6 --&gt; Continue{继续构建?}
+    Continue --&gt;|是| ReceiveDoc
+    Continue --&gt;|否| End[构建完成]
+    
+    B6 -.-&gt;|循环构建| ReceiveDoc
+    F5 -.-&gt;|循环构建| ReceiveDoc
+    S4 -.-&gt;|循环构建| ReceiveDoc
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReceiveDoc fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style BuildStart fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style BuildGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B6 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FlushStart fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FlushGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SealStart fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style SealGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style S4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style CommitStart fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Continue fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <h2 id="1-索引构建流程概览">1. 索引构建流程概览</h2>
@@ -667,18 +737,37 @@
 
 <p><strong>流程关系图</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[Build] --&gt;|写入内存| B[MemSegment]
-    B --&gt;|触发转储| C[Flush]
-    C --&gt;|转储到磁盘| D[DiskSegment]
-    D --&gt;|封存| E[Seal]
-    E --&gt;|提交版本| F[Commit]
-    F --&gt;|更新| G[Version]
-    G --&gt;|持久化| H[磁盘]
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#f3e5f5
-    style F fill:#e8f5e9
+<pre><code class="language-mermaid">flowchart LR
+    Start[开始构建] --&gt; Build[Build构建索引]
+    
+    Build --&gt;|写入内存| MemSegment[MemSegment内存段]
+    
+    MemSegment --&gt;|触发转储| Flush[Flush转储]
+    
+    Flush --&gt;|转储到磁盘| DiskSegment[DiskSegment磁盘段]
+    
+    DiskSegment --&gt;|触发封存| Seal[Seal封存]
+    
+    Seal --&gt;|标记只读| SealSegment[Sealed Segment已封存]
+    
+    SealSegment --&gt;|触发提交| Commit[Commit提交版本]
+    
+    Commit --&gt;|更新版本| Version[Version版本]
+    
+    Version --&gt;|持久化| Disk[磁盘存储]
+    
+    Disk -.-&gt;|继续构建| Build
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Build fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MemSegment fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Flush fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DiskSegment fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Seal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style SealSegment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Commit fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style Version fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Disk fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h3 id="12-核心接口">1.2 核心接口</h3>
@@ -970,22 +1059,62 @@
 <p><strong>状态转换图</strong>：</p>
 
 <pre><code class="language-mermaid">stateDiagram-v2
-    [*] --&gt; Building: Build(OK)
-    Building --&gt; Building: Build(OK)
-    Building --&gt; NeedDump: Build(NeedDump)
-    Building --&gt; NoMem: Build(NoMem)
+    [*] --&gt; Building: Build开始
     
-    NeedDump --&gt; Flushing: CreateSegmentDumper()
-    Flushing --&gt; Dumped: Flush()
-    Dumped --&gt; Building: Reopen()
+    state Building {
+        [*] --&gt; Receiving: 接收文档批次
+        Receiving --&gt; Validating: 文档验证
+        Validating --&gt; Allocating: 分配DocId
+        Allocating --&gt; Writing: 写入Indexer
+        Writing --&gt; Updating: 更新SegmentInfo
+        Updating --&gt; Evaluating: 评估内存使用
+        Evaluating --&gt; Checking: 检查转储条件
+        Checking --&gt; [*]: 继续构建
+    }
     
-    NoMem --&gt; Waiting: 等待内存释放
-    Waiting --&gt; Building: 内存释放
-    Waiting --&gt; Flushing: 主动Flush
+    Building --&gt; Building: Build返回OK继续构建
+    Building --&gt; NeedDump: Build返回NeedDump
+    Building --&gt; NoMem: Build返回NoMem
     
-    style Building fill:#e3f2fd
-    style Flushing fill:#fff3e0
-    style NoMem fill:#ffebee
+    state NeedDump {
+        [*] --&gt; Creating: 创建SegmentDumper
+        Creating --&gt; [*]
+    }
+    
+    NeedDump --&gt; Flushing: CreateSegmentDumper完成
+    
+    state Flushing {
+        [*] --&gt; Dumping: 转储MemSegment
+        Dumping --&gt; CreatingDisk: 创建DiskSegment
+        CreatingDisk --&gt; UpdatingData: 更新TabletData
+        UpdatingData --&gt; [*]
+    }
+    
+    Flushing --&gt; Dumped: Flush完成
+    
+    state Dumped {
+        [*] --&gt; Ready: 转储完成
+        Ready --&gt; [*]
+    }
+    
+    Dumped --&gt; Building: Reopen重新打开创建新MemSegment
+    
+    state NoMem {
+        [*] --&gt; WaitingState: 等待内存释放
+        WaitingState --&gt; [*]
+    }
+    
+    NoMem --&gt; Waiting: 进入等待状态
+    
+    state Waiting {
+        [*] --&gt; Monitoring: 监控内存状态
+        Monitoring --&gt; [*]
+    }
+    
+    Waiting --&gt; Building: 内存释放继续构建
+    Waiting --&gt; Flushing: 主动Flush释放内存
+    
+    Building --&gt; [*]: 构建完成
 </code></pre>
 
 <h3 id="23-文档的-docid-分配">2.3 文档的 DocId 分配</h3>
@@ -1007,55 +1136,69 @@
 <p><strong>DocId 分配机制</strong>：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    A[文档写入&lt;br/&gt;IDocumentBatch] --&gt; B[获取当前MemSegment&lt;br/&gt;_normalBuildingSegment]
-    B --&gt; C[获取BaseDocId&lt;br/&gt;_buildingSegmentBaseDocId]
+    Start[文档写入IDocumentBatch] --&gt; GetMem[获取当前MemSegment]
+    GetMem --&gt; GetBase[获取BaseDocId]
     
-    subgraph BaseDocId["BaseDocId计算"]
-        C1[遍历TabletData中的Segment]
-        C2[累加前面Segment的docCount]
-        C3[BaseDocId = sum(docCount)]
-        C --&gt; C1
-        C1 --&gt; C2
-        C2 --&gt; C3
+    GetBase --&gt; BaseStart[BaseDocId计算]
+    
+    BaseStart --&gt; C1[遍历TabletData中的Segment]
+    C1 --&gt; C2[累加前面Segment的docCount]
+    C2 --&gt; C3[BaseDocId等于docCount之和]
+    
+    C3 --&gt; LocalStart[LocalDocId分配]
+    
+    LocalStart --&gt; D1[获取当前MemSegment的docCount]
+    D1 --&gt; D2[LocalDocId从0开始]
+    D2 --&gt; D3[LocalDocId递增每个文档加1]
+    D3 --&gt; D4[更新docCount递增]
+    
+    D4 --&gt; GlobalStart[GlobalDocId计算]
+    
+    GlobalStart --&gt; E1[GlobalDocId等于BaseDocId加LocalDocId]
+    E1 --&gt; E2[全局唯一文档ID]
+    E2 --&gt; E3[写入Indexer使用GlobalDocId]
+    
+    E3 --&gt; End[完成]
+    
+    subgraph BaseGroup["1. BaseDocId计算"]
+        C1
+        C2
+        C3
     end
     
-    subgraph LocalDocId["LocalDocId分配"]
-        D1[获取当前MemSegment的docCount]
-        D2[LocalDocId = docCount&lt;br/&gt;从0开始]
-        D3[LocalDocId递增&lt;br/&gt;每个文档+1]
-        D4[更新docCount&lt;br/&gt;docCount++]
-        C3 --&gt; D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D3 --&gt; D4
+    subgraph LocalGroup["2. LocalDocId分配"]
+        D1
+        D2
+        D3
+        D4
     end
     
-    subgraph GlobalDocId["GlobalDocId计算"]
-        E1[GlobalDocId = BaseDocId + LocalDocId]
-        E2[全局唯一文档ID&lt;br/&gt;在整个Tablet范围内]
-        E3[写入Indexer&lt;br/&gt;使用GlobalDocId]
-        D4 --&gt; E1
-        E1 --&gt; E2
-        E2 --&gt; E3
+    subgraph GlobalGroup["3. GlobalDocId计算"]
+        E1
+        E2
+        E3
     end
     
-    subgraph Example["分配示例"]
-        EX1[Segment1: docCount=1000&lt;br/&gt;BaseDocId=0]
-        EX2[Segment2: docCount=2000&lt;br/&gt;BaseDocId=1000]
-        EX3[Segment3: 当前构建中&lt;br/&gt;BaseDocId=3000]
-        EX4[新文档: LocalDocId=0&lt;br/&gt;GlobalDocId=3000]
-        EX5[新文档: LocalDocId=1&lt;br/&gt;GlobalDocId=3001]
-        
-        EX1 --&gt; EX2
-        EX2 --&gt; EX3
-        EX3 --&gt; EX4
-        EX4 --&gt; EX5
-    end
-    
-    style BaseDocId fill:#e3f2fd
-    style LocalDocId fill:#fff3e0
-    style GlobalDocId fill:#e8f5e9
-    style Example fill:#f5f5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetMem fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style GetBase fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style BaseStart fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style BaseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style C1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style LocalStart fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style LocalGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style D2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style D3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style D4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style GlobalStart fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style GlobalGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style E1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style E2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style E3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -1577,73 +1720,95 @@
 <p><strong>转储流程</strong>：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    A[CreateSegmentDumper&lt;br/&gt;创建转储器] --&gt; B[初始化SegmentDumper&lt;br/&gt;保存MemSegment引用]
+    Start[CreateSegmentDumper创建转储器] --&gt; InitStart[初始化阶段]
     
-    subgraph Init["初始化阶段"]
-        B1[设置Segment状态&lt;br/&gt;ST_BUILDING → ST_DUMPING]
-        B2[准备转储参数&lt;br/&gt;dumpExpandMemSize]
-        B3[创建MetricsReporter&lt;br/&gt;监控转储进度]
-        B --&gt; B1
-        B1 --&gt; B2
-        B2 --&gt; B3
+    InitStart --&gt; B1[设置Segment状态ST_BUILDING到ST_DUMPING]
+    B1 --&gt; B2[准备转储参数dumpExpandMemSize]
+    B2 --&gt; B3[创建MetricsReporter监控转储进度]
+    
+    B3 --&gt; CreateStart[创建转储项]
+    
+    CreateStart --&gt; C1[调用CreateSegmentDumpItems MemSegment方法]
+    C1 --&gt; C2[创建索引文件转储项倒排正排主键索引]
+    C1 --&gt; C3[创建元数据文件转储项SegmentInfo SegmentMetrics]
+    C1 --&gt; C4[创建摘要文件转储项SummaryIndex]
+    C2 --&gt; C5[转储项列表DumpItems]
+    C3 --&gt; C5
+    C4 --&gt; C5
+    
+    C5 --&gt; DumpStart[执行转储]
+    
+    DumpStart --&gt; D1[调用Dump方法SegmentDumper.Dump]
+    D1 --&gt; D2[遍历每个DumpItem]
+    D2 --&gt; D3[写入索引文件磁盘IO操作]
+    D2 --&gt; D4[写入元数据文件SegmentInfo等]
+    D3 --&gt; D5[文件组织Package Archive格式]
+    D4 --&gt; D5
+    D5 --&gt; D6[原子性保证要么全部成功要么全部失败]
+    
+    D6 --&gt; DiskStart[创建DiskSegment]
+    
+    DiskStart --&gt; E1[获取转储的SegmentMeta GetDumpedSegmentMeta]
+    E1 --&gt; E2[创建DiskSegment从转储文件]
+    E2 --&gt; E3[初始化DiskSegment Open方法]
+    E3 --&gt; E4[根据OpenMode加载NORMAL或LAZY]
+    
+    E4 --&gt; UpdateStart[更新状态]
+    
+    UpdateStart --&gt; F1[Segment状态更新ST_DUMPING到ST_BUILT]
+    F1 --&gt; F2[更新TabletData添加DiskSegment]
+    F2 --&gt; F3[移除MemSegment释放内存]
+    
+    F3 --&gt; End[转储完成]
+    
+    subgraph InitGroup["1. 初始化阶段"]
+        B1
+        B2
+        B3
     end
     
-    subgraph CreateItems["创建转储项"]
-        C1[调用CreateSegmentDumpItems&lt;br/&gt;MemSegment方法]
-        C2[创建索引文件转储项&lt;br/&gt;倒排/正排/主键索引]
-        C3[创建元数据文件转储项&lt;br/&gt;SegmentInfo/SegmentMetrics]
-        C4[创建摘要文件转储项&lt;br/&gt;SummaryIndex]
-        C5[转储项列表&lt;br/&gt;DumpItems]
-        B3 --&gt; C1
-        C1 --&gt; C2
-        C1 --&gt; C3
-        C1 --&gt; C4
-        C2 --&gt; C5
-        C3 --&gt; C5
-        C4 --&gt; C5
+    subgraph CreateGroup["2. 创建转储项"]
+        C1
+        C2
+        C3
+        C4
+        C5
     end
     
-    subgraph Dump["执行转储"]
-        D1[调用Dump方法&lt;br/&gt;SegmentDumper.Dump]
-        D2[遍历每个DumpItem]
-        D3[写入索引文件&lt;br/&gt;磁盘IO操作]
-        D4[写入元数据文件&lt;br/&gt;SegmentInfo等]
-        D5[文件组织&lt;br/&gt;Package/Archive格式]
-        D6[原子性保证&lt;br/&gt;要么全部成功要么全部失败]
-        C5 --&gt; D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D2 --&gt; D4
-        D3 --&gt; D5
-        D4 --&gt; D5
-        D5 --&gt; D6
+    subgraph DumpGroup["3. 执行转储"]
+        D1
+        D2
+        D3
+        D4
+        D5
+        D6
     end
     
-    subgraph CreateDisk["创建DiskSegment"]
-        E1[获取转储的SegmentMeta&lt;br/&gt;GetDumpedSegmentMeta]
-        E2[创建DiskSegment&lt;br/&gt;从转储文件]
-        E3[初始化DiskSegment&lt;br/&gt;Open方法]
-        E4[根据OpenMode加载&lt;br/&gt;NORMAL/LAZY]
-        D6 --&gt; E1
-        E1 --&gt; E2
-        E2 --&gt; E3
-        E3 --&gt; E4
+    subgraph DiskGroup["4. 创建DiskSegment"]
+        E1
+        E2
+        E3
+        E4
     end
     
-    subgraph Update["更新状态"]
-        F1[Segment状态更新&lt;br/&gt;ST_DUMPING → ST_BUILT]
-        F2[更新TabletData&lt;br/&gt;添加DiskSegment]
-        F3[移除MemSegment&lt;br/&gt;释放内存]
-        E4 --&gt; F1
-        F1 --&gt; F2
-        F2 --&gt; F3
+    subgraph UpdateGroup["5. 更新状态"]
+        F1
+        F2
+        F3
     end
     
-    style Init fill:#e3f2fd
-    style CreateItems fill:#fff9c4
-    style Dump fill:#fff3e0
-    style CreateDisk fill:#e8f5e9
-    style Update fill:#f3e5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style InitStart fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style InitGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CreateStart fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style CreateGroup fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style DumpStart fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style DumpGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style DiskStart fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style DiskGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style UpdateStart fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style UpdateGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -1781,22 +1946,53 @@
 
 <p>转储需要额外的内存空间，通过 <code class="language-plaintext highlighter-rouge">DumpExpandMemSize</code> 控制：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[转储内存成本] --&gt; B[估算转储内存]
-    B --&gt; C[EstimateDumpMemUsed]
-    C --&gt; D[检查内存配额]
-    D --&gt; E{配额充足?}
-    E --&gt;|是| F[执行转储]
-    E --&gt;|否| G[等待或拒绝]
-    F --&gt; H[控制转储并发]
+<pre><code class="language-mermaid">flowchart TD
+    Start[转储内存成本管理] --&gt; Estimate[估算转储内存&lt;br/&gt;EstimateDumpMemUsed]
     
-    I[DumpExpandMemSize] --&gt; J[控制转储内存上限]
-    J --&gt; K[避免内存溢出]
+    Estimate --&gt; CheckQuota[检查内存配额&lt;br/&gt;MemoryQuotaController]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style I fill:#f3e5f5
+    CheckQuota --&gt; QuotaCheck{配额充足?}
+    
+    QuotaCheck --&gt;|是| Allocate[分配转储内存&lt;br/&gt;从MemoryQuotaController分配]
+    QuotaCheck --&gt;|否| Wait[等待内存释放&lt;br/&gt;或拒绝转储]
+    
+    Allocate --&gt; DumpControl[控制转储并发&lt;br/&gt;DumpControl限制并发度]
+    
+    DumpControl --&gt; Dump[执行转储&lt;br/&gt;使用分配的内存]
+    
+    Dump --&gt; Monitor[监控内存使用&lt;br/&gt;实时监控转储内存]
+    
+    Monitor --&gt; Release[释放转储内存&lt;br/&gt;转储完成后释放]
+    
+    Release --&gt; End[转储完成]
+    
+    Wait --&gt; Retry{重试?}
+    Retry --&gt;|是| CheckQuota
+    Retry --&gt;|否| Reject[拒绝转储&lt;br/&gt;返回错误]
+    
+    subgraph Config["配置参数"]
+        direction TB
+        Config1[DumpExpandMemSize&lt;br/&gt;控制转储内存上限]
+        Config2[避免内存溢出&lt;br/&gt;限制单次转储内存]
+        Config1 --&gt; Config2
+    end
+    
+    Config2 -.-&gt;|配置| Allocate
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Estimate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckQuota fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style QuotaCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Allocate fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style DumpControl fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Dump fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Monitor fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Release fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Wait fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Retry fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Reject fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Config fill:#f5f5f5,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <p><strong>内存成本控制</strong>：</p>
@@ -1917,19 +2113,57 @@
 
 <p>Seal 通常在以下场景使用：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[Seal使用场景] --&gt; B[合并前]
-    A --&gt; C[版本提交前]
-    A --&gt; D[Schema变更前]
+<pre><code class="language-mermaid">flowchart TD
+    Start[Seal使用场景] --&gt; Scenario1[场景1: 合并前]
+    Start --&gt; Scenario2[场景2: 版本提交前]
+    Start --&gt; Scenario3[场景3: Schema变更前]
     
-    B --&gt; E[封存待合并Segment]
-    C --&gt; F[封存所有Segment]
-    D --&gt; G[封存当前Segment]
+    subgraph MergeScenario["场景1: 合并前"]
+        direction TB
+        M1[触发合并操作]
+        M2[封存待合并Segment&lt;br/&gt;标记为只读]
+        M3[准备合并数据&lt;br/&gt;Segment内容不再变化]
+        M4[执行合并操作]
+        
+        Scenario1 --&gt; M1
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    subgraph CommitScenario["场景2: 版本提交前"]
+        direction TB
+        C1[触发版本提交]
+        C2[封存所有Segment&lt;br/&gt;确保版本一致性]
+        C3[准备新Version&lt;br/&gt;收集Segment列表]
+        C4[提交新版本]
+        
+        Scenario2 --&gt; C1
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+    end
+    
+    subgraph SchemaScenario["场景3: Schema变更前"]
+        direction TB
+        S1[检测Schema变更]
+        S2[封存当前Segment&lt;br/&gt;使用旧Schema]
+        S3[创建新Segment&lt;br/&gt;使用新Schema]
+        S4[继续构建新Segment]
+        
+        Scenario3 --&gt; S1
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S3 --&gt; S4
+    end
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Scenario1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Scenario2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Scenario3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style MergeScenario fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CommitScenario fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style SchemaScenario fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>使用场景</strong>：</p>
@@ -1946,83 +2180,100 @@
 <p>Commit 阶段负责提交新版本，更新 Version，持久化到磁盘。让我们先通过图来理解 Commit 流程：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    A[Commit调用&lt;br/&gt;VersionCommitter.Commit] --&gt; B[检查提交条件&lt;br/&gt;NeedCommit检查]
+    Start[Commit调用VersionCommitter.Commit] --&gt; Check[检查提交条件NeedCommit检查]
     
-    subgraph Conditions["提交条件判断"]
-        C1{有新Segment?&lt;br/&gt;有新增的DiskSegment}
-        C2{有数据变更?&lt;br/&gt;Locator更新}
-        C3{强制提交?&lt;br/&gt;forceCommit=true}
-        C4[OR策略: 任一满足即提交]
-        B --&gt; C1
-        B --&gt; C2
-        B --&gt; C3
-        C1 --&gt; C4
-        C2 --&gt; C4
-        C3 --&gt; C4
+    Check --&gt; ConditionStart[提交条件判断]
+    
+    ConditionStart --&gt; C1{有新Segment?&lt;br/&gt;有新增的DiskSegment}
+    ConditionStart --&gt; C2{有数据变更?&lt;br/&gt;Locator更新}
+    ConditionStart --&gt; C3{强制提交?&lt;br/&gt;forceCommit=true}
+    
+    C1 --&gt; C4[OR策略任一满足即提交]
+    C2 --&gt; C4
+    C3 --&gt; C4
+    
+    C4 --&gt; ConditionCheck{满足提交条件?}
+    
+    ConditionCheck --&gt;|否| Start
+    ConditionCheck --&gt;|是| PrepareStart[准备版本信息]
+    
+    PrepareStart --&gt; D1[收集所有已构建Segment CreateSlice ST_BUILT]
+    D1 --&gt; D2[准备Segment列表SegmentInVersion]
+    D2 --&gt; D3[准备Locator最新数据处理位置]
+    D3 --&gt; D4[准备时间戳当前时间]
+    D4 --&gt; D5[计算新VersionId当前VersionId加1]
+    
+    D5 --&gt; FenceStart[Fence机制原子性保证]
+    
+    FenceStart --&gt; E1[创建Fence目录临时目录]
+    E1 --&gt; E2[写入Version文件版本信息]
+    E2 --&gt; E3[写入Segment列表SegmentInVersion]
+    E3 --&gt; E4[写入Locator位置信息]
+    E4 --&gt; E5[原子切换重命名为正式版本目录]
+    
+    E5 --&gt; UpdateStart[更新TabletData]
+    
+    UpdateStart --&gt; F1[更新Version _onDiskVersion]
+    F1 --&gt; F2[更新Segment列表 _segments]
+    F2 --&gt; F3[更新Locator最新位置信息]
+    
+    F3 --&gt; CleanupStart[清理旧版本]
+    
+    CleanupStart --&gt; G1[检查保留版本列表reservedVersions]
+    G1 --&gt; G2[删除不再需要的版本cleanVersion=true]
+    G2 --&gt; G3[清理旧Segment文件释放磁盘空间]
+    
+    G3 --&gt; End[Commit完成返回VersionMeta]
+    
+    subgraph ConditionGroup["1. 提交条件判断"]
+        C1
+        C2
+        C3
+        C4
     end
     
-    subgraph Prepare["准备版本信息"]
-        D1[收集所有已构建Segment&lt;br/&gt;CreateSlice(ST_BUILT)]
-        D2[准备Segment列表&lt;br/&gt;SegmentInVersion]
-        D3[准备Locator&lt;br/&gt;最新数据处理位置]
-        D4[准备时间戳&lt;br/&gt;当前时间]
-        D5[计算新VersionId&lt;br/&gt;当前VersionId + 1]
-        C4 --&gt;|满足条件| D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D3 --&gt; D4
-        D4 --&gt; D5
+    subgraph PrepareGroup["2. 准备版本信息"]
+        D1
+        D2
+        D3
+        D4
+        D5
     end
     
-    subgraph Fence["Fence机制&lt;br/&gt;原子性保证"]
-        E1[创建Fence目录&lt;br/&gt;临时目录]
-        E2[写入Version文件&lt;br/&gt;版本信息]
-        E3[写入Segment列表&lt;br/&gt;SegmentInVersion]
-        E4[写入Locator&lt;br/&gt;位置信息]
-        E5[原子切换&lt;br/&gt;重命名为正式版本目录]
-        D5 --&gt; E1
-        E1 --&gt; E2
-        E2 --&gt; E3
-        E3 --&gt; E4
-        E4 --&gt; E5
+    subgraph FenceGroup["3. Fence机制原子性保证"]
+        E1
+        E2
+        E3
+        E4
+        E5
     end
     
-    subgraph Update["更新TabletData"]
-        F1[更新Version&lt;br/&gt;_onDiskVersion]
-        F2[更新Segment列表&lt;br/&gt;_segments]
-        F3[更新Locator&lt;br/&gt;最新位置信息]
-        E5 --&gt; F1
-        F1 --&gt; F2
-        F2 --&gt; F3
+    subgraph UpdateGroup["4. 更新TabletData"]
+        F1
+        F2
+        F3
     end
     
-    subgraph Cleanup["清理旧版本"]
-        G1[检查保留版本列表&lt;br/&gt;reservedVersions]
-        G2[删除不再需要的版本&lt;br/&gt;cleanVersion=true]
-        G3[清理旧Segment文件&lt;br/&gt;释放磁盘空间]
-        F3 --&gt; G1
-        G1 --&gt; G2
-        G2 --&gt; G3
+    subgraph CleanupGroup["5. 清理旧版本"]
+        G1
+        G2
+        G3
     end
     
-    subgraph Atomic["原子性保证"]
-        H1[Fence目录机制&lt;br/&gt;临时目录]
-        H2[原子重命名&lt;br/&gt;rename操作]
-        H3[要么全部成功&lt;br/&gt;要么全部失败]
-        E5 -.-&gt; H1
-        H1 --&gt; H2
-        H2 --&gt; H3
-    end
-    
-    C4 --&gt;|不满足| A
-    G3 --&gt; I[Commit完成&lt;br/&gt;返回VersionMeta]
-    
-    style Conditions fill:#e3f2fd
-    style Prepare fill:#fff9c4
-    style Fence fill:#fff3e0
-    style Update fill:#e8f5e9
-    style Cleanup fill:#f3e5f5
-    style Atomic fill:#f5f5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Check fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style ConditionStart fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ConditionGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ConditionCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style PrepareStart fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style PrepareGroup fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style FenceStart fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FenceGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style UpdateStart fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CleanupStart fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style CleanupGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <p>Commit 流程包括以下步骤：</p>
@@ -2054,22 +2305,44 @@
 
 <p><strong>Commit 的关键步骤</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[准备版本信息] --&gt; B[收集Segment列表]
-    B --&gt; C[准备Locator]
-    C --&gt; D[创建Fence目录]
-    D --&gt; E[写入Version]
-    E --&gt; F[原子切换]
-    F --&gt; G[更新TabletData]
+<pre><code class="language-mermaid">flowchart LR
+    Start[Commit开始] --&gt; Prepare[准备版本信息]
     
-    H[Fence机制] --&gt; I[临时目录]
-    I --&gt; J[原子重命名]
-    J --&gt; K[保证原子性]
+    Prepare --&gt; Collect[收集Segment列表&lt;br/&gt;CreateSlice ST_BUILT]
+    Collect --&gt; Locator[准备Locator&lt;br/&gt;最新数据处理位置]
+    Locator --&gt; FenceCreate[创建Fence目录&lt;br/&gt;临时目录]
     
-    style A fill:#e3f2fd
-    style D fill:#fff3e0
-    style F fill:#e8f5e9
-    style H fill:#f3e5f5
+    FenceCreate --&gt; Write[写入Version文件&lt;br/&gt;版本信息 Segment列表 Locator]
+    Write --&gt; Atomic[原子切换&lt;br/&gt;重命名为正式版本目录]
+    
+    Atomic --&gt; Update[更新TabletData&lt;br/&gt;_onDiskVersion _segments]
+    Update --&gt; End[Commit完成]
+    
+    subgraph Fence["Fence机制原子性保证"]
+        direction TB
+        F1[临时目录&lt;br/&gt;version.fence]
+        F2[写入所有文件&lt;br/&gt;Version Segment列表]
+        F3[原子重命名&lt;br/&gt;rename操作]
+        F4[保证原子性&lt;br/&gt;要么全部成功要么全部失败]
+        
+        F1 --&gt; F2
+        F2 --&gt; F3
+        F3 --&gt; F4
+    end
+    
+    FenceCreate -.-&gt;|使用| Fence
+    Atomic -.-&gt;|完成| Fence
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Prepare fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style Collect fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style Locator fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style FenceCreate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style Atomic fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Fence fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -2084,20 +2357,39 @@
 
 <p>Fence 机制保证版本提交的原子性：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[创建Fence目录] --&gt; B[写入Version]
-    B --&gt; C[原子切换]
-    C --&gt; D[重命名为正式版本]
+<pre><code class="language-mermaid">flowchart LR
+    Start[开始提交] --&gt; Create[创建Fence目录&lt;br/&gt;临时目录version.fence]
     
-    E[Fence目录] --&gt; F[临时目录]
-    F --&gt; G[原子操作]
-    G --&gt; H[要么全部成功]
-    G --&gt; I[要么全部失败]
+    Create --&gt; Write[写入Version文件&lt;br/&gt;版本信息 Segment列表 Locator]
+    Write --&gt; Switch[原子切换&lt;br/&gt;rename操作]
+    Switch --&gt; Rename[重命名为正式版本&lt;br/&gt;version.fence → version_N]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    Rename --&gt; Update[更新TabletData&lt;br/&gt;切换到新版本]
+    Update --&gt; End[提交完成]
+    
+    subgraph Atomic["原子性保证"]
+        direction TB
+        A1[临时目录&lt;br/&gt;version.fence]
+        A2[写入所有文件&lt;br/&gt;Version Segment列表]
+        A3[原子重命名&lt;br/&gt;rename操作]
+        A4[要么全部成功&lt;br/&gt;要么全部失败]
+        
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
+    end
+    
+    Create -.-&gt;|使用| Atomic
+    Switch -.-&gt;|完成| Atomic
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Create fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style Switch fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Rename fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Atomic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>Fence 机制</strong>：</p>
@@ -2143,23 +2435,40 @@
 
 <p>每次 Commit 都会创建新版本，版本号递增：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[V1] --&gt; B["Segment 1,2&lt;br/&gt;Locator: timestamp=100"]
-    B --&gt; C[Commit]
-    C --&gt; D[V2]
-    D --&gt; E["Segment 1,2,3&lt;br/&gt;Locator: timestamp=200"]
-    E --&gt; F[Commit]
-    F --&gt; G[V3]
-    G --&gt; H["Segment 4&lt;br/&gt;Locator: timestamp=300"]
+<pre><code class="language-mermaid">flowchart LR
+    V1[Version 1&lt;br/&gt;versionId=1] --&gt; V1Content[Segment 1,2&lt;br/&gt;Locator timestamp=100]
     
-    I[版本演进] --&gt; J[版本号递增]
-    I --&gt; K[Segment列表变化]
-    I --&gt; L[Locator更新]
+    V1Content --&gt; Commit1[Commit操作]
     
-    style A fill:#e3f2fd
-    style D fill:#fff3e0
-    style G fill:#e8f5e9
-    style I fill:#f3e5f5
+    Commit1 --&gt; V2[Version 2&lt;br/&gt;versionId=2]
+    V2 --&gt; V2Content[Segment 1,2,3&lt;br/&gt;Locator timestamp=200]
+    
+    V2Content --&gt; Commit2[Commit操作]
+    
+    Commit2 --&gt; V3[Version 3&lt;br/&gt;versionId=3]
+    V3 --&gt; V3Content[Segment 4&lt;br/&gt;Locator timestamp=300]
+    
+    subgraph Evolution["版本演进特点"]
+        direction TB
+        E1[版本号递增&lt;br/&gt;versionId单调递增]
+        E2[Segment列表变化&lt;br/&gt;新增或合并Segment]
+        E3[Locator更新&lt;br/&gt;记录最新处理位置]
+        
+        E1 --&gt; E2
+        E2 --&gt; E3
+    end
+    
+    V3Content -.-&gt;|演进特点| Evolution
+    
+    style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style V1Content fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style Commit1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style V2Content fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style Commit2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style V3Content fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Evolution fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>版本演进示例</strong>：</p>
@@ -2206,21 +2515,54 @@
 
 <p>在批量构建场景中，完整的构建流程：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[批量Build] --&gt; B[一次性构建大量文档]
-    B --&gt; C[Flush]
-    C --&gt; D[转储为DiskSegment]
-    D --&gt; E[Seal所有Segment]
-    E --&gt; F[Commit最终版本]
+<pre><code class="language-mermaid">flowchart TD
+    Start[批量构建场景] --&gt; ProcessLayer[构建流程层]
+    ProcessLayer --&gt; CharacterLayer[场景特点层]
     
-    G[批量场景特点] --&gt; H[一次性构建]
-    G --&gt; I[完成后转储]
-    G --&gt; J[一次性提交]
+    subgraph ProcessGroup["批量构建流程：一次性完成所有操作"]
+        direction TB
+        P1[批量Build&lt;br/&gt;一次性构建大量文档&lt;br/&gt;接收所有文档批次]
+        P2[Flush转储&lt;br/&gt;构建完成后触发Flush&lt;br/&gt;转储MemSegment]
+        P3[转储为DiskSegment&lt;br/&gt;创建DiskSegment&lt;br/&gt;加载转储后的Segment]
+        P4[Seal所有Segment&lt;br/&gt;封存所有Segment&lt;br/&gt;标记为只读]
+        P5[Commit最终版本&lt;br/&gt;提交最终版本&lt;br/&gt;更新Version到磁盘]
+        P1 --&gt; P2
+        P2 --&gt; P3
+        P3 --&gt; P4
+        P4 --&gt; P5
+    end
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    ProcessLayer --&gt; ProcessGroup
+    
+    ProcessGroup --&gt; CharacterLayer
+    
+    subgraph CharacterGroup["批量场景特点：一次性处理"]
+        direction TB
+        C1[一次性构建&lt;br/&gt;所有文档一次性构建完成&lt;br/&gt;不进行增量构建]
+        C2[完成后转储&lt;br/&gt;构建完成后统一转储&lt;br/&gt;不进行中间转储]
+        C3[一次性提交&lt;br/&gt;所有操作完成后提交&lt;br/&gt;不进行多次提交]
+        C4[适合离线场景&lt;br/&gt;批量导入数据&lt;br/&gt;全量索引构建]
+    end
+    
+    CharacterLayer --&gt; CharacterGroup
+    
+    CharacterGroup --&gt; End[批量构建完成]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ProcessLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ProcessGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style P1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style P4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CharacterLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style CharacterGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style C2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style C3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style C4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <p><strong>流程示例</strong>：</p>
@@ -2237,23 +2579,93 @@
 
 <p>IndexLib 的构建流程支持异步和并发：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[异步转储] --&gt; B[不阻塞写入]
-    C[并发构建] --&gt; D[多线程构建]
-    E[并发转储] --&gt; F[多个Segment并发转储]
+<pre><code class="language-mermaid">flowchart TD
+    Start[异步与并发设计] --&gt; AsyncLayer[异步处理层]
+    Start --&gt; ConcurrentLayer[并发处理层]
     
-    G[异步与并发] --&gt; A
-    G --&gt; C
-    G --&gt; E
+    subgraph AsyncGroup["异步处理层：异步转储机制"]
+        direction TB
+        A1[触发转储&lt;br/&gt;创建SegmentDumper]
+        A2[提交转储任务&lt;br/&gt;提交到后台线程池]
+        A3[立即返回&lt;br/&gt;不阻塞写入操作]
+        A4[后台线程执行转储&lt;br/&gt;异步转储到磁盘]
+        A5[转储完成回调&lt;br/&gt;更新Segment状态]
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
+        A4 --&gt; A5
+    end
     
-    H[优势] --&gt; I[提高吞吐量]
-    H --&gt; J[充分利用资源]
-    H --&gt; K[降低延迟]
+    AsyncLayer --&gt; AsyncGroup
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    subgraph ConcurrentBuildGroup["并发处理层：并发构建"]
+        direction TB
+        CB1[接收文档批次&lt;br/&gt;IDocumentBatch]
+        CB2[创建并行构建器&lt;br/&gt;NormalTabletParallelBuilder]
+        CB3[多线程并行构建&lt;br/&gt;线程池处理文档]
+        CB4[并行写入Indexer&lt;br/&gt;倒排/正排/主键索引]
+        CB5[合并构建结果&lt;br/&gt;汇总各线程结果]
+        CB1 --&gt; CB2
+        CB2 --&gt; CB3
+        CB3 --&gt; CB4
+        CB4 --&gt; CB5
+    end
+    
+    subgraph ConcurrentDumpGroup["并发处理层：并发转储"]
+        direction TB
+        CD1[多个Segment待转储&lt;br/&gt;收集需要转储的Segment]
+        CD2[DumpControl控制并发度&lt;br/&gt;限制同时转储的Segment数]
+        CD3[并发转储任务&lt;br/&gt;多个Segment并行转储]
+        CD4[充分利用IO资源&lt;br/&gt;磁盘IO并行处理]
+        CD5[转储完成&lt;br/&gt;所有Segment转储完成]
+        CD1 --&gt; CD2
+        CD2 --&gt; CD3
+        CD3 --&gt; CD4
+        CD4 --&gt; CD5
+    end
+    
+    ConcurrentLayer --&gt; ConcurrentBuildGroup
+    ConcurrentLayer --&gt; ConcurrentDumpGroup
+    
+    AsyncGroup --&gt; Performance[性能优势]
+    ConcurrentBuildGroup --&gt; Performance
+    ConcurrentDumpGroup --&gt; Performance
+    
+    subgraph PerformanceGroup["性能优势：提升整体性能"]
+        direction TB
+        P1[提高吞吐量&lt;br/&gt;并行处理提高整体吞吐&lt;br/&gt;充分利用多核CPU]
+        P2[充分利用资源&lt;br/&gt;CPU和IO并行利用&lt;br/&gt;避免资源闲置]
+        P3[降低延迟&lt;br/&gt;异步转储不阻塞写入&lt;br/&gt;提升写入响应速度]
+    end
+    
+    Performance --&gt; PerformanceGroup
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style AsyncLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style AsyncGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style A5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ConcurrentLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ConcurrentBuildGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CB1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style CB2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CB3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CB4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style CB5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style ConcurrentDumpGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CD1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style CD2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style CD3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style CD4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style CD5 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Performance fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style PerformanceGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style P1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style P2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style P3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
 </code></pre>
 
 <p><strong>异步与并发设计</strong>：</p>
@@ -2267,21 +2679,104 @@
 
 <p>构建流程需要严格控制内存使用：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[内存估算] --&gt; B[构建前估算]
-    C[内存评估] --&gt; D[构建中评估]
-    E[内存控制] --&gt; F[MemoryQuotaController]
-    G[触发转储] --&gt; H[达到阈值时转储]
+<pre><code class="language-mermaid">flowchart TD
+    Start[内存管理机制] --&gt; MonitorLayer[内存监控层]
+    MonitorLayer --&gt; ControlLayer[内存控制层]
+    ControlLayer --&gt; ReleaseLayer[内存释放层]
     
-    I[内存管理] --&gt; A
-    I --&gt; C
-    I --&gt; E
-    I --&gt; G
+    subgraph MonitorGroup["内存监控层：实时监控内存使用"]
+        direction TB
+        M1[构建前估算&lt;br/&gt;EstimateMemUsed方法]
+        M2[根据Schema估算&lt;br/&gt;索引字段类型和数量]
+        M3[根据文档数估算&lt;br/&gt;预期文档数量]
+        M4[构建中评估&lt;br/&gt;EvaluateCurrentMemUsed方法]
+        M5[实时监控内存使用&lt;br/&gt;统计实际内存占用]
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+        M4 --&gt; M5
+    end
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style I fill:#f3e5f5
+    MonitorLayer --&gt; MonitorGroup
+    
+    subgraph ControlGroup["内存控制层：MemoryQuotaController"]
+        direction TB
+        C1[检查内存配额&lt;br/&gt;查询可用内存配额]
+        C2{配额是否充足?}
+        C3[分配内存配额&lt;br/&gt;从MemoryQuotaController分配]
+        C4[拒绝分配&lt;br/&gt;等待或拒绝写入]
+        C5[控制内存上限&lt;br/&gt;设置总内存配额]
+        C1 --&gt; C2
+        C2 --&gt;|充足| C3
+        C2 --&gt;|不足| C4
+        C3 --&gt; C5
+        C4 --&gt; C1
+    end
+    
+    MonitorGroup --&gt; ControlGroup
+    
+    subgraph TriggerGroup["触发转储：达到阈值时释放内存"]
+        direction TB
+        T1[检查转储条件&lt;br/&gt;内存使用/文档数/时间间隔]
+        T2{是否达到阈值?}
+        T3[内存超阈值&lt;br/&gt;当前内存使用超过限制]
+        T4[文档数超阈值&lt;br/&gt;文档数量超过限制]
+        T5[时间间隔达到&lt;br/&gt;达到转储时间间隔]
+        T1 --&gt; T2
+        T2 --&gt;|是| T3
+        T2 --&gt;|是| T4
+        T2 --&gt;|是| T5
+        T2 --&gt;|否| T1
+    end
+    
+    ControlGroup --&gt; TriggerGroup
+    
+    TriggerGroup --&gt; ReleaseLayer
+    
+    subgraph ReleaseGroup["内存释放层：转储释放内存"]
+        direction TB
+        R1[触发转储操作&lt;br/&gt;创建SegmentDumper]
+        R2[转储MemSegment&lt;br/&gt;异步转储到磁盘]
+        R3[释放内存配额&lt;br/&gt;释放MemSegment内存]
+        R4[创建新MemSegment&lt;br/&gt;继续构建]
+        R1 --&gt; R2
+        R2 --&gt; R3
+        R3 --&gt; R4
+        R4 --&gt; MonitorGroup
+    end
+    
+    ReleaseLayer --&gt; ReleaseGroup
+    
+    ReleaseGroup --&gt; Result[内存管理目标&lt;br/&gt;保证系统稳定性&lt;br/&gt;避免内存溢出&lt;br/&gt;及时释放内存]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MonitorLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style MonitorGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style M1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style M2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style M3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style M4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ControlLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ControlGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style C5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style TriggerGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style T1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style T2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style T3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style T4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style T5 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ReleaseLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style ReleaseGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style R1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style R2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style R3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style R4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Result fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <p><strong>内存管理机制</strong>：</p>
@@ -2296,22 +2791,104 @@
 
 <p>构建流程需要完善的错误处理：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[重试机制] --&gt; B[构建失败时重试]
-    C[回滚机制] --&gt; D[转储失败时回滚]
-    E[原子性保证] --&gt; F[Fence保证版本提交原子性]
+<pre><code class="language-mermaid">flowchart TD
+    Start[错误处理机制] --&gt; ErrorDetection[错误检测层]
+    ErrorDetection --&gt; ErrorHandling[错误处理层]
+    ErrorHandling --&gt; ErrorRecovery[错误恢复层]
     
-    G[错误处理] --&gt; A
-    G --&gt; C
-    G --&gt; E
+    subgraph ErrorDetectionGroup["错误检测层：及时发现错误"]
+        direction TB
+        ED1[构建错误检测&lt;br/&gt;检测构建过程中的异常]
+        ED2[转储错误检测&lt;br/&gt;检测转储过程中的异常]
+        ED3[版本提交错误检测&lt;br/&gt;检测版本提交过程中的异常]
+    end
     
-    H[保证] --&gt; I[数据一致性]
-    H --&gt; J[系统稳定性]
+    ErrorDetection --&gt; ErrorDetectionGroup
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    subgraph RetryGroup["1. 重试机制：构建失败处理"]
+        direction TB
+        R1[检测构建错误&lt;br/&gt;捕获异常和错误码]
+        R2[判断是否可重试&lt;br/&gt;检查错误类型和重试次数]
+        R3[自动重试构建&lt;br/&gt;重新执行构建操作]
+        R4[记录重试信息&lt;br/&gt;记录重试次数和错误详情]
+        R1 --&gt; R2
+        R2 --&gt;|可重试| R3
+        R2 --&gt;|不可重试| R5[抛出错误]
+        R3 --&gt; R4
+        R4 --&gt; R2
+    end
+    
+    subgraph RollbackGroup["2. 回滚机制：转储失败处理"]
+        direction TB
+        RB1[检测转储错误&lt;br/&gt;捕获转储异常]
+        RB2[保存当前状态&lt;br/&gt;记录转储前的状态]
+        RB3[回滚到稳定状态&lt;br/&gt;恢复到上一个成功版本]
+        RB4[清理失败文件&lt;br/&gt;删除失败的转储文件]
+        RB1 --&gt; RB2
+        RB2 --&gt; RB3
+        RB3 --&gt; RB4
+    end
+    
+    subgraph AtomicityGroup["3. 原子性保证：版本提交处理"]
+        direction TB
+        A1[创建Fence临时目录&lt;br/&gt;version.fence]
+        A2[写入版本文件&lt;br/&gt;Version和Segment信息]
+        A3[原子重命名操作&lt;br/&gt;rename临时目录为正式版本]
+        A4[验证提交结果&lt;br/&gt;检查是否全部成功]
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
+        A4 --&gt;|失败| A5[清理临时目录&lt;br/&gt;保证原子性]
+        A4 --&gt;|成功| A6[提交完成]
+    end
+    
+    ErrorDetectionGroup --&gt; RetryGroup
+    ErrorDetectionGroup --&gt; RollbackGroup
+    ErrorDetectionGroup --&gt; AtomicityGroup
+    
+    RetryGroup --&gt; ErrorHandling
+    RollbackGroup --&gt; ErrorHandling
+    AtomicityGroup --&gt; ErrorHandling
+    
+    ErrorHandling --&gt; ErrorRecovery
+    
+    subgraph RecoveryGroup["错误恢复层：保证系统稳定"]
+        direction TB
+        Recovery1[数据一致性保证&lt;br/&gt;保证数据完整性&lt;br/&gt;避免部分写入&lt;br/&gt;保证版本一致性]
+        Recovery2[系统稳定性保证&lt;br/&gt;快速恢复服务&lt;br/&gt;避免数据丢失&lt;br/&gt;保证服务可用性]
+    end
+    
+    ErrorRecovery --&gt; RecoveryGroup
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ErrorDetection fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ErrorDetectionGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ED1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ED2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ED3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ErrorHandling fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style RetryGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style R1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style R2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style R3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style R4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style R5 fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style RollbackGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style RB1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style RB2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style RB3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style RB4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style AtomicityGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style A1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style A2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style A3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style A4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style A5 fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style A6 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ErrorRecovery fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style RecoveryGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Recovery1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style Recovery2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
 </code></pre>
 
 <p><strong>错误处理机制</strong>：</p>
@@ -2327,22 +2904,82 @@
 
 <p>构建性能优化的关键点：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[批量写入] --&gt; B[减少调用开销]
-    C[并行构建] --&gt; D[提高构建速度]
-    E[内存优化] --&gt; F[减少内存分配]
+<pre><code class="language-mermaid">flowchart TD
+    Start[构建性能优化] --&gt; StrategyLayer[优化策略层]
+    StrategyLayer --&gt; EffectLayer[优化效果层]
     
-    G[构建性能优化] --&gt; A
-    G --&gt; C
-    G --&gt; E
+    subgraph BatchGroup["1. 批量写入优化"]
+        direction TB
+        B1[批量接收文档&lt;br/&gt;IDocumentBatch]
+        B2[批量处理文档&lt;br/&gt;减少函数调用次数]
+        B3[批量写入Indexer&lt;br/&gt;减少索引更新开销]
+        B4[减少调用开销&lt;br/&gt;降低系统调用成本]
+        B1 --&gt; B2
+        B2 --&gt; B3
+        B3 --&gt; B4
+    end
     
-    H[优化效果] --&gt; I[提高吞吐量]
-    H --&gt; J[降低延迟]
+    subgraph ParallelGroup["2. 并行构建优化"]
+        direction TB
+        P1[多线程并行构建&lt;br/&gt;NormalTabletParallelBuilder]
+        P2[并行处理文档批次&lt;br/&gt;充分利用多核CPU]
+        P3[并行写入索引&lt;br/&gt;倒排/正排/主键索引]
+        P4[提高构建速度&lt;br/&gt;缩短构建时间]
+        P1 --&gt; P2
+        P2 --&gt; P3
+        P3 --&gt; P4
+    end
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    subgraph MemoryGroup["3. 内存优化"]
+        direction TB
+        M1[优化内存分配&lt;br/&gt;减少内存分配次数]
+        M2[内存池管理&lt;br/&gt;复用内存对象]
+        M3[减少内存拷贝&lt;br/&gt;使用移动语义]
+        M4[减少内存分配开销&lt;br/&gt;降低GC压力]
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+    end
+    
+    StrategyLayer --&gt; BatchGroup
+    StrategyLayer --&gt; ParallelGroup
+    StrategyLayer --&gt; MemoryGroup
+    
+    BatchGroup --&gt; EffectLayer
+    ParallelGroup --&gt; EffectLayer
+    MemoryGroup --&gt; EffectLayer
+    
+    subgraph EffectGroup["优化效果：提升整体性能"]
+        direction TB
+        E1[提高吞吐量&lt;br/&gt;单位时间处理更多文档&lt;br/&gt;提升整体处理能力]
+        E2[降低延迟&lt;br/&gt;减少单次操作耗时&lt;br/&gt;提升响应速度]
+        E3[提高资源利用率&lt;br/&gt;充分利用CPU和内存&lt;br/&gt;提升系统效率]
+    end
+    
+    EffectLayer --&gt; EffectGroup
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style BatchGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style B1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style B2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style B3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ParallelGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style P1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style P2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style MemoryGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style M1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style M2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style M3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style M4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style EffectLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style EffectGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style E2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style E3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
 </code></pre>
 
 <p><strong>优化策略</strong>：</p>
@@ -2356,22 +2993,88 @@
 
 <p>转储性能优化的关键点：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[异步转储] --&gt; B[不阻塞写入]
-    C[并发转储] --&gt; D[多个Segment并发]
-    E[IO优化] --&gt; F[减少IO开销]
+<pre><code class="language-mermaid">flowchart TD
+    Start[转储性能优化] --&gt; StrategyLayer[优化策略层]
+    StrategyLayer --&gt; EffectLayer[优化效果层]
     
-    G[转储性能优化] --&gt; A
-    G --&gt; C
-    G --&gt; E
+    subgraph AsyncGroup["1. 异步转储优化"]
+        direction TB
+        A1[触发转储操作&lt;br/&gt;创建SegmentDumper]
+        A2[提交转储任务&lt;br/&gt;提交到后台线程池]
+        A3[立即返回&lt;br/&gt;不阻塞写入操作]
+        A4[后台线程执行转储&lt;br/&gt;异步转储到磁盘]
+        A5[不阻塞写入&lt;br/&gt;写入和转储并行进行]
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
+        A4 --&gt; A5
+    end
     
-    H[优化效果] --&gt; I[提高吞吐量]
-    H --&gt; J[降低延迟]
+    subgraph ConcurrentGroup["2. 并发转储优化"]
+        direction TB
+        C1[收集待转储Segment&lt;br/&gt;多个Segment需要转储]
+        C2[DumpControl控制并发度&lt;br/&gt;限制同时转储的Segment数]
+        C3[并发转储任务&lt;br/&gt;多个Segment并行转储]
+        C4[多个Segment并发&lt;br/&gt;充分利用IO资源]
+        C5[转储完成&lt;br/&gt;所有Segment转储完成]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+        C4 --&gt; C5
+    end
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    subgraph IOGroup["3. IO优化"]
+        direction TB
+        IO1[批量IO操作&lt;br/&gt;减少系统调用次数]
+        IO2[顺序写入优化&lt;br/&gt;减少磁盘寻道时间]
+        IO3[压缩优化&lt;br/&gt;减少IO数据量]
+        IO4[减少IO开销&lt;br/&gt;提高IO效率]
+        IO1 --&gt; IO2
+        IO2 --&gt; IO3
+        IO3 --&gt; IO4
+    end
+    
+    StrategyLayer --&gt; AsyncGroup
+    StrategyLayer --&gt; ConcurrentGroup
+    StrategyLayer --&gt; IOGroup
+    
+    AsyncGroup --&gt; EffectLayer
+    ConcurrentGroup --&gt; EffectLayer
+    IOGroup --&gt; EffectLayer
+    
+    subgraph EffectGroup["优化效果：提升转储性能"]
+        direction TB
+        E1[提高吞吐量&lt;br/&gt;单位时间转储更多数据&lt;br/&gt;提升整体转储能力]
+        E2[降低延迟&lt;br/&gt;减少转储对写入的影响&lt;br/&gt;提升写入响应速度]
+        E3[提高IO效率&lt;br/&gt;充分利用磁盘IO资源&lt;br/&gt;提升转储速度]
+    end
+    
+    EffectLayer --&gt; EffectGroup
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style AsyncGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style A5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ConcurrentGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style IOGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style IO1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style IO2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style IO3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style IO4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style EffectLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style EffectGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style E2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style E3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
 </code></pre>
 
 <p><strong>优化策略</strong>：</p>
