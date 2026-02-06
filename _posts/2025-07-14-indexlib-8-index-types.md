@@ -237,23 +237,40 @@ NormalTable 的特点：支持全文检索、倒排索引、正排索引等：
 
 ```mermaid
 flowchart TD
+    NormalTable[NormalTable<br/>标准表] --> Main
+    
     subgraph Main["主要组件"]
-        A["倒排索引<br/>InvertedIndex"]
-        B["正排索引<br/>AttributeIndex"]
-        C["主键索引<br/>PrimaryKeyIndex"]
+        direction LR
+        A[倒排索引<br/>InvertedIndex<br/>全文检索]
+        B[正排索引<br/>AttributeIndex<br/>属性查询]
+        C[主键索引<br/>PrimaryKeyIndex<br/>主键查询]
     end
+    
+    NormalTable --> A
+    NormalTable --> B
+    NormalTable --> C
+    
+    A --> Sub1
+    B --> Sub2
+    C --> Sub1
     
     subgraph Sub["子组件"]
-        D["摘要索引<br/>SummaryIndex"]
-        E["删除位图<br/>DeletionMap"]
+        direction LR
+        Sub1[摘要索引<br/>SummaryIndex<br/>文档摘要]
+        Sub2[删除位图<br/>DeletionMap<br/>删除标记]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Sub --> Sub1
+    Sub --> Sub2
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style NormalTable fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Sub fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Sub1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style Sub2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **主要特点**：
@@ -271,23 +288,40 @@ NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件：
 
 ```mermaid
 flowchart TD
+    NormalTable[NormalTable<br/>标准表架构] --> Main
+    
     subgraph Main["主要组件"]
-        A["NormalTabletReader<br/>读取器"]
-        B["NormalTabletWriter<br/>写入器"]
-        C["IndexReader<br/>索引读取器"]
+        direction LR
+        A[NormalTabletReader<br/>读取器<br/>查询入口]
+        B[NormalTabletWriter<br/>写入器<br/>数据写入]
+        C[IndexReader<br/>索引读取器<br/>索引查询]
     end
+    
+    NormalTable --> A
+    NormalTable --> B
+    NormalTable --> C
+    
+    A --> Sub1
+    B --> Sub2
+    C --> Sub1
     
     subgraph Sub["子组件"]
-        D["AttributeReader<br/>属性读取器"]
-        E["SummaryReader<br/>摘要读取器"]
+        direction LR
+        Sub1[AttributeReader<br/>属性读取器<br/>属性查询]
+        Sub2[SummaryReader<br/>摘要读取器<br/>文档摘要]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Sub --> Sub1
+    Sub --> Sub2
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style NormalTable fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Sub fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Sub1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style Sub2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **核心组件**：
@@ -362,23 +396,40 @@ NormalTable 的查询：全文检索、属性查询、主键查询等：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["全文检索<br/>FullTextSearch"]
-        B["属性查询<br/>AttributeQuery"]
-        C["主键查询<br/>PrimaryKeyQuery"]
+    NormalTable[NormalTable<br/>查询方式] --> Main
+    
+    subgraph Main["主要查询方式"]
+        direction LR
+        A[全文检索<br/>FullTextSearch<br/>倒排索引查询]
+        B[属性查询<br/>AttributeQuery<br/>正排索引查询]
+        C[主键查询<br/>PrimaryKeyQuery<br/>主键索引查询]
     end
     
-    subgraph Sub["子组件"]
-        D["范围查询<br/>RangeQuery"]
-        E["聚合查询<br/>AggregationQuery"]
+    NormalTable --> A
+    NormalTable --> B
+    NormalTable --> C
+    
+    A --> Sub1
+    B --> Sub2
+    C --> Sub1
+    
+    subgraph Sub["扩展查询方式"]
+        direction LR
+        Sub1[范围查询<br/>RangeQuery<br/>范围条件查询]
+        Sub2[聚合查询<br/>AggregationQuery<br/>数据聚合统计]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Sub --> Sub1
+    Sub --> Sub2
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style NormalTable fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Sub fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Sub1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style Sub2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **查询方式**：
@@ -458,23 +509,40 @@ KVTable 的特点：支持主键查询、简单的键值存储：
 
 ```mermaid
 flowchart TD
+    KVTable[KVTable<br/>键值表] --> Main
+    
     subgraph Main["主要组件"]
-        A["主键索引<br/>PrimaryKeyIndex"]
-        B["键值存储<br/>KeyValueStorage"]
-        C["属性查询<br/>AttributeQuery"]
+        direction LR
+        A[主键索引<br/>PrimaryKeyIndex<br/>主键查询]
+        B[键值存储<br/>KeyValueStorage<br/>键值对存储]
+        C[属性查询<br/>AttributeQuery<br/>属性条件查询]
     end
+    
+    KVTable --> A
+    KVTable --> B
+    KVTable --> C
+    
+    A --> Sub1
+    B --> Sub2
+    C --> Sub1
     
     subgraph Sub["子组件"]
-        D["打包属性<br/>PackAttribute"]
-        E["值读取器<br/>ValueReader"]
+        direction LR
+        Sub1[打包属性<br/>PackAttribute<br/>属性打包存储]
+        Sub2[值读取器<br/>ValueReader<br/>值数据读取]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Sub --> Sub1
+    Sub --> Sub2
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style KVTable fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Sub fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Sub1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style Sub2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **主要特点**：
@@ -491,23 +559,40 @@ KVTable 的架构：KVTabletReader、KVTabletWriter 等组件：
 
 ```mermaid
 flowchart TD
+    KVTable[KVTable<br/>键值表架构] --> Main
+    
     subgraph Main["主要组件"]
-        A["KVTabletReader<br/>KV读取器"]
-        B["KVTabletWriter<br/>KV写入器"]
-        C["KVIndexReader<br/>KV索引读取器"]
+        direction LR
+        A[KVTabletReader<br/>KV读取器<br/>查询入口]
+        B[KVTabletWriter<br/>KV写入器<br/>数据写入]
+        C[KVIndexReader<br/>KV索引读取器<br/>索引查询]
     end
+    
+    KVTable --> A
+    KVTable --> B
+    KVTable --> C
+    
+    A --> Sub1
+    B --> Sub2
+    C --> Sub1
     
     subgraph Sub["子组件"]
-        D["PackAttributeFormatter<br/>打包属性格式化器"]
-        E["ValueReader<br/>值读取器"]
+        direction LR
+        Sub1[PackAttributeFormatter<br/>打包属性格式化器<br/>属性格式化]
+        Sub2[ValueReader<br/>值读取器<br/>值数据读取]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Sub --> Sub1
+    Sub --> Sub2
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style KVTable fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Main fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Sub fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Sub1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style Sub2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **核心组件**：
@@ -523,24 +608,30 @@ KVTable 的查询方式：
 KVTable 的查询：主键查询、属性查询等：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
+flowchart LR
+    subgraph Query["查询接口层"]
         A["主键查询<br/>PrimaryKeyQuery"]
         B["批量主键查询<br/>BatchPrimaryKeyQuery"]
         C["属性查询<br/>AttributeQuery"]
     end
     
-    subgraph Sub["子组件"]
-        D["值读取<br/>ValueRead"]
-        E["属性读取<br/>AttributeRead"]
+    subgraph Read["数据读取层"]
+        D["值读取<br/>ValueRead<br/>读取完整值"]
+        E["属性读取<br/>AttributeRead<br/>读取指定属性"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|单主键定位| D
+    B -->|批量主键定位| D
+    B -->|指定属性| E
+    C -->|属性过滤| E
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Query fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Read fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **查询方式**：
@@ -570,24 +661,35 @@ KKVTable 是键键值表，支持主键+排序键查询：
 KKVTable 的特点：支持主键+排序键查询、多值存储：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["主键索引<br/>PrimaryKeyIndex"]
-        B["排序键索引<br/>SortKeyIndex"]
-        C["多值存储<br/>MultiValueStorage"]
+flowchart LR
+    subgraph Index["索引层"]
+        A["主键索引<br/>PrimaryKeyIndex<br/>定位主键"]
+        B["排序键索引<br/>SortKeyIndex<br/>排序键定位"]
     end
     
-    subgraph Sub["子组件"]
-        D["范围查询<br/>RangeQuery"]
-        E["属性查询<br/>AttributeQuery"]
+    subgraph Storage["存储层"]
+        C["多值存储<br/>MultiValueStorage<br/>一个主键多个值"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph Query["查询层"]
+        D["范围查询<br/>RangeQuery<br/>排序键范围"]
+        E["属性查询<br/>AttributeQuery<br/>指定属性"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A -->|主键定位| C
+    B -->|排序键定位| C
+    A -->|主键+排序键| D
+    B -->|排序键范围| D
+    C -->|读取数据| E
+    
+    style Index fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Storage fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#a5d6a7,stroke:#388e3c,stroke-width:1.5px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **主要特点**：
@@ -603,24 +705,35 @@ KKVTable 的架构：
 KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["KKVTabletReader<br/>KKV读取器"]
-        B["KKVTabletWriter<br/>KKV写入器"]
-        C["KKVReader<br/>KKV索引读取器"]
+flowchart LR
+    subgraph Read["读取组件"]
+        A["KKVTabletReader<br/>KKV表查询器<br/>主键+排序键查询"]
+        C["KKVReader<br/>KKV索引读取器<br/>索引查询"]
     end
     
-    subgraph Sub["子组件"]
-        D["KKVIterator<br/>KKV迭代器"]
-        E["ValueReader<br/>值读取器"]
+    subgraph Write["写入组件"]
+        B["KKVTabletWriter<br/>KKV表写入器<br/>键键值构建"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph Support["支持组件"]
+        D["KKVIterator<br/>KKV迭代器<br/>范围查询迭代"]
+        E["ValueReader<br/>值读取器<br/>读取存储值"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A -->|使用| D
+    A -->|使用| E
+    C -->|使用| D
+    C -->|使用| E
+    B -->|写入时读取| E
+    
+    style Read fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Write fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Support fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#a5d6a7,stroke:#388e3c,stroke-width:1.5px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **核心组件**：
@@ -636,24 +749,31 @@ KKVTable 的查询方式：
 KKVTable 的查询：主键+排序键查询、范围查询等：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["主键查询<br/>PrimaryKeyQuery"]
-        B["主键+排序键查询<br/>PrimaryKey+SortKeyQuery"]
-        C["范围查询<br/>RangeQuery"]
+flowchart LR
+    subgraph Query["查询类型"]
+        A["主键查询<br/>PrimaryKeyQuery<br/>查询所有值"]
+        B["主键+排序键查询<br/>PrimaryKey+SortKeyQuery<br/>精确查询"]
+        C["范围查询<br/>RangeQuery<br/>排序键范围"]
     end
     
-    subgraph Sub["子组件"]
-        D["属性查询<br/>AttributeQuery"]
-        E["迭代器查询<br/>IteratorQuery"]
+    subgraph Support["查询能力"]
+        D["属性查询<br/>AttributeQuery<br/>指定属性"]
+        E["迭代器查询<br/>IteratorQuery<br/>范围迭代"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|可配合| D
+    B -->|可配合| D
+    C -->|使用| E
+    C -->|可配合| D
+    E -->|可配合| D
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Query fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Support fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **查询方式**：
@@ -684,24 +804,32 @@ flowchart TD
 TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletReader：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["NormalTabletReader<br/>标准表读取器"]
-        B["KVTabletReader<br/>键值表读取器"]
-        C["KKVTabletReader<br/>键键值表读取器"]
+flowchart LR
+    subgraph Reader["TabletReader 类型"]
+        A["NormalTabletReader<br/>标准表读取器<br/>全文检索+属性+主键"]
+        B["KVTabletReader<br/>键值表读取器<br/>主键查询"]
+        C["KKVTabletReader<br/>键键值表读取器<br/>主键+排序键"]
     end
     
-    subgraph Sub["子组件"]
-        D["IndexReader<br/>索引读取器"]
-        E["AttributeReader<br/>属性读取器"]
+    subgraph Component["核心组件"]
+        D["IndexReader<br/>索引读取器<br/>索引定位"]
+        E["AttributeReader<br/>属性读取器<br/>属性读取"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|使用| D
+    A -->|使用| E
+    B -->|使用| D
+    B -->|使用| E
+    C -->|使用| D
+    C -->|使用| E
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Reader fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Component fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
 ```
 
 **实现差异**：
@@ -716,24 +844,45 @@ flowchart TD
 TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWriter：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
+flowchart TB
+    subgraph Writer["TabletWriter 类型"]
         A["NormalTabletWriter<br/>标准表写入器"]
         B["KVTabletWriter<br/>键值表写入器"]
         C["KKVTabletWriter<br/>键键值表写入器"]
     end
     
-    subgraph Sub["子组件"]
-        D["IndexBuilder<br/>索引构建器"]
-        E["DocumentBuilder<br/>文档构建器"]
+    subgraph Build["构建流程"]
+        A1["文档构建<br/>DocumentBuilder<br/>倒排+正排+主键"]
+        B1["键值构建<br/>IndexBuilder<br/>主键索引"]
+        C1["键键值构建<br/>IndexBuilder<br/>主键+排序键"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph Output["构建输出"]
+        A2["NormalTable<br/>倒排索引+正排索引+主键索引"]
+        B2["KVTable<br/>主键索引+值存储"]
+        C2["KKVTable<br/>主键索引+排序键索引+多值存储"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A -->|完整构建流程| A1
+    B -->|简化构建流程| B1
+    C -->|扩展构建流程| C1
+    
+    A1 -->|生成| A2
+    B1 -->|生成| B2
+    C1 -->|生成| C2
+    
+    style Writer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Build fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Output fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style A1 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style A2 fill:#a5d6a7,stroke:#388e3c,stroke-width:1.5px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:1.5px
+    style C2 fill:#a5d6a7,stroke:#388e3c,stroke-width:1.5px
 ```
 
 **实现差异**：
@@ -782,24 +931,33 @@ flowchart TD
 选择 NormalTable 的场景：全文检索、复杂查询等场景：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["全文检索场景<br/>FullTextSearch"]
-        B["复杂查询场景<br/>ComplexQuery"]
-        C["多字段查询场景<br/>MultiFieldQuery"]
+flowchart LR
+    subgraph Scene["NormalTable 适用场景"]
+        direction LR
+        A["全文检索场景<br/>FullTextSearch<br/>文本搜索需求"]
+        B["复杂查询场景<br/>ComplexQuery<br/>多条件组合查询"]
+        C["多字段查询场景<br/>MultiFieldQuery<br/>多字段联合查询"]
     end
     
-    subgraph Sub["子组件"]
-        D["范围查询<br/>RangeQuery"]
-        E["聚合查询<br/>AggregationQuery"]
+    subgraph Feature["NormalTable 核心查询能力"]
+        direction LR
+        D["范围查询<br/>RangeQuery<br/>数值/时间范围"]
+        E["聚合查询<br/>AggregationQuery<br/>统计聚合"]
+        F["排序查询<br/>SortQuery<br/>结果排序"]
+        G["过滤查询<br/>FilterQuery<br/>条件过滤"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Scene ==>|提供完整支持| Feature
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Scene fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Feature fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **适用场景**：
@@ -815,24 +973,31 @@ flowchart TD
 选择 KVTable 的场景：简单的键值存储、主键查询等场景：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["简单存储场景<br/>SimpleStorage"]
-        B["主键查询场景<br/>PrimaryKeyQuery"]
-        C["高性能场景<br/>HighPerformance"]
+flowchart LR
+    subgraph Scene["KVTable 适用场景"]
+        direction LR
+        A["简单存储场景<br/>SimpleStorage<br/>键值存储需求"]
+        B["主键查询场景<br/>PrimaryKeyQuery<br/>主键快速查询"]
+        C["高性能场景<br/>HighPerformance<br/>高性能要求"]
     end
     
-    subgraph Sub["子组件"]
-        D["键值存储<br/>KeyValueStorage"]
-        E["快速查询<br/>FastQuery"]
+    subgraph Feature["KVTable 核心能力"]
+        direction LR
+        D["键值存储<br/>KeyValueStorage<br/>简单键值对"]
+        E["快速查询<br/>FastQuery<br/>主键定位"]
+        F["简化接口<br/>SimpleInterface<br/>易于使用"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Scene ==>|提供| Feature
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Scene fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Feature fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **适用场景**：
@@ -848,24 +1013,31 @@ flowchart TD
 选择 KKVTable 的场景：多值存储、主键+排序键查询等场景：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["多值存储场景<br/>MultiValueStorage"]
-        B["排序键查询场景<br/>SortKeyQuery"]
-        C["范围查询场景<br/>RangeQuery"]
+flowchart LR
+    subgraph Scene["KKVTable 适用场景"]
+        direction LR
+        A["多值存储场景<br/>MultiValueStorage<br/>一主键多值"]
+        B["排序键查询场景<br/>SortKeyQuery<br/>主键+排序键"]
+        C["范围查询场景<br/>RangeQuery<br/>排序键范围"]
     end
     
-    subgraph Sub["子组件"]
-        D["有序存储<br/>OrderedStorage"]
-        E["迭代器查询<br/>IteratorQuery"]
+    subgraph Feature["KKVTable 核心能力"]
+        direction LR
+        D["有序存储<br/>OrderedStorage<br/>排序键有序"]
+        E["迭代器查询<br/>IteratorQuery<br/>范围迭代"]
+        F["多值管理<br/>MultiValueManagement<br/>值集合管理"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    Scene ==>|提供| Feature
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Scene fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Feature fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **适用场景**：
@@ -883,24 +1055,39 @@ flowchart TD
 查询性能对比：Normal、KV、KKV 的查询性能特点：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["NormalTable性能<br/>全文检索高"]
-        B["KVTable性能<br/>主键查询最高"]
-        C["KKVTable性能<br/>主键+排序键高"]
+flowchart TB
+    subgraph Type["索引类型"]
+        direction LR
+        A["NormalTable<br/>标准表<br/>全文检索性能高"]
+        B["KVTable<br/>键值表<br/>主键查询性能最高"]
+        C["KKVTable<br/>键键值表<br/>主键+排序键性能高"]
     end
     
-    subgraph Sub["子组件"]
-        D["复杂查询性能<br/>ComplexQuery"]
-        E["范围查询性能<br/>RangeQuery"]
+    subgraph Query["查询场景性能"]
+        direction LR
+        D["全文检索<br/>FullTextSearch<br/>NormalTable 高"]
+        E["主键查询<br/>PrimaryKeyQuery<br/>KVTable 最高"]
+        F["主键+排序键<br/>PK+SortKeyQuery<br/>KKVTable 高"]
+        G["范围查询<br/>RangeQuery<br/>KKVTable 中等"]
+        H["复杂查询<br/>ComplexQuery<br/>NormalTable 中等"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|擅长| D
+    A -->|支持| H
+    B -->|最优| E
+    C -->|擅长| F
+    C -->|支持| G
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Type fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style H fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **性能特点**：
@@ -915,24 +1102,43 @@ flowchart TD
 存储性能对比：Normal、KV、KKV 的存储性能特点：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["NormalTable存储<br/>空间较大"]
-        B["KVTable存储<br/>空间较小"]
-        C["KKVTable存储<br/>空间中等"]
+flowchart TB
+    subgraph Type["索引类型"]
+        direction LR
+        A["NormalTable<br/>存储空间：较大<br/>需要多种索引"]
+        B["KVTable<br/>存储空间：较小<br/>只需主键索引"]
+        C["KKVTable<br/>存储空间：中等<br/>主键+排序键索引"]
     end
     
-    subgraph Sub["子组件"]
-        D["索引存储<br/>IndexStorage"]
-        E["数据存储<br/>DataStorage"]
+    subgraph Storage["存储组成"]
+        direction LR
+        D["倒排索引<br/>InvertedIndex<br/>NormalTable 需要"]
+        E["正排索引<br/>ForwardIndex<br/>NormalTable 需要"]
+        F["主键索引<br/>PrimaryKeyIndex<br/>三种都需要"]
+        G["排序键索引<br/>SortKeyIndex<br/>KKVTable 需要"]
+        H["数据存储<br/>DataStorage<br/>三种都需要"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|包含| D
+    A -->|包含| E
+    A -->|包含| F
+    A -->|包含| H
+    B -->|包含| F
+    B -->|包含| H
+    C -->|包含| F
+    C -->|包含| G
+    C -->|包含| H
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Type fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Storage fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style H fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **存储特点**：
@@ -947,24 +1153,41 @@ flowchart TD
 构建性能对比：Normal、KV、KKV 的构建性能特点：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["NormalTable构建<br/>时间较长"]
-        B["KVTable构建<br/>时间最短"]
-        C["KKVTable构建<br/>时间中等"]
+flowchart TB
+    subgraph Type["索引类型"]
+        direction LR
+        A["NormalTable<br/>构建时间：较长<br/>需要构建多种索引"]
+        B["KVTable<br/>构建时间：最短<br/>构建流程简化"]
+        C["KKVTable<br/>构建时间：中等<br/>主键+排序键索引"]
     end
     
-    subgraph Sub["子组件"]
-        D["索引构建<br/>IndexBuild"]
-        E["文档构建<br/>DocumentBuild"]
+    subgraph Build["构建流程"]
+        direction LR
+        D["文档构建<br/>DocumentBuild<br/>NormalTable 需要"]
+        E["倒排索引构建<br/>InvertedIndexBuild<br/>NormalTable 需要"]
+        F["正排索引构建<br/>ForwardIndexBuild<br/>NormalTable 需要"]
+        G["主键索引构建<br/>PrimaryKeyIndexBuild<br/>三种都需要"]
+        H["排序键索引构建<br/>SortKeyIndexBuild<br/>KKVTable 需要"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|包含| D
+    A -->|包含| E
+    A -->|包含| F
+    A -->|包含| G
+    B -->|包含| G
+    C -->|包含| G
+    C -->|包含| H
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Type fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Build fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style H fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **构建特点**：
@@ -981,24 +1204,35 @@ IndexLib 支持自定义索引类型：
 自定义索引类型：通过实现接口扩展索引类型：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["实现TabletReader<br/>自定义读取器"]
-        B["实现TabletWriter<br/>自定义写入器"]
-        C["实现索引构建<br/>自定义构建逻辑"]
+flowchart TB
+    subgraph Step["扩展步骤"]
+        direction LR
+        A["实现 TabletReader<br/>自定义读取器<br/>实现查询接口"]
+        B["实现 TabletWriter<br/>自定义写入器<br/>实现写入接口"]
+        C["实现索引构建<br/>自定义构建逻辑<br/>实现构建流程"]
     end
     
-    subgraph Sub["子组件"]
-        D["注册索引类型<br/>RegisterType"]
-        E["扩展接口<br/>ExtendInterface"]
+    subgraph Action["扩展操作"]
+        direction LR
+        D["注册索引类型<br/>RegisterType<br/>注册到系统"]
+        E["扩展接口<br/>ExtendInterface<br/>扩展查询能力"]
+        F["配置索引类型<br/>ConfigureType<br/>配置参数"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|完成后| D
+    B -->|完成后| D
+    C -->|完成后| D
+    D -->|支持| E
+    D -->|需要| F
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Step fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Action fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **扩展方式**：
@@ -1014,24 +1248,35 @@ flowchart TD
 索引类型的演进：从 Normal 到 KV、KKV 的演进过程：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["NormalTable<br/>最早完整功能"]
-        B["KVTable<br/>简单场景优化"]
-        C["KKVTable<br/>多值存储优化"]
+flowchart LR
+    subgraph Evolution["索引类型演进"]
+        direction LR
+        A["NormalTable<br/>最早版本<br/>完整功能支持"]
+        B["KVTable<br/>简单场景优化<br/>主键查询优化"]
+        C["KKVTable<br/>多值存储优化<br/>排序键支持"]
     end
     
-    subgraph Sub["子组件"]
-        D["功能演进<br/>FeatureEvolution"]
-        E["性能优化<br/>PerformanceOptimization"]
+    subgraph Optimization["优化方向"]
+        direction LR
+        D["功能演进<br/>FeatureEvolution<br/>功能扩展"]
+        E["性能优化<br/>PerformanceOptimization<br/>查询性能提升"]
+        F["场景优化<br/>ScenarioOptimization<br/>特定场景优化"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|演进| B
+    B -->|演进| C
+    A -.->|带来| D
+    B -.->|带来| E
+    C -.->|带来| F
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Evolution fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Optimization fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **演进过程**：
@@ -1048,24 +1293,39 @@ flowchart TD
 统一的接口设计：ITabletReader、ITabletWriter 等统一接口：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["ITabletReader<br/>统一查询接口"]
-        B["ITabletWriter<br/>统一写入接口"]
-        C["ITabletSchema<br/>统一Schema接口"]
+flowchart TB
+    subgraph Interface["统一接口层"]
+        direction LR
+        A["ITabletReader<br/>统一查询接口<br/>定义查询规范"]
+        B["ITabletWriter<br/>统一写入接口<br/>定义写入规范"]
+        C["ITabletSchema<br/>统一Schema接口<br/>定义Schema规范"]
     end
     
-    subgraph Sub["子组件"]
-        D["接口实现<br/>InterfaceImplementation"]
-        E["类型扩展<br/>TypeExtension"]
+    subgraph Implementation["接口实现层"]
+        direction LR
+        D["NormalTable实现<br/>完整功能实现"]
+        E["KVTable实现<br/>简化功能实现"]
+        F["KKVTable实现<br/>扩展功能实现"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|实现| D
+    A -->|实现| E
+    A -->|实现| F
+    B -->|实现| D
+    B -->|实现| E
+    B -->|实现| F
+    C -->|实现| D
+    C -->|实现| E
+    C -->|实现| F
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Interface fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Implementation fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **设计要点**：
@@ -1080,24 +1340,35 @@ flowchart TD
 灵活的扩展设计：支持自定义索引类型和扩展功能：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["接口抽象<br/>InterfaceAbstraction"]
-        B["插件机制<br/>PluginMechanism"]
-        C["配置驱动<br/>ConfigurationDriven"]
+flowchart TB
+    subgraph Design["扩展设计机制"]
+        direction LR
+        A["接口抽象<br/>InterfaceAbstraction<br/>统一接口定义"]
+        B["插件机制<br/>PluginMechanism<br/>动态加载扩展"]
+        C["配置驱动<br/>ConfigurationDriven<br/>配置选择类型"]
     end
     
-    subgraph Sub["子组件"]
-        D["类型扩展<br/>TypeExtension"]
-        E["功能扩展<br/>FeatureExtension"]
+    subgraph Extension["扩展能力"]
+        direction LR
+        D["类型扩展<br/>TypeExtension<br/>自定义索引类型"]
+        E["功能扩展<br/>FeatureExtension<br/>扩展查询功能"]
+        F["接口扩展<br/>InterfaceExtension<br/>扩展接口能力"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|支持| D
+    A -->|支持| F
+    B -->|支持| D
+    B -->|支持| E
+    C -->|支持| D
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Design fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Extension fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **设计要点**：
@@ -1112,24 +1383,36 @@ flowchart TD
 性能优化设计：针对不同索引类型的性能优化策略：
 
 ```mermaid
-flowchart TD
-    subgraph Main["主要组件"]
-        A["针对性优化<br/>TargetedOptimization"]
-        B["查询优化<br/>QueryOptimization"]
-        C["构建优化<br/>BuildOptimization"]
+flowchart TB
+    subgraph Strategy["优化策略"]
+        direction LR
+        A["针对性优化<br/>TargetedOptimization<br/>针对索引类型特点"]
+        B["查询优化<br/>QueryOptimization<br/>优化查询路径"]
+        C["构建优化<br/>BuildOptimization<br/>优化构建流程"]
     end
     
-    subgraph Sub["子组件"]
-        D["性能调优<br/>PerformanceTuning"]
-        E["资源优化<br/>ResourceOptimization"]
+    subgraph Optimization["优化手段"]
+        direction LR
+        D["性能调优<br/>PerformanceTuning<br/>提升查询性能"]
+        E["资源优化<br/>ResourceOptimization<br/>降低资源消耗"]
+        F["索引优化<br/>IndexOptimization<br/>优化索引结构"]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    A -->|采用| D
+    A -->|采用| F
+    B -->|采用| D
+    B -->|采用| F
+    C -->|采用| E
+    C -->|采用| F
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Strategy fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Optimization fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **设计要点**：
