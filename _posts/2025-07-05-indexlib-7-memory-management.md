@@ -1114,14 +1114,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["延迟回收<br/>DelayedRecycle"]
+        B["按需回收<br/>OnDemandRecycle"]
+        C["并发安全<br/>ConcurrentSafe"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源释放<br/>ResourceRelease"]
+        E["内存清理<br/>MemoryCleanup"]
     end
     
     A --> D
@@ -1147,14 +1147,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["内存池<br/>MemoryPool"]
+        B["批量操作<br/>BatchOperation"]
+        C["缓存优化<br/>CacheOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源控制<br/>ResourceControl"]
+        E["性能调优<br/>PerformanceTuning"]
     end
     
     A --> D

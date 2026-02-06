@@ -216,14 +216,14 @@ Locator 的完整结构：包含所有关键字段和 DocInfo 结构：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源标识<br/>_src"]
+        B["最小偏移量<br/>_minOffset"]
+        C["多进度信息<br/>_multiProgress"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["用户数据<br/>_userData"]
+        E["遗留标识<br/>_isLegacyLocator"]
     end
     
     A --> D
@@ -269,14 +269,14 @@ Progress 的结构：包含 from、to、offset 等字段：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId范围<br/>from/to"]
+        B["偏移量<br/>offset"]
+        C["进度向量<br/>ProgressVector"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多进度信息<br/>MultiProgress"]
+        E["进度管理<br/>ProgressManagement"]
     end
     
     A --> D
@@ -301,14 +301,14 @@ DocInfo 的结构：包含 timestamp、concurrentIdx、hashId、sourceIdx 等字
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["时间戳<br/>timestamp"]
+        B["并发索引<br/>concurrentIdx"]
+        C["Hash ID<br/>hashId"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据源索引<br/>sourceIdx"]
+        E["文档信息<br/>DocInfo"]
     end
     
     A --> D
@@ -456,14 +456,14 @@ IsFasterThan() 方法：比较两个 Locator 的实现逻辑：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源检查<br/>SourceCheck"]
+        B["最小偏移量比较<br/>MinOffsetCompare"]
+        C["多进度比较<br/>MultiProgressCompare"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较结果<br/>CompareResult"]
+        E["性能优化<br/>PerformanceOptimization"]
     end
     
     A --> D
@@ -555,14 +555,14 @@ Locator 比较结果的语义：不同结果的含义和应用场景：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["完全更快<br/>LCR_FULLY_FASTER"]
+        B["更慢<br/>LCR_SLOWER"]
+        C["部分更快<br/>LCR_PARTIAL_FASTER"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["无效比较<br/>LCR_INVALID"]
+        E["比较应用<br/>CompareApplication"]
     end
     
     A --> D
@@ -607,14 +607,14 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId遍历<br/>HashIdIteration"]
+        B["进度比较<br/>ProgressCompare"]
+        C["结果聚合<br/>ResultAggregation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较优化<br/>CompareOptimization"]
+        E["并行比较<br/>ParallelCompare"]
     end
     
     A --> D
@@ -822,14 +822,14 @@ Update() 方法：更新 Locator 的实现逻辑：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["进度更新<br/>ProgressUpdate"]
+        B["多进度更新<br/>MultiProgressUpdate"]
+        C["最小偏移量更新<br/>MinOffsetUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新优化<br/>UpdateOptimization"]
+        E["并发更新<br/>ConcurrentUpdate"]
     end
     
     A --> D
@@ -849,14 +849,14 @@ Locator 的更新时机：在数据处理完成后更新 Locator：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据处理完成<br/>DataProcessingComplete"]
+        B["版本提交<br/>VersionCommit"]
+        C["增量更新<br/>IncrementalUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新触发<br/>UpdateTrigger"]
+        E["更新同步<br/>UpdateSync"]
     end
     
     A --> D
@@ -1003,14 +1003,14 @@ Locator 的序列化：将 Locator 序列化为字符串：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字段序列化<br/>FieldSerialization"]
+        B["多进度序列化<br/>MultiProgressSerialization"]
+        C["字符串编码<br/>StringEncoding"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化优化<br/>SerializationOptimization"]
+        E["格式转换<br/>FormatConversion"]
     end
     
     A --> D
@@ -1185,14 +1185,14 @@ Locator 的反序列化：从字符串反序列化为 Locator：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字符串解析<br/>StringParsing"]
+        B["字段反序列化<br/>FieldDeserialization"]
+        C["多进度反序列化<br/>MultiProgressDeserialization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["格式验证<br/>FormatValidation"]
+        E["反序列化优化<br/>DeserializationOptimization"]
     end
     
     A --> D
@@ -1314,14 +1314,14 @@ Status TabletWriter::Build(const Document& doc)
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["Locator比较<br/>LocatorCompare"]
+        B["重复检测<br/>DuplicateDetection"]
+        C["跳过处理<br/>SkipProcessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["一致性保证<br/>ConsistencyGuarantee"]
+        E["性能优化<br/>PerformanceOptimization"]
     end
     
     A --> D
@@ -1420,14 +1420,14 @@ Status VersionCommitter::Commit(const TabletData& tabletData,
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["位置记录<br/>PositionRecording"]
+        B["进度追踪<br/>ProgressTracking"]
+        C["恢复机制<br/>RecoveryMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据完整性<br/>DataIntegrity"]
+        E["故障恢复<br/>FaultRecovery"]
     end
     
     A --> D
@@ -1527,14 +1527,14 @@ public:
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源区分<br/>SourceDistinction"]
+        B["独立追踪<br/>IndependentTracking"]
+        C["一致性保证<br/>ConsistencyGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多源管理<br/>MultiSourceManagement"]
+        E["隔离机制<br/>IsolationMechanism"]
     end
     
     A --> D
@@ -1556,14 +1556,14 @@ Locator 支持分片处理：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId分片<br/>HashIdSharding"]
+        B["并行处理<br/>ParallelProcessing"]
+        C["进度追踪<br/>ProgressTracking"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["分片管理<br/>ShardManagement"]
+        E["负载均衡<br/>LoadBalancing"]
     end
     
     A --> D
@@ -1589,14 +1589,14 @@ Locator 支持并发控制：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发索引<br/>ConcurrentIndex"]
+        B["时间戳处理<br/>TimestampProcessing"]
+        C["顺序保证<br/>OrderGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["并发管理<br/>ConcurrencyManagement"]
+        E["冲突解决<br/>ConflictResolution"]
     end
     
     A --> D
@@ -1622,14 +1622,14 @@ Locator 支持用户数据：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["用户数据存储<br/>UserDataStorage"]
+        B["自定义信息<br/>CustomInformation"]
+        C["业务扩展<br/>BusinessExtension"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据管理<br/>DataManagement"]
+        E["扩展支持<br/>ExtensionSupport"]
     end
     
     A --> D
@@ -1657,14 +1657,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["实时判断<br/>RealTimeJudgment"]
+        B["数据检查<br/>DataCheck"]
+        C["处理决策<br/>ProcessingDecision"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["增量处理<br/>IncrementalProcessing"]
+        E["性能优化<br/>PerformanceOptimization"]
     end
     
     A --> D
@@ -1691,14 +1691,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量处理<br/>BatchProcessing"]
+        B["重复检测<br/>DuplicateDetection"]
+        C["批量更新<br/>BatchUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["效率优化<br/>EfficiencyOptimization"]
+        E["一致性保证<br/>ConsistencyGuarantee"]
     end
     
     A --> D
@@ -1726,14 +1726,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["故障检测<br/>FaultDetection"]
+        B["位置恢复<br/>PositionRecovery"]
+        C["数据重处理<br/>DataReprocessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["恢复策略<br/>RecoveryStrategy"]
+        E["数据完整性<br/>DataIntegrity"]
     end
     
     A --> D
@@ -1891,14 +1891,14 @@ Locator 比较的性能优化：优化比较算法，提高比较效率：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["快速路径<br/>FastPath"]
+        B["最小偏移量优化<br/>MinOffsetOptimization"]
+        C["位运算优化<br/>BitwiseOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较缓存<br/>CompareCache"]
+        E["性能调优<br/>PerformanceTuning"]
     end
     
     A --> D
@@ -1988,14 +1988,14 @@ Locator 序列化的性能优化：优化序列化格式，提高序列化效率
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["格式优化<br/>FormatOptimization"]
+        B["压缩优化<br/>CompressionOptimization"]
+        C["版本兼容<br/>VersionCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化缓存<br/>SerializationCache"]
+        E["性能调优<br/>PerformanceTuning"]
     end
     
     A --> D
@@ -2138,14 +2138,14 @@ Locator 的设计原则：简单、高效、可靠的设计原则：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["简单设计<br/>SimpleDesign"]
+        B["高效实现<br/>EfficientImplementation"]
+        C["可靠保证<br/>ReliableGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["可扩展性<br/>Extensibility"]
+        E["易用性<br/>Usability"]
     end
     
     A --> D
@@ -2225,14 +2225,14 @@ Locator 的兼容性设计：支持遗留 Locator 和版本兼容：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["遗留Locator支持<br/>LegacyLocatorSupport"]
+        B["版本兼容<br/>VersionCompatibility"]
+        C["向后兼容<br/>BackwardCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["兼容性检查<br/>CompatibilityCheck"]
+        E["平滑升级<br/>SmoothUpgrade"]
     end
     
     A --> D
@@ -2325,14 +2325,14 @@ Locator 的线程安全设计：支持并发访问，保证线程安全：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发访问<br/>ConcurrentAccess"]
+        B["线程安全<br/>ThreadSafety"]
+        C["锁机制<br/>LockMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["原子操作<br/>AtomicOperation"]
+        E["同步机制<br/>SynchronizationMechanism"]
     end
     
     A --> D

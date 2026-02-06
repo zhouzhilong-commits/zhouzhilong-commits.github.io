@@ -238,14 +238,14 @@ NormalTable 的特点：支持全文检索、倒排索引、正排索引等：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["倒排索引<br/>InvertedIndex"]
+        B["正排索引<br/>AttributeIndex"]
+        C["主键索引<br/>PrimaryKeyIndex"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["摘要索引<br/>SummaryIndex"]
+        E["删除位图<br/>DeletionMap"]
     end
     
     A --> D
@@ -272,14 +272,14 @@ NormalTable 的架构：NormalTabletReader、NormalTabletWriter 等组件：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletReader<br/>读取器"]
+        B["NormalTabletWriter<br/>写入器"]
+        C["IndexReader<br/>索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["AttributeReader<br/>属性读取器"]
+        E["SummaryReader<br/>摘要读取器"]
     end
     
     A --> D
@@ -363,14 +363,14 @@ NormalTable 的查询：全文检索、属性查询、主键查询等：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["全文检索<br/>FullTextSearch"]
+        B["属性查询<br/>AttributeQuery"]
+        C["主键查询<br/>PrimaryKeyQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询<br/>RangeQuery"]
+        E["聚合查询<br/>AggregationQuery"]
     end
     
     A --> D
@@ -459,14 +459,14 @@ KVTable 的特点：支持主键查询、简单的键值存储：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键索引<br/>PrimaryKeyIndex"]
+        B["键值存储<br/>KeyValueStorage"]
+        C["属性查询<br/>AttributeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["打包属性<br/>PackAttribute"]
+        E["值读取器<br/>ValueReader"]
     end
     
     A --> D
@@ -492,14 +492,14 @@ KVTable 的架构：KVTabletReader、KVTabletWriter 等组件：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["KVTabletReader<br/>KV读取器"]
+        B["KVTabletWriter<br/>KV写入器"]
+        C["KVIndexReader<br/>KV索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["PackAttributeFormatter<br/>打包属性格式化器"]
+        E["ValueReader<br/>值读取器"]
     end
     
     A --> D
@@ -525,14 +525,14 @@ KVTable 的查询：主键查询、属性查询等：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键查询<br/>PrimaryKeyQuery"]
+        B["批量主键查询<br/>BatchPrimaryKeyQuery"]
+        C["属性查询<br/>AttributeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["值读取<br/>ValueRead"]
+        E["属性读取<br/>AttributeRead"]
     end
     
     A --> D
@@ -572,14 +572,14 @@ KKVTable 的特点：支持主键+排序键查询、多值存储：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键索引<br/>PrimaryKeyIndex"]
+        B["排序键索引<br/>SortKeyIndex"]
+        C["多值存储<br/>MultiValueStorage"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询<br/>RangeQuery"]
+        E["属性查询<br/>AttributeQuery"]
     end
     
     A --> D
@@ -605,14 +605,14 @@ KKVTable 的架构：KKVTabletReader、KKVTabletWriter 等组件：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["KKVTabletReader<br/>KKV读取器"]
+        B["KKVTabletWriter<br/>KKV写入器"]
+        C["KKVReader<br/>KKV索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["KKVIterator<br/>KKV迭代器"]
+        E["ValueReader<br/>值读取器"]
     end
     
     A --> D
@@ -638,14 +638,14 @@ KKVTable 的查询：主键+排序键查询、范围查询等：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键查询<br/>PrimaryKeyQuery"]
+        B["主键+排序键查询<br/>PrimaryKey+SortKeyQuery"]
+        C["范围查询<br/>RangeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["属性查询<br/>AttributeQuery"]
+        E["迭代器查询<br/>IteratorQuery"]
     end
     
     A --> D
@@ -686,14 +686,14 @@ TabletReader 的实现差异：NormalTabletReader、KVTabletReader、KKVTabletRe
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletReader<br/>标准表读取器"]
+        B["KVTabletReader<br/>键值表读取器"]
+        C["KKVTabletReader<br/>键键值表读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IndexReader<br/>索引读取器"]
+        E["AttributeReader<br/>属性读取器"]
     end
     
     A --> D
@@ -718,14 +718,14 @@ TabletWriter 的实现差异：NormalTabletWriter、KVTabletWriter、KKVTabletWr
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletWriter<br/>标准表写入器"]
+        B["KVTabletWriter<br/>键值表写入器"]
+        C["KKVTabletWriter<br/>键键值表写入器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IndexBuilder<br/>索引构建器"]
+        E["DocumentBuilder<br/>文档构建器"]
     end
     
     A --> D
@@ -750,14 +750,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable构建<br/>倒排+正排+主键"]
+        B["KVTable构建<br/>主键索引"]
+        C["KKVTable构建<br/>主键+排序键"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引构建器<br/>IndexBuilder"]
+        E["文档构建器<br/>DocumentBuilder"]
     end
     
     A --> D
@@ -784,14 +784,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["全文检索场景<br/>FullTextSearch"]
+        B["复杂查询场景<br/>ComplexQuery"]
+        C["多字段查询场景<br/>MultiFieldQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询<br/>RangeQuery"]
+        E["聚合查询<br/>AggregationQuery"]
     end
     
     A --> D
@@ -817,14 +817,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["简单存储场景<br/>SimpleStorage"]
+        B["主键查询场景<br/>PrimaryKeyQuery"]
+        C["高性能场景<br/>HighPerformance"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["键值存储<br/>KeyValueStorage"]
+        E["快速查询<br/>FastQuery"]
     end
     
     A --> D
@@ -850,14 +850,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["多值存储场景<br/>MultiValueStorage"]
+        B["排序键查询场景<br/>SortKeyQuery"]
+        C["范围查询场景<br/>RangeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["有序存储<br/>OrderedStorage"]
+        E["迭代器查询<br/>IteratorQuery"]
     end
     
     A --> D
@@ -885,14 +885,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable性能<br/>全文检索高"]
+        B["KVTable性能<br/>主键查询最高"]
+        C["KKVTable性能<br/>主键+排序键高"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["复杂查询性能<br/>ComplexQuery"]
+        E["范围查询性能<br/>RangeQuery"]
     end
     
     A --> D
@@ -917,14 +917,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable存储<br/>空间较大"]
+        B["KVTable存储<br/>空间较小"]
+        C["KKVTable存储<br/>空间中等"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引存储<br/>IndexStorage"]
+        E["数据存储<br/>DataStorage"]
     end
     
     A --> D
@@ -949,14 +949,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable构建<br/>时间较长"]
+        B["KVTable构建<br/>时间最短"]
+        C["KKVTable构建<br/>时间中等"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引构建<br/>IndexBuild"]
+        E["文档构建<br/>DocumentBuild"]
     end
     
     A --> D
@@ -983,14 +983,14 @@ IndexLib 支持自定义索引类型：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["实现TabletReader<br/>自定义读取器"]
+        B["实现TabletWriter<br/>自定义写入器"]
+        C["实现索引构建<br/>自定义构建逻辑"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["注册索引类型<br/>RegisterType"]
+        E["扩展接口<br/>ExtendInterface"]
     end
     
     A --> D
@@ -1016,14 +1016,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable<br/>最早完整功能"]
+        B["KVTable<br/>简单场景优化"]
+        C["KKVTable<br/>多值存储优化"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["功能演进<br/>FeatureEvolution"]
+        E["性能优化<br/>PerformanceOptimization"]
     end
     
     A --> D
@@ -1050,14 +1050,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["ITabletReader<br/>统一查询接口"]
+        B["ITabletWriter<br/>统一写入接口"]
+        C["ITabletSchema<br/>统一Schema接口"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["接口实现<br/>InterfaceImplementation"]
+        E["类型扩展<br/>TypeExtension"]
     end
     
     A --> D
@@ -1082,14 +1082,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["接口抽象<br/>InterfaceAbstraction"]
+        B["插件机制<br/>PluginMechanism"]
+        C["配置驱动<br/>ConfigurationDriven"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["类型扩展<br/>TypeExtension"]
+        E["功能扩展<br/>FeatureExtension"]
     end
     
     A --> D
@@ -1114,14 +1114,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["针对性优化<br/>TargetedOptimization"]
+        B["查询优化<br/>QueryOptimization"]
+        C["构建优化<br/>BuildOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["性能调优<br/>PerformanceTuning"]
+        E["资源优化<br/>ResourceOptimization"]
     end
     
     A --> D

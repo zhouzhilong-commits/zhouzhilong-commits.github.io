@@ -1220,14 +1220,14 @@ FileWriter 接口：提供文件写入功能：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件写入<br/>FileWrite"]
+        B["随机写入<br/>RandomWrite"]
+        C["顺序写入<br/>SequentialWrite"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["缓冲区管理<br/>BufferManagement"]
+        E["同步操作<br/>SyncOperation"]
     end
     
     A --> D
@@ -1288,14 +1288,14 @@ Storage 抽象：提供底层存储操作：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["CreateInputStorage<br/>创建输入存储"]
+        B["CreateOutputStorage<br/>创建输出存储"]
+        C["CreateFileReader<br/>创建文件读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["CreateFileWriter<br/>创建文件写入器"]
+        E["Sync<br/>同步存储"]
     end
     
     A --> D
@@ -1322,14 +1322,14 @@ IndexLib 支持多种存储类型：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["本地存储<br/>LocalStorage"]
+        B["分布式存储<br/>DistributedStorage"]
+        C["内存存储<br/>MemoryStorage"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["混合存储<br/>HybridStorage"]
+        E["存储后端<br/>StorageBackend"]
     end
     
     A --> D
@@ -1560,14 +1560,14 @@ Package 格式：将多个文件打包成一个文件：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件打包<br/>FilePackaging"]
+        B["压缩存储<br/>CompressedStorage"]
+        C["索引管理<br/>IndexManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["文件读取<br/>FileRead"]
+        E["文件写入<br/>FileWrite"]
     end
     
     A --> D
@@ -1658,14 +1658,14 @@ Archive 格式：归档存储格式的特点和应用：
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件归档<br/>FileArchive"]
+        B["压缩存储<br/>CompressedStorage"]
+        C["索引追加<br/>IndexAppend"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["归档读取<br/>ArchiveRead"]
+        E["归档写入<br/>ArchiveWrite"]
     end
     
     A --> D
@@ -1757,14 +1757,14 @@ classDiagram
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LZ4压缩<br/>LZ4Compression"]
+        B["Zstd压缩<br/>ZstdCompression"]
+        C["Snappy压缩<br/>SnappyCompression"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["Gzip压缩<br/>GzipCompression"]
+        E["压缩管理<br/>CompressionManagement"]
     end
     
     A --> D
@@ -1786,14 +1786,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件缓存<br/>FileCache"]
+        B["元数据缓存<br/>MetadataCache"]
+        C["预取缓存<br/>PrefetchCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["LRU缓存<br/>LRUCache"]
+        E["缓存管理<br/>CacheManagement"]
     end
     
     A --> D
@@ -1819,14 +1819,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LRU策略<br/>LRUStrategy"]
+        B["LFU策略<br/>LFUStrategy"]
+        C["按需缓存<br/>OnDemandCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["预取缓存<br/>PrefetchCache"]
+        E["缓存淘汰<br/>CacheEviction"]
     end
     
     A --> D
@@ -1854,14 +1854,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量IO<br/>BatchIO"]
+        B["异步IO<br/>AsyncIO"]
+        C["预取<br/>Prefetch"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IO合并<br/>IOMerge"]
+        E["IO优化<br/>IOOptimization"]
     end
     
     A --> D
@@ -1887,14 +1887,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件压缩<br/>FileCompression"]
+        B["文件打包<br/>FilePackaging"]
+        C["存储分层<br/>StorageTiering"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["生命周期管理<br/>LifecycleManagement"]
+        E["存储优化<br/>StorageOptimization"]
     end
     
     A --> D
@@ -1922,14 +1922,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["接口抽象<br/>InterfaceAbstraction"]
+        B["多后端支持<br/>MultiBackendSupport"]
+        C["透明访问<br/>TransparentAccess"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["灵活扩展<br/>FlexibleExtension"]
+        E["存储适配<br/>StorageAdapter"]
     end
     
     A --> D
@@ -1955,14 +1955,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["路径映射<br/>PathMapping"]
+        B["版本管理<br/>VersionManagement"]
+        C["Segment管理<br/>SegmentManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["路径隔离<br/>PathIsolation"]
+        E["路径解析<br/>PathResolution"]
     end
     
     A --> D
@@ -1988,14 +1988,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["缓存机制<br/>CacheMechanism"]
+        B["预取机制<br/>PrefetchMechanism"]
+        C["批量操作<br/>BatchOperation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["异步操作<br/>AsyncOperation"]
+        E["性能调优<br/>PerformanceTuning"]
     end
     
     A --> D
