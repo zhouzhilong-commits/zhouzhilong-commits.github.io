@@ -435,57 +435,85 @@ Version 持久化：通过 Fence 机制保证原子性：
 
 ```mermaid
 flowchart TD
-    subgraph Prepare["准备阶段"]
+    Start([Version 持久化开始]) --> P1
+    
+    subgraph Prepare["1. 准备阶段"]
+        direction LR
         P1[PrepareVersion<br/>准备版本信息]
         P2[CollectSegments<br/>收集Segment列表]
         P3[PrepareLocator<br/>准备Locator信息]
-        P1 --> P2
-        P2 --> P3
+        P1 --> P2 --> P3
     end
     
-    subgraph Fence["Fence 机制"]
-        F1[CreateFenceDirectory<br/>创建临时目录<br/>version.fence.timestamp]
-        F2[WriteVersionFile<br/>写入版本文件<br/>序列化为JSON]
+    P3 --> F1
+    
+    subgraph Fence["2. Fence 机制"]
+        direction LR
+        F1[CreateFenceDirectory<br/>创建临时目录]
+        F2[WriteVersionFile<br/>写入版本文件]
         F3[IncVersionId<br/>递增版本号]
-        F4[AtomicRename<br/>原子重命名<br/>fence目录到正式目录]
-        F1 --> F2
-        F2 --> F3
-        F3 --> F4
+        F4[AtomicRename<br/>原子重命名]
+        F1 --> F2 --> F3 --> F4
     end
     
-    subgraph Persist["持久化"]
+    F4 --> PE1
+    
+    subgraph Persist["3. 持久化"]
+        direction LR
         PE1[序列化Version<br/>JSON格式]
         PE2[写入version文件<br/>version.0]
         PE3[写入元数据<br/>时间戳、Locator]
-        PE1 --> PE2
-        PE2 --> PE3
+        PE1 --> PE2 --> PE3
     end
     
-    subgraph Update["更新内存"]
+    PE3 --> U1
+    
+    subgraph Update["4. 更新内存"]
+        direction LR
         U1[UpdateTabletData<br/>更新TabletData]
         U2[更新Version引用<br/>切换到新版本]
         U1 --> U2
     end
     
+    U2 --> Success([持久化成功])
+    
+    F2 -.->|异常| Error
+    F4 -.->|异常| Error
+    PE2 -.->|异常| Error
+    U1 -.->|异常| Error
+    
     subgraph Error["错误处理"]
-        E1{提交失败?}
-        E2[CleanupFence<br/>清理临时目录]
-        E3[不影响已有版本<br/>保证一致性]
-        E1 -->|是| E2
-        E2 --> E3
+        direction TB
+        E1[CleanupFence<br/>清理临时目录]
+        E2[不影响已有版本<br/>保证一致性]
+        E1 --> E2
     end
     
-    P3 --> F1
-    F2 --> PE1
-    PE3 --> F3
-    F4 --> U1
-    U2 --> E1
+    Error --> E1
+    E2 --> Fail([持久化失败])
     
-    style Prepare fill:#e3f2fd
-    style Fence fill:#fff3e0
-    style Persist fill:#f3e5f5
-    style Update fill:#e8f5e9
-    style Error fill:#fce4ec
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Prepare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style P1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style P3 fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Fence fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style F3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
+    style F4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
+    style Persist fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style PE1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style PE2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style PE3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style U1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style U2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style Error fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style E1 fill:#f8bbd0,stroke:#c2185b,stroke-width:1.5px
+    style E2 fill:#f48fb1,stroke:#c2185b,stroke-width:1.5px
+    style Success fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style Fail fill:#ffcdd2,stroke:#c62828,stroke-width:3px
 ```
 
 **持久化流程**：
@@ -563,52 +591,75 @@ Version 的加载通过 `VersionLoader` 实现：
 Version 加载：从磁盘加载版本信息：
 
 ```mermaid
-flowchart TD
-    subgraph Load["加载阶段"]
-        L1[VersionLoader.Load<br/>加载版本]
-        L2[读取版本文件<br/>version.0, version.1等]
-        L3[解析JSON<br/>反序列化Version]
-        L1 --> L2
-        L2 --> L3
+flowchart LR
+    Start([Version 加载开始]) --> Load
+    
+    subgraph Load["1. 加载阶段"]
+        direction LR
+        L1["VersionLoader.Load<br/><br/><br/>加载版本信息<br/>从磁盘读取<br/><br/>调用Load方法<br/>开始版本加载流程"]
+        L2["读取版本文件<br/><br/><br/>version.0, version.1等<br/>按版本号顺序<br/><br/>遍历版本文件<br/>找到最新版本"]
+        L3["解析JSON<br/><br/><br/>反序列化Version对象<br/>转换为内存结构<br/><br/>解析JSON格式<br/>构建Version对象"]
+        L1 --> L2 --> L3
     end
     
-    subgraph Validate["验证阶段"]
-        V1[ValidateVersion<br/>验证版本有效性]
-        V2[检查Segment存在性<br/>Segment文件是否存在]
-        V3[检查Schema兼容性<br/>Schema版本映射]
-        V4[检查Locator有效性<br/>Locator格式正确]
-        V1 --> V2
-        V2 --> V3
-        V3 --> V4
+    Load --> L1
+    L3 --> Validate
+    
+    subgraph Validate["2. 验证阶段"]
+        direction LR
+        V1["ValidateVersion<br/><br/><br/>验证版本有效性<br/>检查基本格式<br/><br/>验证版本号<br/>检查必要字段"]
+        V2["检查Segment存在性<br/><br/><br/>Segment文件是否存在<br/>验证文件完整性<br/><br/>遍历Segment列表<br/>确认文件可访问"]
+        V3["检查Schema兼容性<br/><br/><br/>Schema版本映射检查<br/>确保兼容性<br/><br/>验证Schema版本<br/>检查变更兼容"]
+        V4["检查Locator有效性<br/><br/><br/>Locator格式正确性<br/>验证数据一致性<br/><br/>检查Locator格式<br/>验证进度信息"]
+        V1 --> V2 --> V3 --> V4
     end
     
-    subgraph Segment["加载Segment"]
-        S1[根据Segment列表<br/>加载Segment]
-        S2[OpenSegment<br/>打开Segment文件]
-        S3[加载索引文件<br/>按需加载]
-        S4[创建DiskSegment<br/>DiskSegment对象]
-        S1 --> S2
-        S2 --> S3
-        S3 --> S4
+    Validate --> V1
+    V4 --> Segment
+    
+    subgraph Segment["3. 加载Segment"]
+        direction LR
+        S1["根据Segment列表<br/><br/><br/>加载Segment信息<br/>遍历所有Segment<br/><br/>读取Segment元数据<br/>准备加载Segment"]
+        S2["OpenSegment<br/><br/><br/>打开Segment文件<br/>初始化文件句柄<br/><br/>创建文件读取器<br/>准备读取数据"]
+        S3["加载索引文件<br/><br/><br/>按需加载索引数据<br/>延迟加载策略<br/><br/>根据查询需求<br/>加载必要索引"]
+        S4["创建DiskSegment<br/><br/><br/>DiskSegment对象<br/>封装Segment信息<br/><br/>构建Segment对象<br/>建立索引关系"]
+        S1 --> S2 --> S3 --> S4
     end
     
-    subgraph Init["初始化TabletData"]
-        I1[UpdateVersion<br/>更新Version]
-        I2[设置Segment列表<br/>添加到TabletData]
-        I3[初始化查询器<br/>准备查询]
-        I1 --> I2
-        I2 --> I3
+    Segment --> S1
+    S4 --> Init
+    
+    subgraph Init["4. 初始化TabletData"]
+        direction LR
+        I1["UpdateVersion<br/><br/><br/>更新Version引用<br/>设置当前版本<br/><br/>更新TabletData<br/>切换到新版本"]
+        I2["设置Segment列表<br/><br/><br/>添加到TabletData<br/>建立索引关系<br/><br/>组织Segment结构<br/>准备查询索引"]
+        I3["初始化查询器<br/><br/><br/>准备查询功能<br/>创建Reader对象<br/><br/>初始化IndexReader<br/>准备接受查询"]
+        I1 --> I2 --> I3
     end
     
-    L3 --> V1
-    V4 --> S1
-    S4 --> I1
-    I3 --> End[完成加载]
+    Init --> I1
+    I3 --> End([完成加载])
     
-    style Load fill:#e3f2fd
-    style Validate fill:#fff3e0
-    style Segment fill:#f3e5f5
-    style Init fill:#e8f5e9
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Load fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style L1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style L3 fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style Validate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style V1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style V3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
+    style V4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
+    style Segment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style S1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style S3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style S4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
+    style Init fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style I1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style I3 fill:#81c784,stroke:#2e7d32,stroke-width:1.5px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **加载流程**：
@@ -725,46 +776,62 @@ Locator 的结构：包含 timestamp、concurrentIdx、hashId 等信息：
 
 ```mermaid
 flowchart TD
-    subgraph Locator["Locator 对象"]
-        L[Locator<br/>位置信息]
-    end
+    Locator[Locator 对象<br/>━━━━━━━━━━<br/>位置信息<br/>记录数据处理进度] --> Fields
     
     subgraph Fields["核心字段"]
-        F1[SourceId<br/>数据源标识<br/>uint64_t _src]
-        F2[MinOffset<br/>最小偏移量<br/>Progress::Offset]
-        F3[MultiProgress<br/>多进度信息<br/>每个HashId的进度]
-        F4[UserData<br/>用户数据<br/>string _userData]
+        direction LR
+        F1["SourceId<br/>━━━━━━━━━━<br/>数据源标识<br/>uint64_t _src"]
+        F2["MinOffset<br/>━━━━━━━━━━<br/>最小偏移量<br/>Progress::Offset"]
+        F3["MultiProgress<br/>━━━━━━━━━━<br/>多进度信息<br/>每个HashId的进度"]
+        F4["UserData<br/>━━━━━━━━━━<br/>用户数据<br/>string _userData"]
     end
     
-    subgraph DocInfo["DocInfo 文档信息"]
-        D1[Timestamp<br/>时间戳<br/>int64_t]
-        D2[ConcurrentIdx<br/>并发索引<br/>uint32_t]
-        D3[HashId<br/>分片标识<br/>uint16_t]
-        D4[SourceIdx<br/>数据源索引<br/>uint8_t]
-        D1 --> D2
-        D2 --> D3
-        D3 --> D4
+    Locator --> F1
+    Locator --> F2
+    Locator --> F3
+    Locator --> F4
+    
+    F3 --> Progress
+    F2 --> Progress
+    
+    subgraph Progress["Progress 进度信息<br/>用于MultiProgress和MinOffset"]
+        direction LR
+        P1["Offset<br/>━━━━━━━━━━<br/>偏移量<br/>包含时间信息"]
+        P2["Timestamp<br/>━━━━━━━━━━<br/>时间戳<br/>int64_t"]
+        P3["ConcurrentIdx<br/>━━━━━━━━━━<br/>并发索引<br/>uint32_t"]
+        P1 --> P2 --> P3
     end
     
-    subgraph Progress["Progress 进度信息"]
-        P1[Offset<br/>偏移量]
-        P2[Timestamp<br/>时间戳]
-        P3[ConcurrentIdx<br/>并发索引]
-        P1 --> P2
-        P2 --> P3
+    Progress --> P1
+    
+    F3 --> DocInfo
+    
+    subgraph DocInfo["DocInfo 文档信息<br/>用于构建Progress"]
+        direction LR
+        D1["Timestamp<br/>━━━━━━━━━━<br/>时间戳<br/>int64_t"]
+        D2["ConcurrentIdx<br/>━━━━━━━━━━<br/>并发索引<br/>uint32_t"]
+        D3["HashId<br/>━━━━━━━━━━<br/>分片标识<br/>uint16_t"]
+        D4["SourceIdx<br/>━━━━━━━━━━<br/>数据源索引<br/>uint8_t"]
+        D1 --> D2 --> D3 --> D4
     end
     
-    L --> F1
-    L --> F2
-    L --> F3
-    L --> F4
-    F3 -->|包含| P1
-    D1 -->|用于| F3
+    DocInfo --> D1
     
-    style Locator fill:#e3f2fd
-    style Fields fill:#fff3e0
-    style DocInfo fill:#f3e5f5
-    style Progress fill:#e8f5e9
+    style Locator fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Fields fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style F3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
+    style F4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
+    style Progress fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style P1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style P2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style P3 fill:#81c784,stroke:#2e7d32,stroke-width:1.5px
+    style DocInfo fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style D1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style D3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style D4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
 ```
 
 - **timestamp**：时间戳，记录数据的时间位置
@@ -789,26 +856,52 @@ Locator 比较：判断数据是否已处理的逻辑（已在上面详细展示
 Locator 的比较逻辑是增量更新的核心算法。让我们通过流程图来理解详细的比较过程：
 
 ```mermaid
-graph TD
-    A[IsFasterThan调用] --> B{数据源是否相同?}
-    B -->|否| C[返回LCR_INVALID]
-    B -->|是| D[遍历multiProgress]
-    D --> E{当前hashId是否存在?}
-    E -->|不存在| F{other是否存在?}
-    E -->|存在| G[比较Progress]
-    F -->|存在| H[返回LCR_PARTIAL_FASTER]
-    F -->|不存在| I[继续下一个hashId]
-    G --> J{比较结果}
-    J -->|LCR_FULLY_FASTER| I
-    J -->|其他| K[返回比较结果]
-    I --> L{是否遍历完?}
-    L -->|否| D
-    L -->|是| M[返回LCR_FULLY_FASTER]
+flowchart TD
+    Start([IsFasterThan 调用]) --> CheckSource{数据源是否相同?}
     
-    style B fill:#e3f2fd
-    style G fill:#fff3e0
-    style J fill:#f3e5f5
-    style M fill:#e8f5e9
+    CheckSource -->|否| Invalid[返回 LCR_INVALID<br/>数据源不同，无法比较]
+    CheckSource -->|是| Loop[遍历 multiProgress<br/>遍历所有 hashId]
+    
+    Loop --> CheckHashId{当前 hashId<br/>是否存在?}
+    
+    CheckHashId -->|不存在| CheckOther{other 中<br/>是否存在?}
+    CheckHashId -->|存在| Compare[比较 Progress<br/>CompareProgress方法]
+    
+    CheckOther -->|存在| Partial[返回 LCR_PARTIAL_FASTER<br/>部分更快]
+    CheckOther -->|不存在| Next[继续下一个 hashId]
+    
+    Compare --> CheckResult{比较结果}
+    
+    CheckResult -->|LCR_FULLY_FASTER| Next
+    CheckResult -->|LCR_SLOWER| Return[返回 LCR_SLOWER<br/>更慢]
+    CheckResult -->|LCR_PARTIAL_FASTER| Return2[返回 LCR_PARTIAL_FASTER<br/>部分更快]
+    
+    Next --> CheckComplete{是否遍历完<br/>所有 hashId?}
+    
+    CheckComplete -->|否| Loop
+    CheckComplete -->|是| Full[返回 LCR_FULLY_FASTER<br/>完全更快]
+    
+    Invalid --> End([结束])
+    Partial --> End
+    Return --> End
+    Return2 --> End
+    Full --> End
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CheckSource fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Invalid fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Loop fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckHashId fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckOther fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Compare fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Partial fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Next fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CheckResult fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Return fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Return2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CheckComplete fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Full fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **比较逻辑详解**：
@@ -869,42 +962,37 @@ Locator 更新：更新数据处理位置：
 
 ```mermaid
 flowchart TD
-    subgraph Input["输入"]
-        I1[新Locator<br/>New Locator]
-        I2[当前Locator<br/>Current Locator]
-    end
+    Start([Locator 更新开始]) --> Input[接收输入<br/>新 Locator + 当前 Locator]
     
-    subgraph Check["检查条件"]
-        C1[IsFasterThan<br/>比较新Locator和当前Locator]
-        C2{新Locator是否<br/>完全更快?}
-        C1 --> C2
-    end
+    Input --> Compare[IsFasterThan 比较<br/>判断新Locator是否完全更快]
     
-    subgraph Update["更新操作"]
-        U1[更新MultiProgress<br/>更新每个HashId的进度]
-        U2[更新MinOffset<br/>更新最小偏移量]
-        U3[更新UserData<br/>更新用户数据]
-        U4[保证一致性<br/>只向前推进]
-        U1 --> U2
-        U2 --> U3
-        U3 --> U4
-    end
+    Compare --> Decision{是否完全更快?<br/>LCR_FULLY_FASTER}
     
-    subgraph Result["结果"]
-        R1[更新成功<br/>Locator已更新]
-        R2[更新失败<br/>保持原Locator]
-    end
+    Decision -->|否| Fail[更新失败<br/>保持原Locator不变]
+    Decision -->|是| Step1[1. 更新 MultiProgress<br/>合并每个HashId的进度信息]
     
-    I1 --> C1
-    I2 --> C1
-    C2 -->|是| U1
-    C2 -->|否| R2
-    U4 --> R1
+    Step1 --> Step2[2. 更新 MinOffset<br/>取最小偏移量]
     
-    style Input fill:#e3f2fd
-    style Check fill:#fff3e0
-    style Update fill:#f3e5f5
-    style Result fill:#e8f5e9
+    Step2 --> Step3[3. 更新 UserData<br/>保留用户自定义数据]
+    
+    Step3 --> Step4[4. 保证一致性<br/>确保只向前推进，不后退]
+    
+    Step4 --> Success[更新成功<br/>Locator已更新]
+    
+    Fail --> End([结束])
+    Success --> End
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Decision fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Step1 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
+    style Step3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Step4 fill:#ba68c8,stroke:#7b1fa2,stroke-width:2px
+    style Success fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style Fail fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **更新逻辑**：
@@ -1012,55 +1100,67 @@ flowchart TD
 增量更新场景：实时写入、批量更新等：
 
 ```mermaid
-flowchart LR
-    subgraph Realtime["实时写入场景"]
-        R1[实时接收数据流<br/>Continuous Data Stream]
-        R2[检查Locator<br/>IsFasterThan判断]
-        R3[处理新数据<br/>只处理未处理数据]
-        R4[更新Locator<br/>记录最新进度]
-        R5[定期Commit<br/>提交版本]
-        R1 --> R2
-        R2 --> R3
-        R3 --> R4
-        R4 --> R5
+flowchart TD
+    subgraph Realtime["1. 实时写入场景"]
+        direction LR
+        R1[实时接收数据流<br/>━━━━━━━━━━<br/>Continuous Data Stream<br/>持续接收新数据]
+        R2[检查Locator<br/>━━━━━━━━━━<br/>IsFasterThan判断<br/>判断是否需要处理]
+        R3[处理新数据<br/>━━━━━━━━━━<br/>只处理未处理数据<br/>避免重复处理]
+        R4[更新Locator<br/>━━━━━━━━━━<br/>记录最新进度<br/>更新处理位置]
+        R5[定期Commit<br/>━━━━━━━━━━<br/>提交版本<br/>持久化进度]
+        R1 --> R2 --> R3 --> R4 --> R5
     end
     
-    subgraph Batch["批量更新场景"]
-        B1[批量读取数据源<br/>Batch Read]
-        B2[检查Locator<br/>过滤已处理数据]
-        B3[处理新数据<br/>批量构建索引]
-        B4[更新Locator<br/>更新进度]
-        B5[批量Commit<br/>提交版本]
-        B1 --> B2
-        B2 --> B3
-        B3 --> B4
-        B4 --> B5
+    subgraph Batch["2. 批量更新场景"]
+        direction LR
+        B1[批量读取数据源<br/>━━━━━━━━━━<br/>Batch Read<br/>一次性读取大量数据]
+        B2[检查Locator<br/>━━━━━━━━━━<br/>过滤已处理数据<br/>跳过已处理部分]
+        B3[处理新数据<br/>━━━━━━━━━━<br/>批量构建索引<br/>高效处理]
+        B4[更新Locator<br/>━━━━━━━━━━<br/>更新进度<br/>记录处理位置]
+        B5[批量Commit<br/>━━━━━━━━━━<br/>提交版本<br/>批量持久化]
+        B1 --> B2 --> B3 --> B4 --> B5
     end
     
-    subgraph MultiSource["多数据源场景"]
-        M1[多个数据源<br/>Multiple Data Sources]
-        M2[区分SourceIdx<br/>区分数据源]
-        M3[分别处理<br/>独立处理每个数据源]
-        M4[保证一致性<br/>数据不重复不丢失]
-        M1 --> M2
-        M2 --> M3
-        M3 --> M4
+    subgraph MultiSource["3. 多数据源场景"]
+        direction LR
+        M1[多个数据源<br/>━━━━━━━━━━<br/>Multiple Data Sources<br/>来自不同来源]
+        M2[区分SourceIdx<br/>━━━━━━━━━━<br/>区分数据源<br/>标识来源]
+        M3[分别处理<br/>━━━━━━━━━━<br/>独立处理每个数据源<br/>独立进度跟踪]
+        M4[保证一致性<br/>━━━━━━━━━━<br/>数据不重复不丢失<br/>确保完整性]
+        M1 --> M2 --> M3 --> M4
     end
     
-    subgraph Recovery["故障恢复场景"]
-        F1[故障恢复<br/>Failure Recovery]
-        F2[检查Locator<br/>判断需要重新处理的数据]
-        F3[重新处理<br/>处理未处理数据]
-        F4[恢复完成<br/>恢复正常状态]
-        F1 --> F2
-        F2 --> F3
-        F3 --> F4
+    subgraph Recovery["4. 故障恢复场景"]
+        direction LR
+        F1[故障恢复<br/>━━━━━━━━━━<br/>Failure Recovery<br/>系统重启或恢复]
+        F2[检查Locator<br/>━━━━━━━━━━<br/>判断需要重新处理的数据<br/>定位断点]
+        F3[重新处理<br/>━━━━━━━━━━<br/>处理未处理数据<br/>从断点继续]
+        F4[恢复完成<br/>━━━━━━━━━━<br/>恢复正常状态<br/>继续正常运行]
+        F1 --> F2 --> F3 --> F4
     end
     
-    style Realtime fill:#e3f2fd
-    style Batch fill:#fff3e0
-    style MultiSource fill:#f3e5f5
-    style Recovery fill:#e8f5e9
+    style Realtime fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style R1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style R2 fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style R3 fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
+    style R4 fill:#42a5f5,stroke:#1976d2,stroke-width:1.5px
+    style R5 fill:#2196f3,stroke:#1976d2,stroke-width:1.5px
+    style Batch fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style B1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style B2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
+    style B3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
+    style B4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
+    style B5 fill:#ff9800,stroke:#f57c00,stroke-width:1.5px
+    style MultiSource fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style M1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style M2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style M3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style M4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
+    style Recovery fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style F1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style F2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style F3 fill:#81c784,stroke:#2e7d32,stroke-width:1.5px
+    style F4 fill:#66bb6a,stroke:#2e7d32,stroke-width:1.5px
 ```
 
 **使用场景**：
@@ -1080,21 +1180,44 @@ flowchart LR
 **版本提交流程图**：
 
 ```mermaid
-graph TD
-    A[检查提交条件] --> B{需要提交?}
-    B -->|否| C[跳过提交]
-    B -->|是| D[准备版本信息]
-    D --> E[收集 Segment]
-    E --> F[准备 Locator]
-    F --> G[创建 Fence]
-    G --> H[写入版本文件]
-    H --> I[更新版本号]
-    I --> J[持久化到磁盘]
-    J --> K[完成提交]
-    style B fill:#e3f2fd
-    style G fill:#fff3e0
-    style I fill:#f3e5f5
-    style J fill:#e8f5e9
+flowchart TD
+    Start([版本提交开始]) --> Check[检查提交条件<br/>━━━━━━━━━━<br/>判断是否有新Segment<br/>是否有数据变更]
+    
+    Check --> Decision{需要提交?}
+    
+    Decision -->|否| Skip[跳过提交<br/>━━━━━━━━━━<br/>无变更，无需提交<br/>保持当前版本]
+    Decision -->|是| Prepare[准备版本信息<br/>━━━━━━━━━━<br/>收集版本元数据<br/>准备提交内容]
+    
+    Prepare --> Collect[收集 Segment<br/>━━━━━━━━━━<br/>收集所有已构建Segment<br/>构建Segment列表]
+    
+    Collect --> Locator[准备 Locator<br/>━━━━━━━━━━<br/>准备位置信息<br/>记录处理进度]
+    
+    Locator --> Fence[创建 Fence<br/>━━━━━━━━━━<br/>创建临时目录<br/>保证原子性]
+    
+    Fence --> Write[写入版本文件<br/>━━━━━━━━━━<br/>序列化Version<br/>写入JSON文件]
+    
+    Write --> Update[更新版本号<br/>━━━━━━━━━━<br/>递增版本ID<br/>生成新版本号]
+    
+    Update --> Persist[持久化到磁盘<br/>━━━━━━━━━━<br/>原子重命名<br/>完成持久化]
+    
+    Persist --> Success[完成提交<br/>━━━━━━━━━━<br/>版本提交成功<br/>更新TabletData]
+    
+    Skip --> End([结束])
+    Success --> End
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Check fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Decision fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Skip fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Prepare fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Collect fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Locator fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Fence fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Write fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Update fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Persist fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Success fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **提交流程**：
@@ -1122,54 +1245,45 @@ graph TD
 
 版本回滚支持回滚到历史版本：
 
-版本回滚：回滚到历史版本：
-
 ```mermaid
 flowchart TD
-    subgraph Select["选择目标版本"]
-        S1[选择目标版本<br/>Select Target Version]
-        S2[验证版本存在性<br/>检查版本文件]
-        S3[验证版本有效性<br/>检查Segment存在]
-        S1 --> S2
-        S2 --> S3
-    end
+    Start([版本回滚开始]) --> Step1[1. 选择目标版本<br/>指定要回滚的版本号]
     
-    subgraph Load["加载目标版本"]
-        L1[加载Version<br/>Load Version]
-        L2[加载Segment列表<br/>Load Segment List]
-        L3[加载Locator<br/>Load Locator]
-        L4[加载Schema映射<br/>Load Schema RoadMap]
-        L1 --> L2
-        L2 --> L3
-        L3 --> L4
-    end
+    Step1 --> Step2[2. 验证版本<br/>检查版本文件和Segment存在性]
     
-    subgraph Restore["恢复状态"]
-        R1[更新TabletData<br/>Update TabletData]
-        R2[设置Version<br/>Set Version]
-        R3[设置Segment列表<br/>Set Segment List]
-        R4[初始化查询器<br/>Initialize Readers]
-        R1 --> R2
-        R2 --> R3
-        R3 --> R4
-    end
+    Step2 --> Step3[3. 加载Version<br/>从磁盘读取版本信息]
     
-    subgraph Result["回滚结果"]
-        RE1[回滚成功<br/>Rollback Success]
-        RE2[恢复到目标版本<br/>Restored to Target Version]
-        RE3[查询恢复正常<br/>Query Service Restored]
-        RE1 --> RE2
-        RE2 --> RE3
-    end
+    Step3 --> Step4[4. 加载Segment列表<br/>读取Segment元数据]
     
-    S3 --> L1
-    L4 --> R1
-    R4 --> RE1
+    Step4 --> Step5[5. 加载Locator<br/>读取位置信息]
     
-    style Select fill:#e3f2fd
-    style Load fill:#fff3e0
-    style Restore fill:#f3e5f5
-    style Result fill:#e8f5e9
+    Step5 --> Step6[6. 加载Schema映射<br/>读取Schema版本映射]
+    
+    Step6 --> Step7[7. 更新TabletData<br/>切换到目标版本]
+    
+    Step7 --> Step8[8. 设置Version引用<br/>设置当前版本]
+    
+    Step8 --> Step9[9. 设置Segment列表<br/>恢复Segment结构]
+    
+    Step9 --> Step10[10. 初始化查询器<br/>重建查询组件]
+    
+    Step10 --> Success[回滚成功<br/>系统已恢复到目标版本]
+    
+    Success --> End([回滚完成])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Step1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Step2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Step3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step4 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step6 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step7 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step8 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step9 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step10 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Success fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **回滚流程**：
