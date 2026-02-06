@@ -13,23 +13,68 @@ date: 2025-07-14
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[索引类型体系] --> TypeLayer[索引类型层]
+    
+    subgraph NormalGroup["NormalTable：标准表"]
+        direction TB
+        N1[支持全文检索<br/>倒排索引查询]
+        N2[支持属性查询<br/>正排索引查询]
+        N3[支持主键查询<br/>PrimaryKeyIndex]
+        N4[支持摘要查询<br/>SummaryReader]
+        N1 --> N2
+        N2 --> N3
+        N3 --> N4
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph KVGroup["KVTable：键值表"]
+        direction TB
+        K1[主键查询<br/>PrimaryKeyIndex]
+        K2[单值存储<br/>一个主键对应一个值]
+        K3[简单场景<br/>键值存储场景]
+        K1 --> K2
+        K2 --> K3
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph KKVGroup["KKVTable：键键值表"]
+        direction TB
+        KK1[主键+排序键查询<br/>PrimaryKey + SortKey]
+        KK2[多值存储<br/>一个主键对应多个值]
+        KK3[复杂场景<br/>多值存储场景]
+        KK1 --> KK2
+        KK2 --> KK3
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    TypeLayer --> NormalGroup
+    TypeLayer --> KVGroup
+    TypeLayer --> KKVGroup
+    
+    NormalGroup --> Usage[使用场景]
+    KVGroup --> Usage
+    KKVGroup --> Usage
+    
+    Usage --> U1[全文搜索场景<br/>NormalTable]
+    Usage --> U2[简单键值场景<br/>KVTable]
+    Usage --> U3[多值存储场景<br/>KKVTable]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style TypeLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style NormalGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style N1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style N2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style N3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style N4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style KVGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style K1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style K2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style K3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style KKVGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style KK1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style KK2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style KK3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Usage fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style U1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 ```
 
 ## 1. 索引类型概览
@@ -48,23 +93,60 @@ IndexLib 支持三种主要的索引类型：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[索引类型对比] --> NormalTable[NormalTable<br/>标准表]
+    Start --> KVTable[KVTable<br/>键值表]
+    Start --> KKVTable[KKVTable<br/>键键值表]
+    
+    subgraph NormalFeatures["NormalTable特性"]
+        direction TB
+        NF1[全文检索<br/>倒排索引]
+        NF2[属性查询<br/>正排索引]
+        NF3[主键查询<br/>PrimaryKeyIndex]
+        NF4[摘要查询<br/>SummaryReader]
+        NF1 --> NF2
+        NF2 --> NF3
+        NF3 --> NF4
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph KVFeatures["KVTable特性"]
+        direction TB
+        KF1[主键查询<br/>PrimaryKeyIndex]
+        KF2[单值存储<br/>一个主键对应一个值]
+        KF3[简单场景<br/>键值存储]
+        KF1 --> KF2
+        KF2 --> KF3
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph KKVFeatures["KKVTable特性"]
+        direction TB
+        KKF1[主键+排序键查询<br/>PrimaryKey + SortKey]
+        KKF2[多值存储<br/>一个主键对应多个值]
+        KKF3[复杂场景<br/>多值存储]
+        KKF1 --> KKF2
+        KKF2 --> KKF3
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    NormalTable --> NormalFeatures
+    KVTable --> KVFeatures
+    KKVTable --> KKVFeatures
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style NormalTable fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style NormalFeatures fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style NF1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style NF2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style NF3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style NF4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style KVTable fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style KVFeatures fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style KF1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style KF2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style KF3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style KKVTable fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style KKVFeatures fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style KKF1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style KKF2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style KKF3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
 ```
 
 ### 1.2 索引类型的选择

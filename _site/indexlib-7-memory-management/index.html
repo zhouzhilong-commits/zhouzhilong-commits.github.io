@@ -844,22 +844,48 @@
 
 <p><strong>内存配额分配流程图</strong>：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[请求分配内存] --&gt; B[检查本地配额]
-    B --&gt; C{本地配额足够?}
-    C --&gt;|是| D[从本地分配]
-    C --&gt;|否| E[向父控制器请求]
-    E --&gt; F{父控制器有配额?}
-    F --&gt;|是| G[从父控制器分配]
-    F --&gt;|否| H[等待或拒绝]
-    D --&gt; I[更新本地配额]
-    G --&gt; I
-    I --&gt; J[分配完成]
-    H --&gt; K[分配失败]
-    style C fill:#e3f2fd
-    style E fill:#fff3e0
-    style I fill:#f3e5f5
-    style J fill:#e8f5e9
+<pre><code class="language-mermaid">flowchart TD
+    Start[请求分配内存&lt;br/&gt;Allocate请求] --&gt; CheckLocal[检查本地配额&lt;br/&gt;localFreeQuota]
+    
+    CheckLocal --&gt; LocalEnough{本地配额足够?}
+    
+    LocalEnough --&gt;|是| AllocateLocal[从本地分配&lt;br/&gt;减少localFreeQuota]
+    LocalEnough --&gt;|否| RequestParent[向父控制器请求&lt;br/&gt;parentController.Allocate]
+    
+    AllocateLocal --&gt; UpdateLocal[更新本地配额&lt;br/&gt;更新localFreeQuota]
+    
+    RequestParent --&gt; CheckParent{父控制器有配额?}
+    
+    CheckParent --&gt;|是| AllocateParent[从父控制器分配&lt;br/&gt;减少父控制器的配额]
+    CheckParent --&gt;|否| HandleNoQuota[处理配额不足]
+    
+    AllocateParent --&gt; ReserveParent[预留父配额&lt;br/&gt;增加reservedParentQuota]
+    ReserveParent --&gt; UpdateLocal
+    
+    HandleNoQuota --&gt; WaitOrReject{等待或拒绝?}
+    WaitOrReject --&gt;|等待| WaitQuota[等待配额释放&lt;br/&gt;阻塞或轮询]
+    WaitOrReject --&gt;|拒绝| RejectAlloc[拒绝分配&lt;br/&gt;返回失败]
+    
+    WaitQuota --&gt; CheckLocal
+    
+    UpdateLocal --&gt; Success[分配完成&lt;br/&gt;返回成功]
+    RejectAlloc --&gt; Fail[分配失败&lt;br/&gt;返回错误]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CheckLocal fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style LocalEnough fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style AllocateLocal fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style RequestParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style AllocateParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReserveParent fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style UpdateLocal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style HandleNoQuota fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style WaitOrReject fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style WaitQuota fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    style RejectAlloc fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Success fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Fail fill:#ffebee,stroke:#c62828,stroke-width:2px
 </code></pre>
 
 <p><strong>分配机制详解</strong>：</p>

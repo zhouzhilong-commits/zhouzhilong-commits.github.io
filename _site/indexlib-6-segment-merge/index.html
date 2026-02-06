@@ -596,7 +596,7 @@
 
 
   
-	  15 分钟阅读
+	  16 分钟阅读
 	
 </p>
           
@@ -689,31 +689,72 @@
 
 <p><strong>Segment 合并流程图</strong>：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始合并] --&gt; B[获取当前版本]
-    B --&gt; C[选择合并策略]
-    C --&gt; D{MergeStrategy}
-    D --&gt;|OptimizeMergeStrategy| E[选择需要合并的 Segment]
-    D --&gt;|其他策略| F[其他合并策略]
-    E --&gt; G[创建 MergePlan]
-    F --&gt; G
-    G --&gt; H[验证 MergePlan]
-    H --&gt; I{验证通过?}
-    I --&gt;|否| J[调整策略]
-    J --&gt; C
-    I --&gt;|是| K[执行合并]
-    K --&gt; L[创建 IndexMergeOperation]
-    L --&gt; M[读取源 Segment]
-    M --&gt; N[合并索引数据]
-    N --&gt; O[写入目标 Segment]
-    O --&gt; P[创建新版本]
-    P --&gt; Q[提交新版本]
-    Q --&gt; R[清理旧 Segment]
-    R --&gt; S[完成合并]
-    style C fill:#e3f2fd
-    style K fill:#fff3e0
-    style P fill:#f3e5f5
-    style Q fill:#e8f5e9
+<pre><code class="language-mermaid">flowchart TD
+    Start[开始合并] --&gt; GetVersion[获取当前版本&lt;br/&gt;从TabletData获取Version]
+    
+    GetVersion --&gt; SelectStrategy[选择合并策略&lt;br/&gt;MergeStrategy]
+    
+    SelectStrategy --&gt; StrategyType{合并策略类型}
+    
+    StrategyType --&gt;|OptimizeMergeStrategy| OptimizeStrategy[优化合并策略&lt;br/&gt;选择需要合并的Segment]
+    StrategyType --&gt;|RealtimeMergeStrategy| RealtimeStrategy[实时合并策略&lt;br/&gt;实时合并小Segment]
+    StrategyType --&gt;|ShardBasedMergeStrategy| ShardStrategy[分片合并策略&lt;br/&gt;按分片合并]
+    
+    OptimizeStrategy --&gt; CreatePlan[创建MergePlan&lt;br/&gt;包含Segment列表和目标版本]
+    RealtimeStrategy --&gt; CreatePlan
+    ShardStrategy --&gt; CreatePlan
+    
+    CreatePlan --&gt; ValidatePlan[验证MergePlan&lt;br/&gt;检查Segment有效性]
+    
+    ValidatePlan --&gt; PlanValid{验证通过?}
+    
+    PlanValid --&gt;|否| AdjustStrategy[调整策略&lt;br/&gt;重新选择Segment]
+    AdjustStrategy --&gt; SelectStrategy
+    
+    PlanValid --&gt;|是| ExecuteMerge[执行合并]
+    
+    subgraph ExecuteMergeGroup["执行合并：合并索引数据"]
+        direction TB
+        EM1[创建IndexMergeOperation&lt;br/&gt;初始化合并操作]
+        EM2[读取源Segment&lt;br/&gt;从多个Segment读取数据]
+        EM3[合并索引数据&lt;br/&gt;合并倒排/正排/主键索引]
+        EM4[写入目标Segment&lt;br/&gt;写入合并后的数据]
+        EM1 --&gt; EM2
+        EM2 --&gt; EM3
+        EM3 --&gt; EM4
+    end
+    
+    ExecuteMerge --&gt; ExecuteMergeGroup
+    
+    ExecuteMergeGroup --&gt; CreateVersion[创建新版本&lt;br/&gt;包含合并后的Segment]
+    
+    CreateVersion --&gt; CommitVersion[提交新版本&lt;br/&gt;使用Fence机制保证原子性]
+    
+    CommitVersion --&gt; Cleanup[清理旧Segment&lt;br/&gt;删除不再需要的Segment文件]
+    
+    Cleanup --&gt; End[完成合并]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style GetVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style SelectStrategy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style StrategyType fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style OptimizeStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style RealtimeStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style ShardStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style CreatePlan fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ValidatePlan fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style PlanValid fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style AdjustStrategy fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style ExecuteMerge fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style ExecuteMergeGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style EM1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style EM2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style EM3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style EM4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style CreateVersion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CommitVersion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Cleanup fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <h3 id="12-合并的核心组件">1.2 合并的核心组件</h3>

@@ -13,20 +13,24 @@ date: 2025-07-28
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    subgraph Main["文件系统抽象"]
+        A[IFileSystem<br/>文件系统接口]
+        B[IDirectory<br/>目录接口]
+        C[Storage<br/>存储抽象]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph Sub["文件操作组件"]
+        D[FileReader<br/>文件读取器]
+        E[FileWriter<br/>文件写入器]
     end
     
+    A --> B
     A --> D
+    A --> E
+    B --> D
     B --> E
     C --> D
+    C --> E
     
     style Main fill:#e3f2fd
     style Sub fill:#fff3e0
@@ -138,20 +142,24 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    subgraph Main["文件系统抽象"]
+        A[IFileSystem<br/>文件系统接口]
+        B[IDirectory<br/>目录接口]
+        C[Storage<br/>存储抽象]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph Sub["文件操作组件"]
+        D[FileReader<br/>文件读取器]
+        E[FileWriter<br/>文件写入器]
     end
     
+    A --> B
     A --> D
+    A --> E
+    B --> D
     B --> E
     C --> D
+    C --> E
     
     style Main fill:#e3f2fd
     style Sub fill:#fff3e0
@@ -365,20 +373,20 @@ IFileSystem 接口：提供文件系统的基本操作：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    subgraph Main["IFileSystem 核心方法"]
+        A[Init<br/>初始化文件系统]
+        B[MountVersion/MountDir<br/>挂载版本和目录]
+        C[CreateFileWriter/Reader<br/>创建文件操作器]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph Sub["相关组件"]
+        D[FileSystemOptions<br/>文件系统选项]
+        E[IDirectory<br/>目录接口]
     end
     
     A --> D
     B --> E
-    C --> D
+    C --> E
     
     style Main fill:#e3f2fd
     style Sub fill:#fff3e0
@@ -472,20 +480,21 @@ public:
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    subgraph Main["路径映射组件"]
+        A[IFileSystem<br/>文件系统接口]
+        B[PathMapper<br/>路径映射器]
+        C[MountTable<br/>挂载表]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph Sub["路径类型"]
+        D[逻辑路径<br/>LogicalPath]
+        E[物理路径<br/>PhysicalPath]
     end
     
-    A --> D
-    B --> E
+    A --> B
+    B --> C
     C --> D
+    C --> E
     
     style Main fill:#e3f2fd
     style Sub fill:#fff3e0
@@ -499,20 +508,22 @@ IndexLib 支持多种文件系统类型：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    subgraph Main["文件系统类型"]
+        A[LocalFileSystem<br/>本地文件系统]
+        B[DistributedFileSystem<br/>分布式文件系统]
+        C[MemoryFileSystem<br/>内存文件系统]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph Sub["实现接口"]
+        D[IFileSystem<br/>文件系统接口]
+        E[Storage<br/>存储抽象]
     end
     
     A --> D
-    B --> E
+    B --> D
     C --> D
+    A --> E
+    B --> E
     
     style Main fill:#e3f2fd
     style Sub fill:#fff3e0
@@ -590,23 +601,52 @@ IDirectory 接口：提供目录和文件的操作：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[IDirectory接口] --> MethodLayer[方法层]
+    
+    subgraph FileOpsGroup["文件操作"]
+        direction TB
+        FO1[CreateFileWriter<br/>创建文件写入器]
+        FO2[CreateFileReader<br/>创建文件读取器]
+        FO3[RemoveFile<br/>删除文件]
+        FO4[GetFileLength<br/>获取文件长度]
+        FO5[IsExist<br/>检查文件是否存在]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph DirOpsGroup["目录操作"]
+        direction TB
+        DO1[MakeDirectory<br/>创建目录]
+        DO2[GetDirectory<br/>获取目录]
+        DO3[RemoveDirectory<br/>删除目录]
+        DO4[Rename<br/>重命名文件或目录]
+        DO5[ListDir<br/>列出目录内容]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    MethodLayer --> FileOpsGroup
+    MethodLayer --> DirOpsGroup
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    FileOpsGroup --> Result[操作结果]
+    DirOpsGroup --> Result
+    
+    Result --> R1[文件操作结果<br/>FileWriter/FileReader]
+    Result --> R2[目录操作结果<br/>IDirectory/文件列表]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MethodLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style FileOpsGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FO1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FO2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FO3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FO4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FO5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style DirOpsGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style DO1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style DO2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style DO3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style DO4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style DO5 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Result fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style R1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style R2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 ```
 
 - **CreateFileWriter()**：创建文件写入器
@@ -628,23 +668,68 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[IDirectory操作] --> OperationLayer[操作层]
+    
+    subgraph DirectoryGroup["IDirectory核心操作"]
+        direction TB
+        D1[GetDirectory<br/>获取子目录]
+        D2[CreateFileWriter<br/>创建文件写入器]
+        D3[CreateFileReader<br/>创建文件读取器]
+        D4[MakeDirectory<br/>创建目录]
+        D5[RemoveFile<br/>删除文件]
+        D6[RemoveDirectory<br/>删除目录]
+        D7[Rename<br/>重命名文件或目录]
+        D8[IsExist<br/>检查文件是否存在]
+        D9[ListDir<br/>列出目录内容]
+        D10[GetFileLength<br/>获取文件长度]
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    OperationLayer --> DirectoryGroup
+    
+    DirectoryGroup --> FileOps[文件操作]
+    
+    subgraph FileWriterGroup["FileWriter操作"]
+        direction TB
+        FW1[Write<br/>写入文件数据]
+        FW2[ReserveFile<br/>预留文件空间]
+        FW3[Truncate<br/>截断文件]
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph FileReaderGroup["FileReader操作"]
+        direction TB
+        FR1[Read<br/>读取文件数据]
+        FR2[Prefetch<br/>预取文件数据]
+        FR3[ReadAsync<br/>异步读取]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    D2 --> FileWriterGroup
+    D3 --> FileReaderGroup
+    
+    FileOps --> FileWriterGroup
+    FileOps --> FileReaderGroup
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OperationLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style DirectoryGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style D1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D6 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D7 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D8 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D9 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style D10 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style FileOps fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style FileWriterGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FW1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FW2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FW3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style FileReaderGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style FR1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style FR2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style FR3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
 ```
 
 **操作流程**：
@@ -849,23 +934,61 @@ FileReader 接口：提供文件读取功能：
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[FileWriter核心功能] --> FeatureLayer[功能层]
+    
+    subgraph WriteGroup["写入功能"]
+        direction TB
+        W1[Write<br/>写入文件数据]
+        W2[ReserveFile<br/>预留文件空间]
+        W3[Truncate<br/>截断文件]
+        W1 --> W2
+        W2 --> W3
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph LifecycleGroup["生命周期管理"]
+        direction TB
+        L1[Open<br/>打开文件]
+        L2[Close<br/>关闭文件]
+        L3[GetLength<br/>获取文件长度]
+        L1 --> L2
+        L2 --> L3
     end
     
-    A --> D
-    B --> E
-    C --> D
+    subgraph PathGroup["路径管理"]
+        direction TB
+        P1[GetLogicalPath<br/>获取逻辑路径]
+        P2[GetPhysicalPath<br/>获取物理路径]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    FeatureLayer --> WriteGroup
+    FeatureLayer --> LifecycleGroup
+    FeatureLayer --> PathGroup
+    
+    WriteGroup --> Usage[使用场景]
+    LifecycleGroup --> Usage
+    PathGroup --> Usage
+    
+    Usage --> U1[索引构建<br/>写入索引文件]
+    Usage --> U2[数据转储<br/>转储Segment数据]
+    Usage --> U3[版本提交<br/>写入版本文件]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FeatureLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style W2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style W3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style LifecycleGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style L1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style L2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style L3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style PathGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style P1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style P2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style Usage fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style U1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 ```
 
 ### 4.2 FileWriter：文件写入器

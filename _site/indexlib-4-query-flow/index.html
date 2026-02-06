@@ -596,7 +596,7 @@
 
 
   
-	  16 分钟阅读
+	  22 分钟阅读
 	
 </p>
           
@@ -619,30 +619,120 @@
 
 <p><strong>查询流程图</strong>：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[接收 JSON 查询] --&gt; B[解析查询]
-    B --&gt; C[提取查询类型]
-    C --&gt; D[提取查询条件]
-    D --&gt; E[创建查询对象]
-    E --&gt; F[获取 TabletReader]
-    F --&gt; G[获取 IndexReader]
-    G --&gt; H[遍历 Segment]
-    H --&gt; I[并行查询各 Segment]
-    I --&gt; J[倒排索引查询]
-    I --&gt; K[正排索引查询]
-    I --&gt; L[主键索引查询]
-    J --&gt; M[合并查询结果]
-    K --&gt; M
-    L --&gt; M
-    M --&gt; N[去重]
-    N --&gt; O[排序]
-    O --&gt; P[分页]
-    P --&gt; Q[序列化为 JSON]
-    Q --&gt; R[返回结果]
-    style B fill:#e3f2fd
-    style I fill:#fff3e0
-    style M fill:#f3e5f5
-    style Q fill:#e8f5e9
+<pre><code class="language-mermaid">flowchart TD
+    Start[接收JSON查询请求] --&gt; ParseGroup
+    
+    subgraph ParseGroup["1. 查询解析层：解析查询请求"]
+        direction TB
+        P1[接收JSON查询]
+        P2[解析JSON格式]
+        P3[提取查询类型&lt;br/&gt;TermQuery/RangeQuery/BooleanQuery]
+        P4[提取查询条件&lt;br/&gt;字段名/字段值/范围]
+        P5[创建Query对象&lt;br/&gt;内部查询对象]
+        P1 --&gt; P2
+        P2 --&gt; P3
+        P3 --&gt; P4
+        P4 --&gt; P5
+    end
+    
+    ParseGroup --&gt; PrepareGroup
+    
+    subgraph PrepareGroup["2. 索引准备层：准备查询资源"]
+        direction TB
+        PR1[获取TabletReader&lt;br/&gt;从Tablet获取Reader实例]
+        PR2[获取IndexReader&lt;br/&gt;根据索引类型和名称获取]
+        PR3[遍历Segment列表&lt;br/&gt;获取所有ST_BUILT状态的Segment]
+        PR4[准备QueryContext&lt;br/&gt;查询上下文和参数]
+        PR1 --&gt; PR2
+        PR2 --&gt; PR3
+        PR3 --&gt; PR4
+    end
+    
+    PrepareGroup --&gt; QueryGroup
+    
+    subgraph QueryGroup["3. 并行查询层：多Segment并行查询"]
+        direction TB
+        Q1[启动并行查询&lt;br/&gt;多线程并行执行]
+        Q2[Segment1查询&lt;br/&gt;使用LocalDocId]
+        Q3[Segment2查询&lt;br/&gt;使用LocalDocId]
+        Q4[SegmentN查询&lt;br/&gt;使用LocalDocId]
+        Q5[倒排索引查询&lt;br/&gt;InvertedIndexReader.Search]
+        Q6[正排索引查询&lt;br/&gt;AttributeIndexReader.Read]
+        Q7[主键索引查询&lt;br/&gt;PrimaryKeyIndexReader.Lookup]
+        Q8[收集各Segment结果&lt;br/&gt;包含LocalDocId和分数]
+        Q1 --&gt; Q2
+        Q1 --&gt; Q3
+        Q1 --&gt; Q4
+        Q2 --&gt; Q5
+        Q2 --&gt; Q6
+        Q2 --&gt; Q7
+        Q3 --&gt; Q5
+        Q3 --&gt; Q6
+        Q3 --&gt; Q7
+        Q4 --&gt; Q5
+        Q4 --&gt; Q6
+        Q4 --&gt; Q7
+        Q5 --&gt; Q8
+        Q6 --&gt; Q8
+        Q7 --&gt; Q8
+    end
+    
+    QueryGroup --&gt; ProcessGroup
+    
+    subgraph ProcessGroup["4. 结果处理层：合并和处理结果"]
+        direction TB
+        PS1[合并各Segment结果&lt;br/&gt;收集所有查询结果]
+        PS2[DocId转换&lt;br/&gt;LocalDocId转GlobalDocId]
+        PS3[DocId去重&lt;br/&gt;去除重复的DocId]
+        PS4[按相关性排序&lt;br/&gt;按分数或指定字段排序]
+        PS5[分页处理&lt;br/&gt;offset和limit截取]
+        PS1 --&gt; PS2
+        PS2 --&gt; PS3
+        PS3 --&gt; PS4
+        PS4 --&gt; PS5
+    end
+    
+    ProcessGroup --&gt; ReturnGroup
+    
+    subgraph ReturnGroup["5. 结果返回层：序列化和返回"]
+        direction TB
+        R1[序列化为JSON&lt;br/&gt;转换为JSON格式]
+        R2[返回查询结果&lt;br/&gt;包含文档列表和总数]
+    end
+    
+    ReturnGroup --&gt; End[查询完成]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style P1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style P4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style P5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style PrepareGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style PR1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style PR2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style PR3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style PR4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style QueryGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Q1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style Q2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style Q3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style Q4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style Q5 fill:#81c784,stroke:#2e7d32,stroke-width:2px
+    style Q6 fill:#81c784,stroke:#2e7d32,stroke-width:2px
+    style Q7 fill:#81c784,stroke:#2e7d32,stroke-width:2px
+    style Q8 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style ProcessGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style PS1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style PS2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style PS3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style PS4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style PS5 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ReturnGroup fill:#fce4ec,stroke:#ef4444,stroke-width:2px
+    style R1 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style R2 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <h2 id="1-查询流程概览">1. 查询流程概览</h2>
@@ -773,22 +863,102 @@
 
 <p><strong>TabletReader 的关键组件</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[TabletReader] --&gt; B[Schema]
-    A --&gt; C[IndexReaderMap]
-    A --&gt; D[TabletData]
-    A --&gt; E[ReadResource]
+<pre><code class="language-mermaid">flowchart TD
+    Start[TabletReader] --&gt; ComponentGroup
     
-    B --&gt; F[索引Schema定义]
-    C --&gt; G[IndexReader缓存]
-    D --&gt; H[所有Segment]
-    E --&gt; I[内存配额/缓存]
+    subgraph ComponentGroup["TabletReader 关键组件"]
+        direction TB
+        C1[TabletReader&lt;br/&gt;查询入口和协调器]
+        C2[Schema&lt;br/&gt;ITabletSchema]
+        C3[IndexReaderMap&lt;br/&gt;索引Reader缓存]
+        C4[TabletData&lt;br/&gt;索引数据容器]
+        C5[ReadResource&lt;br/&gt;读取资源管理]
+        C1 --&gt; C2
+        C1 --&gt; C3
+        C1 --&gt; C4
+        C1 --&gt; C5
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style E fill:#fce4ec
+    subgraph SchemaGroup["Schema：索引Schema定义"]
+        direction TB
+        S1[索引字段定义&lt;br/&gt;字段类型和属性]
+        S2[索引配置信息&lt;br/&gt;索引类型和参数]
+        S3[查询验证&lt;br/&gt;验证查询字段有效性]
+        S2 --&gt; S1
+        S1 --&gt; S3
+    end
+    
+    subgraph IndexReaderMapGroup["IndexReaderMap：IndexReader缓存"]
+        direction TB
+        I1[缓存Key&lt;br/&gt;indexType和indexName]
+        I2[缓存Value&lt;br/&gt;IIndexReader实例]
+        I3[避免重复创建&lt;br/&gt;提高查询性能]
+        I1 --&gt; I2
+        I2 --&gt; I3
+    end
+    
+    subgraph TabletDataGroup["TabletData：索引数据容器"]
+        direction TB
+        T1[所有Segment列表&lt;br/&gt;已构建的Segment]
+        T2[Version信息&lt;br/&gt;版本号和Locator]
+        T3[ResourceMap&lt;br/&gt;资源映射]
+        T1 --&gt; T2
+        T2 --&gt; T3
+    end
+    
+    subgraph ReadResourceGroup["ReadResource：读取资源管理"]
+        direction TB
+        R1[内存配额控制&lt;br/&gt;MemoryQuotaController]
+        R2[缓存管理&lt;br/&gt;索引数据缓存]
+        R3[资源回收&lt;br/&gt;IIndexMemoryReclaimer]
+        R1 --&gt; R2
+        R2 --&gt; R3
+    end
+    
+    C2 --&gt; SchemaGroup
+    C3 --&gt; IndexReaderMapGroup
+    C4 --&gt; TabletDataGroup
+    C5 --&gt; ReadResourceGroup
+    
+    SchemaGroup --&gt; Function[组件功能]
+    IndexReaderMapGroup --&gt; Function
+    TabletDataGroup --&gt; Function
+    ReadResourceGroup --&gt; Function
+    
+    Function --&gt; F1[查询验证和字段解析]
+    Function --&gt; F2[高效索引查询]
+    Function --&gt; F3[数据访问和遍历]
+    Function --&gt; F4[资源管理和优化]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ComponentLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ComponentGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style SchemaGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style S1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style S2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style IndexReaderMapGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style I1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style I3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style TabletDataGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style T1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style T2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style T3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ReadResourceGroup fill:#fce4ec,stroke:#ef4444,stroke-width:2px
+    style R1 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style R2 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style R3 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style Function fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style F1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F4 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <ul>
@@ -968,23 +1138,83 @@
 
 <p>IndexReader 缓存是 TabletReader 性能优化的关键设计。让我们通过流程图来理解缓存机制的工作原理：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[GetIndexReader请求] --&gt; B{缓存中是否存在?}
-    B --&gt;|存在| C[返回缓存的IndexReader]
-    B --&gt;|不存在| D[创建新的IndexReader]
-    D --&gt; E[初始化IndexReader]
-    E --&gt; F[加载索引数据]
-    F --&gt; G[缓存IndexReader]
-    G --&gt; H[返回IndexReader]
+<pre><code class="language-mermaid">flowchart TD
+    Start[GetIndexReader请求] --&gt; CheckCache{检查缓存&lt;br/&gt;IndexReaderMap中查找}
     
-    I[IndexReader使用] --&gt; J{是否需要更新?}
-    J --&gt;|是| K[更新缓存]
-    J --&gt;|否| L[继续使用]
+    CheckCache --&gt;|缓存命中| ReturnCached[返回缓存的IndexReader&lt;br/&gt;直接返回shared_ptr]
+    CheckCache --&gt;|缓存未命中| CreateNew[创建新的IndexReader]
     
-    style B fill:#e3f2fd
-    style D fill:#fff3e0
-    style G fill:#f3e5f5
-    style C fill:#e8f5e9
+    subgraph CreateGroup["创建IndexReader流程"]
+        direction TB
+        C1[根据indexType创建&lt;br/&gt;InvertedIndexReader/AttributeIndexReader等]
+        C2[初始化IndexReader&lt;br/&gt;设置Schema和配置]
+        C3[加载索引数据&lt;br/&gt;从Segment加载索引文件]
+        C4[缓存IndexReader&lt;br/&gt;存入IndexReaderMap]
+        C5[返回IndexReader&lt;br/&gt;返回shared_ptr]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+        C4 --&gt; C5
+    end
+    
+    CreateNew --&gt; CreateGroup
+    
+    CreateGroup --&gt; End1[IndexReader就绪]
+    ReturnCached --&gt; End1
+    
+    End1 --&gt; UseIndexReader[使用IndexReader查询]
+    
+    subgraph UpdateGroup["IndexReader更新机制"]
+        direction TB
+        U1[检查是否需要更新&lt;br/&gt;Schema变更/Version变更]
+        U2{是否需要更新?}
+        U3[更新缓存&lt;br/&gt;创建新的IndexReader]
+        U4[替换旧缓存&lt;br/&gt;更新IndexReaderMap]
+        U5[继续使用&lt;br/&gt;复用现有IndexReader]
+        U1 --&gt; U2
+        U2 --&gt;|是| U3
+        U2 --&gt;|否| U5
+        U3 --&gt; U4
+        U4 --&gt; U6[更新完成]
+        U5 --&gt; U6
+    end
+    
+    UseIndexReader --&gt; UpdateGroup
+    
+    subgraph CacheInfo["缓存机制特点"]
+        direction TB
+        CI1[缓存Key&lt;br/&gt;indexType和indexName对]
+        CI2[缓存Value&lt;br/&gt;shared_ptr IIndexReader]
+        CI3[性能优势&lt;br/&gt;避免重复创建&lt;br/&gt;提高查询性能]
+        CI1 --&gt; CI2
+        CI2 --&gt; CI3
+    end
+    
+    UpdateGroup -.-&gt; CacheInfo
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CheckCache fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReturnCached fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style CreateNew fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CreateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style End1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UseIndexReader fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style UpdateGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style U1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style U2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style U3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style U4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style U5 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style U6 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style CacheInfo fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style CI1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style CI2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style CI3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <p><strong>缓存机制详解</strong>：</p>
@@ -1085,21 +1315,99 @@
 
 <p><strong>IIndexReader 的关键方法</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[IIndexReader] --&gt; B[Open]
-    A --&gt; C[Search]
-    A --&gt; D[GetStatistics]
+<pre><code class="language-mermaid">flowchart TD
+    Start[IIndexReader接口] --&gt; OpenGroup
+    Start --&gt; SearchGroup
+    Start --&gt; StatisticsGroup
     
-    B --&gt; E[初始化IndexReader]
-    B --&gt; F[加载索引数据]
-    C --&gt; G[查询索引]
-    C --&gt; H[返回查询结果]
-    D --&gt; I[获取统计信息]
+    subgraph OpenGroup["1. Open方法：初始化IndexReader"]
+        direction TB
+        O1[Open调用&lt;br/&gt;参数: IndexConfig + IndexReaderParameter]
+        O2[初始化IndexReader&lt;br/&gt;设置配置和参数]
+        O3[加载索引数据&lt;br/&gt;从Segment加载索引文件到内存]
+        O4[准备查询资源&lt;br/&gt;初始化查询所需的数据结构]
+        O5[返回Status&lt;br/&gt;初始化成功或失败]
+        O1 --&gt; O2
+        O2 --&gt; O3
+        O3 --&gt; O4
+        O4 --&gt; O5
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    subgraph SearchGroup["2. Search方法：查询索引"]
+        direction TB
+        S1[Search调用&lt;br/&gt;参数: Query对象]
+        S2[解析查询条件&lt;br/&gt;提取查询字段和值]
+        S3[查询索引数据&lt;br/&gt;根据查询条件查找匹配的DocId]
+        S4[计算相关性分数&lt;br/&gt;根据匹配度计算分数]
+        S5[构建QueryResult&lt;br/&gt;包含DocId列表和分数]
+        S6[返回Status和QueryResult&lt;br/&gt;查询结果或错误信息]
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S3 --&gt; S4
+        S4 --&gt; S5
+        S5 --&gt; S6
+    end
+    
+    subgraph StatisticsGroup["3. GetStatistics方法：获取统计信息"]
+        direction TB
+        ST1[GetStatistics调用&lt;br/&gt;无参数]
+        ST2[统计文档数&lt;br/&gt;docCount]
+        ST3[统计Term数&lt;br/&gt;termCount]
+        ST4[统计索引大小&lt;br/&gt;indexSize]
+        ST5[构建IndexStatistics&lt;br/&gt;包含所有统计信息]
+        ST6[返回IndexStatistics&lt;br/&gt;统计信息对象]
+        ST1 --&gt; ST2
+        ST1 --&gt; ST3
+        ST1 --&gt; ST4
+        ST2 --&gt; ST5
+        ST3 --&gt; ST5
+        ST4 --&gt; ST5
+        ST5 --&gt; ST6
+    end
+    
+    OpenGroup -.-&gt;|必须先调用| SearchGroup
+    OpenGroup -.-&gt;|可以随时调用| StatisticsGroup
+    SearchGroup -.-&gt;|可以随时调用| StatisticsGroup
+    
+    subgraph Lifecycle["方法调用生命周期"]
+        direction LR
+        L1[初始化阶段&lt;br/&gt;Open方法]
+        L2[查询阶段&lt;br/&gt;Search方法可多次调用]
+        L3[监控阶段&lt;br/&gt;GetStatistics方法]
+        L1 --&gt; L2
+        L2 --&gt; L3
+        L2 --&gt; L2
+    end
+    
+    OpenGroup -.-&gt; Lifecycle
+    SearchGroup -.-&gt; Lifecycle
+    StatisticsGroup -.-&gt; Lifecycle
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OpenGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style O1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style O2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style SearchGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style S1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style S3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style S4 fill:#81c784,stroke:#2e7d32,stroke-width:2px
+    style S5 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style S6 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style StatisticsGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style ST1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ST2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ST3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ST4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style ST5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style ST6 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style Lifecycle fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style L1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style L2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style L3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <ul>
@@ -1112,25 +1420,99 @@
 
 <p>IndexLib 支持多种类型的 IndexReader：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[IndexReader类型] --&gt; B[InvertedIndexReader]
-    A --&gt; C[AttributeReader]
-    A --&gt; D[PrimaryKeyIndexReader]
-    A --&gt; E[SummaryReader]
-    A --&gt; F[DeletionMapReader]
+<pre><code class="language-mermaid">flowchart TD
+    Start[IndexReader类型体系] --&gt; InvertedGroup
     
-    B --&gt; G[全文检索]
-    C --&gt; H[属性查询]
-    D --&gt; I[主键查询]
-    E --&gt; J[获取摘要]
-    F --&gt; K[过滤删除文档]
+    subgraph InvertedGroup["1. InvertedIndexReader：倒排索引Reader"]
+        direction TB
+        I1[实现IIndexReader接口]
+        I2[全文检索功能&lt;br/&gt;TermQuery/RangeQuery/BooleanQuery]
+        I3[返回匹配的DocId列表&lt;br/&gt;包含相关性分数]
+        I1 --&gt; I2
+        I2 --&gt; I3
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style E fill:#fce4ec
-    style F fill:#fff9c4
+    subgraph AttributeGroup["2. AttributeReader：正排索引Reader"]
+        direction TB
+        A1[实现IIndexReader接口]
+        A2[属性查询功能&lt;br/&gt;根据DocId读取属性值]
+        A3[支持多种数据类型&lt;br/&gt;int/string/float等]
+        A1 --&gt; A2
+        A2 --&gt; A3
+    end
+    
+    subgraph PrimaryKeyGroup["3. PrimaryKeyIndexReader：主键索引Reader"]
+        direction TB
+        P1[实现IIndexReader接口]
+        P2[主键查询功能&lt;br/&gt;根据主键查找DocId]
+        P3[支持精确匹配&lt;br/&gt;O1时间复杂度]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph SummaryGroup["4. SummaryReader：摘要Reader"]
+        direction TB
+        S1[实现IIndexReader接口]
+        S2[获取文档摘要&lt;br/&gt;根据DocId读取摘要信息]
+        S3[支持字段选择&lt;br/&gt;按需读取字段]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph DeletionMapGroup["5. DeletionMapReader：删除映射Reader"]
+        direction TB
+        D1[实现IIndexReader接口]
+        D2[过滤删除文档&lt;br/&gt;检查DocId是否已删除]
+        D3[支持删除标记&lt;br/&gt;Tombstone机制]
+        D1 --&gt; D2
+        D2 --&gt; D3
+    end
+    
+    Start --&gt; AttributeGroup
+    Start --&gt; PrimaryKeyGroup
+    Start --&gt; SummaryGroup
+    Start --&gt; DeletionMapGroup
+    
+    InvertedGroup --&gt; Usage[使用场景]
+    AttributeGroup --&gt; Usage
+    PrimaryKeyGroup --&gt; Usage
+    SummaryGroup --&gt; Usage
+    DeletionMapGroup --&gt; Usage
+    
+    Usage --&gt; U1[全文搜索场景&lt;br/&gt;InvertedIndexReader]
+    Usage --&gt; U2[属性过滤场景&lt;br/&gt;AttributeReader]
+    Usage --&gt; U3[主键查找场景&lt;br/&gt;PrimaryKeyIndexReader]
+    Usage --&gt; U4[文档展示场景&lt;br/&gt;SummaryReader]
+    Usage --&gt; U5[删除过滤场景&lt;br/&gt;DeletionMapReader]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style TypeLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style InvertedGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style I1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style I2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style I3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style AttributeGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style A1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style A2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style A3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style PrimaryKeyGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style P1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style P2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style P3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style SummaryGroup fill:#fce4ec,stroke:#ef4444,stroke-width:2px
+    style S1 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style S2 fill:#f48fb1,stroke:#ef4444,stroke-width:2px
+    style S3 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style DeletionMapGroup fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style D1 fill:#fff59d,stroke:#f57f17,stroke-width:1px
+    style D2 fill:#ffcc02,stroke:#f57f17,stroke-width:2px
+    style D3 fill:#fff59d,stroke:#f57f17,stroke-width:1px
+    style Usage fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style U1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U4 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style U5 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <p><strong>IndexReader 类型</strong>：</p>
@@ -1696,25 +2078,122 @@
 
 <p><strong>NormalTabletReader 的关键组件</strong>：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[NormalTabletReader] --&gt; B[MultiFieldIndexReader]
-    A --&gt; C[DeletionMapReader]
-    A --&gt; D[PrimaryKeyReader]
-    A --&gt; E[SummaryReader]
-    A --&gt; F[AttributeReader]
+<pre><code class="language-mermaid">flowchart TD
+    Start[NormalTabletReader] --&gt; ComponentGroup
     
-    B --&gt; G[多字段倒排索引]
-    C --&gt; H[删除映射]
-    D --&gt; I[主键索引]
-    E --&gt; J[摘要]
-    F --&gt; K[属性]
+    subgraph ComponentGroup["NormalTabletReader 关键组件"]
+        direction TB
+        C1[NormalTabletReader&lt;br/&gt;普通索引表的查询入口]
+        C2[MultiFieldIndexReader&lt;br/&gt;多字段倒排索引Reader]
+        C3[DeletionMapReader&lt;br/&gt;删除映射Reader]
+        C4[PrimaryKeyReader&lt;br/&gt;主键索引Reader]
+        C5[SummaryReader&lt;br/&gt;摘要Reader]
+        C6[AttributeReader&lt;br/&gt;属性Reader]
+        C1 --&gt; C2
+        C1 --&gt; C3
+        C1 --&gt; C4
+        C1 --&gt; C5
+        C1 --&gt; C6
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style E fill:#fce4ec
-    style F fill:#fff9c4
+    subgraph MultiFieldGroup["MultiFieldIndexReader：多字段倒排索引"]
+        direction TB
+        M1[管理多个字段的倒排索引&lt;br/&gt;支持多字段联合查询]
+        M2[全文检索功能&lt;br/&gt;TermQuery/RangeQuery等]
+        M3[返回匹配的DocId列表&lt;br/&gt;包含相关性分数]
+        M1 --&gt; M2
+        M2 --&gt; M3
+    end
+    
+    subgraph DeletionMapGroup["DeletionMapReader：删除映射"]
+        direction TB
+        D1[管理删除文档映射&lt;br/&gt;记录已删除的DocId]
+        D2[过滤删除文档&lt;br/&gt;查询时过滤已删除文档]
+        D3[支持Tombstone机制&lt;br/&gt;标记删除状态]
+        D1 --&gt; D2
+        D2 --&gt; D3
+    end
+    
+    subgraph PrimaryKeyGroup["PrimaryKeyReader：主键索引"]
+        direction TB
+        P1[管理主键索引&lt;br/&gt;主键到DocId的映射]
+        P2[主键查询功能&lt;br/&gt;根据主键查找DocId]
+        P3[支持精确匹配&lt;br/&gt;O1时间复杂度]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    subgraph SummaryGroup["SummaryReader：摘要"]
+        direction TB
+        S1[管理文档摘要&lt;br/&gt;存储文档的摘要信息]
+        S2[获取文档摘要&lt;br/&gt;根据DocId读取摘要]
+        S3[支持字段选择&lt;br/&gt;按需读取字段]
+        S1 --&gt; S2
+        S2 --&gt; S3
+    end
+    
+    subgraph AttributeGroup["AttributeReader：属性"]
+        direction TB
+        A1[管理属性索引&lt;br/&gt;存储文档的属性值]
+        A2[属性查询功能&lt;br/&gt;根据DocId读取属性值]
+        A3[支持多种数据类型&lt;br/&gt;int/string/float等]
+        A1 --&gt; A2
+        A2 --&gt; A3
+    end
+    
+    C2 --&gt; MultiFieldGroup
+    C3 --&gt; DeletionMapGroup
+    C4 --&gt; PrimaryKeyGroup
+    C5 --&gt; SummaryGroup
+    C6 --&gt; AttributeGroup
+    
+    MultiFieldGroup --&gt; Function[组件功能]
+    DeletionMapGroup --&gt; Function
+    PrimaryKeyGroup --&gt; Function
+    SummaryGroup --&gt; Function
+    AttributeGroup --&gt; Function
+    
+    Function --&gt; F1[全文搜索&lt;br/&gt;MultiFieldIndexReader]
+    Function --&gt; F2[删除过滤&lt;br/&gt;DeletionMapReader]
+    Function --&gt; F3[主键查找&lt;br/&gt;PrimaryKeyReader]
+    Function --&gt; F4[文档展示&lt;br/&gt;SummaryReader]
+    Function --&gt; F5[属性查询&lt;br/&gt;AttributeReader]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ComponentLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ComponentGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style C6 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style MultiFieldGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style M1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style DeletionMapGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style D1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style D2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style D3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style PrimaryKeyGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style P1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style P2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style P3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style SummaryGroup fill:#fce4ec,stroke:#ef4444,stroke-width:2px
+    style S1 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style S2 fill:#f48fb1,stroke:#ef4444,stroke-width:2px
+    style S3 fill:#f8bbd0,stroke:#ef4444,stroke-width:1px
+    style AttributeGroup fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style A1 fill:#fff59d,stroke:#f57f17,stroke-width:1px
+    style A2 fill:#ffcc02,stroke:#f57f17,stroke-width:2px
+    style A3 fill:#fff59d,stroke:#f57f17,stroke-width:1px
+    style Function fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style F1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F4 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F5 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 </code></pre>
 
 <ul>

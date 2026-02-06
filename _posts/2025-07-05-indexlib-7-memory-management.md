@@ -226,22 +226,48 @@ flowchart TD
 **内存配额分配流程图**：
 
 ```mermaid
-graph TD
-    A[请求分配内存] --> B[检查本地配额]
-    B --> C{本地配额足够?}
-    C -->|是| D[从本地分配]
-    C -->|否| E[向父控制器请求]
-    E --> F{父控制器有配额?}
-    F -->|是| G[从父控制器分配]
-    F -->|否| H[等待或拒绝]
-    D --> I[更新本地配额]
-    G --> I
-    I --> J[分配完成]
-    H --> K[分配失败]
-    style C fill:#e3f2fd
-    style E fill:#fff3e0
-    style I fill:#f3e5f5
-    style J fill:#e8f5e9
+flowchart TD
+    Start[请求分配内存<br/>Allocate请求] --> CheckLocal[检查本地配额<br/>localFreeQuota]
+    
+    CheckLocal --> LocalEnough{本地配额足够?}
+    
+    LocalEnough -->|是| AllocateLocal[从本地分配<br/>减少localFreeQuota]
+    LocalEnough -->|否| RequestParent[向父控制器请求<br/>parentController.Allocate]
+    
+    AllocateLocal --> UpdateLocal[更新本地配额<br/>更新localFreeQuota]
+    
+    RequestParent --> CheckParent{父控制器有配额?}
+    
+    CheckParent -->|是| AllocateParent[从父控制器分配<br/>减少父控制器的配额]
+    CheckParent -->|否| HandleNoQuota[处理配额不足]
+    
+    AllocateParent --> ReserveParent[预留父配额<br/>增加reservedParentQuota]
+    ReserveParent --> UpdateLocal
+    
+    HandleNoQuota --> WaitOrReject{等待或拒绝?}
+    WaitOrReject -->|等待| WaitQuota[等待配额释放<br/>阻塞或轮询]
+    WaitOrReject -->|拒绝| RejectAlloc[拒绝分配<br/>返回失败]
+    
+    WaitQuota --> CheckLocal
+    
+    UpdateLocal --> Success[分配完成<br/>返回成功]
+    RejectAlloc --> Fail[分配失败<br/>返回错误]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CheckLocal fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style LocalEnough fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style AllocateLocal fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style RequestParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style AllocateParent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReserveParent fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style UpdateLocal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style HandleNoQuota fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style WaitOrReject fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style WaitQuota fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    style RejectAlloc fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Success fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Fail fill:#ffebee,stroke:#c62828,stroke-width:2px
 ```
 
 **分配机制详解**：

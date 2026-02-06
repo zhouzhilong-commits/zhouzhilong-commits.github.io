@@ -13,23 +13,59 @@ Locator 与数据一致性概览：从 Locator 结构到数据一致性保证的
 
 ```mermaid
 flowchart TD
-    subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+    Start[Locator体系] --> CoreLayer[核心组件层]
+    
+    subgraph LocatorGroup["Locator核心组件"]
+        direction TB
+        L1[Locator<br/>位置定位器]
+        L2[Progress<br/>进度信息]
+        L3[MultiProgress<br/>多进度信息]
+        L4[DocInfo<br/>文档信息]
+        L1 --> L2
+        L1 --> L3
+        L1 --> L4
+        L3 --> L2
     end
     
-    subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+    subgraph CompareGroup["Locator比较组件"]
+        direction TB
+        C1[LocatorCompareResult<br/>比较结果枚举]
+        C2[IsFasterThan<br/>比较方法]
+        C3[LCR_SLOWER<br/>更慢]
+        C4[LCR_FULLY_FASTER<br/>完全更快]
+        C1 --> C2
+        C2 --> C3
+        C2 --> C4
     end
     
-    A --> D
-    B --> E
-    C --> D
+    CoreLayer --> LocatorGroup
+    CoreLayer --> CompareGroup
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    LocatorGroup --> Function[Locator功能]
+    CompareGroup --> Function
+    
+    Function --> F1[位置定位<br/>精确定位数据处理位置]
+    Function --> F2[增量更新<br/>支持增量更新机制]
+    Function --> F3[一致性保证<br/>保证数据一致性]
+    Function --> F4[进度追踪<br/>追踪数据处理进度]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CoreLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style LocatorGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style L3 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style L4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style CompareGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style C4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+    style Function fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style F1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    style F4 fill:#e0e0e0,stroke:#757575,stroke-width:1px
 ```
 
 ## 1. Locator 深入解析
