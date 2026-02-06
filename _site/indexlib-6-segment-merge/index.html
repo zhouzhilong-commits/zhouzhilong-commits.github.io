@@ -690,71 +690,67 @@
 <p><strong>Segment 合并流程图</strong>：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    Start[开始合并] --&gt; GetVersion[获取当前版本&lt;br/&gt;从TabletData获取Version]
+    Start([开始合并]) --&gt; GetVersion[获取当前版本&lt;br/&gt;从TabletData获取Version]
     
     GetVersion --&gt; SelectStrategy[选择合并策略&lt;br/&gt;MergeStrategy]
     
     SelectStrategy --&gt; StrategyType{合并策略类型}
     
-    StrategyType --&gt;|OptimizeMergeStrategy| OptimizeStrategy[优化合并策略&lt;br/&gt;选择需要合并的Segment]
-    StrategyType --&gt;|RealtimeMergeStrategy| RealtimeStrategy[实时合并策略&lt;br/&gt;实时合并小Segment]
-    StrategyType --&gt;|ShardBasedMergeStrategy| ShardStrategy[分片合并策略&lt;br/&gt;按分片合并]
+    StrategyType --&gt;|优化合并| OptimizeStrategy[优化合并策略&lt;br/&gt;选择需要合并的Segment]
+    StrategyType --&gt;|实时合并| RealtimeStrategy[实时合并策略&lt;br/&gt;实时合并小Segment]
+    StrategyType --&gt;|分片合并| ShardStrategy[分片合并策略&lt;br/&gt;按分片合并]
     
-    OptimizeStrategy --&gt; CreatePlan[创建MergePlan&lt;br/&gt;包含Segment列表和目标版本]
+    OptimizeStrategy --&gt; CreatePlan
     RealtimeStrategy --&gt; CreatePlan
     ShardStrategy --&gt; CreatePlan
     
-    CreatePlan --&gt; ValidatePlan[验证MergePlan&lt;br/&gt;检查Segment有效性]
+    CreatePlan[创建MergePlan&lt;br/&gt;包含Segment列表和目标版本] --&gt; ValidatePlan[验证MergePlan&lt;br/&gt;检查Segment有效性]
     
     ValidatePlan --&gt; PlanValid{验证通过?}
     
     PlanValid --&gt;|否| AdjustStrategy[调整策略&lt;br/&gt;重新选择Segment]
-    AdjustStrategy --&gt; SelectStrategy
+    AdjustStrategy -.-&gt;|重新选择| SelectStrategy
     
-    PlanValid --&gt;|是| ExecuteMerge[执行合并]
+    PlanValid --&gt;|是| Merge
     
-    subgraph ExecuteMergeGroup["执行合并：合并索引数据"]
-        direction TB
-        EM1[创建IndexMergeOperation&lt;br/&gt;初始化合并操作]
-        EM2[读取源Segment&lt;br/&gt;从多个Segment读取数据]
-        EM3[合并索引数据&lt;br/&gt;合并倒排/正排/主键索引]
+    subgraph Merge["执行合并"]
+        direction LR
+        EM1[创建合并操作&lt;br/&gt;IndexMergeOperation]
+        EM2[读取源Segment&lt;br/&gt;从多个Segment读取]
+        EM3[合并索引数据&lt;br/&gt;倒排/正排/主键索引]
         EM4[写入目标Segment&lt;br/&gt;写入合并后的数据]
-        EM1 --&gt; EM2
-        EM2 --&gt; EM3
-        EM3 --&gt; EM4
+        EM1 --&gt; EM2 --&gt; EM3 --&gt; EM4
     end
     
-    ExecuteMerge --&gt; ExecuteMergeGroup
-    
-    ExecuteMergeGroup --&gt; CreateVersion[创建新版本&lt;br/&gt;包含合并后的Segment]
+    Merge --&gt; EM1
+    EM4 --&gt; CreateVersion[创建新版本&lt;br/&gt;包含合并后的Segment]
     
     CreateVersion --&gt; CommitVersion[提交新版本&lt;br/&gt;使用Fence机制保证原子性]
     
     CommitVersion --&gt; Cleanup[清理旧Segment&lt;br/&gt;删除不再需要的Segment文件]
     
-    Cleanup --&gt; End[完成合并]
+    Cleanup --&gt; End([完成合并])
     
     style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style GetVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
+    style GetVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     style SelectStrategy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     style StrategyType fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style OptimizeStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style RealtimeStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style ShardStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    style OptimizeStrategy fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style RealtimeStrategy fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
+    style ShardStrategy fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
     style CreatePlan fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style ValidatePlan fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+    style ValidatePlan fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style PlanValid fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style AdjustStrategy fill:#ffebee,stroke:#c62828,stroke-width:1px
-    style ExecuteMerge fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style ExecuteMergeGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style EM1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
-    style EM2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
-    style EM3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style EM4 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style AdjustStrategy fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Merge fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style EM1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style EM2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style EM3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style EM4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
     style CreateVersion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
     style CommitVersion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Cleanup fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
-    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Cleanup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <h3 id="12-合并的核心组件">1.2 合并的核心组件</h3>
@@ -1025,27 +1021,47 @@
 
 <p>合并策略的选择逻辑是合并流程的关键。让我们通过流程图来理解详细的选择过程：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始创建合并计划] --&gt; B[收集源Segment]
-    B --&gt; C[从TabletData获取所有Segment]
-    C --&gt; D[过滤Segment]
-    D --&gt; E{检查maxDocCount}
-    E --&gt;|docCount &lt;= maxDocCount| F[保留Segment]
-    E --&gt;|docCount &gt; maxDocCount| G[跳过Segment]
-    F --&gt; H[分组Segment]
-    G --&gt; H
-    H --&gt; I[计算目标Segment数]
-    I --&gt; J[根据afterMergeMaxDocCount分组]
-    J --&gt; K[创建SegmentMergePlan]
-    K --&gt; L[设置目标Segment]
-    L --&gt; M[创建MergePlan]
-    M --&gt; N[设置目标版本]
-    N --&gt; O[完成]
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始创建合并计划]) --&gt; Collect[收集源Segment&lt;br/&gt;从TabletData获取所有Segment]
     
-    style D fill:#e3f2fd
-    style H fill:#fff3e0
-    style K fill:#f3e5f5
-    style M fill:#e8f5e9
+    Collect --&gt; Filter[过滤Segment&lt;br/&gt;筛选符合条件的Segment]
+    
+    Filter --&gt; Check{检查maxDocCount&lt;br/&gt;文档数量限制}
+    
+    Check --&gt;|docCount &lt;= maxDocCount| Keep[保留Segment&lt;br/&gt;符合合并条件]
+    Check --&gt;|docCount &gt; maxDocCount| Skip[跳过Segment&lt;br/&gt;超过限制，不合并]
+    
+    Keep --&gt; Group
+    Skip --&gt; Group
+    
+    Group[分组Segment&lt;br/&gt;将Segment进行分组] --&gt; Calculate[计算目标Segment数&lt;br/&gt;根据合并后大小计算]
+    
+    Calculate --&gt; GroupBy[根据afterMergeMaxDocCount分组&lt;br/&gt;按目标文档数分组]
+    
+    GroupBy --&gt; CreatePlan[创建SegmentMergePlan&lt;br/&gt;为每组创建合并计划]
+    
+    CreatePlan --&gt; SetTarget[设置目标Segment&lt;br/&gt;指定合并后的Segment]
+    
+    SetTarget --&gt; CreateMergePlan[创建MergePlan&lt;br/&gt;包含所有合并计划]
+    
+    CreateMergePlan --&gt; SetVersion[设置目标版本&lt;br/&gt;指定合并后的版本号]
+    
+    SetVersion --&gt; End([完成])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Collect fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Filter fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Check fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Keep fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
+    style Skip fill:#ffcdd2,stroke:#c62828,stroke-width:1.5px
+    style Group fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Calculate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style GroupBy fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CreatePlan fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style SetTarget fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style CreateMergePlan fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style SetVersion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>选择逻辑详解</strong>：</p>
@@ -1404,25 +1420,38 @@
 
 <p>IndexMergeOperation 是合并执行的核心，负责实际的合并工作。让我们通过流程图来理解详细的合并过程：</p>
 
-<pre><code class="language-mermaid">graph TD
-    A[开始合并操作] --&gt; B[读取源Segment]
-    B --&gt; C[并行读取索引数据]
-    C --&gt; D[合并倒排索引]
-    C --&gt; E[合并正排索引]
-    C --&gt; F[合并主键索引]
-    D --&gt; G[合并文档数据]
-    E --&gt; G
-    F --&gt; G
-    G --&gt; H[去重处理]
-    H --&gt; I[排序处理]
-    I --&gt; J[写入目标Segment]
-    J --&gt; K[更新元数据]
-    K --&gt; L[完成合并]
+<pre><code class="language-mermaid">flowchart TD
+    Start([开始合并操作]) --&gt; Read[读取源Segment&lt;br/&gt;从多个Segment读取数据]
     
-    style C fill:#e3f2fd
-    style G fill:#fff3e0
-    style J fill:#f3e5f5
-    style K fill:#e8f5e9
+    Read --&gt; MergeInverted[合并倒排索引&lt;br/&gt;InvertedIndex]
+    Read --&gt; MergeAttribute[合并正排索引&lt;br/&gt;AttributeIndex]
+    Read --&gt; MergePrimaryKey[合并主键索引&lt;br/&gt;PrimaryKeyIndex]
+    
+    MergeInverted --&gt; MergeDoc[合并文档数据&lt;br/&gt;合并所有索引数据]
+    MergeAttribute --&gt; MergeDoc
+    MergePrimaryKey --&gt; MergeDoc
+    
+    MergeDoc --&gt; Dedup[去重处理&lt;br/&gt;去除重复文档]
+    
+    Dedup --&gt; Sort[排序处理&lt;br/&gt;按文档ID排序]
+    
+    Sort --&gt; Write[写入目标Segment&lt;br/&gt;写入合并后的数据]
+    
+    Write --&gt; UpdateMeta[更新元数据&lt;br/&gt;更新Segment元数据]
+    
+    UpdateMeta --&gt; End([完成合并])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Read fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style MergeInverted fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style MergeAttribute fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style MergePrimaryKey fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style MergeDoc fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Dedup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Sort fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Write fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style UpdateMeta fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>合并操作的关键步骤详解</strong>：</p>
@@ -1787,46 +1816,37 @@
 <p>全量合并场景：合并所有符合条件的 Segment：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    subgraph Collect["收集Segment"]
-        C1[收集所有Segment&lt;br/&gt;Collect All Segments]
-        C2[过滤Segment&lt;br/&gt;Filter Segments]
-        C3[符合条件的Segment&lt;br/&gt;Eligible Segments]
-        C1 --&gt; C2
-        C2 --&gt; C3
-    end
+    Start([全量合并开始]) --&gt; Step1[1. 收集所有Segment&lt;br/&gt;从TabletData获取]
     
-    subgraph Plan["创建合并计划"]
-        P1[创建合并计划&lt;br/&gt;Create Merge Plan]
-        P2[将所有Segment合并&lt;br/&gt;Merge All Segments]
-        P3[合并为少数大Segment&lt;br/&gt;Merge to Few Large Segments]
-        P1 --&gt; P2
-        P2 --&gt; P3
-    end
+    Step1 --&gt; Step2[2. 过滤Segment&lt;br/&gt;筛选符合条件的Segment]
     
-    subgraph Execute["执行合并"]
-        E1[执行合并操作&lt;br/&gt;Execute Merge]
-        E2[合并所有Segment&lt;br/&gt;Merge All Segments]
-        E3[创建目标Segment&lt;br/&gt;Create Target Segments]
-        E1 --&gt; E2
-        E2 --&gt; E3
-    end
+    Step2 --&gt; Step3[3. 创建合并计划&lt;br/&gt;MergePlan，合并所有Segment]
     
-    subgraph Commit["提交版本"]
-        CO1[提交新版本&lt;br/&gt;Commit New Version]
-        CO2[更新TabletData&lt;br/&gt;Update TabletData]
-        CO3[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
-        CO1 --&gt; CO2
-        CO2 --&gt; CO3
-    end
+    Step3 --&gt; Step4[4. 执行合并操作&lt;br/&gt;IndexMergeOperation]
     
-    C3 --&gt; P1
-    P3 --&gt; E1
-    E3 --&gt; CO1
+    Step4 --&gt; Step5[5. 合并索引数据&lt;br/&gt;合并倒排/正排/主键索引]
     
-    style Collect fill:#e3f2fd
-    style Plan fill:#fff3e0
-    style Execute fill:#f3e5f5
-    style Commit fill:#e8f5e9
+    Step5 --&gt; Step6[6. 创建目标Segment&lt;br/&gt;生成合并后的Segment]
+    
+    Step6 --&gt; Step7[7. 提交新版本&lt;br/&gt;使用Fence机制保证原子性]
+    
+    Step7 --&gt; Step8[8. 更新TabletData&lt;br/&gt;切换到新版本]
+    
+    Step8 --&gt; Step9[9. 清理旧Segment&lt;br/&gt;删除不再需要的文件]
+    
+    Step9 --&gt; End([全量合并完成])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Step1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Step2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Step3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step5 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step6 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Step7 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Step8 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Step9 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>全量合并流程</strong>：</p>
