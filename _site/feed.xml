@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-06T17:53:42+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-06T19:08:28+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
 
@@ -2341,24 +2341,60 @@
 
 <p>Locator 的完整结构：包含所有关键字段和 DocInfo 结构：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["数据源标识&lt;br/&gt;_src"]
-        B["最小偏移量&lt;br/&gt;_minOffset"]
-        C["多进度信息&lt;br/&gt;_multiProgress"]
+<pre><code class="language-mermaid">flowchart TB
+    Locator["Locator 类&lt;br/&gt;class Locator&lt;br/&gt;增量更新的核心定位器"]
+    
+    subgraph CoreFields["核心字段 Core Fields"]
+        direction LR
+        A["数据源标识&lt;br/&gt;_src: uint64_t&lt;br/&gt;区分不同数据源&lt;br/&gt;不同数据源无法比较"]
+        B["最小偏移量&lt;br/&gt;_minOffset: Progress::Offset&lt;br/&gt;std::pair&amp;lt;int64_t, uint32_t&amp;gt;&lt;br/&gt;所有hashId的最小进度&lt;br/&gt;用于快速判断整体进度"]
+        C["多进度信息&lt;br/&gt;_multiProgress: MultiProgress&lt;br/&gt;std::vector&amp;lt;ProgressVector&amp;gt;&lt;br/&gt;每个hashId的进度列表&lt;br/&gt;支持分片和并行处理"]
     end
     
-    subgraph Sub["子组件"]
-        D["用户数据&lt;br/&gt;_userData"]
-        E["遗留标识&lt;br/&gt;_isLegacyLocator"]
+    subgraph AuxFields["辅助字段 Auxiliary Fields"]
+        direction LR
+        D["用户数据&lt;br/&gt;_userData: std::string&lt;br/&gt;自定义业务信息&lt;br/&gt;支持业务扩展"]
+        E["遗留标识&lt;br/&gt;_isLegacyLocator: bool&lt;br/&gt;标识旧版本Locator&lt;br/&gt;保证向后兼容"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph InnerStruct["内部结构 Inner Structures"]
+        direction LR
+        F["DocInfo 结构&lt;br/&gt;struct DocInfo&lt;br/&gt;文档位置信息"]
+        G["比较结果枚举&lt;br/&gt;LocatorCompareResult&lt;br/&gt;LCR_INVALID/SLOWER/&lt;br/&gt;PARTIAL_FASTER/FULLY_FASTER"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph DocInfoFields["DocInfo 字段"]
+        direction LR
+        F1["timestamp: int64_t&lt;br/&gt;时间戳位置"]
+        F2["concurrentIdx: uint32_t&lt;br/&gt;并发索引"]
+        F3["hashId: uint16_t&lt;br/&gt;分片标识"]
+        F4["sourceIdx: uint8_t&lt;br/&gt;数据源索引"]
+    end
+    
+    Locator --&gt; CoreFields
+    Locator --&gt; AuxFields
+    Locator --&gt; InnerStruct
+    
+    F --&gt; DocInfoFields
+    B -.-&gt;|基于| C
+    C -.-&gt;|包含| F
+    
+    style Locator fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style CoreFields fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style AuxFields fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style InnerStruct fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style DocInfoFields fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style G fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F1 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style F2 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style F3 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style F4 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -2394,24 +2430,42 @@
 
 <p>Progress 的结构：包含 from、to、offset 等字段：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["HashId范围&lt;br/&gt;from/to"]
-        B["偏移量&lt;br/&gt;offset"]
-        C["进度向量&lt;br/&gt;ProgressVector"]
+<pre><code class="language-mermaid">flowchart TB
+    Progress["Progress 结构&lt;br/&gt;记录单个hashId范围的进度信息"]
+    
+    subgraph Fields["Progress 核心字段"]
+        direction LR
+        A["HashId范围&lt;br/&gt;from: uint32_t&lt;br/&gt;to: uint32_t&lt;br/&gt;定义分片范围"]
+        B["偏移量&lt;br/&gt;offset: Offset&lt;br/&gt;std::pair&amp;lt;int64_t, uint32_t&amp;gt;&lt;br/&gt;timestamp + concurrentIdx"]
     end
     
-    subgraph Sub["子组件"]
-        D["多进度信息&lt;br/&gt;MultiProgress"]
-        E["进度管理&lt;br/&gt;ProgressManagement"]
+    subgraph OffsetType["Offset 类型定义"]
+        direction LR
+        O1["INVALID_OFFSET&lt;br/&gt;{-1, 0}&lt;br/&gt;无效偏移量"]
+        O2["MIN_OFFSET&lt;br/&gt;{0, 0}&lt;br/&gt;最小偏移量"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Collection["进度集合类型"]
+        direction LR
+        C["ProgressVector&lt;br/&gt;std::vector&amp;lt;Progress&amp;gt;&lt;br/&gt;一个hashId范围的进度列表&lt;br/&gt;支持多个Progress对象"]
+        D["MultiProgress&lt;br/&gt;std::vector&amp;lt;ProgressVector&amp;gt;&lt;br/&gt;多个hashId范围的进度列表&lt;br/&gt;支持并行处理和分片"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Progress --&gt; Fields
+    B --&gt;|类型为| OffsetType
+    Fields --&gt;|组成| C
+    C --&gt;|组成| D
+    
+    style Progress fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style Fields fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OffsetType fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Collection fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style O1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style O2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -2427,24 +2481,33 @@
 
 <p>DocInfo 的结构：包含 timestamp、concurrentIdx、hashId、sourceIdx 等字段：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["时间戳&lt;br/&gt;timestamp"]
-        B["并发索引&lt;br/&gt;concurrentIdx"]
-        C["Hash ID&lt;br/&gt;hashId"]
+<pre><code class="language-mermaid">flowchart TB
+    DocInfo["DocInfo 结构&lt;br/&gt;记录文档在数据源中的位置信息"]
+    
+    subgraph Position["位置标识字段"]
+        direction LR
+        A["时间戳&lt;br/&gt;timestamp: int64_t&lt;br/&gt;记录数据的时间位置&lt;br/&gt;用于排序和定位"]
+        B["并发索引&lt;br/&gt;concurrentIdx: uint32_t&lt;br/&gt;处理时间戳相同的情况&lt;br/&gt;区分同一时刻的多个文档"]
     end
     
-    subgraph Sub["子组件"]
-        D["数据源索引&lt;br/&gt;sourceIdx"]
-        E["文档信息&lt;br/&gt;DocInfo"]
+    subgraph Routing["路由相关字段"]
+        direction LR
+        C["Hash ID&lt;br/&gt;hashId: uint32_t&lt;br/&gt;用于分片处理&lt;br/&gt;决定文档所属分片"]
+        D["数据源索引&lt;br/&gt;sourceIdx: uint32_t&lt;br/&gt;支持多数据源&lt;br/&gt;标识数据来源"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    DocInfo --&gt; Position
+    DocInfo --&gt; Routing
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A -.-&gt;|组成偏移量| B
+    
+    style DocInfo fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style Position fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Routing fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>DocInfo 的关键字段</strong>：</p>
@@ -2462,23 +2525,41 @@
 <p><code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 是 Locator 比较的核心方法，用于判断数据是否已处理。这是增量更新的基础，通过比较两个 Locator 来判断数据的新旧关系。让我们先通过流程图来理解比较的完整流程：</p>
 
 <pre><code class="language-mermaid">flowchart TD
-    Start([开始比较]) --&gt; CheckSrc{检查数据源&lt;br/&gt;是否相同?}
-    CheckSrc --&gt;|不同| ReturnInvalid[返回 LCR_INVALID]
-    CheckSrc --&gt;|相同| CheckSize{比较 MultiProgress&lt;br/&gt;大小}
-    CheckSize --&gt;|this.size &gt; other.size| ReturnPartial[返回 LCR_PARTIAL_FASTER]
-    CheckSize --&gt;|this.size &lt; other.size| CheckEach[遍历每个 hashId]
-    CheckSize --&gt;|this.size == other.size| CheckEach
-    CheckEach --&gt; CompareProgress[比较该 hashId 的进度]
-    CompareProgress --&gt; CheckResult{比较结果?}
-    CheckResult --&gt;|LCR_FULLY_FASTER| CheckNext{还有更多&lt;br/&gt;hashId?}
-    CheckResult --&gt;|LCR_SLOWER| ReturnSlower[返回 LCR_SLOWER]
-    CheckResult --&gt;|LCR_PARTIAL_FASTER| ReturnPartial
+    Start([开始比较&lt;br/&gt;IsFasterThan]) --&gt; CheckSrc{检查数据源&lt;br/&gt;IsSameSrc?}
+    
+    CheckSrc --&gt;|数据源不同| ReturnInvalid[返回 LCR_INVALID&lt;br/&gt;无法比较]
+    CheckSrc --&gt;|数据源相同| CheckSize{比较 MultiProgress&lt;br/&gt;大小关系}
+    
+    CheckSize --&gt;|this.size &gt; other.size&lt;br/&gt;覆盖更多hashId| ReturnPartial[返回 LCR_PARTIAL_FASTER&lt;br/&gt;部分更快]
+    CheckSize --&gt;|this.size &lt;= other.size| CheckEach[遍历每个 hashId&lt;br/&gt;逐一比较进度]
+    
+    CheckEach --&gt; CompareProgress[比较该 hashId 的进度&lt;br/&gt;CompareProgress]
+    CompareProgress --&gt; CheckResult{比较结果判断}
+    
+    CheckResult --&gt;|LCR_FULLY_FASTER&lt;br/&gt;完全更快| CheckNext{还有更多&lt;br/&gt;hashId?}
+    CheckResult --&gt;|LCR_SLOWER&lt;br/&gt;更慢| ReturnSlower[返回 LCR_SLOWER&lt;br/&gt;整体更慢]
+    CheckResult --&gt;|LCR_PARTIAL_FASTER&lt;br/&gt;部分更快| ReturnPartial
+    
     CheckNext --&gt;|是| CheckEach
-    CheckNext --&gt;|否| ReturnFully[返回 LCR_FULLY_FASTER]
+    CheckNext --&gt;|否| ReturnFully[返回 LCR_FULLY_FASTER&lt;br/&gt;所有hashId都更快]
+    
     ReturnInvalid --&gt; End([结束])
     ReturnSlower --&gt; End
     ReturnPartial --&gt; End
     ReturnFully --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckSrc fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckNext fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReturnInvalid fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ReturnSlower fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ReturnPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style ReturnFully fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckEach fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CompareProgress fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <p><strong>IsFasterThan() 的完整实现</strong>：</p>
@@ -2592,24 +2673,49 @@
 
 <p>IsFasterThan() 方法：比较两个 Locator 的实现逻辑：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["数据源检查&lt;br/&gt;SourceCheck"]
-        B["最小偏移量比较&lt;br/&gt;MinOffsetCompare"]
-        C["多进度比较&lt;br/&gt;MultiProgressCompare"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Steps["比较步骤 Comparison Steps"]
+        direction LR
+        A["数据源检查&lt;br/&gt;IsSameSrc()&lt;br/&gt;检查 _src 是否相同&lt;br/&gt;不同则返回 LCR_INVALID"]
+        B["快速路径检查&lt;br/&gt;Empty Check&lt;br/&gt;检查 MultiProgress 是否为空&lt;br/&gt;快速判断避免遍历"]
+        C["多进度比较&lt;br/&gt;MultiProgress Compare&lt;br/&gt;遍历每个 hashId&lt;br/&gt;调用 CompareProgress()"]
     end
     
-    subgraph Sub["子组件"]
-        D["比较结果&lt;br/&gt;CompareResult"]
-        E["性能优化&lt;br/&gt;PerformanceOptimization"]
+    subgraph Optimization["性能优化策略 Performance Optimization"]
+        direction LR
+        D["快速路径优化&lt;br/&gt;Fast Path&lt;br/&gt;数据源不同直接返回&lt;br/&gt;空Progress快速判断"]
+        E["短路优化&lt;br/&gt;Short Circuit&lt;br/&gt;发现更慢立即返回&lt;br/&gt;减少不必要的比较"]
+        F["缓存优化&lt;br/&gt;Cache&lt;br/&gt;缓存比较结果&lt;br/&gt;避免重复计算"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Results["比较结果类型 Compare Results"]
+        direction LR
+        G["LCR_INVALID&lt;br/&gt;数据源不同&lt;br/&gt;无法比较"]
+        H["LCR_SLOWER&lt;br/&gt;整体更慢&lt;br/&gt;数据未处理"]
+        I["LCR_PARTIAL_FASTER&lt;br/&gt;部分更快&lt;br/&gt;需要部分处理"]
+        J["LCR_FULLY_FASTER&lt;br/&gt;完全更快&lt;br/&gt;数据已处理"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Steps --&gt;|产生| Results
+    Steps --&gt;|采用| Optimization
+    
+    A --&gt;|第一步| B
+    B --&gt;|第二步| C
+    C --&gt;|第三步| Results
+    
+    style Steps fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Optimization fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Results fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style H fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style I fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style J fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="22-compareprogress-方法">2.2 CompareProgress() 方法</h3>
@@ -2689,24 +2795,54 @@
 
 <p>Locator 比较结果的语义：不同结果的含义和应用场景：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["完全更快&lt;br/&gt;LCR_FULLY_FASTER"]
-        B["更慢&lt;br/&gt;LCR_SLOWER"]
-        C["部分更快&lt;br/&gt;LCR_PARTIAL_FASTER"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Results["Locator 比较结果类型"]
+        direction LR
+        A["LCR_INVALID&lt;br/&gt;无效比较&lt;br/&gt;数据源不同"]
+        B["LCR_SLOWER&lt;br/&gt;更慢&lt;br/&gt;数据未处理"]
+        C["LCR_PARTIAL_FASTER&lt;br/&gt;部分更快&lt;br/&gt;部分数据已处理"]
+        D["LCR_FULLY_FASTER&lt;br/&gt;完全更快&lt;br/&gt;数据已处理"]
     end
     
-    subgraph Sub["子组件"]
-        D["无效比较&lt;br/&gt;LCR_INVALID"]
-        E["比较应用&lt;br/&gt;CompareApplication"]
+    subgraph Meaning["结果含义 Result Meaning"]
+        direction LR
+        E["无法比较&lt;br/&gt;数据源不同&lt;br/&gt;跳过处理"]
+        F["需要处理&lt;br/&gt;有hashId更慢&lt;br/&gt;更新Locator"]
+        G["部分处理&lt;br/&gt;部分hashId更快&lt;br/&gt;分别处理每个hashId"]
+        H["跳过处理&lt;br/&gt;所有hashId更快或相等&lt;br/&gt;数据已处理"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Application["应用场景 Application Scenarios"]
+        direction LR
+        I["增量更新&lt;br/&gt;判断数据是否已处理&lt;br/&gt;决定是否需要更新"]
+        J["数据一致性&lt;br/&gt;保证数据处理的顺序&lt;br/&gt;避免重复处理"]
+        K["性能优化&lt;br/&gt;跳过已处理数据&lt;br/&gt;减少不必要的处理"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A --&gt;|含义| E
+    B --&gt;|含义| F
+    C --&gt;|含义| G
+    D --&gt;|含义| H
+    
+    E --&gt;|应用于| I
+    F --&gt;|应用于| I
+    G --&gt;|应用于| J
+    H --&gt;|应用于| K
+    
+    style Results fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Meaning fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Application fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style B fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style C fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style D fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style H fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style I fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style J fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style K fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>比较结果详解</strong>：</p>
@@ -2741,24 +2877,59 @@
 
 <p>多进度比较：比较 MultiProgress 中每个 hashId 的进度：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["HashId遍历&lt;br/&gt;HashIdIteration"]
-        B["进度比较&lt;br/&gt;ProgressCompare"]
-        C["结果聚合&lt;br/&gt;ResultAggregation"]
-    end
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始多进度比较]) --&gt; Init[初始化状态&lt;br/&gt;设置标志位]
     
-    subgraph Sub["子组件"]
-        D["比较优化&lt;br/&gt;CompareOptimization"]
-        E["并行比较&lt;br/&gt;ParallelCompare"]
-    end
+    Init --&gt; Iterate[遍历每个 hashId&lt;br/&gt;遍历所有hashId]
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    Iterate --&gt; Compare[调用 CompareProgress&lt;br/&gt;比较该 hashId 的进度]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Compare --&gt; CheckResult{比较结果判断}
+    
+    CheckResult --&gt;|LCR_SLOWER| CheckPartial{是否有部分更快}
+    CheckResult --&gt;|LCR_PARTIAL_FASTER| SetPartial[设置 hasPartialFaster]
+    CheckResult --&gt;|LCR_FULLY_FASTER| CheckNext{还有更多hashId}
+    
+    CheckPartial --&gt;|否| ReturnSlower[返回 LCR_SLOWER]
+    CheckPartial --&gt;|是| SetSlower[设置 hasSlower]
+    
+    SetPartial --&gt; CheckNext
+    SetSlower --&gt; CheckNext
+    
+    CheckNext --&gt;|是| Iterate
+    CheckNext --&gt;|否| CheckSize{比较大小}
+    
+    CheckSize --&gt;|当前size大于其他size| ReturnPartial[返回 LCR_PARTIAL_FASTER]
+    CheckSize --&gt;|当前size小于其他size| CheckSlower2{是否有更慢的}
+    CheckSize --&gt;|当前size等于其他size| Aggregate[汇总结果]
+    
+    CheckSlower2 --&gt;|是| ReturnSlower
+    CheckSlower2 --&gt;|否| ReturnPartial
+    
+    Aggregate --&gt;|有部分更快且无更慢| ReturnPartial
+    Aggregate --&gt;|有更慢| ReturnSlower
+    Aggregate --&gt;|无部分更快且无更慢| ReturnFully[返回 LCR_FULLY_FASTER]
+    
+    ReturnSlower --&gt; End([结束])
+    ReturnPartial --&gt; End
+    ReturnFully --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Init fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Iterate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckPartial fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckNext fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckSlower2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SetPartial fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SetSlower fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Aggregate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReturnSlower fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ReturnPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style ReturnFully fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>多进度比较的序列图</strong>：</p>
@@ -2954,24 +3125,72 @@
 
 <p>Update() 方法：更新 Locator 的实现逻辑：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["进度更新&lt;br/&gt;ProgressUpdate"]
-        B["多进度更新&lt;br/&gt;MultiProgressUpdate"]
-        C["最小偏移量更新&lt;br/&gt;MinOffsetUpdate"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始更新&lt;br/&gt;Update方法]) --&gt; CheckSrc{检查数据源&lt;br/&gt;IsSameSrc}
+    
+    CheckSrc --&gt;|数据源不同| Return1[返回，不更新]
+    CheckSrc --&gt;|数据源相同| CheckFaster{检查新Locator&lt;br/&gt;是否完全更快&lt;br/&gt;IsFasterThan}
+    
+    CheckFaster --&gt;|不是完全更快| Return2[返回，不更新&lt;br/&gt;保证只向前推进]
+    CheckFaster --&gt;|完全更快| CheckSize{比较MultiProgress&lt;br/&gt;大小关系}
+    
+    CheckSize --&gt;|other.size大于当前size| Replace[直接替换&lt;br/&gt;_multiProgress = other._multiProgress]
+    CheckSize --&gt;|other.size小于等于当前size| Merge[逐个hashId合并&lt;br/&gt;MergeProgressVector]
+    
+    Replace --&gt; UpdateMin[更新MinOffset&lt;br/&gt;UpdateMinOffset方法]
+    Merge --&gt; UpdateMin
+    
+    UpdateMin --&gt; CheckUserData{新Locator是否有&lt;br/&gt;UserData}
+    
+    CheckUserData --&gt;|有UserData| SetUserData[设置UserData&lt;br/&gt;_userData = other._userData]
+    CheckUserData --&gt;|无UserData| End([结束])
+    
+    SetUserData --&gt; End
+    Return1 --&gt; End
+    Return2 --&gt; End
+    
+    subgraph MergeDetail["MergeProgressVector 详细流程"]
+        direction TB
+        M1[按from排序&lt;br/&gt;std::sort]
+        M2[合并重叠的Progress&lt;br/&gt;保留更大的offset]
+        M3[与pv2合并&lt;br/&gt;处理重叠和大小]
     end
     
-    subgraph Sub["子组件"]
-        D["更新优化&lt;br/&gt;UpdateOptimization"]
-        E["并发更新&lt;br/&gt;ConcurrentUpdate"]
+    Merge -.-&gt;|调用| MergeDetail
+    M1 --&gt; M2
+    M2 --&gt; M3
+    
+    subgraph MinOffsetDetail["UpdateMinOffset 详细流程"]
+        direction TB
+        O1{MultiProgress&lt;br/&gt;是否为空}
+        O2[设置为INVALID_OFFSET]
+        O3[遍历所有Progress&lt;br/&gt;找到最小offset]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    UpdateMin -.-&gt;|调用| MinOffsetDetail
+    O1 --&gt;|是| O2
+    O1 --&gt;|否| O3
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckSrc fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckFaster fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckUserData fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Replace fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Merge fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateMin fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SetUserData fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Return1 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Return2 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style MergeDetail fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style MinOffsetDetail fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style M1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style M2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style M3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style O1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style O2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style O3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <h3 id="32-更新时机">3.2 更新时机</h3>
@@ -2980,24 +3199,52 @@
 
 <p>Locator 的更新时机：在数据处理完成后更新 Locator：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["数据处理完成&lt;br/&gt;DataProcessingComplete"]
-        B["版本提交&lt;br/&gt;VersionCommit"]
-        C["增量更新&lt;br/&gt;IncrementalUpdate"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Trigger["更新触发时机 Update Triggers"]
+        direction LR
+        A["数据处理完成&lt;br/&gt;TabletWriter::Build&lt;br/&gt;处理完一批文档后&lt;br/&gt;更新MemSegment的Locator"]
+        B["Segment构建完成&lt;br/&gt;MemSegment::Seal&lt;br/&gt;Segment构建完成后&lt;br/&gt;更新Locator"]
+        C["版本提交时&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;版本提交时&lt;br/&gt;设置Version的Locator"]
+        D["增量更新时&lt;br/&gt;IncrementalUpdate&lt;br/&gt;处理完新数据后&lt;br/&gt;更新Locator记录处理位置"]
     end
     
-    subgraph Sub["子组件"]
-        D["更新触发&lt;br/&gt;UpdateTrigger"]
-        E["更新同步&lt;br/&gt;UpdateSync"]
+    subgraph Action["更新操作 Update Actions"]
+        direction LR
+        E["调用Update方法&lt;br/&gt;Locator::Update&lt;br/&gt;检查是否完全更快&lt;br/&gt;合并MultiProgress"]
+        F["更新MinOffset&lt;br/&gt;UpdateMinOffset&lt;br/&gt;重新计算最小偏移量"]
+        G["持久化Locator&lt;br/&gt;Version::SetLocator&lt;br/&gt;保存到Version中"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Purpose["更新目的 Update Purpose"]
+        direction LR
+        H["反映最新位置&lt;br/&gt;保证Locator反映&lt;br/&gt;最新的数据处理位置"]
+        I["保证一致性&lt;br/&gt;保证数据处理的&lt;br/&gt;顺序和一致性"]
+        J["支持增量更新&lt;br/&gt;记录处理位置&lt;br/&gt;支持下次增量更新"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    A --&gt;|触发| E
+    B --&gt;|触发| E
+    C --&gt;|触发| G
+    D --&gt;|触发| E
+    
+    E --&gt;|包含| F
+    E --&gt;|实现| H
+    G --&gt;|实现| I
+    E --&gt;|实现| J
+    
+    style Trigger fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Action fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Purpose fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style H fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style I fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style J fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>更新时机的序列图</strong>：</p>
@@ -3058,16 +3305,98 @@
 
 <p><code class="language-plaintext highlighter-rouge">Serialize()</code> 方法用于序列化 Locator，将 Locator 持久化到磁盘或网络传输。序列化格式需要支持版本兼容和向后兼容。让我们先通过流程图来理解序列化的完整流程：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始序列化]) --&gt; WriteMagic[写入 Magic Number]
-    WriteMagic --&gt; WriteVersion[写入 Version]
-    WriteVersion --&gt; WriteSrc[写入 Src]
-    WriteSrc --&gt; WriteMultiProgress[写入 MultiProgress]
-    WriteMultiProgress --&gt; WriteUserData[写入 UserData]
-    WriteUserData --&gt; Compress{需要压缩?}
-    Compress --&gt;|是| CompressData[压缩数据]
-    Compress --&gt;|否| End([结束])
-    CompressData --&gt; End
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始序列化&lt;br/&gt;Serialize方法]) --&gt; InitBuffer[构建序列化缓冲区&lt;br/&gt;autil::DataBuffer]
+    
+    InitBuffer --&gt; WriteHeader[写入头部信息]
+    
+    subgraph HeaderGroup["头部信息 Header"]
+        direction LR
+        H1[Magic Number&lt;br/&gt;0x4C4F4341 LOCA&lt;br/&gt;uint32_t 验证标识]
+        H2[Version&lt;br/&gt;版本号 2&lt;br/&gt;uint32_t 兼容性]
+    end
+    
+    WriteHeader --&gt; WriteBasic[写入基础字段]
+    
+    subgraph BasicGroup["基础字段 Basic Fields"]
+        direction TB
+        B1[Src&lt;br/&gt;数据源标识&lt;br/&gt;uint64_t]
+        B2[MinOffset&lt;br/&gt;timestamp int64_t&lt;br/&gt;concurrentIdx uint32_t]
+    end
+    
+    WriteBasic --&gt; WriteMulti[写入 MultiProgress]
+    
+    subgraph MultiGroup["MultiProgress 序列化"]
+        direction TB
+        M1[写入 hashId 数量&lt;br/&gt;uint32_t]
+        M2[循环遍历每个 hashId]
+        M3[写入 ProgressVector]
+    end
+    
+    subgraph PVGroup["ProgressVector 序列化"]
+        direction TB
+        P1[写入 Progress 数量&lt;br/&gt;uint32_t]
+        P2[循环遍历每个 Progress]
+        P3[写入 Progress 数据&lt;br/&gt;from uint32_t&lt;br/&gt;to uint32_t&lt;br/&gt;offset timestamp + concurrentIdx]
+    end
+    
+    WriteMulti --&gt; WriteUser[写入 UserData]
+    M2 --&gt;|对每个hashId| M3
+    M3 --&gt;|调用| PVGroup
+    P2 --&gt;|对每个Progress| P3
+    
+    subgraph UserGroup["UserData 序列化"]
+        direction TB
+        U1[写入数据长度&lt;br/&gt;uint32_t]
+        U2{数据是否为空}
+        U3[写入数据内容&lt;br/&gt;writeBytes]
+    end
+    
+    WriteUser --&gt; WriteLegacy[写入 Legacy 标志&lt;br/&gt;_isLegacyLocator&lt;br/&gt;uint8_t]
+    
+    WriteLegacy --&gt; ToString[转换为字符串&lt;br/&gt;buffer.toString]
+    
+    ToString --&gt; CheckSize{数据大小&lt;br/&gt;是否大于1KB}
+    
+    CheckSize --&gt;|是| Compress[压缩数据&lt;br/&gt;Compress方法]
+    CheckSize --&gt;|否| End([结束&lt;br/&gt;返回序列化结果])
+    
+    Compress --&gt; End
+    
+    WriteHeader -.-&gt;|包含| HeaderGroup
+    WriteBasic -.-&gt;|包含| BasicGroup
+    WriteMulti -.-&gt;|包含| MultiGroup
+    WriteUser -.-&gt;|包含| UserGroup
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style InitBuffer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteHeader fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteBasic fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteUser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteLegacy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ToString fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Compress fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style HeaderGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style H1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style H2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style BasicGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style MultiGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style PVGroup fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
+    style P1 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style P2 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style P3 fill:#81d4fa,stroke:#0277bd,stroke-width:2px
+    style UserGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style U1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>Serialize() 的完整实现</strong>：</p>
@@ -3146,49 +3475,211 @@
 
 <p>Locator 的序列化：将 Locator 序列化为字符串：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["字段序列化&lt;br/&gt;FieldSerialization"]
-        B["多进度序列化&lt;br/&gt;MultiProgressSerialization"]
-        C["字符串编码&lt;br/&gt;StringEncoding"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始序列化&lt;br/&gt;Serialize方法]) --&gt; InitBuffer[初始化缓冲区&lt;br/&gt;autil::DataBuffer]
+    
+    InitBuffer --&gt; WriteHeader[写入头部信息]
+    
+    subgraph Header["头部信息 Header 8字节"]
+        direction TB
+        H1["Magic Number&lt;br/&gt;0x4C4F4341 LOCA&lt;br/&gt;uint32_t 4字节&lt;br/&gt;格式验证标识"]
+        H2["Version&lt;br/&gt;版本号 2&lt;br/&gt;uint32_t 4字节&lt;br/&gt;兼容性控制"]
     end
     
-    subgraph Sub["子组件"]
-        D["序列化优化&lt;br/&gt;SerializationOptimization"]
-        E["格式转换&lt;br/&gt;FormatConversion"]
+    WriteHeader --&gt; WriteBasic[写入基础字段]
+    
+    subgraph Basic["基础字段 Basic Fields 20字节"]
+        direction TB
+        B1["Src&lt;br/&gt;数据源标识&lt;br/&gt;uint64_t 8字节"]
+        B2["MinOffset&lt;br/&gt;最小偏移量&lt;br/&gt;timestamp int64_t 8字节&lt;br/&gt;concurrentIdx uint32_t 4字节"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    WriteBasic --&gt; WriteMulti[写入MultiProgress]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph Multi["MultiProgress 可变长度"]
+        direction TB
+        M1["hashId数量&lt;br/&gt;uint32_t 4字节"]
+        M2["ProgressVector数组&lt;br/&gt;每个hashId一个&lt;br/&gt;嵌套结构"]
+        M3["Progress数据&lt;br/&gt;from uint32_t 4字节&lt;br/&gt;to uint32_t 4字节&lt;br/&gt;offset 12字节"]
+    end
+    
+    WriteMulti --&gt; WriteUser[写入UserData]
+    
+    subgraph User["UserData 可变长度"]
+        direction TB
+        U1["数据长度&lt;br/&gt;uint32_t 4字节"]
+        U2["数据内容&lt;br/&gt;可选字段&lt;br/&gt;writeBytes"]
+    end
+    
+    WriteUser --&gt; WriteLegacy[写入Legacy标志&lt;br/&gt;_isLegacyLocator&lt;br/&gt;uint8_t 1字节]
+    
+    WriteLegacy --&gt; ToString[转换为字符串&lt;br/&gt;buffer.toString]
+    
+    ToString --&gt; CheckSize{数据大小&lt;br/&gt;是否大于1KB}
+    
+    CheckSize --&gt;|是| Compress[压缩数据&lt;br/&gt;Compress方法&lt;br/&gt;LZ4或Snappy]
+    CheckSize --&gt;|否| End([结束&lt;br/&gt;返回序列化结果])
+    
+    Compress --&gt; End
+    
+    WriteHeader -.-&gt;|包含| Header
+    WriteBasic -.-&gt;|包含| Basic
+    WriteMulti -.-&gt;|包含| Multi
+    WriteUser -.-&gt;|包含| User
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style InitBuffer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteHeader fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteBasic fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteUser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style WriteLegacy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ToString fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Compress fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Header fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style H1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style H2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Basic fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Multi fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style User fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style U1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="42-deserialize-方法">4.2 Deserialize() 方法</h3>
 
 <p><code class="language-plaintext highlighter-rouge">Deserialize()</code> 方法用于反序列化 Locator，从字符串恢复 Locator 对象。需要支持版本兼容和向后兼容。让我们先通过流程图来理解反序列化的完整流程：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始反序列化]) --&gt; Decompress{数据是否压缩?}
-    Decompress --&gt;|是| DecompressData[解压数据]
-    Decompress --&gt;|否| ReadMagic[读取 Magic Number]
-    DecompressData --&gt; ReadMagic
-    ReadMagic --&gt; CheckMagic{验证 Magic Number}
-    CheckMagic --&gt;|失败| Error[返回错误]
-    CheckMagic --&gt;|成功| ReadVersion[读取 Version]
-    ReadVersion --&gt; CheckVersion{检查版本}
-    CheckVersion --&gt;|不支持| Error
-    CheckVersion --&gt;|支持| ReadSrc[读取 Src]
-    ReadSrc --&gt; ReadMinOffset[读取 MinOffset]
-    ReadMinOffset --&gt; ReadMultiProgress[读取 MultiProgress]
-    ReadMultiProgress --&gt; ReadUserData[读取 UserData]
-    ReadUserData --&gt; ReadLegacy[读取 Legacy 标志]
-    ReadLegacy --&gt; Validate[验证数据]
-    Validate --&gt;|失败| Error
-    Validate --&gt;|成功| End([结束])
-    Error --&gt; End
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始反序列化&lt;br/&gt;Deserialize方法]) --&gt; CheckEmpty{字符串&lt;br/&gt;是否为空}
+    
+    CheckEmpty --&gt;|是| Error1[返回错误&lt;br/&gt;Empty string]
+    CheckEmpty --&gt;|否| CheckCompress{数据是否压缩&lt;br/&gt;IsCompressed}
+    
+    CheckCompress --&gt;|是| Decompress[解压数据&lt;br/&gt;Decompress方法]
+    CheckCompress --&gt;|否| InitBuffer[构建缓冲区&lt;br/&gt;autil::DataBuffer]
+    
+    Decompress --&gt;|成功| InitBuffer
+    Decompress --&gt;|失败| Error2[返回错误&lt;br/&gt;Decompress failed]
+    
+    InitBuffer --&gt; ReadMagic[读取Magic Number&lt;br/&gt;uint32_t]
+    
+    ReadMagic --&gt; CheckReadMagic{读取&lt;br/&gt;是否成功}
+    CheckReadMagic --&gt;|失败| Error3[返回错误&lt;br/&gt;Failed to read magic]
+    CheckReadMagic --&gt;|成功| CheckMagic{验证Magic Number&lt;br/&gt;是否为0x4C4F4341}
+    
+    CheckMagic --&gt;|失败| Error4[返回错误&lt;br/&gt;Invalid magic number]
+    CheckMagic --&gt;|成功| ReadVersion[读取Version&lt;br/&gt;uint32_t]
+    
+    ReadVersion --&gt; CheckReadVersion{读取&lt;br/&gt;是否成功}
+    CheckReadVersion --&gt;|失败| Error5[返回错误&lt;br/&gt;Failed to read version]
+    CheckReadVersion --&gt;|成功| CheckVersion{检查版本&lt;br/&gt;Version 1或2}
+    
+    CheckVersion --&gt;|不支持| Error6[返回错误&lt;br/&gt;Unsupported version]
+    CheckVersion --&gt;|V1| DeserializeV1[调用DeserializeV1&lt;br/&gt;V1格式解析]
+    CheckVersion --&gt;|V2| DeserializeV2[调用DeserializeV2&lt;br/&gt;V2格式解析]
+    
+    DeserializeV1 --&gt; ReadFields[读取基础字段]
+    DeserializeV2 --&gt; ReadFields
+    
+    subgraph Fields["基础字段读取"]
+        direction TB
+        F1[读取Src&lt;br/&gt;uint64_t 8字节]
+        F2[读取MinOffset&lt;br/&gt;timestamp int64_t 8字节&lt;br/&gt;concurrentIdx uint32_t 4字节]
+    end
+    
+    ReadFields --&gt; ReadMulti[读取MultiProgress]
+    
+    subgraph Multi["MultiProgress读取"]
+        direction TB
+        M1[读取hashId数量&lt;br/&gt;uint32_t]
+        M2[遍历每个hashId&lt;br/&gt;for each hashId]
+        M3[读取ProgressVector大小&lt;br/&gt;uint32_t]
+        M4[遍历每个Progress&lt;br/&gt;for each Progress]
+        M5[读取Progress数据&lt;br/&gt;from to offset]
+    end
+    
+    ReadMulti --&gt; ReadUser[读取UserData]
+    
+    subgraph User["UserData读取"]
+        direction TB
+        U1[读取数据长度&lt;br/&gt;uint32_t]
+        U2{长度是否&lt;br/&gt;大于0}
+        U3[读取数据内容&lt;br/&gt;readBytes]
+    end
+    
+    ReadUser --&gt; ReadLegacy[读取Legacy标志&lt;br/&gt;_isLegacyLocator&lt;br/&gt;uint8_t]
+    
+    ReadLegacy --&gt; Validate[验证数据&lt;br/&gt;IsValid检查]
+    
+    Validate --&gt;|失败| Error7[返回错误&lt;br/&gt;Invalid locator]
+    Validate --&gt;|成功| End([结束&lt;br/&gt;返回Status::OK])
+    
+    Error1 --&gt; End
+    Error2 --&gt; End
+    Error3 --&gt; End
+    Error4 --&gt; End
+    Error5 --&gt; End
+    Error6 --&gt; End
+    Error7 --&gt; End
+    
+    ReadFields -.-&gt;|包含| Fields
+    ReadMulti -.-&gt;|包含| Multi
+    ReadUser -.-&gt;|包含| User
+    
+    M2 --&gt;|循环| M3
+    M3 --&gt;|循环| M4
+    M4 --&gt;|循环| M5
+    M5 --&gt;|继续| M2
+    U2 --&gt;|是| U3
+    U2 --&gt;|否| ReadLegacy
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckEmpty fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckCompress fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Decompress fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style InitBuffer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadMagic fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckReadMagic fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckMagic fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReadVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckReadVersion fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckVersion fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style DeserializeV1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style DeserializeV2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadFields fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadUser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadLegacy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Validate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Error1 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error2 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error3 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error4 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error5 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error6 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error7 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Fields fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Multi fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style User fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style U1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style U3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>Deserialize() 的完整实现</strong>：</p>
@@ -3327,48 +3818,187 @@
 
 <p>Locator 的反序列化：从字符串反序列化为 Locator：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["字符串解析&lt;br/&gt;StringParsing"]
-        B["字段反序列化&lt;br/&gt;FieldDeserialization"]
-        C["多进度反序列化&lt;br/&gt;MultiProgressDeserialization"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始反序列化&lt;br/&gt;Deserialize方法]) --&gt; CheckEmpty{字符串&lt;br/&gt;是否为空}
+    
+    CheckEmpty --&gt;|是| Error1[返回错误&lt;br/&gt;Empty string]
+    CheckEmpty --&gt;|否| CheckCompress{检查是否压缩&lt;br/&gt;IsCompressed}
+    
+    CheckCompress --&gt;|是| Decompress[解压数据&lt;br/&gt;Decompress方法]
+    CheckCompress --&gt;|否| InitBuffer[构建缓冲区&lt;br/&gt;autil::DataBuffer]
+    
+    Decompress --&gt;|成功| InitBuffer
+    Decompress --&gt;|失败| Error2[返回错误&lt;br/&gt;Decompress failed]
+    
+    InitBuffer --&gt; ReadMagic[读取Magic Number&lt;br/&gt;uint32_t]
+    
+    ReadMagic --&gt; CheckReadMagic{读取&lt;br/&gt;是否成功}
+    CheckReadMagic --&gt;|失败| Error3[返回错误&lt;br/&gt;Failed to read magic]
+    CheckReadMagic --&gt;|成功| CheckMagic{验证Magic Number&lt;br/&gt;是否为0x4C4F4341}
+    
+    CheckMagic --&gt;|失败| Error4[返回错误&lt;br/&gt;Invalid magic number]
+    CheckMagic --&gt;|成功| ReadVersion[读取Version&lt;br/&gt;uint32_t]
+    
+    ReadVersion --&gt; CheckReadVersion{读取&lt;br/&gt;是否成功}
+    CheckReadVersion --&gt;|失败| Error5[返回错误&lt;br/&gt;Failed to read version]
+    CheckReadVersion --&gt;|成功| CheckVersion{检查版本&lt;br/&gt;Version 1或2}
+    
+    CheckVersion --&gt;|不支持| Error6[返回错误&lt;br/&gt;Unsupported version]
+    CheckVersion --&gt;|V1| DeserializeV1[调用DeserializeV1&lt;br/&gt;V1格式解析]
+    CheckVersion --&gt;|V2| DeserializeV2[调用DeserializeV2&lt;br/&gt;V2格式解析]
+    
+    DeserializeV1 --&gt; ReadFields[读取基础字段]
+    DeserializeV2 --&gt; ReadFields
+    
+    subgraph Fields["基础字段读取"]
+        direction TB
+        F1[读取Src&lt;br/&gt;uint64_t 8字节]
+        F2[读取MinOffset&lt;br/&gt;timestamp int64_t 8字节&lt;br/&gt;concurrentIdx uint32_t 4字节]
     end
     
-    subgraph Sub["子组件"]
-        D["格式验证&lt;br/&gt;FormatValidation"]
-        E["反序列化优化&lt;br/&gt;DeserializationOptimization"]
+    ReadFields --&gt; ReadMulti[读取MultiProgress]
+    
+    subgraph Multi["MultiProgress读取"]
+        direction TB
+        M1[读取hashId数量&lt;br/&gt;uint32_t]
+        M2[遍历每个hashId&lt;br/&gt;for i in multiProgressSize]
+        M3[读取ProgressVector大小&lt;br/&gt;uint32_t]
+        M4[遍历每个Progress&lt;br/&gt;for j in pvSize]
+        M5[读取Progress数据&lt;br/&gt;from uint32_t 4字节&lt;br/&gt;to uint32_t 4字节&lt;br/&gt;offset 12字节]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    ReadMulti --&gt; ReadUser[读取UserData]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph User["UserData读取"]
+        direction TB
+        U1[读取数据长度&lt;br/&gt;uint32_t]
+        U2{长度是否&lt;br/&gt;大于0}
+        U3[读取数据内容&lt;br/&gt;readBytes]
+    end
+    
+    ReadUser --&gt; ReadLegacy[读取Legacy标志&lt;br/&gt;_isLegacyLocator&lt;br/&gt;uint8_t]
+    
+    ReadLegacy --&gt; Validate[验证数据&lt;br/&gt;IsValid检查]
+    
+    Validate --&gt;|失败| Error7[返回错误&lt;br/&gt;Invalid locator]
+    Validate --&gt;|成功| End([结束&lt;br/&gt;返回Status::OK])
+    
+    Error1 --&gt; End
+    Error2 --&gt; End
+    Error3 --&gt; End
+    Error4 --&gt; End
+    Error5 --&gt; End
+    Error6 --&gt; End
+    Error7 --&gt; End
+    
+    ReadFields -.-&gt;|包含| Fields
+    ReadMulti -.-&gt;|包含| Multi
+    ReadUser -.-&gt;|包含| User
+    
+    M1 --&gt; M2
+    M2 --&gt; M3
+    M3 --&gt; M4
+    M4 --&gt; M5
+    M5 --&gt;|继续循环| M2
+    M2 --&gt;|循环结束| ReadUser
+    U1 --&gt; U2
+    U2 --&gt;|是| U3
+    U2 --&gt;|否| ReadLegacy
+    U3 --&gt; ReadLegacy
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckEmpty fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckCompress fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Decompress fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style InitBuffer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadMagic fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckReadMagic fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckMagic fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReadVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckReadVersion fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckVersion fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style DeserializeV1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style DeserializeV2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadFields fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadUser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadLegacy fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Validate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Error1 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error2 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error3 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error4 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error5 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error6 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Error7 fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style Fields fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Multi fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style User fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style U1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style U3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h2 id="5-数据一致性保证">5. 数据一致性保证</h2>
 
 <p>数据一致性是 IndexLib 的核心保证，通过 Locator 实现数据不重复、不丢失，支持多数据源场景。让我们先通过流程图来理解数据一致性保证的完整机制：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([数据到达]) --&gt; CheckLocator{检查 Locator}
-    CheckLocator --&gt; Compare[IsFasterThan 比较]
-    Compare --&gt; CheckResult{比较结果?}
-    CheckResult --&gt;|LCR_FULLY_FASTER| Skip[跳过，数据已处理]
-    CheckResult --&gt;|LCR_SLOWER| Process[处理新数据]
-    CheckResult --&gt;|LCR_PARTIAL_FASTER| ProcessPartial[部分处理]
-    CheckResult --&gt;|LCR_INVALID| CheckSrc{数据源相同?}
-    CheckSrc --&gt;|不同| ProcessMulti[多数据源处理]
-    CheckSrc --&gt;|相同| Error[错误处理]
-    Process --&gt; UpdateLocator[更新 Locator]
+<pre><code class="language-mermaid">flowchart TB
+    Start([数据到达&lt;br/&gt;Document Arrival]) --&gt; GetLocator[获取文档Locator&lt;br/&gt;doc.GetLocator]
+    
+    GetLocator --&gt; Compare[调用IsFasterThan&lt;br/&gt;比较docLocator和currentLocator&lt;br/&gt;IsFasterThan方法]
+    
+    Compare --&gt; CheckResult{比较结果判断&lt;br/&gt;LocatorCompareResult}
+    
+    CheckResult --&gt;|LCR_FULLY_FASTER&lt;br/&gt;数据已处理| Skip[跳过处理&lt;br/&gt;Skip Processing&lt;br/&gt;数据已完全处理&lt;br/&gt;避免重复处理]
+    
+    CheckResult --&gt;|LCR_SLOWER&lt;br/&gt;数据未处理| Process[处理新数据&lt;br/&gt;Process New Data&lt;br/&gt;Build文档&lt;br/&gt;构建索引]
+    
+    CheckResult --&gt;|LCR_PARTIAL_FASTER&lt;br/&gt;部分已处理| ProcessPartial[部分处理&lt;br/&gt;Partial Processing&lt;br/&gt;处理未处理部分&lt;br/&gt;部分构建索引]
+    
+    CheckResult --&gt;|LCR_INVALID&lt;br/&gt;数据源不同| CheckSrc{检查数据源&lt;br/&gt;IsSameSrc}
+    
+    CheckSrc --&gt;|数据源不同&lt;br/&gt;不同数据源| ProcessMulti[多数据源处理&lt;br/&gt;Multi-Source Processing&lt;br/&gt;根据数据源选择Locator&lt;br/&gt;独立处理]
+    
+    CheckSrc --&gt;|数据源相同&lt;br/&gt;但比较无效| Error[错误处理&lt;br/&gt;Error Handling&lt;br/&gt;数据源相同但比较无效&lt;br/&gt;返回错误]
+    
+    Process --&gt; UpdateLocator[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;调用Update方法&lt;br/&gt;合并MultiProgress]
+    
     ProcessPartial --&gt; UpdateLocator
+    
     ProcessMulti --&gt; UpdateLocator
-    UpdateLocator --&gt; Commit[提交版本]
-    Commit --&gt; Persist[持久化 Locator]
-    Persist --&gt; End([结束])
+    
+    UpdateLocator --&gt; Commit[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;创建新版本]
+    
+    Commit --&gt; Persist[持久化Locator&lt;br/&gt;Persist Locator&lt;br/&gt;序列化Locator&lt;br/&gt;写入Version文件]
+    
+    Persist --&gt; End([结束&lt;br/&gt;End])
+    
     Skip --&gt; End
     Error --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style GetLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckSrc fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Skip fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style Process fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ProcessPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style ProcessMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Error fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style UpdateLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Commit fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Persist fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <h3 id="51-数据不重复保证">5.1 数据不重复保证</h3>
@@ -3461,24 +4091,48 @@
 
 <p>数据不重复保证：通过 Locator 比较避免重复处理数据：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["Locator比较&lt;br/&gt;LocatorCompare"]
-        B["重复检测&lt;br/&gt;DuplicateDetection"]
-        C["跳过处理&lt;br/&gt;SkipProcessing"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Mechanism["数据不重复保证机制"]
+        direction LR
+        A["Locator比较&lt;br/&gt;IsFasterThan方法&lt;br/&gt;判断数据是否已处理&lt;br/&gt;返回比较结果"]
+        B["重复检测&lt;br/&gt;DuplicateDetection&lt;br/&gt;LCR_FULLY_FASTER时&lt;br/&gt;检测到已处理数据"]
+        C["跳过处理&lt;br/&gt;SkipProcessing&lt;br/&gt;跳过已处理数据&lt;br/&gt;避免重复计算"]
     end
     
-    subgraph Sub["子组件"]
-        D["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
-        E["性能优化&lt;br/&gt;PerformanceOptimization"]
+    subgraph Result["比较结果处理"]
+        direction LR
+        D["LCR_FULLY_FASTER&lt;br/&gt;数据已处理&lt;br/&gt;直接跳过"]
+        E["LCR_SLOWER&lt;br/&gt;数据未处理&lt;br/&gt;正常处理"]
+        F["LCR_PARTIAL_FASTER&lt;br/&gt;部分已处理&lt;br/&gt;部分处理"]
+        G["LCR_INVALID&lt;br/&gt;数据源不同&lt;br/&gt;特殊处理"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Benefit["保证效果"]
+        direction LR
+        H["数据一致性&lt;br/&gt;保证数据不重复&lt;br/&gt;避免重复处理"]
+        I["性能优化&lt;br/&gt;减少不必要计算&lt;br/&gt;提高处理效率"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Mechanism --&gt;|产生| Result
+    Result --&gt;|实现| Benefit
+    
+    A --&gt;|返回| D
+    A --&gt;|返回| E
+    A --&gt;|返回| F
+    A --&gt;|返回| G
+    
+    style Mechanism fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Result fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Benefit fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style E fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style F fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style G fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style H fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style I fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="52-数据不丢失保证">5.2 数据不丢失保证</h3>
@@ -3575,24 +4229,75 @@
 
 <p>数据不丢失保证：通过 Locator 记录处理位置，保证数据不丢失：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["位置记录&lt;br/&gt;PositionRecording"]
-        B["进度追踪&lt;br/&gt;ProgressTracking"]
-        C["恢复机制&lt;br/&gt;RecoveryMechanism"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始数据处理&lt;br/&gt;Data Processing]) --&gt; Process[处理数据&lt;br/&gt;Process Data&lt;br/&gt;TabletWriter::Build&lt;br/&gt;处理文档]
+    
+    Process --&gt; UpdateLocator[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;Locator::Update&lt;br/&gt;记录处理位置]
+    
+    subgraph Recording["位置记录机制 Position Recording"]
+        direction TB
+        R1[记录每个hashId进度&lt;br/&gt;MultiProgress更新&lt;br/&gt;记录timestamp和concurrentIdx]
+        R2[更新MinOffset&lt;br/&gt;快速判断整体进度&lt;br/&gt;最小偏移量维护]
+        R3[合并Progress&lt;br/&gt;MergeProgressVector&lt;br/&gt;保留更大进度]
     end
     
-    subgraph Sub["子组件"]
-        D["数据完整性&lt;br/&gt;DataIntegrity"]
-        E["故障恢复&lt;br/&gt;FaultRecovery"]
+    UpdateLocator --&gt; Commit[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;创建新版本]
+    
+    Commit --&gt; Persist[持久化Locator&lt;br/&gt;Persist Locator&lt;br/&gt;序列化Locator&lt;br/&gt;写入Version文件]
+    
+    Persist --&gt; NormalEnd([正常结束&lt;br/&gt;Normal End])
+    
+    subgraph Recovery["故障恢复流程 Fault Recovery"]
+        direction TB
+        F1[检测故障&lt;br/&gt;Fault Detection&lt;br/&gt;系统故障或重启]
+        F2[加载版本&lt;br/&gt;Load Version&lt;br/&gt;加载故障前版本&lt;br/&gt;Version::GetLocator]
+        F3[恢复Locator&lt;br/&gt;Recover Locator&lt;br/&gt;反序列化Locator&lt;br/&gt;恢复处理位置]
+        F4[从位置继续&lt;br/&gt;Continue from Position&lt;br/&gt;IsFasterThan判断&lt;br/&gt;只处理未处理数据]
+        F5[增量处理&lt;br/&gt;Incremental Processing&lt;br/&gt;避免重复处理&lt;br/&gt;保证数据不丢失]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    F1 --&gt;|触发| F2
+    F2 --&gt; F3
+    F3 --&gt; F4
+    F4 --&gt; F5
+    F5 --&gt; Process
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph Guarantee["保证效果 Guarantee Effects"]
+        direction LR
+        G1[数据完整性&lt;br/&gt;Data Integrity&lt;br/&gt;保证数据不丢失&lt;br/&gt;支持故障恢复]
+        G2[版本一致性&lt;br/&gt;Version Consistency&lt;br/&gt;每个版本有Locator&lt;br/&gt;保证版本数据一致]
+        G3[增量更新&lt;br/&gt;Incremental Update&lt;br/&gt;只处理新数据&lt;br/&gt;提高处理效率]
+    end
+    
+    NormalEnd --&gt;|实现| G1
+    F5 --&gt;|实现| G1
+    Persist --&gt;|实现| G2
+    UpdateLocator --&gt;|实现| G3
+    
+    UpdateLocator -.-&gt;|包含| Recording
+    R1 --&gt; R2
+    R2 --&gt; R3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style NormalEnd fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Process fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Commit fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Persist fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Recording fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style R1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style R2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style R3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Recovery fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style F1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Guarantee fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style G1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style G2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style G3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="53-多数据源一致性">5.3 多数据源一致性</h3>
@@ -3690,24 +4395,46 @@
 
 <p>多数据源一致性：通过 sourceIdx 区分数据源，保证多数据源场景的数据一致性：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["数据源区分&lt;br/&gt;SourceDistinction"]
-        B["独立追踪&lt;br/&gt;IndependentTracking"]
-        C["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Identification["数据源标识 Source Identification"]
+        direction LR
+        A["数据源标识&lt;br/&gt;_src: uint64_t&lt;br/&gt;每个数据源唯一标识&lt;br/&gt;区分不同数据源"]
+        B["文档来源&lt;br/&gt;sourceIdx: uint8_t&lt;br/&gt;DocInfo中的字段&lt;br/&gt;标识数据来源"]
     end
     
-    subgraph Sub["子组件"]
-        D["多源管理&lt;br/&gt;MultiSourceManagement"]
-        E["隔离机制&lt;br/&gt;IsolationMechanism"]
+    subgraph Management["多数据源管理 Multi-Source Management"]
+        direction LR
+        C["独立Locator&lt;br/&gt;Independent Locator&lt;br/&gt;每个数据源一个Locator&lt;br/&gt;Version中维护map"]
+        D["独立处理&lt;br/&gt;Independent Processing&lt;br/&gt;根据_src选择Locator&lt;br/&gt;并行处理不同数据源"]
+        E["统一管理&lt;br/&gt;Unified Management&lt;br/&gt;Version统一管理&lt;br/&gt;所有Locator持久化"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Guarantee["一致性保证 Consistency Guarantee"]
+        direction LR
+        F["隔离机制&lt;br/&gt;Isolation Mechanism&lt;br/&gt;不同数据源互不干扰&lt;br/&gt;保证数据一致性"]
+        G["并行支持&lt;br/&gt;Parallel Support&lt;br/&gt;支持并行处理&lt;br/&gt;提高处理效率"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Identification --&gt;|支持| Management
+    Management --&gt;|实现| Guarantee
+    
+    A --&gt;|用于| C
+    B --&gt;|用于| C
+    C --&gt;|支持| D
+    D --&gt;|通过| E
+    E --&gt;|实现| F
+    F --&gt;|支持| G
+    
+    style Identification fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Management fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Guarantee fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style G fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h2 id="6-locator-的高级特性">6. Locator 的高级特性</h2>
@@ -3718,24 +4445,45 @@
 
 <p>分片处理支持：通过 hashId 支持分片处理：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["HashId分片&lt;br/&gt;HashIdSharding"]
-        B["并行处理&lt;br/&gt;ParallelProcessing"]
-        C["进度追踪&lt;br/&gt;ProgressTracking"]
+<pre><code class="language-mermaid">flowchart TB
+    subgraph Sharding["分片处理机制 Sharding Mechanism"]
+        direction LR
+        A["HashId分片&lt;br/&gt;HashId Sharding&lt;br/&gt;通过hashId分片&lt;br/&gt;Progress的from/to定义范围"]
+        B["独立进度&lt;br/&gt;Independent Progress&lt;br/&gt;每个hashId范围独立进度&lt;br/&gt;MultiProgress追踪"]
+        C["并行处理&lt;br/&gt;Parallel Processing&lt;br/&gt;不同hashId并行处理&lt;br/&gt;提高处理效率"]
     end
     
-    subgraph Sub["子组件"]
-        D["分片管理&lt;br/&gt;ShardManagement"]
-        E["负载均衡&lt;br/&gt;LoadBalancing"]
+    subgraph Management["分片管理 Shard Management"]
+        direction LR
+        D["范围定义&lt;br/&gt;Range Definition&lt;br/&gt;from/to定义hashId范围&lt;br/&gt;支持灵活分片"]
+        E["进度追踪&lt;br/&gt;Progress Tracking&lt;br/&gt;MultiProgress追踪每个hashId&lt;br/&gt;支持分片恢复"]
+        F["负载均衡&lt;br/&gt;Load Balancing&lt;br/&gt;根据hashId分布&lt;br/&gt;均衡处理负载"]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    subgraph Benefit["分片优势 Sharding Benefits"]
+        direction LR
+        G["并行能力&lt;br/&gt;Parallel Capability&lt;br/&gt;支持并行处理&lt;br/&gt;提高吞吐量"]
+        H["灵活扩展&lt;br/&gt;Flexible Scaling&lt;br/&gt;支持动态分片&lt;br/&gt;适应不同场景"]
+    end
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Sharding --&gt;|包含| Management
+    Management --&gt;|带来| Benefit
+    
+    A --&gt;|实现| D
+    B --&gt;|实现| E
+    C --&gt;|实现| F
+    
+    style Sharding fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Management fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Benefit fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style A fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style E fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style G fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style H fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>分片机制</strong>：</p>
@@ -3752,24 +4500,83 @@
 
 <p>并发控制：通过 concurrentIdx 处理时间戳相同的情况：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["并发索引&lt;br/&gt;ConcurrentIndex"]
-        B["时间戳处理&lt;br/&gt;TimestampProcessing"]
-        C["顺序保证&lt;br/&gt;OrderGuarantee"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([并发数据处理&lt;br/&gt;Concurrent Data Processing]) --&gt; GetOffset[获取Offset&lt;br/&gt;Get Offset&lt;br/&gt;timestamp + concurrentIdx&lt;br/&gt;Progress::Offset]
+    
+    subgraph Positioning["两级定位机制 Two-Level Positioning"]
+        direction TB
+        P1[第一级：时间戳定位&lt;br/&gt;Timestamp Positioning&lt;br/&gt;timestamp: int64_t 8字节&lt;br/&gt;记录数据时间位置]
+        P2[第二级：并发索引定位&lt;br/&gt;Concurrent Index Positioning&lt;br/&gt;concurrentIdx: uint32_t 4字节&lt;br/&gt;处理时间戳相同的情况]
+        P3[组合定位&lt;br/&gt;Combined Positioning&lt;br/&gt;std::pair timestamp, concurrentIdx&lt;br/&gt;保证唯一性和顺序性]
     end
     
-    subgraph Sub["子组件"]
-        D["并发管理&lt;br/&gt;ConcurrencyManagement"]
-        E["冲突解决&lt;br/&gt;ConflictResolution"]
+    GetOffset --&gt; Compare[比较Offset&lt;br/&gt;Compare Offset&lt;br/&gt;比较timestamp和concurrentIdx&lt;br/&gt;IsFasterThan方法]
+    
+    subgraph Conflict["冲突解决机制 Conflict Resolution"]
+        direction TB
+        C1{时间戳&lt;br/&gt;是否相同}
+        C2[使用concurrentIdx区分&lt;br/&gt;Use concurrentIdx to Distinguish&lt;br/&gt;concurrentIdx小的优先&lt;br/&gt;保证顺序性]
+        C3[时间戳不同&lt;br/&gt;Timestamp Different&lt;br/&gt;时间戳大的优先&lt;br/&gt;直接比较]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    Compare --&gt; C1
+    C1 --&gt;|相同| C2
+    C1 --&gt;|不同| C3
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph Safety["并发安全保证 Thread Safety"]
+        direction LR
+        S1[原子操作&lt;br/&gt;Atomic Operations&lt;br/&gt;比较操作原子性&lt;br/&gt;保证一致性]
+        S2[无锁设计&lt;br/&gt;Lock-Free Design&lt;br/&gt;减少锁竞争&lt;br/&gt;提高并发性能]
+        S3[读写分离&lt;br/&gt;Read-Write Separation&lt;br/&gt;读操作无锁&lt;br/&gt;写操作同步]
+    end
+    
+    C2 --&gt; Update[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;原子性更新&lt;br/&gt;保证线程安全]
+    C3 --&gt; Update
+    
+    Update --&gt; Order[顺序保证&lt;br/&gt;Order Guarantee&lt;br/&gt;保证数据处理顺序&lt;br/&gt;避免乱序问题]
+    
+    Order --&gt; End([结束&lt;br/&gt;End])
+    
+    subgraph Benefit["并发优势 Concurrency Benefits"]
+        direction LR
+        B1[高并发支持&lt;br/&gt;High Concurrency&lt;br/&gt;支持高并发场景&lt;br/&gt;提高处理能力]
+        B2[顺序性保证&lt;br/&gt;Order Guarantee&lt;br/&gt;保证数据顺序&lt;br/&gt;避免乱序问题]
+        B3[性能优化&lt;br/&gt;Performance Optimization&lt;br/&gt;减少锁竞争&lt;br/&gt;提高处理效率]
+    end
+    
+    End --&gt;|实现| B1
+    Order --&gt;|实现| B2
+    Safety --&gt;|实现| B3
+    
+    GetOffset -.-&gt;|包含| Positioning
+    Update -.-&gt;|使用| Safety
+    P1 --&gt; P2
+    P2 --&gt; P3
+    S1 --&gt; S2
+    S2 --&gt; S3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style GetOffset fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Update fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Order fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Positioning fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Conflict fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Safety fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>并发机制</strong>：</p>
@@ -3786,24 +4593,79 @@
 
 <p>用户数据支持：通过 _userData 存储自定义信息：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["用户数据存储&lt;br/&gt;UserDataStorage"]
-        B["自定义信息&lt;br/&gt;CustomInformation"]
-        C["业务扩展&lt;br/&gt;BusinessExtension"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([设置用户数据&lt;br/&gt;Set UserData]) --&gt; SetData[设置数据&lt;br/&gt;SetUserData方法&lt;br/&gt;_userData = data&lt;br/&gt;std::string类型]
+    
+    subgraph Storage["数据存储 Data Storage"]
+        direction TB
+        S1[数据字段&lt;br/&gt;_userData: std::string&lt;br/&gt;存储自定义信息&lt;br/&gt;支持任意字符串数据]
+        S2[可选字段&lt;br/&gt;Optional Field&lt;br/&gt;可以为空&lt;br/&gt;灵活使用]
+        S3[内存存储&lt;br/&gt;Memory Storage&lt;br/&gt;存储在Locator对象中&lt;br/&gt;随Locator生命周期]
     end
     
-    subgraph Sub["子组件"]
-        D["数据管理&lt;br/&gt;DataManagement"]
-        E["扩展支持&lt;br/&gt;ExtensionSupport"]
+    SetData --&gt; Serialize[序列化UserData&lt;br/&gt;Serialize UserData&lt;br/&gt;序列化到Locator&lt;br/&gt;持久化存储]
+    
+    subgraph Serialization["序列化支持 Serialization Support"]
+        direction TB
+        Ser1[写入数据长度&lt;br/&gt;Write Data Length&lt;br/&gt;uint32_t 4字节&lt;br/&gt;数据大小]
+        Ser2[写入数据内容&lt;br/&gt;Write Data Content&lt;br/&gt;writeBytes方法&lt;br/&gt;实际数据]
+        Ser3[持久化存储&lt;br/&gt;Persistent Storage&lt;br/&gt;序列化到Version文件&lt;br/&gt;支持故障恢复]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    Serialize --&gt; Query[查询UserData&lt;br/&gt;Query UserData&lt;br/&gt;GetUserData方法&lt;br/&gt;获取用户数据]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph Application["应用场景 Application Scenarios"]
+        direction LR
+        A1[业务扩展&lt;br/&gt;Business Extension&lt;br/&gt;存储业务自定义信息&lt;br/&gt;支持业务需求]
+        A2[元数据存储&lt;br/&gt;Metadata Storage&lt;br/&gt;存储处理元数据&lt;br/&gt;支持追踪和调试]
+        A3[配置信息&lt;br/&gt;Configuration Info&lt;br/&gt;存储配置参数&lt;br/&gt;支持动态配置]
+    end
+    
+    Query --&gt; Use[使用UserData&lt;br/&gt;Use UserData&lt;br/&gt;业务逻辑处理&lt;br/&gt;信息追踪]
+    
+    subgraph Benefit["扩展优势 Extension Benefits"]
+        direction LR
+        B1[业务定制&lt;br/&gt;Business Customization&lt;br/&gt;支持业务定制需求&lt;br/&gt;提高灵活性]
+        B2[信息追踪&lt;br/&gt;Information Tracking&lt;br/&gt;存储处理信息&lt;br/&gt;支持问题排查]
+        B3[灵活扩展&lt;br/&gt;Flexible Extension&lt;br/&gt;支持任意数据格式&lt;br/&gt;适应不同场景]
+    end
+    
+    Use --&gt; End([结束&lt;br/&gt;End])
+    
+    SetData -.-&gt;|包含| Storage
+    Serialize -.-&gt;|包含| Serialization
+    Use -.-&gt;|用于| Application
+    End --&gt;|实现| Benefit
+    
+    S1 --&gt; S2
+    S2 --&gt; S3
+    Ser1 --&gt; Ser2
+    Ser2 --&gt; Ser3
+    A1 --&gt; A2
+    A2 --&gt; A3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style SetData fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Serialize fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Query fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Use fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Storage fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Serialization fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Ser1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Ser2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Ser3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Application fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Benefit fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>用户数据机制</strong>：</p>
@@ -3822,24 +4684,77 @@
 
 <p>实时写入场景中的 Locator：通过 Locator 判断数据是否已处理：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["实时判断&lt;br/&gt;RealTimeJudgment"]
-        B["数据检查&lt;br/&gt;DataCheck"]
-        C["处理决策&lt;br/&gt;ProcessingDecision"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([实时数据到达&lt;br/&gt;Real-Time Data Arrival]) --&gt; Receive[接收数据&lt;br/&gt;Receive Data&lt;br/&gt;TabletWriter::Build&lt;br/&gt;获取文档和Locator]
+    
+    Receive --&gt; GetLocator[获取文档Locator&lt;br/&gt;Get Document Locator&lt;br/&gt;doc.GetLocator&lt;br/&gt;提取文档位置信息]
+    
+    GetLocator --&gt; Compare[比较Locator&lt;br/&gt;Compare Locator&lt;br/&gt;IsFasterThan方法&lt;br/&gt;docLocator vs currentLocator]
+    
+    Compare --&gt; CheckResult{比较结果判断&lt;br/&gt;LocatorCompareResult}
+    
+    CheckResult --&gt;|LCR_FULLY_FASTER&lt;br/&gt;数据已完全处理| Skip[跳过处理&lt;br/&gt;Skip Processing&lt;br/&gt;返回Status::OK&lt;br/&gt;避免重复处理]
+    
+    CheckResult --&gt;|LCR_SLOWER&lt;br/&gt;数据未处理| Process[处理新数据&lt;br/&gt;Process New Data&lt;br/&gt;MemSegment::Build&lt;br/&gt;构建索引]
+    
+    CheckResult --&gt;|LCR_PARTIAL_FASTER&lt;br/&gt;部分已处理| ProcessPartial[部分处理&lt;br/&gt;Partial Processing&lt;br/&gt;处理未处理部分&lt;br/&gt;部分构建索引]
+    
+    CheckResult --&gt;|LCR_INVALID&lt;br/&gt;数据源不同| HandleMulti[多数据源处理&lt;br/&gt;Multi-Source Processing&lt;br/&gt;根据数据源选择Locator&lt;br/&gt;独立处理]
+    
+    Process --&gt; UpdateLocator[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;Locator::Update方法&lt;br/&gt;合并MultiProgress]
+    
+    ProcessPartial --&gt; UpdateLocator
+    
+    HandleMulti --&gt; UpdateLocator
+    
+    subgraph UpdateDetail["更新详细步骤 Update Details"]
+        direction TB
+        U1[合并MultiProgress&lt;br/&gt;Merge MultiProgress&lt;br/&gt;保留更大进度&lt;br/&gt;更新每个hashId]
+        U2[更新MinOffset&lt;br/&gt;Update MinOffset&lt;br/&gt;重新计算最小偏移量&lt;br/&gt;快速判断整体进度]
+        U3[更新UserData&lt;br/&gt;Update UserData&lt;br/&gt;如果新Locator有UserData&lt;br/&gt;则更新]
     end
     
-    subgraph Sub["子组件"]
-        D["增量处理&lt;br/&gt;IncrementalProcessing"]
-        E["性能优化&lt;br/&gt;PerformanceOptimization"]
+    UpdateLocator --&gt; Commit[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;定期提交]
+    
+    subgraph CommitDetail["提交详细步骤 Commit Details"]
+        direction TB
+        C1[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;包含所有Segment&lt;br/&gt;设置版本信息]
+        C2[设置Locator&lt;br/&gt;Set Locator&lt;br/&gt;Version::SetLocator&lt;br/&gt;保存当前Locator]
+        C3[持久化版本&lt;br/&gt;Persist Version&lt;br/&gt;WriteVersion方法&lt;br/&gt;序列化Locator]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    Commit --&gt; End([结束&lt;br/&gt;End])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    Skip --&gt; End
+    
+    UpdateLocator -.-&gt;|包含| UpdateDetail
+    Commit -.-&gt;|包含| CommitDetail
+    
+    U1 --&gt; U2
+    U2 --&gt; U3
+    C1 --&gt; C2
+    C2 --&gt; C3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Receive fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Skip fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style Process fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ProcessPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style HandleMulti fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Commit fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateDetail fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style U1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style U2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style U3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CommitDetail fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>应用流程</strong>：</p>
@@ -3857,24 +4772,92 @@
 
 <p>批量更新场景中的 Locator：批量处理数据，避免重复处理：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["批量处理&lt;br/&gt;BatchProcessing"]
-        B["重复检测&lt;br/&gt;DuplicateDetection"]
-        C["批量更新&lt;br/&gt;BatchUpdate"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([批量更新开始&lt;br/&gt;Batch Update Start]) --&gt; ReadBatch[批量读取数据&lt;br/&gt;Batch Read Data&lt;br/&gt;从数据源批量读取&lt;br/&gt;获取文档列表]
+    
+    ReadBatch --&gt; Iterate[遍历文档&lt;br/&gt;Iterate Documents&lt;br/&gt;for each document&lt;br/&gt;逐个检查]
+    
+    Iterate --&gt; GetDocLocator[获取文档Locator&lt;br/&gt;Get Document Locator&lt;br/&gt;doc.GetLocator&lt;br/&gt;提取文档位置信息]
+    
+    GetDocLocator --&gt; Compare[比较Locator&lt;br/&gt;Compare Locator&lt;br/&gt;IsFasterThan方法&lt;br/&gt;判断是否已处理]
+    
+    Compare --&gt; CheckResult{比较结果判断&lt;br/&gt;LocatorCompareResult}
+    
+    CheckResult --&gt;|LCR_FULLY_FASTER&lt;br/&gt;数据已处理| Filter[过滤已处理数据&lt;br/&gt;Filter Processed Data&lt;br/&gt;跳过该文档&lt;br/&gt;不加入处理列表]
+    
+    CheckResult --&gt;|LCR_SLOWER&lt;br/&gt;数据未处理| AddToProcess[加入处理列表&lt;br/&gt;Add to Process List&lt;br/&gt;保留未处理数据&lt;br/&gt;等待批量处理]
+    
+    CheckResult --&gt;|LCR_PARTIAL_FASTER&lt;br/&gt;部分已处理| AddPartial[加入部分处理列表&lt;br/&gt;Add to Partial List&lt;br/&gt;保留未处理部分&lt;br/&gt;等待部分处理]
+    
+    Filter --&gt; CheckMore{还有更多&lt;br/&gt;文档?}
+    AddToProcess --&gt; CheckMore
+    AddPartial --&gt; CheckMore
+    
+    CheckMore --&gt;|是| Iterate
+    CheckMore --&gt;|否| BatchProcess[批量处理&lt;br/&gt;Batch Processing&lt;br/&gt;批量构建索引&lt;br/&gt;MemSegment::Build]
+    
+    subgraph ProcessDetail["批量处理详细步骤"]
+        direction TB
+        P1[批量构建索引&lt;br/&gt;Batch Build Index&lt;br/&gt;并行处理多个文档&lt;br/&gt;提高处理效率]
+        P2[批量更新Locator&lt;br/&gt;Batch Update Locator&lt;br/&gt;合并所有文档的Locator&lt;br/&gt;更新MultiProgress]
+        P3[更新MinOffset&lt;br/&gt;Update MinOffset&lt;br/&gt;重新计算最小偏移量&lt;br/&gt;快速判断整体进度]
     end
     
-    subgraph Sub["子组件"]
-        D["效率优化&lt;br/&gt;EfficiencyOptimization"]
-        E["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
+    BatchProcess --&gt; Commit[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;批量处理完成后提交]
+    
+    subgraph CommitDetail["提交详细步骤"]
+        direction TB
+        C1[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;包含所有Segment&lt;br/&gt;设置版本信息]
+        C2[设置Locator&lt;br/&gt;Set Locator&lt;br/&gt;Version::SetLocator&lt;br/&gt;保存当前Locator]
+        C3[持久化版本&lt;br/&gt;Persist Version&lt;br/&gt;WriteVersion方法&lt;br/&gt;序列化Locator]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    Commit --&gt; End([结束&lt;br/&gt;End])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph Benefit["批量优势 Batch Benefits"]
+        direction LR
+        B1[效率优化&lt;br/&gt;Efficiency Optimization&lt;br/&gt;批量处理提高效率&lt;br/&gt;减少单次开销]
+        B2[一致性保证&lt;br/&gt;Consistency Guarantee&lt;br/&gt;保证数据一致性&lt;br/&gt;避免重复处理]
+        B3[资源优化&lt;br/&gt;Resource Optimization&lt;br/&gt;批量操作减少IO&lt;br/&gt;提高吞吐量]
+    end
+    
+    End --&gt;|实现| B1
+    BatchProcess --&gt;|实现| B2
+    Commit --&gt;|实现| B3
+    
+    BatchProcess -.-&gt;|包含| ProcessDetail
+    Commit -.-&gt;|包含| CommitDetail
+    
+    P1 --&gt; P2
+    P2 --&gt; P3
+    C1 --&gt; C2
+    C2 --&gt; C3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ReadBatch fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Iterate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetDocLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckMore fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Filter fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style AddToProcess fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style AddPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style BatchProcess fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Commit fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ProcessDetail fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CommitDetail fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Benefit fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>应用流程</strong>：</p>
@@ -3893,24 +4876,100 @@
 
 <p>故障恢复场景中的 Locator：通过 Locator 判断需要重新处理的数据：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["故障检测&lt;br/&gt;FaultDetection"]
-        B["位置恢复&lt;br/&gt;PositionRecovery"]
-        C["数据重处理&lt;br/&gt;DataReprocessing"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([系统故障&lt;br/&gt;System Fault]) --&gt; Detect[故障检测&lt;br/&gt;Fault Detection&lt;br/&gt;检测到系统故障&lt;br/&gt;需要恢复]
+    
+    Detect --&gt; LoadVersion[加载版本&lt;br/&gt;Load Version&lt;br/&gt;加载故障前版本&lt;br/&gt;Version::Load]
+    
+    subgraph LoadDetail["加载详细步骤"]
+        direction TB
+        L1[读取版本文件&lt;br/&gt;Read Version File&lt;br/&gt;从磁盘读取版本信息&lt;br/&gt;获取版本号]
+        L2[反序列化Locator&lt;br/&gt;Deserialize Locator&lt;br/&gt;恢复Locator对象&lt;br/&gt;获取处理位置]
+        L3[设置当前Locator&lt;br/&gt;Set Current Locator&lt;br/&gt;TabletWriter::SetLocator&lt;br/&gt;恢复处理位置]
     end
     
-    subgraph Sub["子组件"]
-        D["恢复策略&lt;br/&gt;RecoveryStrategy"]
-        E["数据完整性&lt;br/&gt;DataIntegrity"]
+    LoadVersion --&gt; ReadData[读取数据源&lt;br/&gt;Read Data Source&lt;br/&gt;从数据源读取数据&lt;br/&gt;获取文档列表]
+    
+    ReadData --&gt; Iterate[遍历文档&lt;br/&gt;Iterate Documents&lt;br/&gt;for each document&lt;br/&gt;逐个检查]
+    
+    Iterate --&gt; GetDocLocator[获取文档Locator&lt;br/&gt;Get Document Locator&lt;br/&gt;doc.GetLocator&lt;br/&gt;提取文档位置信息]
+    
+    GetDocLocator --&gt; Compare[比较Locator&lt;br/&gt;Compare Locator&lt;br/&gt;IsFasterThan方法&lt;br/&gt;判断是否已处理]
+    
+    Compare --&gt; CheckResult{比较结果判断&lt;br/&gt;LocatorCompareResult}
+    
+    CheckResult --&gt;|LCR_FULLY_FASTER&lt;br/&gt;数据已处理| Skip[跳过处理&lt;br/&gt;Skip Processing&lt;br/&gt;数据已处理&lt;br/&gt;避免重复处理]
+    
+    CheckResult --&gt;|LCR_SLOWER&lt;br/&gt;数据未处理| Reprocess[重新处理&lt;br/&gt;Reprocess Data&lt;br/&gt;MemSegment::Build&lt;br/&gt;构建索引]
+    
+    CheckResult --&gt;|LCR_PARTIAL_FASTER&lt;br/&gt;部分已处理| ReprocessPartial[部分重新处理&lt;br/&gt;Partial Reprocess&lt;br/&gt;处理未处理部分&lt;br/&gt;部分构建索引]
+    
+    Skip --&gt; CheckMore{还有更多&lt;br/&gt;文档?}
+    Reprocess --&gt; UpdateLocator[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;Locator::Update方法&lt;br/&gt;合并MultiProgress]
+    ReprocessPartial --&gt; UpdateLocator
+    
+    CheckMore --&gt;|是| Iterate
+    CheckMore --&gt;|否| UpdateLocator
+    
+    subgraph UpdateDetail["更新详细步骤"]
+        direction TB
+        U1[合并MultiProgress&lt;br/&gt;Merge MultiProgress&lt;br/&gt;保留更大进度&lt;br/&gt;更新每个hashId]
+        U2[更新MinOffset&lt;br/&gt;Update MinOffset&lt;br/&gt;重新计算最小偏移量&lt;br/&gt;快速判断整体进度]
+        U3[更新UserData&lt;br/&gt;Update UserData&lt;br/&gt;如果新Locator有UserData&lt;br/&gt;则更新]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    UpdateLocator --&gt; Commit[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;VersionCommitter::Commit&lt;br/&gt;恢复完成后提交]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph CommitDetail["提交详细步骤"]
+        direction TB
+        C1[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;包含所有Segment&lt;br/&gt;设置版本信息]
+        C2[设置Locator&lt;br/&gt;Set Locator&lt;br/&gt;Version::SetLocator&lt;br/&gt;保存当前Locator]
+        C3[持久化版本&lt;br/&gt;Persist Version&lt;br/&gt;WriteVersion方法&lt;br/&gt;序列化Locator]
+    end
+    
+    Commit --&gt; Verify[验证数据完整性&lt;br/&gt;Verify Data Integrity&lt;br/&gt;检查数据一致性&lt;br/&gt;保证数据不丢失]
+    
+    Verify --&gt; End([恢复完成&lt;br/&gt;Recovery Complete])
+    
+    LoadVersion -.-&gt;|包含| LoadDetail
+    UpdateLocator -.-&gt;|包含| UpdateDetail
+    Commit -.-&gt;|包含| CommitDetail
+    
+    L1 --&gt; L2
+    L2 --&gt; L3
+    U1 --&gt; U2
+    U2 --&gt; U3
+    C1 --&gt; C2
+    C2 --&gt; C3
+    
+    style Start fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Detect fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style LoadVersion fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ReadData fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Iterate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GetDocLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckResult fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CheckMore fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Skip fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style Reprocess fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style ReprocessPartial fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style UpdateLocator fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Commit fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Verify fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style LoadDetail fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style UpdateDetail fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style U1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style U2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style U3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CommitDetail fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>应用流程</strong>：</p>
@@ -3927,61 +4986,164 @@
 
 <p>Locator 的性能直接影响增量更新的效率，需要从比较、更新、序列化等多个方面进行优化。让我们先通过流程图来理解性能优化的整体策略：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([性能优化]) --&gt; CompareOpt[比较优化]
-    CompareOpt --&gt; FastPath[快速路径]
-    CompareOpt --&gt; Cache[结果缓存]
-    CompareOpt --&gt; Parallel[并行比较]
+<pre><code class="language-mermaid">flowchart TB
+    Start([性能优化策略&lt;br/&gt;Performance Optimization Strategy]) --&gt; CompareOpt[比较优化&lt;br/&gt;Comparison Optimization]
     
-    Start --&gt; UpdateOpt[更新优化]
-    UpdateOpt --&gt; Atomic[原子更新]
-    UpdateOpt --&gt; Merge[进度合并]
+    Start --&gt; UpdateOpt[更新优化&lt;br/&gt;Update Optimization]
     
-    Start --&gt; SerializeOpt[序列化优化]
-    SerializeOpt --&gt; Compact[紧凑格式]
-    SerializeOpt --&gt; Compress[压缩支持]
-    SerializeOpt --&gt; Batch[批量序列化]
+    Start --&gt; SerializeOpt[序列化优化&lt;br/&gt;Serialization Optimization]
     
-    Start --&gt; MemoryOpt[内存优化]
-    MemoryOpt --&gt; Pool[对象池]
-    MemoryOpt --&gt; Reuse[对象复用]
+    Start --&gt; MemoryOpt[内存优化&lt;br/&gt;Memory Optimization]
     
-    FastPath --&gt; End([优化完成])
-    Cache --&gt; End
-    Parallel --&gt; End
-    Atomic --&gt; End
-    Merge --&gt; End
-    Compact --&gt; End
-    Compress --&gt; End
-    Batch --&gt; End
-    Pool --&gt; End
-    Reuse --&gt; End
+    subgraph Compare["比较优化策略"]
+        direction TB
+        C1[快速路径优化&lt;br/&gt;Fast Path Optimization&lt;br/&gt;数据源不同直接返回&lt;br/&gt;空Progress快速判断]
+        C2[结果缓存&lt;br/&gt;Result Cache&lt;br/&gt;LRU缓存策略&lt;br/&gt;避免重复计算]
+        C3[并行比较&lt;br/&gt;Parallel Comparison&lt;br/&gt;支持并行比较&lt;br/&gt;提高并发性能]
+        C4[短路优化&lt;br/&gt;Short Circuit Optimization&lt;br/&gt;发现更慢立即返回&lt;br/&gt;减少比较次数]
+    end
+    
+    subgraph Update["更新优化策略"]
+        direction TB
+        U1[原子更新&lt;br/&gt;Atomic Update&lt;br/&gt;原子性更新操作&lt;br/&gt;保证一致性]
+        U2[进度合并&lt;br/&gt;Progress Merge&lt;br/&gt;合并MultiProgress&lt;br/&gt;保留更大进度]
+        U3[批量更新&lt;br/&gt;Batch Update&lt;br/&gt;批量更新Locator&lt;br/&gt;提高更新效率]
+    end
+    
+    subgraph Serialize["序列化优化策略"]
+        direction TB
+        S1[紧凑格式&lt;br/&gt;Compact Format&lt;br/&gt;VarInt编码&lt;br/&gt;减少存储空间]
+        S2[压缩支持&lt;br/&gt;Compression Support&lt;br/&gt;LZ4或Snappy算法&lt;br/&gt;大于1KB时压缩]
+        S3[批量序列化&lt;br/&gt;Batch Serialization&lt;br/&gt;批量序列化多个Locator&lt;br/&gt;对象池复用缓冲区]
+    end
+    
+    subgraph Memory["内存优化策略"]
+        direction TB
+        M1[对象池&lt;br/&gt;Object Pool&lt;br/&gt;复用Locator对象&lt;br/&gt;减少内存分配]
+        M2[对象复用&lt;br/&gt;Object Reuse&lt;br/&gt;重置状态复用&lt;br/&gt;减少构造析构开销]
+        M3[内存预分配&lt;br/&gt;Memory Pre-allocation&lt;br/&gt;预分配MultiProgress容量&lt;br/&gt;减少动态分配]
+    end
+    
+    CompareOpt --&gt;|包含| Compare
+    UpdateOpt --&gt;|包含| Update
+    SerializeOpt --&gt;|包含| Serialize
+    MemoryOpt --&gt;|包含| Memory
+    
+    Compare --&gt; End([优化完成&lt;br/&gt;Optimization Complete])
+    Update --&gt; End
+    Serialize --&gt; End
+    Memory --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CompareOpt fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateOpt fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SerializeOpt fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style MemoryOpt fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Compare fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Update fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style U1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style U3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Serialize fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Memory fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style M1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style M2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style M3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="81-比较性能优化">8.1 比较性能优化</h3>
 
 <p>Locator 比较是增量更新的核心操作，需要优化比较算法，提高比较效率。让我们通过流程图来理解比较优化的策略：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始比较]) --&gt; CheckCache{检查缓存}
-    CheckCache --&gt;|命中| ReturnCache[返回缓存结果]
-    CheckCache --&gt;|未命中| CheckSrc{检查数据源}
-    CheckSrc --&gt;|不同| ReturnInvalid[返回 LCR_INVALID]
-    CheckSrc --&gt;|相同| CheckEmpty{检查是否为空}
-    CheckEmpty --&gt;|都为空| ReturnEqual[返回 LCR_FULLY_FASTER]
-    CheckEmpty --&gt;|不同| CheckSize{比较大小}
-    CheckSize --&gt;|this.size &gt; other.size| ReturnPartial[返回 LCR_PARTIAL_FASTER]
-    CheckSize --&gt;|相等| CompareEach[逐个比较]
-    CompareEach --&gt; ShortCircuit{短路优化}
-    ShortCircuit --&gt;|有更慢的| ReturnSlower[返回 LCR_SLOWER]
-    ShortCircuit --&gt;|继续| CompareEach
-    CompareEach --&gt; UpdateCache[更新缓存]
-    UpdateCache --&gt; End([结束])
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始比较&lt;br/&gt;IsFasterThan方法]) --&gt; CheckCache{检查缓存&lt;br/&gt;Check Cache&lt;br/&gt;LocatorCompareCache::Get}
+    
+    CheckCache --&gt;|命中| ReturnCache[返回缓存结果&lt;br/&gt;Return Cached Result&lt;br/&gt;直接返回结果&lt;br/&gt;避免重复计算]
+    
+    CheckCache --&gt;|未命中| FastPathNode[快速路径优化&lt;br/&gt;Fast Path Optimization]
+    
+    subgraph FastPathGroup["快速路径优化 Fast Path"]
+        direction TB
+        F1[检查数据源&lt;br/&gt;Check Data Source&lt;br/&gt;IsSameSrc方法&lt;br/&gt;比较_src字段]
+        F2{数据源&lt;br/&gt;是否相同}
+        F3[返回LCR_INVALID&lt;br/&gt;Return LCR_INVALID&lt;br/&gt;数据源不同&lt;br/&gt;直接返回]
+        F4[检查是否为空&lt;br/&gt;Check Empty&lt;br/&gt;MultiProgress是否为空]
+        F5{是否都为空}
+        F6[返回LCR_FULLY_FASTER&lt;br/&gt;Return LCR_FULLY_FASTER&lt;br/&gt;都为空时&lt;br/&gt;直接返回]
+        F7[比较大小&lt;br/&gt;Compare Size&lt;br/&gt;比较MultiProgress大小]
+        F8{大小关系}
+        F9[返回LCR_PARTIAL_FASTER&lt;br/&gt;Return LCR_PARTIAL_FASTER&lt;br/&gt;当前size大于other.size&lt;br/&gt;覆盖更多hashId]
+    end
+    
+    FastPathNode --&gt; CompareEach[逐个比较&lt;br/&gt;Compare Each&lt;br/&gt;遍历每个hashId&lt;br/&gt;调用CompareProgress]
+    
+    subgraph CompareDetail["逐个比较详细步骤"]
+        direction TB
+        D1[遍历hashId&lt;br/&gt;Iterate hashId&lt;br/&gt;遍历minSize个hashId&lt;br/&gt;比较multiProgress]
+        D2[调用CompareProgress&lt;br/&gt;Call CompareProgress&lt;br/&gt;比较该hashId的进度&lt;br/&gt;返回比较结果]
+        D3[短路优化检查&lt;br/&gt;Short Circuit Check&lt;br/&gt;检查是否有更慢的&lt;br/&gt;且无部分更快]
+        D4{短路条件&lt;br/&gt;满足?}
+        D5[立即返回LCR_SLOWER&lt;br/&gt;Return LCR_SLOWER Immediately&lt;br/&gt;减少比较次数&lt;br/&gt;提高效率]
+    end
+    
+    CompareEach --&gt; UpdateCache[更新缓存&lt;br/&gt;Update Cache&lt;br/&gt;LocatorCompareCache::Put&lt;br/&gt;保存比较结果]
+    
+    UpdateCache --&gt; End([结束&lt;br/&gt;End])
+    
     ReturnCache --&gt; End
-    ReturnInvalid --&gt; End
-    ReturnEqual --&gt; End
-    ReturnPartial --&gt; End
-    ReturnSlower --&gt; End
+    FastPathNode -.-&gt;|包含| FastPathGroup
+    F1 --&gt; F2
+    F2 --&gt;|不同| F3
+    F2 --&gt;|相同| F4
+    F4 --&gt; F5
+    F5 --&gt;|都为空| F6
+    F5 --&gt;|不同| F7
+    F7 --&gt; F8
+    F8 --&gt;|当前size大于| F9
+    F8 --&gt;|相等| CompareEach
+    F3 --&gt; End
+    F6 --&gt; End
+    F9 --&gt; End
+    
+    CompareEach -.-&gt;|包含| CompareDetail
+    D1 --&gt; D2
+    D2 --&gt; D3
+    D3 --&gt; D4
+    D4 --&gt;|满足| D5
+    D4 --&gt;|不满足| D1
+    D5 --&gt; UpdateCache
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CheckCache fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ReturnCache fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style FastPathNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CompareEach fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style UpdateCache fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style FastPathGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style F4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F6 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style F7 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F8 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F9 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style CompareDetail fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style D1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style D4 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D5 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>比较性能优化的实现</strong>：</p>
@@ -4067,40 +5229,158 @@
 
 <p>Locator 比较的性能优化：优化比较算法，提高比较效率：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["快速路径&lt;br/&gt;FastPath"]
-        B["最小偏移量优化&lt;br/&gt;MinOffsetOptimization"]
-        C["位运算优化&lt;br/&gt;BitwiseOptimization"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([比较性能优化&lt;br/&gt;Comparison Performance Optimization]) --&gt; StrategyLayer[优化策略层&lt;br/&gt;Optimization Strategy Layer]
+    
+    subgraph StrategyGroup["优化策略 Optimization Strategies"]
+        direction TB
+        S1[快速路径优化&lt;br/&gt;Fast Path Optimization&lt;br/&gt;数据源不同直接返回&lt;br/&gt;空Progress快速判断&lt;br/&gt;大小不同快速判断]
+        S2[短路优化&lt;br/&gt;Short Circuit Optimization&lt;br/&gt;发现更慢立即返回&lt;br/&gt;减少比较次数&lt;br/&gt;提高比较效率]
+        S3[缓存优化&lt;br/&gt;Cache Optimization&lt;br/&gt;比较结果缓存&lt;br/&gt;LRU缓存策略&lt;br/&gt;避免重复计算]
     end
     
-    subgraph Sub["子组件"]
-        D["比较缓存&lt;br/&gt;CompareCache"]
-        E["性能调优&lt;br/&gt;PerformanceTuning"]
+    StrategyLayer --&gt; TechniqueLayer[优化技术层&lt;br/&gt;Optimization Technique Layer]
+    
+    subgraph TechniqueGroup["优化技术 Optimization Techniques"]
+        direction TB
+        T1[最小偏移量优化&lt;br/&gt;MinOffset Optimization&lt;br/&gt;使用MinOffset快速判断&lt;br/&gt;减少遍历次数&lt;br/&gt;快速判断整体进度]
+        T2[位运算优化&lt;br/&gt;Bitwise Optimization&lt;br/&gt;使用位运算优化比较&lt;br/&gt;减少比较开销&lt;br/&gt;提高比较速度]
+        T3[并行比较&lt;br/&gt;Parallel Comparison&lt;br/&gt;支持并行比较&lt;br/&gt;提高并发性能&lt;br/&gt;充分利用多核]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    TechniqueLayer --&gt; BenefitLayer[优化效果层&lt;br/&gt;Optimization Benefit Layer]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph BenefitGroup["优化效果 Optimization Benefits"]
+        direction TB
+        B1[性能提升&lt;br/&gt;Performance Improvement&lt;br/&gt;减少比较时间&lt;br/&gt;提高处理效率&lt;br/&gt;降低延迟]
+        B2[资源优化&lt;br/&gt;Resource Optimization&lt;br/&gt;减少CPU使用&lt;br/&gt;降低系统负载&lt;br/&gt;提高吞吐量]
+    end
+    
+    BenefitLayer --&gt; End([优化完成&lt;br/&gt;Optimization Complete])
+    
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    TechniqueLayer -.-&gt;|包含| TechniqueGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    S1 --&gt;|应用| T1
+    S2 --&gt;|应用| T2
+    S3 --&gt;|应用| T3
+    
+    T1 --&gt;|实现| B1
+    T2 --&gt;|实现| B1
+    T3 --&gt;|实现| B2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style TechniqueLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style BenefitLayer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style TechniqueGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style T1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style T2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style T3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style BenefitGroup fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="82-序列化性能优化">8.2 序列化性能优化</h3>
 
 <p>Locator 序列化的性能优化，包括格式优化、压缩支持、批量序列化等。让我们通过流程图来理解序列化优化的策略：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始序列化]) --&gt; CheckSize{检查大小}
-    CheckSize --&gt;|小于阈值| Serialize[直接序列化]
-    CheckSize --&gt;|大于阈值| Compress[压缩后序列化]
-    Serialize --&gt; WriteMagic[写入 Magic Number]
-    Compress --&gt; WriteMagic
-    WriteMagic --&gt; WriteVersion[写入 Version]
-    WriteVersion --&gt; WriteData[写入数据]
-    WriteData --&gt; CompactFormat[使用紧凑格式]
-    CompactFormat --&gt; End([结束])
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始序列化&lt;br/&gt;Serialize方法]) --&gt; Estimate[估算序列化大小&lt;br/&gt;EstimateSize方法&lt;br/&gt;计算预估大小]
+    
+    Estimate --&gt; CheckSize{检查大小&lt;br/&gt;是否大于1KB}
+    
+    CheckSize --&gt;|小于1KB| SerializeDirect[直接序列化&lt;br/&gt;SerializeDirect方法&lt;br/&gt;小数据直接序列化]
+    
+    CheckSize --&gt;|大于1KB| SerializeCompressed[压缩序列化&lt;br/&gt;SerializeCompressed方法&lt;br/&gt;大数据压缩后序列化]
+    
+    subgraph Direct["直接序列化流程"]
+        direction TB
+        D1[写入头部信息&lt;br/&gt;Magic Number + Version&lt;br/&gt;8字节]
+        D2[写入基础字段&lt;br/&gt;Src + MinOffset&lt;br/&gt;20字节]
+        D3[写入MultiProgress&lt;br/&gt;嵌套结构&lt;br/&gt;可变长度]
+        D4[写入UserData&lt;br/&gt;可选字段&lt;br/&gt;可变长度]
+        D5[写入Legacy标志&lt;br/&gt;1字节]
+        D6[转换为字符串&lt;br/&gt;buffer.toString]
+    end
+    
+    subgraph Compressed["压缩序列化流程"]
+        direction TB
+        C1[先序列化&lt;br/&gt;SerializeDirect&lt;br/&gt;获取原始数据]
+        C2[压缩数据&lt;br/&gt;Compress方法&lt;br/&gt;LZ4或Snappy算法]
+        C3[添加压缩标志&lt;br/&gt;写入压缩标志&lt;br/&gt;uint8_t 1字节]
+        C4[写入压缩数据大小&lt;br/&gt;uint32_t 4字节]
+        C5[写入压缩数据内容&lt;br/&gt;writeBytes]
+        C6[转换为字符串&lt;br/&gt;buffer.toString]
+    end
+    
+    SerializeDirect --&gt; CompactNode[紧凑格式优化&lt;br/&gt;Compact Format Optimization]
+    
+    subgraph CompactGroup["紧凑格式优化"]
+        direction TB
+        CF1[VarInt编码&lt;br/&gt;Variable Integer Encoding&lt;br/&gt;变长编码整数&lt;br/&gt;减少存储空间]
+        CF2[合并相邻Progress&lt;br/&gt;Merge Adjacent Progress&lt;br/&gt;减少存储空间&lt;br/&gt;优化MultiProgress]
+        CF3[位图压缩&lt;br/&gt;Bitmap Compression&lt;br/&gt;压缩MultiProgress&lt;br/&gt;减少内存占用]
+    end
+    
+    CompactNode --&gt; End([结束&lt;br/&gt;返回序列化结果])
+    
+    SerializeCompressed --&gt; End
+    
+    SerializeDirect -.-&gt;|包含| Direct
+    SerializeCompressed -.-&gt;|包含| Compressed
+    CompactNode -.-&gt;|包含| CompactGroup
+    
+    D1 --&gt; D2
+    D2 --&gt; D3
+    D3 --&gt; D4
+    D4 --&gt; D5
+    D5 --&gt; D6
+    D6 --&gt; CompactNode
+    
+    C1 --&gt; C2
+    C2 --&gt; C3
+    C3 --&gt; C4
+    C4 --&gt; C5
+    C5 --&gt; C6
+    C6 --&gt; End
+    
+    CF1 --&gt; CF2
+    CF2 --&gt; CF3
+    CF3 --&gt; CompactNode
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style Estimate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CheckSize fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SerializeDirect fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SerializeCompressed fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CompactNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Direct fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style D1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Compressed fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C6 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CompactGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style CF1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CF2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CF3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>序列化性能优化的实现</strong>：</p>
@@ -4172,24 +5452,61 @@
 
 <p>Locator 序列化的性能优化：优化序列化格式，提高序列化效率：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["格式优化&lt;br/&gt;FormatOptimization"]
-        B["压缩优化&lt;br/&gt;CompressionOptimization"]
-        C["版本兼容&lt;br/&gt;VersionCompatibility"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([序列化性能优化&lt;br/&gt;Serialization Performance Optimization]) --&gt; FormatLayer[格式优化层&lt;br/&gt;Format Optimization Layer]
+    
+    subgraph FormatGroup["格式优化 Format Optimization"]
+        direction TB
+        F1[紧凑格式&lt;br/&gt;Compact Format&lt;br/&gt;使用VarInt编码&lt;br/&gt;合并相邻Progress&lt;br/&gt;位图压缩MultiProgress]
+        F2[版本兼容&lt;br/&gt;Version Compatibility&lt;br/&gt;支持多版本格式&lt;br/&gt;向后兼容&lt;br/&gt;平滑升级]
+        F3[批量序列化&lt;br/&gt;Batch Serialization&lt;br/&gt;批量序列化多个Locator&lt;br/&gt;对象池复用缓冲区&lt;br/&gt;减少开销]
     end
     
-    subgraph Sub["子组件"]
-        D["序列化缓存&lt;br/&gt;SerializationCache"]
-        E["性能调优&lt;br/&gt;PerformanceTuning"]
+    FormatLayer --&gt; CompressionLayer[压缩优化层&lt;br/&gt;Compression Optimization Layer]
+    
+    subgraph CompressionGroup["压缩优化 Compression Optimization"]
+        direction TB
+        C1[智能压缩&lt;br/&gt;Smart Compression&lt;br/&gt;大于1KB时压缩&lt;br/&gt;LZ4或Snappy算法&lt;br/&gt;压缩标志存储]
+        C2[压缩策略&lt;br/&gt;Compression Strategy&lt;br/&gt;估算序列化大小&lt;br/&gt;选择压缩策略&lt;br/&gt;平衡性能和空间]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    CompressionLayer --&gt; BenefitLayer[优化效果层&lt;br/&gt;Optimization Benefit Layer]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph BenefitGroup["优化效果 Optimization Benefits"]
+        direction TB
+        B1[空间优化&lt;br/&gt;Space Optimization&lt;br/&gt;减少存储空间&lt;br/&gt;降低网络传输&lt;br/&gt;节省带宽]
+        B2[性能提升&lt;br/&gt;Performance Improvement&lt;br/&gt;提高序列化效率&lt;br/&gt;减少序列化时间&lt;br/&gt;降低延迟]
+    end
+    
+    BenefitLayer --&gt; End([优化完成&lt;br/&gt;Optimization Complete])
+    
+    FormatLayer -.-&gt;|包含| FormatGroup
+    CompressionLayer -.-&gt;|包含| CompressionGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    F1 --&gt;|支持| F2
+    F2 --&gt;|支持| F3
+    F3 --&gt;|结合| C1
+    C1 --&gt;|使用| C2
+    
+    C2 --&gt;|实现| B1
+    FormatGroup --&gt;|实现| B2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style FormatLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style CompressionLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style BenefitLayer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style FormatGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CompressionGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style BenefitGroup fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h3 id="83-内存优化">8.3 内存优化</h3>
@@ -4198,29 +5515,55 @@
 
 <pre><code class="language-mermaid">classDiagram
     class LocatorPool {
-        - queue_Locator _pool
+        - queue~Locator*~ _pool
         - mutex _mutex
-        + Get()
-        + Put()
-        + Clear()
+        - size_t MAX_POOL_SIZE = 100
+        + Locator* Get()
+        + void Put(Locator*)
+        + void Clear()
+        + size_t Size()
     }
     
     class Locator {
         - uint64_t _src
         - MultiProgress _multiProgress
         - string _userData
-        + Reset()
-        + Reuse()
+        - Progress::Offset _minOffset
+        + void Reset()
+        + void Reuse()
+        + bool IsValid()
+        + LocatorCompareResult IsFasterThan()
+        + void Update()
     }
     
     class ProgressPool {
-        - queue_ProgressVector _pool
-        + Get()
-        + Put()
+        - queue~ProgressVector*~ _pool
+        - size_t MAX_POOL_SIZE = 200
+        + ProgressVector* Get()
+        + void Put(ProgressVector*)
+        + void Clear()
     }
     
-    LocatorPool --&gt; Locator : 管理
-    ProgressPool --&gt; ProgressVector : 管理
+    class ProgressVector {
+        - vector~Progress~ _progresses
+        + void Reserve(size_t)
+        + void Clear()
+        + size_t Size()
+    }
+    
+    class MemoryOptimization {
+        &lt;&lt;interface&gt;&gt;
+        + 对象池管理
+        + 对象复用
+        + 内存预分配
+    }
+    
+    LocatorPool --&gt; Locator : 管理对象池&lt;br/&gt;复用Locator对象&lt;br/&gt;减少内存分配
+    ProgressPool --&gt; ProgressVector : 管理对象池&lt;br/&gt;复用ProgressVector&lt;br/&gt;减少内存分配
+    Locator --&gt; ProgressVector : 包含&lt;br/&gt;MultiProgress包含&lt;br/&gt;ProgressVector数组
+    LocatorPool ..&gt; MemoryOptimization : 实现
+    ProgressPool ..&gt; MemoryOptimization : 实现
+    Locator ..&gt; MemoryOptimization : 支持
 </code></pre>
 
 <p><strong>内存优化的实现</strong>：</p>
@@ -4286,39 +5629,72 @@
 <p>Locator 的设计遵循简单、高效、可靠、可扩展的原则，是 IndexLib 数据一致性保证的基础。让我们先通过类图来理解 Locator 的整体设计：</p>
 
 <pre><code class="language-mermaid">classDiagram
-    class LocatorDesign {
+    class DesignPrinciples {
         &lt;&lt;设计原则&gt;&gt;
-        +简单性
-        +高效性
-        +可靠性
-        +扩展性
+        +简单性 Simplicity
+        +高效性 Efficiency
+        +可靠性 Reliability
+        +扩展性 Extensibility
     }
     
     class Locator {
         - uint64_t _src
         - MultiProgress _multiProgress
-        + IsFasterThan()
-        + Update()
-        + Serialize()
+        - Progress::Offset _minOffset
+        - string _userData
+        - bool _isLegacyLocator
+        + LocatorCompareResult IsFasterThan()
+        + void Update()
+        + string Serialize()
+        + Status Deserialize()
+        + bool IsValid()
+        + bool IsSameSrc()
+        + void Reset()
     }
     
     class Compatibility {
-        +遗留Locator支持
-        +版本兼容
-        +平滑升级
-        +向后兼容
+        &lt;&lt;兼容性支持&gt;&gt;
+        +遗留Locator支持 Legacy Support
+        +版本兼容 Version Compatibility
+        +平滑升级 Smooth Upgrade
+        +向后兼容 Backward Compatibility
+        +多版本格式支持
     }
     
     class ThreadSafety {
-        +原子操作
-        +无锁设计
-        +读写分离
-        +并发控制
+        &lt;&lt;线程安全&gt;&gt;
+        +原子操作 Atomic Operations
+        +无锁设计 Lock-Free Design
+        +读写分离 Read-Write Separation
+        +并发控制 Concurrency Control
+        +线程安全保证
     }
     
-    LocatorDesign --&gt; Locator : 指导
-    Locator --&gt; Compatibility : 支持
-    Locator --&gt; ThreadSafety : 保证
+    class Performance {
+        &lt;&lt;性能优化&gt;&gt;
+        +快速路径优化 Fast Path
+        +缓存优化 Cache Optimization
+        +短路优化 Short Circuit
+        +批量操作 Batch Operations
+    }
+    
+    class DataConsistency {
+        &lt;&lt;数据一致性&gt;&gt;
+        +只向前推进 Forward Only
+        +原子性更新 Atomic Update
+        +数据不重复 No Duplication
+        +数据不丢失 No Loss
+    }
+    
+    DesignPrinciples --&gt; Locator : 指导设计&lt;br/&gt;Guides Design
+    Locator --&gt; Compatibility : 支持&lt;br/&gt;Supports
+    Locator --&gt; ThreadSafety : 保证&lt;br/&gt;Guarantees
+    Locator --&gt; Performance : 优化&lt;br/&gt;Optimizes
+    Locator --&gt; DataConsistency : 实现&lt;br/&gt;Implements
+    DesignPrinciples --&gt; Compatibility : 要求&lt;br/&gt;Requires
+    DesignPrinciples --&gt; ThreadSafety : 要求&lt;br/&gt;Requires
+    DesignPrinciples --&gt; Performance : 要求&lt;br/&gt;Requires
+    DesignPrinciples --&gt; DataConsistency : 要求&lt;br/&gt;Requires
 </code></pre>
 
 <h3 id="91-设计原则">9.1 设计原则</h3>
@@ -4327,24 +5703,72 @@
 
 <p>Locator 的设计原则：简单、高效、可靠的设计原则：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["简单设计&lt;br/&gt;SimpleDesign"]
-        B["高效实现&lt;br/&gt;EfficientImplementation"]
-        C["可靠保证&lt;br/&gt;ReliableGuarantee"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Locator设计原则&lt;br/&gt;Locator Design Principles]) --&gt; PrinciplesLayer[核心设计原则层&lt;br/&gt;Core Design Principles Layer]
+    
+    subgraph PrinciplesGroup["核心设计原则 Core Design Principles"]
+        direction TB
+        P1[简单性&lt;br/&gt;Simplicity&lt;br/&gt;清晰的接口设计&lt;br/&gt;直观的语义&lt;br/&gt;最小化依赖]
+        P2[高效性&lt;br/&gt;Efficiency&lt;br/&gt;快速路径优化&lt;br/&gt;短路优化&lt;br/&gt;缓存优化]
+        P3[可靠性&lt;br/&gt;Reliability&lt;br/&gt;只向前推进&lt;br/&gt;原子性更新&lt;br/&gt;持久化支持]
+        P4[扩展性&lt;br/&gt;Extensibility&lt;br/&gt;支持自定义扩展&lt;br/&gt;灵活的数据结构&lt;br/&gt;版本兼容]
     end
     
-    subgraph Sub["子组件"]
-        D["可扩展性&lt;br/&gt;Extensibility"]
-        E["易用性&lt;br/&gt;Usability"]
+    PrinciplesLayer --&gt; SupportLayer[支持特性层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持特性 Support Features"]
+        direction TB
+        S1[可扩展性&lt;br/&gt;Extensibility&lt;br/&gt;支持自定义扩展&lt;br/&gt;灵活的数据结构&lt;br/&gt;版本兼容]
+        S2[易用性&lt;br/&gt;Usability&lt;br/&gt;简单的API接口&lt;br/&gt;清晰的文档&lt;br/&gt;良好的错误处理]
+        S3[兼容性&lt;br/&gt;Compatibility&lt;br/&gt;遗留Locator支持&lt;br/&gt;版本兼容&lt;br/&gt;平滑升级]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; BenefitLayer[设计优势层&lt;br/&gt;Design Benefits Layer]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph BenefitGroup["设计优势 Design Benefits"]
+        direction TB
+        B1[易于维护&lt;br/&gt;Easy Maintenance&lt;br/&gt;代码清晰易懂&lt;br/&gt;易于调试和优化&lt;br/&gt;降低维护成本]
+        B2[高性能&lt;br/&gt;High Performance&lt;br/&gt;优化的算法实现&lt;br/&gt;高效的资源使用&lt;br/&gt;提高处理效率]
+        B3[高可靠性&lt;br/&gt;High Reliability&lt;br/&gt;数据一致性保证&lt;br/&gt;故障恢复支持&lt;br/&gt;稳定运行]
+    end
+    
+    BenefitLayer --&gt; End([设计完成&lt;br/&gt;Design Complete])
+    
+    PrinciplesLayer -.-&gt;|包含| PrinciplesGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    P1 --&gt;|实现| S1
+    P1 --&gt;|实现| S2
+    P2 --&gt;|实现| S2
+    P3 --&gt;|保证| S3
+    P4 --&gt;|支持| S1
+    
+    S1 --&gt;|带来| B1
+    S2 --&gt;|带来| B1
+    S2 --&gt;|带来| B2
+    S3 --&gt;|带来| B3
+    P2 --&gt;|直接带来| B2
+    P3 --&gt;|直接带来| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style PrinciplesLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style BenefitLayer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style PrinciplesGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style BenefitGroup fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <p><strong>设计原则详解</strong>：</p>
@@ -4384,19 +5808,127 @@
 
 <p>Locator 的兼容性设计，支持遗留 Locator 和版本兼容，保证平滑升级。让我们通过流程图来理解兼容性设计的机制：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([加载 Locator]) --&gt; CheckVersion{检查版本}
-    CheckVersion --&gt;|版本1| DeserializeV1[反序列化 V1]
-    CheckVersion --&gt;|版本2| DeserializeV2[反序列化 V2]
-    CheckVersion --&gt;|未知版本| Error[返回错误]
-    DeserializeV1 --&gt; CheckLegacy{检查 Legacy 标志}
-    DeserializeV2 --&gt; CheckLegacy
-    CheckLegacy --&gt;|是| ConvertLegacy[转换为新格式]
-    CheckLegacy --&gt;|否| Validate[验证数据]
-    ConvertLegacy --&gt; Validate
-    Validate --&gt;|失败| Error
-    Validate --&gt;|成功| End([结束])
-    Error --&gt; End
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始加载 Locator&lt;br/&gt;Start Loading Locator]) --&gt; ParseLayer[解析处理层&lt;br/&gt;Parse Processing Layer]
+    
+    subgraph ParseGroup["解析处理 Parse Processing"]
+        direction TB
+        P1[读取字符串&lt;br/&gt;Read String&lt;br/&gt;从存储中读取序列化数据]
+        P2[解压缩&lt;br/&gt;Decompress&lt;br/&gt;如果数据被压缩则解压]
+        P3[读取 Magic Number&lt;br/&gt;Read Magic Number&lt;br/&gt;验证数据格式]
+        P4{Magic Number&lt;br/&gt;是否有效&lt;br/&gt;Is Valid}
+    end
+    
+    ParseLayer --&gt; VersionLayer[版本处理层&lt;br/&gt;Version Processing Layer]
+    
+    subgraph VersionGroup["版本处理 Version Processing"]
+        direction TB
+        V1[读取版本号&lt;br/&gt;Read Version&lt;br/&gt;从数据中读取版本信息]
+        V2{版本类型&lt;br/&gt;Version Type}
+        V3[反序列化 V1&lt;br/&gt;Deserialize V1&lt;br/&gt;读取基本字段&lt;br/&gt;src minOffset]
+        V4[反序列化 V2&lt;br/&gt;Deserialize V2&lt;br/&gt;读取完整字段&lt;br/&gt;MultiProgress UserData]
+        V5[未知版本&lt;br/&gt;Unknown Version&lt;br/&gt;不支持该版本]
+    end
+    
+    VersionLayer --&gt; LegacyLayer[遗留格式处理层&lt;br/&gt;Legacy Format Processing Layer]
+    
+    subgraph LegacyGroup["遗留格式处理 Legacy Format Processing"]
+        direction TB
+        L1{检查 Legacy 标志&lt;br/&gt;Check Legacy Flag&lt;br/&gt;_isLegacyLocator}
+        L2[转换为新格式&lt;br/&gt;Convert to New Format&lt;br/&gt;迁移到 MultiProgress&lt;br/&gt;设置默认值]
+        L3[保持新格式&lt;br/&gt;Keep New Format&lt;br/&gt;已经是新格式]
+    end
+    
+    LegacyLayer --&gt; ValidateLayer[验证处理层&lt;br/&gt;Validation Processing Layer]
+    
+    subgraph ValidateGroup["验证处理 Validation Processing"]
+        direction TB
+        Val1[验证数据完整性&lt;br/&gt;Validate Data Integrity&lt;br/&gt;检查必需字段]
+        Val2[验证数据有效性&lt;br/&gt;Validate Data Validity&lt;br/&gt;检查数据范围]
+        Val3{验证结果&lt;br/&gt;Validation Result}
+        Val4[验证成功&lt;br/&gt;Validation Success&lt;br/&gt;数据有效]
+        Val5[验证失败&lt;br/&gt;Validation Failed&lt;br/&gt;数据无效]
+    end
+    
+    ValidateLayer --&gt; EndLayer[完成处理层&lt;br/&gt;Completion Processing Layer]
+    
+    subgraph EndGroup["完成处理 Completion Processing"]
+        direction TB
+        E1[返回 Locator 对象&lt;br/&gt;Return Locator Object&lt;br/&gt;反序列化完成]
+        E2[返回错误&lt;br/&gt;Return Error&lt;br/&gt;处理失败]
+    end
+    
+    EndLayer --&gt; End([结束&lt;br/&gt;End])
+    
+    ParseLayer -.-&gt;|包含| ParseGroup
+    VersionLayer -.-&gt;|包含| VersionGroup
+    LegacyLayer -.-&gt;|包含| LegacyGroup
+    ValidateLayer -.-&gt;|包含| ValidateGroup
+    EndLayer -.-&gt;|包含| EndGroup
+    
+    P1 --&gt; P2
+    P2 --&gt; P3
+    P3 --&gt; P4
+    P4 --&gt;|有效| V1
+    P4 --&gt;|无效| V5
+    
+    V1 --&gt; V2
+    V2 --&gt;|版本1| V3
+    V2 --&gt;|版本2| V4
+    V2 --&gt;|其他| V5
+    
+    V3 --&gt; L1
+    V4 --&gt; L1
+    V5 --&gt; E2
+    
+    L1 --&gt;|是| L2
+    L1 --&gt;|否| L3
+    
+    L2 --&gt; Val1
+    L3 --&gt; Val1
+    
+    Val1 --&gt; Val2
+    Val2 --&gt; Val3
+    Val3 --&gt;|成功| Val4
+    Val3 --&gt;|失败| Val5
+    
+    Val4 --&gt; E1
+    Val5 --&gt; E2
+    
+    E1 --&gt; End
+    E2 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ParseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style VersionLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style LegacyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ValidateLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style EndLayer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style VersionGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V5 fill:#ef5350,stroke:#c62828,stroke-width:2px
+    style LegacyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style L1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style L2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style L3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ValidateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Val1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Val2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Val3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style Val4 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style Val5 fill:#ef5350,stroke:#c62828,stroke-width:2px
+    style EndGroup fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style E1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style E2 fill:#ef5350,stroke:#c62828,stroke-width:2px
 </code></pre>
 
 <p><strong>兼容性机制详解</strong>：</p>
@@ -4434,24 +5966,70 @@
 
 <p>Locator 的兼容性设计：支持遗留 Locator 和版本兼容：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["遗留Locator支持&lt;br/&gt;LegacyLocatorSupport"]
-        B["版本兼容&lt;br/&gt;VersionCompatibility"]
-        C["向后兼容&lt;br/&gt;BackwardCompatibility"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([兼容性设计&lt;br/&gt;Compatibility Design]) --&gt; CoreLayer[核心兼容机制层&lt;br/&gt;Core Compatibility Mechanisms Layer]
+    
+    subgraph CoreGroup["核心兼容机制 Core Compatibility Mechanisms"]
+        direction LR
+        C1[遗留Locator支持&lt;br/&gt;Legacy Locator Support&lt;br/&gt;_isLegacyLocator标识&lt;br/&gt;自动格式转换&lt;br/&gt;透明迁移]
+        C2[版本兼容&lt;br/&gt;Version Compatibility&lt;br/&gt;版本号识别&lt;br/&gt;V1/V2支持&lt;br/&gt;版本升级]
+        C3[向后兼容&lt;br/&gt;Backward Compatibility&lt;br/&gt;旧版本读取新数据&lt;br/&gt;字段跳过机制&lt;br/&gt;数据保护]
     end
     
-    subgraph Sub["子组件"]
-        D["兼容性检查&lt;br/&gt;CompatibilityCheck"]
-        E["平滑升级&lt;br/&gt;SmoothUpgrade"]
+    CoreLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Functions Layer]
+    
+    subgraph SupportGroup["支持功能 Support Functions"]
+        direction LR
+        S1[兼容性检查&lt;br/&gt;Compatibility Check&lt;br/&gt;版本验证&lt;br/&gt;格式验证&lt;br/&gt;数据完整性检查]
+        S2[平滑升级&lt;br/&gt;Smooth Upgrade&lt;br/&gt;渐进式迁移&lt;br/&gt;零停机升级&lt;br/&gt;数据一致性保证]
+        S3[格式转换&lt;br/&gt;Format Conversion&lt;br/&gt;Legacy到新格式&lt;br/&gt;字段映射&lt;br/&gt;默认值设置]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; FeatureLayer[特性支持层&lt;br/&gt;Feature Support Layer]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph FeatureGroup["特性支持 Feature Support"]
+        direction LR
+        F1[多版本共存&lt;br/&gt;Multi-Version Coexistence&lt;br/&gt;同时支持V1和V2&lt;br/&gt;版本识别&lt;br/&gt;自动适配]
+        F2[数据迁移&lt;br/&gt;Data Migration&lt;br/&gt;批量转换&lt;br/&gt;增量迁移&lt;br/&gt;回滚支持]
+        F3[错误处理&lt;br/&gt;Error Handling&lt;br/&gt;版本错误处理&lt;br/&gt;格式错误处理&lt;br/&gt;降级策略]
+    end
+    
+    FeatureLayer --&gt; End([兼容性保证&lt;br/&gt;Compatibility Guarantee])
+    
+    CoreLayer -.-&gt;|包含| CoreGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    
+    C1 --&gt;|需要| S1
+    C1 --&gt;|使用| S3
+    C2 --&gt;|需要| S1
+    C2 --&gt;|支持| S2
+    C3 --&gt;|需要| S1
+    C3 --&gt;|支持| S2
+    
+    S1 --&gt;|支持| F1
+    S2 --&gt;|实现| F2
+    S3 --&gt;|支持| F2
+    S1 --&gt;|处理| F3
+    S2 --&gt;|处理| F3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CoreLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style CoreGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <h3 id="93-线程安全设计">9.3 线程安全设计</h3>
@@ -4459,25 +6037,81 @@
 <p>Locator 的线程安全设计，支持并发访问，保证线程安全。让我们通过序列图来理解线程安全设计的机制：</p>
 
 <pre><code class="language-mermaid">sequenceDiagram
-    participant Thread1
-    participant Thread2
-    participant Locator
-    participant Lock
+    participant T1 as 读线程1&lt;br/&gt;Read Thread1
+    participant T2 as 读线程2&lt;br/&gt;Read Thread2
+    participant T3 as 写线程1&lt;br/&gt;Write Thread1
+    participant T4 as 写线程2&lt;br/&gt;Write Thread2
+    participant L as Locator对象&lt;br/&gt;Locator Object
+    participant RL as 读写锁&lt;br/&gt;ReadWriteLock
+    participant AM as 原子操作&lt;br/&gt;Atomic Operations
     
-    Thread1-&gt;&gt;Locator: IsFasterThan(other)
-    Thread2-&gt;&gt;Locator: Update(newLocator)
-    
-    alt 读操作 (IsFasterThan)
-        Locator-&gt;&gt;Locator: 只读访问
-        Note over Locator: 无锁，线程安全
-        Locator--&gt;&gt;Thread1: 返回结果
-    else 写操作 (Update)
-        Thread2-&gt;&gt;Lock: 获取锁
-        Lock-&gt;&gt;Locator: 更新 MultiProgress
-        Locator-&gt;&gt;Locator: 原子更新
-        Lock--&gt;&gt;Thread2: 释放锁
-        Locator--&gt;&gt;Thread2: 更新完成
+    par 并发读操作 Concurrent Read Operations
+        T1-&gt;&gt;L: IsFasterThan(other1)
+        activate L
+        L-&gt;&gt;RL: 尝试获取读锁&lt;br/&gt;Try Acquire Read Lock
+        RL--&gt;&gt;L: 获取成功&lt;br/&gt;Acquire Success
+        Note over L: 无锁设计&lt;br/&gt;Lock-Free Design&lt;br/&gt;只读访问内部状态
+        L-&gt;&gt;AM: 原子读取字段&lt;br/&gt;Atomic Read Fields&lt;br/&gt;_src minOffset
+        AM--&gt;&gt;L: 返回字段值&lt;br/&gt;Return Field Values
+        L-&gt;&gt;L: 比较逻辑&lt;br/&gt;Comparison Logic&lt;br/&gt;CompareProgress
+        L--&gt;&gt;T1: 返回比较结果&lt;br/&gt;Return Comparison Result
+        RL--&gt;&gt;L: 释放读锁&lt;br/&gt;Release Read Lock
+        deactivate L
+        
+        T2-&gt;&gt;L: IsFasterThan(other2)
+        activate L
+        L-&gt;&gt;RL: 尝试获取读锁&lt;br/&gt;Try Acquire Read Lock
+        RL--&gt;&gt;L: 获取成功&lt;br/&gt;Acquire Success
+        Note over L: 支持并发读取&lt;br/&gt;Support Concurrent Read&lt;br/&gt;多个读线程可同时访问
+        L-&gt;&gt;AM: 原子读取字段&lt;br/&gt;Atomic Read Fields
+        AM--&gt;&gt;L: 返回字段值&lt;br/&gt;Return Field Values
+        L-&gt;&gt;L: 比较逻辑&lt;br/&gt;Comparison Logic
+        L--&gt;&gt;T2: 返回比较结果&lt;br/&gt;Return Comparison Result
+        RL--&gt;&gt;L: 释放读锁&lt;br/&gt;Release Read Lock
+        deactivate L
     end
+    
+    par 并发写操作 Concurrent Write Operations
+        T3-&gt;&gt;L: Update(newLocator1)
+        activate L
+        L-&gt;&gt;RL: 尝试获取写锁&lt;br/&gt;Try Acquire Write Lock
+        Note over RL: 写操作需要互斥&lt;br/&gt;Write Requires Mutual Exclusion&lt;br/&gt;等待读操作完成
+        RL--&gt;&gt;L: 获取成功&lt;br/&gt;Acquire Success
+        L-&gt;&gt;L: 检查数据源&lt;br/&gt;Check Data Source&lt;br/&gt;_src 匹配检查
+        L-&gt;&gt;L: 调用IsFasterThan&lt;br/&gt;Call IsFasterThan&lt;br/&gt;判断是否需要更新
+        alt 需要更新 Need Update
+            L-&gt;&gt;AM: 原子更新字段&lt;br/&gt;Atomic Update Fields&lt;br/&gt;minOffset MultiProgress
+            AM--&gt;&gt;L: 更新成功&lt;br/&gt;Update Success
+            L-&gt;&gt;L: 合并ProgressVector&lt;br/&gt;Merge ProgressVector&lt;br/&gt;MergeProgressVector
+            L-&gt;&gt;L: 更新UserData&lt;br/&gt;Update UserData&lt;br/&gt;_userData 更新
+        else 不需要更新 No Update
+            Note over L: 跳过更新&lt;br/&gt;Skip Update&lt;br/&gt;数据已处理
+        end
+        RL--&gt;&gt;L: 释放写锁&lt;br/&gt;Release Write Lock
+        L--&gt;&gt;T3: 更新完成&lt;br/&gt;Update Complete
+        deactivate L
+        
+        T4-&gt;&gt;L: Update(newLocator2)
+        activate L
+        L-&gt;&gt;RL: 尝试获取写锁&lt;br/&gt;Try Acquire Write Lock
+        Note over RL: 等待前一个写操作完成&lt;br/&gt;Wait for Previous Write&lt;br/&gt;保证写操作串行化
+        RL--&gt;&gt;L: 获取成功&lt;br/&gt;Acquire Success
+        L-&gt;&gt;L: 检查数据源&lt;br/&gt;Check Data Source
+        L-&gt;&gt;L: 调用IsFasterThan&lt;br/&gt;Call IsFasterThan
+        alt 需要更新 Need Update
+            L-&gt;&gt;AM: 原子更新字段&lt;br/&gt;Atomic Update Fields
+            AM--&gt;&gt;L: 更新成功&lt;br/&gt;Update Success
+            L-&gt;&gt;L: 合并ProgressVector&lt;br/&gt;Merge ProgressVector
+            L-&gt;&gt;L: 更新UserData&lt;br/&gt;Update UserData
+        else 不需要更新 No Update
+            Note over L: 跳过更新&lt;br/&gt;Skip Update
+        end
+        RL--&gt;&gt;L: 释放写锁&lt;br/&gt;Release Write Lock
+        L--&gt;&gt;T4: 更新完成&lt;br/&gt;Update Complete
+        deactivate L
+    end
+    
+    Note over T1,T4: 线程安全保证&lt;br/&gt;Thread Safety Guarantee&lt;br/&gt;读操作并发执行&lt;br/&gt;写操作互斥执行&lt;br/&gt;读写操作互斥
 </code></pre>
 
 <p><strong>线程安全机制详解</strong>：</p>
@@ -4542,24 +6176,95 @@
 
 <p>Locator 的线程安全设计：支持并发访问，保证线程安全：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["并发访问&lt;br/&gt;ConcurrentAccess"]
-        B["线程安全&lt;br/&gt;ThreadSafety"]
-        C["锁机制&lt;br/&gt;LockMechanism"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([线程安全设计&lt;br/&gt;Thread Safety Design]) --&gt; CoreLayer[核心机制层&lt;br/&gt;Core Mechanisms Layer]
+    
+    subgraph CoreGroup["核心机制 Core Mechanisms"]
+        direction LR
+        C1[并发访问控制&lt;br/&gt;Concurrent Access Control&lt;br/&gt;多线程同时访问&lt;br/&gt;读写分离设计&lt;br/&gt;性能优化]
+        C2[线程安全保障&lt;br/&gt;Thread Safety Guarantee&lt;br/&gt;数据一致性保证&lt;br/&gt;无竞争条件&lt;br/&gt;可见性保证]
+        C3[锁机制设计&lt;br/&gt;Lock Mechanism Design&lt;br/&gt;读写锁实现&lt;br/&gt;细粒度锁控制&lt;br/&gt;死锁避免]
     end
     
-    subgraph Sub["子组件"]
-        D["原子操作&lt;br/&gt;AtomicOperation"]
-        E["同步机制&lt;br/&gt;SynchronizationMechanism"]
+    CoreLayer --&gt; ImplementationLayer[实现机制层&lt;br/&gt;Implementation Mechanisms Layer]
+    
+    subgraph ImplGroup["实现机制 Implementation Mechanisms"]
+        direction LR
+        I1[原子操作&lt;br/&gt;Atomic Operations&lt;br/&gt;std::atomic字段&lt;br/&gt;无锁读取&lt;br/&gt;原子更新]
+        I2[同步机制&lt;br/&gt;Synchronization Mechanisms&lt;br/&gt;std::shared_mutex&lt;br/&gt;读写锁分离&lt;br/&gt;条件变量]
+        I3[无锁设计&lt;br/&gt;Lock-Free Design&lt;br/&gt;读操作无锁&lt;br/&gt;CAS操作&lt;br/&gt;内存屏障]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    ImplementationLayer --&gt; FeatureLayer[特性支持层&lt;br/&gt;Feature Support Layer]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph FeatureGroup["特性支持 Feature Support"]
+        direction LR
+        F1[读写分离&lt;br/&gt;Read-Write Separation&lt;br/&gt;多读单写模式&lt;br/&gt;读操作并发&lt;br/&gt;写操作互斥]
+        F2[细粒度控制&lt;br/&gt;Fine-Grained Control&lt;br/&gt;最小锁范围&lt;br/&gt;减少锁竞争&lt;br/&gt;提高并发度]
+        F3[性能优化&lt;br/&gt;Performance Optimization&lt;br/&gt;无锁读操作&lt;br/&gt;快速路径&lt;br/&gt;缓存友好]
+    end
+    
+    FeatureLayer --&gt; BenefitLayer[设计优势层&lt;br/&gt;Design Benefits Layer]
+    
+    subgraph BenefitGroup["设计优势 Design Benefits"]
+        direction LR
+        B1[高并发性能&lt;br/&gt;High Concurrency Performance&lt;br/&gt;支持多线程并发读取&lt;br/&gt;减少锁竞争&lt;br/&gt;提高吞吐量]
+        B2[数据一致性&lt;br/&gt;Data Consistency&lt;br/&gt;保证数据正确性&lt;br/&gt;无竞争条件&lt;br/&gt;可见性保证]
+        B3[易于使用&lt;br/&gt;Easy to Use&lt;br/&gt;透明的线程安全&lt;br/&gt;简单的API接口&lt;br/&gt;无需手动同步]
+    end
+    
+    BenefitLayer --&gt; End([线程安全保证&lt;br/&gt;Thread Safety Guarantee])
+    
+    CoreLayer -.-&gt;|包含| CoreGroup
+    ImplementationLayer -.-&gt;|包含| ImplGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    C1 --&gt;|使用| I1
+    C1 --&gt;|使用| I2
+    C1 --&gt;|使用| I3
+    C2 --&gt;|依赖| I1
+    C2 --&gt;|依赖| I2
+    C3 --&gt;|实现| I2
+    C3 --&gt;|支持| I3
+    
+    I1 --&gt;|支持| F1
+    I2 --&gt;|实现| F1
+    I2 --&gt;|实现| F2
+    I3 --&gt;|支持| F1
+    I3 --&gt;|支持| F3
+    
+    F1 --&gt;|带来| B1
+    F2 --&gt;|带来| B1
+    F3 --&gt;|带来| B1
+    F1 --&gt;|保证| B2
+    F2 --&gt;|保证| B2
+    C2 --&gt;|直接带来| B2
+    C1 --&gt;|直接带来| B3
+    C2 --&gt;|直接带来| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CoreLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style ImplementationLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style BenefitLayer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style CoreGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ImplGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style I1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style I2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style I3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style BenefitGroup fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style B1 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B2 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
+    style B3 fill:#a5d6a7,stroke:#388e3c,stroke-width:2px
 </code></pre>
 
 <h2 id="10-小结">10. 小结</h2>
