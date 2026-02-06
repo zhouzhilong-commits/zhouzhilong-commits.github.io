@@ -596,7 +596,7 @@
 
 
   
-	  23 分钟阅读
+	  34 分钟阅读
 	
 </p>
           
@@ -617,30 +617,73 @@
       <section class="page__content" itemprop="text">
         <p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
-<p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
+<h2 id="文件系统抽象与存储格式概览">文件系统抽象与存储格式概览</h2>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["文件系统抽象"]
-        A[IFileSystem&lt;br/&gt;文件系统接口]
-        B[IDirectory&lt;br/&gt;目录接口]
-        C[Storage&lt;br/&gt;存储抽象]
+<p>IndexLib 的文件系统抽象通过统一的接口屏蔽底层存储差异，支持多种存储后端（本地文件系统、分布式文件系统、内存文件系统等）。从文件系统抽象到存储格式的完整机制如下：</p>
+
+<pre><code class="language-mermaid">flowchart TB
+    Start([文件系统抽象架构&lt;br/&gt;File System Abstraction Architecture]) --&gt; Layer1[第一层：接口抽象层&lt;br/&gt;Layer 1: Interface Abstraction]
+    
+    subgraph L1["第一层：接口抽象层 Layer 1: Interface Abstraction"]
+        direction TB
+        L1_1[IFileSystem&lt;br/&gt;文件系统接口&lt;br/&gt;统一文件系统操作入口]
+        L1_2[IDirectory&lt;br/&gt;目录接口&lt;br/&gt;目录和文件管理接口]
+        L1_3[Storage&lt;br/&gt;存储抽象接口&lt;br/&gt;底层存储封装接口]
     end
     
-    subgraph Sub["文件操作组件"]
-        D[FileReader&lt;br/&gt;文件读取器]
-        E[FileWriter&lt;br/&gt;文件写入器]
+    Layer1 --&gt; Layer2[第二层：文件操作层&lt;br/&gt;Layer 2: File Operations]
+    
+    subgraph L2["第二层：文件操作层 Layer 2: File Operations"]
+        direction TB
+        L2_1[FileReader&lt;br/&gt;文件读取器&lt;br/&gt;提供文件读取功能]
+        L2_2[FileWriter&lt;br/&gt;文件写入器&lt;br/&gt;提供文件写入功能]
     end
     
-    A --&gt; B
-    A --&gt; D
-    A --&gt; E
-    B --&gt; D
-    B --&gt; E
-    C --&gt; D
-    C --&gt; E
+    Layer2 --&gt; Layer3[第三层：实现层&lt;br/&gt;Layer 3: Implementations]
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    subgraph L3["第三层：实现层 Layer 3: Implementations"]
+        direction TB
+        L3_1[本地文件系统&lt;br/&gt;Local File System&lt;br/&gt;PosixFileSystem实现]
+        L3_2[分布式文件系统&lt;br/&gt;Distributed File System&lt;br/&gt;HDFS Pangu实现]
+        L3_3[内存文件系统&lt;br/&gt;Memory File System&lt;br/&gt;MemFileSystem实现]
+    end
+    
+    Layer3 --&gt; End([统一存储访问&lt;br/&gt;Unified Storage Access])
+    
+    Layer1 -.-&gt;|包含| L1
+    Layer2 -.-&gt;|包含| L2
+    Layer3 -.-&gt;|包含| L3
+    
+    L1_1 -.-&gt;|创建| L2_1
+    L1_2 -.-&gt;|创建| L2_1
+    L1_3 -.-&gt;|创建| L2_1
+    L1_1 -.-&gt;|创建| L2_2
+    L1_2 -.-&gt;|创建| L2_2
+    L1_3 -.-&gt;|创建| L2_2
+    
+    L2_1 -.-&gt;|基于| L3_1
+    L2_1 -.-&gt;|基于| L3_2
+    L2_1 -.-&gt;|基于| L3_3
+    L2_2 -.-&gt;|基于| L3_1
+    L2_2 -.-&gt;|基于| L3_2
+    L2_2 -.-&gt;|基于| L3_3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style Layer1 fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Layer2 fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Layer3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L1 fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1_1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L1_2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L1_3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style L2_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style L2_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style L3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L3_1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3_2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3_3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <h2 id="1-文件系统抽象概览">1. 文件系统抽象概览</h2>
@@ -757,52 +800,132 @@
   </li>
 </ol>
 
-<p>文件系统抽象架构：IFileSystem、IDirectory、FileReader、FileWriter 的关系：</p>
+<h3 id="111-组件关系图">1.1.1 组件关系图</h3>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["文件系统抽象"]
-        A[IFileSystem&lt;br/&gt;文件系统接口]
-        B[IDirectory&lt;br/&gt;目录接口]
-        C[Storage&lt;br/&gt;存储抽象]
+<p>文件系统抽象的核心组件包括 IFileSystem、IDirectory、FileReader、FileWriter，它们之间的关系如下：</p>
+
+<pre><code class="language-mermaid">flowchart TB
+    Start([文件系统抽象架构&lt;br/&gt;File System Abstraction Architecture]) --&gt; InterfaceLayer[接口层&lt;br/&gt;Interface Layer]
+    
+    subgraph InterfaceGroup["接口层 Interface Layer"]
+        direction TB
+        I1[IFileSystem&lt;br/&gt;文件系统接口&lt;br/&gt;统一文件系统操作入口]
+        I2[IDirectory&lt;br/&gt;目录接口&lt;br/&gt;目录和文件管理接口]
+        I3[Storage&lt;br/&gt;存储抽象接口&lt;br/&gt;底层存储封装接口]
     end
     
-    subgraph Sub["文件操作组件"]
-        D[FileReader&lt;br/&gt;文件读取器]
-        E[FileWriter&lt;br/&gt;文件写入器]
+    InterfaceLayer --&gt; OperationLayer[操作层&lt;br/&gt;Operation Layer]
+    
+    subgraph OperationGroup["操作层 Operation Layer"]
+        direction TB
+        O1[FileReader&lt;br/&gt;文件读取器&lt;br/&gt;提供文件读取功能]
+        O2[FileWriter&lt;br/&gt;文件写入器&lt;br/&gt;提供文件写入功能]
     end
     
-    A --&gt; B
-    A --&gt; D
-    A --&gt; E
-    B --&gt; D
-    B --&gt; E
-    C --&gt; D
-    C --&gt; E
+    OperationLayer --&gt; End([统一文件操作&lt;br/&gt;Unified File Operations])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    InterfaceLayer -.-&gt;|包含| InterfaceGroup
+    OperationLayer -.-&gt;|包含| OperationGroup
+    
+    I1 -.-&gt;|创建| O1
+    I1 -.-&gt;|创建| O2
+    I2 -.-&gt;|创建| O1
+    I2 -.-&gt;|创建| O2
+    I3 -.-&gt;|创建| O1
+    I3 -.-&gt;|创建| O2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InterfaceLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OperationLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style InterfaceGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style I1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style OperationGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style O1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="12-文件系统抽象的作用">1.2 文件系统抽象的作用</h3>
 
-<p>文件系统抽象在 IndexLib 中起到关键作用，是存储管理的基础。让我们通过流程图来理解文件系统抽象的整体工作流程：</p>
+<p>文件系统抽象在 IndexLib 中起到关键作用，是存储管理的基础。下面通过流程图展示文件系统抽象的整体工作流程：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([文件系统初始化]) --&gt; Init[Init 文件系统]
-    Init --&gt; MountVersion[挂载版本]
-    MountVersion --&gt; MountDir[挂载目录]
-    MountDir --&gt; CreateWriter{创建写入器?}
-    CreateWriter --&gt;|是| GetDirectory[获取目录]
-    CreateWriter --&gt;|否| CreateReader{创建读取器?}
-    GetDirectory --&gt; CreateFileWriter[创建文件写入器]
-    CreateFileWriter --&gt; Write[写入文件]
-    Write --&gt; CloseWriter[关闭写入器]
-    CreateReader --&gt;|是| GetDirectory2[获取目录]
-    GetDirectory2 --&gt; CreateFileReader[创建文件读取器]
-    CreateFileReader --&gt; Read[读取文件]
-    Read --&gt; CloseReader[关闭读取器]
-    CloseWriter --&gt; End([结束])
-    CloseReader --&gt; End
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始&lt;br/&gt;Start]) --&gt; InitLayer[初始化层&lt;br/&gt;Initialization Layer]
+    
+    subgraph InitGroup["初始化 Initialization"]
+        direction TB
+        I1[Init 文件系统&lt;br/&gt;Initialize File System&lt;br/&gt;设置文件系统选项]
+        I2[挂载版本&lt;br/&gt;Mount Version&lt;br/&gt;挂载指定版本]
+        I3[挂载目录&lt;br/&gt;Mount Directory&lt;br/&gt;挂载目录路径]
+    end
+    
+    InitLayer --&gt; WriteLayer[写入操作层&lt;br/&gt;Write Operation Layer]
+    
+    subgraph WriteGroup["写入操作 Write Operation"]
+        direction TB
+        W1{需要创建写入器?&lt;br/&gt;Need Writer?}
+        W2[获取目录&lt;br/&gt;Get Directory&lt;br/&gt;获取目录对象]
+        W3[创建文件写入器&lt;br/&gt;Create File Writer&lt;br/&gt;创建写入器对象]
+        W4[写入文件&lt;br/&gt;Write File&lt;br/&gt;写入文件数据]
+        W5[关闭写入器&lt;br/&gt;Close Writer&lt;br/&gt;释放资源]
+    end
+    
+    WriteLayer --&gt; ReadLayer[读取操作层&lt;br/&gt;Read Operation Layer]
+    
+    subgraph ReadGroup["读取操作 Read Operation"]
+        direction TB
+        R1{需要创建读取器?&lt;br/&gt;Need Reader?}
+        R2[获取目录&lt;br/&gt;Get Directory&lt;br/&gt;获取目录对象]
+        R3[创建文件读取器&lt;br/&gt;Create File Reader&lt;br/&gt;创建读取器对象]
+        R4[读取文件&lt;br/&gt;Read File&lt;br/&gt;读取文件数据]
+        R5[关闭读取器&lt;br/&gt;Close Reader&lt;br/&gt;释放资源]
+    end
+    
+    ReadLayer --&gt; End([结束&lt;br/&gt;End])
+    
+    InitLayer -.-&gt;|包含| InitGroup
+    WriteLayer -.-&gt;|包含| WriteGroup
+    ReadLayer -.-&gt;|包含| ReadGroup
+    
+    I1 --&gt; I2
+    I2 --&gt; I3
+    I3 --&gt; W1
+    W1 --&gt;|是| W2
+    W1 --&gt;|否| R1
+    W2 --&gt; W3
+    W3 --&gt; W4
+    W4 --&gt; W5
+    W5 --&gt; R1
+    R1 --&gt;|是| R2
+    R1 --&gt;|否| End
+    R2 --&gt; R3
+    R3 --&gt; R4
+    R4 --&gt; R5
+    R5 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InitLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style WriteLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ReadLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style InitGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style I1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style W2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style W3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style W4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style W5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ReadGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>文件系统抽象的核心作用</strong>：</p>
@@ -842,7 +965,7 @@
 
 <h3 id="21-ifilesystem-的结构">2.1 IFileSystem 的结构</h3>
 
-<p><code class="language-plaintext highlighter-rouge">IFileSystem</code> 是文件系统接口，定义在 <code class="language-plaintext highlighter-rouge">file_system/IFileSystem.h</code> 中。它提供了文件系统的基本操作，包括初始化、挂载、文件读写等。让我们先通过类图来理解 IFileSystem 的完整接口：</p>
+<p><code class="language-plaintext highlighter-rouge">IFileSystem</code> 是文件系统接口，定义在 <code class="language-plaintext highlighter-rouge">file_system/IFileSystem.h</code> 中。它提供了文件系统的基本操作，包括初始化、挂载、文件读写等。IFileSystem 的完整接口定义如下：</p>
 
 <pre><code class="language-mermaid">classDiagram
     class IFileSystem {
@@ -1012,42 +1135,110 @@
 
 <p>IFileSystem 接口：提供文件系统的基本操作：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["IFileSystem 核心方法"]
-        A[Init&lt;br/&gt;初始化文件系统]
-        B[MountVersion/MountDir&lt;br/&gt;挂载版本和目录]
-        C[CreateFileWriter/Reader&lt;br/&gt;创建文件操作器]
+<pre><code class="language-mermaid">flowchart TB
+    Start([IFileSystem 接口&lt;br/&gt;IFileSystem Interface]) --&gt; MethodLayer[核心方法层&lt;br/&gt;Core Methods Layer]
+    
+    subgraph MethodGroup["核心方法 Core Methods"]
+        direction TB
+        M1[Init&lt;br/&gt;初始化文件系统&lt;br/&gt;设置文件系统选项&lt;br/&gt;初始化底层存储]
+        M2[MountVersion/MountDir&lt;br/&gt;挂载版本和目录&lt;br/&gt;路径映射&lt;br/&gt;挂载管理]
+        M3[CreateFileWriter/Reader&lt;br/&gt;创建文件操作器&lt;br/&gt;创建写入器&lt;br/&gt;创建读取器]
     end
     
-    subgraph Sub["相关组件"]
-        D[FileSystemOptions&lt;br/&gt;文件系统选项]
-        E[IDirectory&lt;br/&gt;目录接口]
+    MethodLayer --&gt; ComponentLayer[相关组件层&lt;br/&gt;Related Components Layer]
+    
+    subgraph ComponentGroup["相关组件 Related Components"]
+        direction TB
+        C1[FileSystemOptions&lt;br/&gt;文件系统选项&lt;br/&gt;配置参数&lt;br/&gt;存储类型]
+        C2[IDirectory&lt;br/&gt;目录接口&lt;br/&gt;目录操作&lt;br/&gt;文件管理]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; E
+    ComponentLayer --&gt; End([文件系统操作&lt;br/&gt;File System Operations])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    MethodLayer -.-&gt;|包含| MethodGroup
+    ComponentLayer -.-&gt;|包含| ComponentGroup
+    
+    M1 -.-&gt;|使用| C1
+    M2 -.-&gt;|创建| C2
+    M3 -.-&gt;|创建| C2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style MethodLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ComponentLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style MethodGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ComponentGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="22-逻辑路径与物理路径">2.2 逻辑路径与物理路径</h3>
 
-<p>文件系统抽象通过逻辑路径和物理路径管理文件，实现路径抽象和版本管理。让我们通过流程图来理解路径映射的机制：</p>
+<p>文件系统抽象通过逻辑路径和物理路径管理文件，实现路径抽象和版本管理。路径映射的机制如下：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([文件操作请求]) --&gt; CheckPath{路径类型?}
-    CheckPath --&gt;|逻辑路径| ResolvePath[解析逻辑路径]
-    CheckPath --&gt;|物理路径| DirectAccess[直接访问]
-    ResolvePath --&gt; CheckMount{检查挂载点}
-    CheckMount --&gt;|已挂载| GetPhysical[获取物理路径]
-    CheckMount --&gt;|未挂载| Error[返回错误]
-    GetPhysical --&gt; MergePath[合并路径]
-    MergePath --&gt; DirectAccess
-    DirectAccess --&gt; AccessFile[访问文件]
-    AccessFile --&gt; End([结束])
-    Error --&gt; End
+<pre><code class="language-mermaid">flowchart TB
+    Start([文件操作请求&lt;br/&gt;File Operation Request]) --&gt; PathLayer[路径处理层&lt;br/&gt;Path Processing Layer]
+    
+    subgraph PathGroup["路径处理 Path Processing"]
+        direction TB
+        P1{路径类型?&lt;br/&gt;Path Type?}
+        P2[解析逻辑路径&lt;br/&gt;Resolve Logical Path&lt;br/&gt;查找挂载点]
+        P3[直接访问&lt;br/&gt;Direct Access&lt;br/&gt;使用物理路径]
+    end
+    
+    PathLayer --&gt; MountLayer[挂载检查层&lt;br/&gt;Mount Check Layer]
+    
+    subgraph MountGroup["挂载检查 Mount Check"]
+        direction TB
+        M1{检查挂载点&lt;br/&gt;Check Mount Point}
+        M2[获取物理路径&lt;br/&gt;Get Physical Path&lt;br/&gt;从挂载点获取]
+        M3[合并路径&lt;br/&gt;Merge Path&lt;br/&gt;组合物理路径]
+        M4[返回错误&lt;br/&gt;Return Error&lt;br/&gt;未找到挂载点]
+    end
+    
+    MountLayer --&gt; AccessLayer[文件访问层&lt;br/&gt;File Access Layer]
+    
+    subgraph AccessGroup["文件访问 File Access"]
+        direction TB
+        A1[访问文件&lt;br/&gt;Access File&lt;br/&gt;执行文件操作]
+    end
+    
+    AccessLayer --&gt; End([结束&lt;br/&gt;End])
+    
+    PathLayer -.-&gt;|包含| PathGroup
+    MountLayer -.-&gt;|包含| MountGroup
+    AccessLayer -.-&gt;|包含| AccessGroup
+    
+    P1 --&gt;|逻辑路径| P2
+    P1 --&gt;|物理路径| P3
+    P2 --&gt; M1
+    M1 --&gt;|已挂载| M2
+    M1 --&gt;|未挂载| M4
+    M2 --&gt; M3
+    M3 --&gt; A1
+    P3 --&gt; A1
+    M4 --&gt; End
+    A1 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style PathLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MountLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style AccessLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style PathGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style MountGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M4 fill:#ef5350,stroke:#c62828,stroke-width:2px
+    style AccessGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style A1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>路径映射的实现</strong>：</p>
@@ -1127,53 +1318,92 @@
 
 <p>逻辑路径与物理路径：从物理路径到逻辑路径的映射：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["路径映射组件"]
-        A[IFileSystem&lt;br/&gt;文件系统接口]
-        B[PathMapper&lt;br/&gt;路径映射器]
-        C[MountTable&lt;br/&gt;挂载表]
+<pre><code class="language-mermaid">flowchart TB
+    Start([路径映射系统&lt;br/&gt;Path Mapping System]) --&gt; ComponentLayer[组件层&lt;br/&gt;Component Layer]
+    
+    subgraph ComponentGroup["路径映射组件 Path Mapping Components"]
+        direction TB
+        C1[IFileSystem&lt;br/&gt;文件系统接口&lt;br/&gt;提供路径操作接口]
+        C2[PathMapper&lt;br/&gt;路径映射器&lt;br/&gt;解析和转换路径]
+        C3[MountTable&lt;br/&gt;挂载表&lt;br/&gt;管理挂载点映射]
     end
     
-    subgraph Sub["路径类型"]
-        D[逻辑路径&lt;br/&gt;LogicalPath]
-        E[物理路径&lt;br/&gt;PhysicalPath]
+    ComponentLayer --&gt; PathLayer[路径类型层&lt;br/&gt;Path Type Layer]
+    
+    subgraph PathGroup["路径类型 Path Types"]
+        direction TB
+        P1[逻辑路径&lt;br/&gt;Logical Path&lt;br/&gt;逻辑文件系统路径&lt;br/&gt;版本和Segment管理]
+        P2[物理路径&lt;br/&gt;Physical Path&lt;br/&gt;磁盘实际路径&lt;br/&gt;文件系统路径]
     end
     
-    A --&gt; B
-    B --&gt; C
-    C --&gt; D
-    C --&gt; E
+    PathLayer --&gt; End([路径映射完成&lt;br/&gt;Path Mapping Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    ComponentLayer -.-&gt;|包含| ComponentGroup
+    PathLayer -.-&gt;|包含| PathGroup
+    
+    C1 -.-&gt;|使用| C2
+    C2 -.-&gt;|查询| C3
+    C3 -.-&gt;|映射到| P1
+    C3 -.-&gt;|映射到| P2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ComponentLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style PathLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ComponentGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style PathGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style P1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="23-文件系统类型">2.3 文件系统类型</h3>
 
-<p>IndexLib 支持多种文件系统类型：</p>
+<p>IndexLib 支持多种文件系统类型，包括本地文件系统、分布式文件系统、内存文件系统等。各种文件系统类型及其关系如下：</p>
 
-<p>文件系统类型：本地文件系统、分布式文件系统等：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["文件系统类型"]
-        A[LocalFileSystem&lt;br/&gt;本地文件系统]
-        B[DistributedFileSystem&lt;br/&gt;分布式文件系统]
-        C[MemoryFileSystem&lt;br/&gt;内存文件系统]
+<pre><code class="language-mermaid">flowchart TB
+    Start([文件系统类型&lt;br/&gt;File System Types]) --&gt; TypeLayer[类型层&lt;br/&gt;Type Layer]
+    
+    subgraph TypeGroup["文件系统类型 File System Types"]
+        direction TB
+        T1[LocalFileSystem&lt;br/&gt;本地文件系统&lt;br/&gt;基于本地磁盘&lt;br/&gt;Posix文件系统]
+        T2[DistributedFileSystem&lt;br/&gt;分布式文件系统&lt;br/&gt;HDFS Pangu&lt;br/&gt;分布式存储]
+        T3[MemoryFileSystem&lt;br/&gt;内存文件系统&lt;br/&gt;基于内存&lt;br/&gt;临时存储]
     end
     
-    subgraph Sub["实现接口"]
-        D[IFileSystem&lt;br/&gt;文件系统接口]
-        E[Storage&lt;br/&gt;存储抽象]
+    TypeLayer --&gt; InterfaceLayer[接口层&lt;br/&gt;Interface Layer]
+    
+    subgraph InterfaceGroup["实现接口 Implementation Interfaces"]
+        direction TB
+        I1[IFileSystem&lt;br/&gt;文件系统接口&lt;br/&gt;统一接口定义&lt;br/&gt;标准操作]
+        I2[Storage&lt;br/&gt;存储抽象&lt;br/&gt;底层存储封装&lt;br/&gt;存储操作]
     end
     
-    A --&gt; D
-    B --&gt; D
-    C --&gt; D
-    A --&gt; E
-    B --&gt; E
+    InterfaceLayer --&gt; End([统一文件系统访问&lt;br/&gt;Unified File System Access])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    TypeLayer -.-&gt;|包含| TypeGroup
+    InterfaceLayer -.-&gt;|包含| InterfaceGroup
+    
+    T1 -.-&gt;|实现| I1
+    T2 -.-&gt;|实现| I1
+    T3 -.-&gt;|实现| I1
+    T1 -.-&gt;|使用| I2
+    T2 -.-&gt;|使用| I2
+    T3 -.-&gt;|使用| I2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style TypeLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style InterfaceLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style TypeGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style T1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style InterfaceGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style I1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style I2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>文件系统类型</strong>：</p>
@@ -1247,53 +1477,63 @@
 
 <p>IDirectory 接口：提供目录和文件的操作：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start[IDirectory接口] --&gt; MethodLayer[方法层]
+<pre><code class="language-mermaid">flowchart TB
+    Start([IDirectory 接口&lt;br/&gt;IDirectory Interface]) --&gt; MethodLayer[方法层&lt;br/&gt;Methods Layer]
     
-    subgraph FileOpsGroup["文件操作"]
+    subgraph FileOpsGroup["文件操作 File Operations"]
         direction TB
-        FO1[CreateFileWriter&lt;br/&gt;创建文件写入器]
-        FO2[CreateFileReader&lt;br/&gt;创建文件读取器]
-        FO3[RemoveFile&lt;br/&gt;删除文件]
-        FO4[GetFileLength&lt;br/&gt;获取文件长度]
-        FO5[IsExist&lt;br/&gt;检查文件是否存在]
+        FO1[CreateFileWriter&lt;br/&gt;创建文件写入器&lt;br/&gt;创建写入器对象]
+        FO2[CreateFileReader&lt;br/&gt;创建文件读取器&lt;br/&gt;创建读取器对象]
+        FO3[RemoveFile&lt;br/&gt;删除文件&lt;br/&gt;删除指定文件]
+        FO4[GetFileLength&lt;br/&gt;获取文件长度&lt;br/&gt;获取文件大小]
+        FO5[IsExist&lt;br/&gt;检查文件是否存在&lt;br/&gt;检查路径存在性]
     end
     
-    subgraph DirOpsGroup["目录操作"]
+    subgraph DirOpsGroup["目录操作 Directory Operations"]
         direction TB
-        DO1[MakeDirectory&lt;br/&gt;创建目录]
-        DO2[GetDirectory&lt;br/&gt;获取目录]
-        DO3[RemoveDirectory&lt;br/&gt;删除目录]
-        DO4[Rename&lt;br/&gt;重命名文件或目录]
-        DO5[ListDir&lt;br/&gt;列出目录内容]
+        DO1[MakeDirectory&lt;br/&gt;创建目录&lt;br/&gt;创建新目录]
+        DO2[GetDirectory&lt;br/&gt;获取目录&lt;br/&gt;获取目录对象]
+        DO3[RemoveDirectory&lt;br/&gt;删除目录&lt;br/&gt;删除指定目录]
+        DO4[Rename&lt;br/&gt;重命名文件或目录&lt;br/&gt;重命名操作]
+        DO5[ListDir&lt;br/&gt;列出目录内容&lt;br/&gt;列出文件列表]
     end
     
-    MethodLayer --&gt; FileOpsGroup
-    MethodLayer --&gt; DirOpsGroup
+    MethodLayer --&gt; ResultLayer[结果层&lt;br/&gt;Result Layer]
     
-    FileOpsGroup --&gt; Result[操作结果]
-    DirOpsGroup --&gt; Result
+    subgraph ResultGroup["操作结果 Operation Results"]
+        direction TB
+        R1[文件操作结果&lt;br/&gt;File Operation Results&lt;br/&gt;FileWriter/FileReader对象]
+        R2[目录操作结果&lt;br/&gt;Directory Operation Results&lt;br/&gt;IDirectory对象/文件列表]
+    end
     
-    Result --&gt; R1[文件操作结果&lt;br/&gt;FileWriter/FileReader]
-    Result --&gt; R2[目录操作结果&lt;br/&gt;IDirectory/文件列表]
+    ResultLayer --&gt; End([操作完成&lt;br/&gt;Operation Complete])
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style MethodLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style FileOpsGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style FO1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FO2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FO3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FO4 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FO5 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style DirOpsGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style DO1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style DO2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style DO3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style DO4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style DO5 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style Result fill:#f5f5f5,stroke:#757575,stroke-width:2px
-    style R1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
-    style R2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    MethodLayer -.-&gt;|包含| FileOpsGroup
+    MethodLayer -.-&gt;|包含| DirOpsGroup
+    ResultLayer -.-&gt;|包含| ResultGroup
+    
+    FileOpsGroup -.-&gt;|返回| R1
+    DirOpsGroup -.-&gt;|返回| R2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style MethodLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ResultLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style FileOpsGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FO1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FO2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FO3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FO4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FO5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style DirOpsGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style DO1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DO2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DO3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DO4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DO5 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ResultGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -1315,69 +1555,71 @@
 
 <p>目录操作流程：从创建目录到文件操作的完整流程：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start[IDirectory操作] --&gt; OperationLayer[操作层]
+<pre><code class="language-mermaid">flowchart TB
+    Start([IDirectory 操作&lt;br/&gt;IDirectory Operations]) --&gt; DirectoryLayer[目录操作层&lt;br/&gt;Directory Operations Layer]
     
-    subgraph DirectoryGroup["IDirectory核心操作"]
+    subgraph DirectoryGroup["IDirectory 核心操作 Core Operations"]
         direction TB
-        D1[GetDirectory&lt;br/&gt;获取子目录]
-        D2[CreateFileWriter&lt;br/&gt;创建文件写入器]
-        D3[CreateFileReader&lt;br/&gt;创建文件读取器]
-        D4[MakeDirectory&lt;br/&gt;创建目录]
-        D5[RemoveFile&lt;br/&gt;删除文件]
-        D6[RemoveDirectory&lt;br/&gt;删除目录]
-        D7[Rename&lt;br/&gt;重命名文件或目录]
-        D8[IsExist&lt;br/&gt;检查文件是否存在]
-        D9[ListDir&lt;br/&gt;列出目录内容]
-        D10[GetFileLength&lt;br/&gt;获取文件长度]
+        D1[GetDirectory&lt;br/&gt;获取子目录&lt;br/&gt;获取目录对象]
+        D2[CreateFileWriter&lt;br/&gt;创建文件写入器&lt;br/&gt;创建写入器对象]
+        D3[CreateFileReader&lt;br/&gt;创建文件读取器&lt;br/&gt;创建读取器对象]
+        D4[MakeDirectory&lt;br/&gt;创建目录&lt;br/&gt;创建新目录]
+        D5[RemoveFile&lt;br/&gt;删除文件&lt;br/&gt;删除指定文件]
+        D6[RemoveDirectory&lt;br/&gt;删除目录&lt;br/&gt;删除指定目录]
+        D7[Rename&lt;br/&gt;重命名文件或目录&lt;br/&gt;重命名操作]
+        D8[IsExist&lt;br/&gt;检查文件是否存在&lt;br/&gt;检查路径存在性]
+        D9[ListDir&lt;br/&gt;列出目录内容&lt;br/&gt;列出文件列表]
+        D10[GetFileLength&lt;br/&gt;获取文件长度&lt;br/&gt;获取文件大小]
     end
     
-    OperationLayer --&gt; DirectoryGroup
+    DirectoryLayer --&gt; FileOpsLayer[文件操作层&lt;br/&gt;File Operations Layer]
     
-    DirectoryGroup --&gt; FileOps[文件操作]
-    
-    subgraph FileWriterGroup["FileWriter操作"]
+    subgraph FileWriterGroup["FileWriter 操作 FileWriter Operations"]
         direction TB
-        FW1[Write&lt;br/&gt;写入文件数据]
-        FW2[ReserveFile&lt;br/&gt;预留文件空间]
-        FW3[Truncate&lt;br/&gt;截断文件]
+        FW1[Write&lt;br/&gt;写入文件数据&lt;br/&gt;写入数据到文件]
+        FW2[ReserveFile&lt;br/&gt;预留文件空间&lt;br/&gt;预留文件大小]
+        FW3[Truncate&lt;br/&gt;截断文件&lt;br/&gt;调整文件大小]
     end
     
-    subgraph FileReaderGroup["FileReader操作"]
+    subgraph FileReaderGroup["FileReader 操作 FileReader Operations"]
         direction TB
-        FR1[Read&lt;br/&gt;读取文件数据]
-        FR2[Prefetch&lt;br/&gt;预取文件数据]
-        FR3[ReadAsync&lt;br/&gt;异步读取]
+        FR1[Read&lt;br/&gt;读取文件数据&lt;br/&gt;同步读取数据]
+        FR2[Prefetch&lt;br/&gt;预取文件数据&lt;br/&gt;提前加载数据]
+        FR3[ReadAsync&lt;br/&gt;异步读取&lt;br/&gt;异步读取数据]
     end
     
-    D2 --&gt; FileWriterGroup
-    D3 --&gt; FileReaderGroup
+    FileOpsLayer --&gt; End([操作完成&lt;br/&gt;Operation Complete])
     
-    FileOps --&gt; FileWriterGroup
-    FileOps --&gt; FileReaderGroup
+    DirectoryLayer -.-&gt;|包含| DirectoryGroup
+    FileOpsLayer -.-&gt;|包含| FileWriterGroup
+    FileOpsLayer -.-&gt;|包含| FileReaderGroup
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style OperationLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style DirectoryGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style D1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+    D2 -.-&gt;|创建| FileWriterGroup
+    D3 -.-&gt;|创建| FileReaderGroup
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style DirectoryLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FileOpsLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DirectoryGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style D1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
     style D2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
     style D3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style D4 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D5 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D6 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D7 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D8 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D9 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style D10 fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style FileOps fill:#f5f5f5,stroke:#757575,stroke-width:2px
-    style FileWriterGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style FW1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FW2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FW3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style FileReaderGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style FR1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style FR2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style FR3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+    style D4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D7 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D8 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D9 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D10 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style FileWriterGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FW1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FW2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FW3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FileReaderGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style FR1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style FR2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style FR3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p><strong>操作流程</strong>：</p>
@@ -1588,62 +1830,68 @@
 
 <p>FileReader 接口：提供文件读取功能：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start[FileWriter核心功能] --&gt; FeatureLayer[功能层]
+<pre><code class="language-mermaid">flowchart TB
+    Start([FileReader 核心功能&lt;br/&gt;FileReader Core Features]) --&gt; FeatureLayer[功能层&lt;br/&gt;Features Layer]
     
-    subgraph WriteGroup["写入功能"]
+    subgraph ReadGroup["读取功能 Read Functions"]
         direction TB
-        W1[Write&lt;br/&gt;写入文件数据]
-        W2[ReserveFile&lt;br/&gt;预留文件空间]
-        W3[Truncate&lt;br/&gt;截断文件]
-        W1 --&gt; W2
-        W2 --&gt; W3
+        R1[Read&lt;br/&gt;读取文件数据&lt;br/&gt;同步读取数据]
+        R2[Prefetch&lt;br/&gt;预取文件数据&lt;br/&gt;提前加载数据]
+        R3[ReadAsync&lt;br/&gt;异步读取&lt;br/&gt;异步读取数据]
     end
     
-    subgraph LifecycleGroup["生命周期管理"]
+    subgraph LifecycleGroup["生命周期管理 Lifecycle Management"]
         direction TB
-        L1[Open&lt;br/&gt;打开文件]
-        L2[Close&lt;br/&gt;关闭文件]
-        L3[GetLength&lt;br/&gt;获取文件长度]
-        L1 --&gt; L2
-        L2 --&gt; L3
+        L1[Open&lt;br/&gt;打开文件&lt;br/&gt;打开文件进行读取]
+        L2[Close&lt;br/&gt;关闭文件&lt;br/&gt;关闭文件释放资源]
+        L3[GetLength&lt;br/&gt;获取文件长度&lt;br/&gt;获取文件大小]
     end
     
-    subgraph PathGroup["路径管理"]
+    subgraph PathGroup["路径管理 Path Management"]
         direction TB
-        P1[GetLogicalPath&lt;br/&gt;获取逻辑路径]
-        P2[GetPhysicalPath&lt;br/&gt;获取物理路径]
+        P1[GetLogicalPath&lt;br/&gt;获取逻辑路径&lt;br/&gt;获取逻辑文件路径]
+        P2[GetPhysicalPath&lt;br/&gt;获取物理路径&lt;br/&gt;获取物理文件路径]
     end
     
-    FeatureLayer --&gt; WriteGroup
-    FeatureLayer --&gt; LifecycleGroup
-    FeatureLayer --&gt; PathGroup
+    FeatureLayer --&gt; UsageLayer[使用场景层&lt;br/&gt;Usage Scenarios Layer]
     
-    WriteGroup --&gt; Usage[使用场景]
-    LifecycleGroup --&gt; Usage
-    PathGroup --&gt; Usage
+    subgraph UsageGroup["使用场景 Usage Scenarios"]
+        direction TB
+        U1[索引查询&lt;br/&gt;Index Query&lt;br/&gt;读取索引文件]
+        U2[数据加载&lt;br/&gt;Data Loading&lt;br/&gt;加载Segment数据]
+        U3[版本读取&lt;br/&gt;Version Read&lt;br/&gt;读取版本文件]
+    end
     
-    Usage --&gt; U1[索引构建&lt;br/&gt;写入索引文件]
-    Usage --&gt; U2[数据转储&lt;br/&gt;转储Segment数据]
-    Usage --&gt; U3[版本提交&lt;br/&gt;写入版本文件]
+    UsageLayer --&gt; End([文件读取完成&lt;br/&gt;File Read Complete])
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style FeatureLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style W2 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style W3 fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style LifecycleGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style L1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style L2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style L3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style PathGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style P1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
-    style P2 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
-    style Usage fill:#f5f5f5,stroke:#757575,stroke-width:2px
-    style U1 fill:#e0e0e0,stroke:#757575,stroke-width:1px
-    style U2 fill:#e0e0e0,stroke:#757575,stroke-width:1px
-    style U3 fill:#e0e0e0,stroke:#757575,stroke-width:1px
+    FeatureLayer -.-&gt;|包含| ReadGroup
+    FeatureLayer -.-&gt;|包含| LifecycleGroup
+    FeatureLayer -.-&gt;|包含| PathGroup
+    UsageLayer -.-&gt;|包含| UsageGroup
+    
+    ReadGroup -.-&gt;|支持| UsageGroup
+    LifecycleGroup -.-&gt;|支持| UsageGroup
+    PathGroup -.-&gt;|支持| UsageGroup
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style FeatureLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style UsageLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ReadGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style R1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style R2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style R3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style LifecycleGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style L1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style L2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style L3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style PathGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style P1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style P2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style UsageGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style U1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style U2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style U3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <h3 id="42-filewriter文件写入器">4.2 FileWriter：文件写入器</h3>
@@ -1878,24 +2126,44 @@
 
 <p>FileWriter 接口：提供文件写入功能：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["文件写入&lt;br/&gt;FileWrite"]
-        B["随机写入&lt;br/&gt;RandomWrite"]
-        C["顺序写入&lt;br/&gt;SequentialWrite"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([FileWriter 写入功能&lt;br/&gt;FileWriter Write Features]) --&gt; WriteLayer[写入类型层&lt;br/&gt;Write Types Layer]
+    
+    subgraph WriteGroup["写入类型 Write Types"]
+        direction TB
+        W1[文件写入&lt;br/&gt;File Write&lt;br/&gt;基础写入操作]
+        W2[随机写入&lt;br/&gt;Random Write&lt;br/&gt;支持随机位置写入]
+        W3[顺序写入&lt;br/&gt;Sequential Write&lt;br/&gt;顺序写入优化]
     end
     
-    subgraph Sub["子组件"]
-        D["缓冲区管理&lt;br/&gt;BufferManagement"]
-        E["同步操作&lt;br/&gt;SyncOperation"]
+    WriteLayer --&gt; SupportLayer[支持组件层&lt;br/&gt;Support Components Layer]
+    
+    subgraph SupportGroup["支持组件 Support Components"]
+        direction TB
+        S1[缓冲区管理&lt;br/&gt;Buffer Management&lt;br/&gt;管理写入缓冲区]
+        S2[同步操作&lt;br/&gt;Sync Operation&lt;br/&gt;同步数据到磁盘]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([写入功能完成&lt;br/&gt;Write Features Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    WriteLayer -.-&gt;|包含| WriteGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    W1 -.-&gt;|使用| S1
+    W2 -.-&gt;|使用| S2
+    W3 -.-&gt;|使用| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style WriteLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style WriteGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style W1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style W2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style W3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h2 id="5-storage存储抽象">5. Storage：存储抽象</h2>
@@ -1944,24 +2212,38 @@
 
 <p>Storage 抽象：提供底层存储操作：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["CreateInputStorage&lt;br/&gt;创建输入存储"]
-        B["CreateOutputStorage&lt;br/&gt;创建输出存储"]
-        C["CreateFileReader&lt;br/&gt;创建文件读取器"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Storage 抽象&lt;br/&gt;Storage Abstraction]) --&gt; MethodLayer[方法层&lt;br/&gt;Methods Layer]
+    
+    subgraph MethodGroup["核心方法 Core Methods"]
+        direction TB
+        M1[CreateInputStorage&lt;br/&gt;创建输入存储&lt;br/&gt;用于读取操作]
+        M2[CreateOutputStorage&lt;br/&gt;创建输出存储&lt;br/&gt;用于写入操作]
+        M3[CreateFileReader&lt;br/&gt;创建文件读取器&lt;br/&gt;创建读取器对象]
+        M4[CreateFileWriter&lt;br/&gt;创建文件写入器&lt;br/&gt;创建写入器对象]
+        M5[Sync&lt;br/&gt;同步存储&lt;br/&gt;刷新数据到磁盘]
+        M6[GetStorageType&lt;br/&gt;获取存储类型&lt;br/&gt;返回存储类型]
     end
     
-    subgraph Sub["子组件"]
-        D["CreateFileWriter&lt;br/&gt;创建文件写入器"]
-        E["Sync&lt;br/&gt;同步存储"]
-    end
+    MethodLayer --&gt; End([存储操作完成&lt;br/&gt;Storage Operations Complete])
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    MethodLayer -.-&gt;|包含| MethodGroup
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    M1 -.-&gt;|创建| M3
+    M2 -.-&gt;|创建| M4
+    M1 -.-&gt;|使用| M5
+    M2 -.-&gt;|使用| M5
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style MethodLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MethodGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
 </code></pre>
 
 <ul>
@@ -1979,24 +2261,45 @@
 
 <p>存储类型：本地存储、分布式存储等：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["本地存储&lt;br/&gt;LocalStorage"]
-        B["分布式存储&lt;br/&gt;DistributedStorage"]
-        C["内存存储&lt;br/&gt;MemoryStorage"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([存储类型&lt;br/&gt;Storage Types]) --&gt; TypeLayer[存储类型层&lt;br/&gt;Storage Types Layer]
+    
+    subgraph TypeGroup["存储类型 Storage Types"]
+        direction TB
+        T1[本地存储&lt;br/&gt;Local Storage&lt;br/&gt;基于本地文件系统&lt;br/&gt;Posix文件系统]
+        T2[分布式存储&lt;br/&gt;Distributed Storage&lt;br/&gt;HDFS Pangu&lt;br/&gt;分布式文件系统]
+        T3[内存存储&lt;br/&gt;Memory Storage&lt;br/&gt;基于内存&lt;br/&gt;临时存储]
+        T4[混合存储&lt;br/&gt;Hybrid Storage&lt;br/&gt;多种存储组合&lt;br/&gt;灵活配置]
     end
     
-    subgraph Sub["子组件"]
-        D["混合存储&lt;br/&gt;HybridStorage"]
-        E["存储后端&lt;br/&gt;StorageBackend"]
+    TypeLayer --&gt; BackendLayer[存储后端层&lt;br/&gt;Storage Backend Layer]
+    
+    subgraph BackendGroup["存储后端 Storage Backend"]
+        direction TB
+        B1[存储后端&lt;br/&gt;Storage Backend&lt;br/&gt;统一后端接口&lt;br/&gt;抽象存储操作]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    BackendLayer --&gt; End([统一存储访问&lt;br/&gt;Unified Storage Access])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    TypeLayer -.-&gt;|包含| TypeGroup
+    BackendLayer -.-&gt;|包含| BackendGroup
+    
+    T1 -.-&gt;|使用| B1
+    T2 -.-&gt;|使用| B1
+    T3 -.-&gt;|使用| B1
+    T4 -.-&gt;|使用| B1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style TypeLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style BackendLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style TypeGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style T1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style BackendGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>存储类型</strong>：</p>
@@ -2062,23 +2365,77 @@
 
 <h3 id="61-package-格式">6.1 Package 格式</h3>
 
-<p>Package 格式是一种打包存储格式，将多个小文件打包成一个大文件，减少文件系统的小文件数量，提高 IO 效率。让我们通过流程图来理解 Package 格式的打包和解包流程：</p>
+<p>Package 格式是一种打包存储格式，将多个小文件打包成一个大文件，减少文件系统的小文件数量，提高 IO 效率。Package 格式的打包流程如下：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始打包]) --&gt; ReadFiles[读取文件列表]
-    ReadFiles --&gt; CreatePackage[创建 Package 文件]
-    CreatePackage --&gt; WriteHeader[写入 Package 头]
-    WriteHeader --&gt; LoopFiles{遍历文件}
-    LoopFiles --&gt;|下一个文件| ReadFile[读取文件内容]
-    ReadFile --&gt; Compress{需要压缩?}
-    Compress --&gt;|是| CompressData[压缩数据]
-    Compress --&gt;|否| WriteData[写入文件数据]
-    CompressData --&gt; WriteData
-    WriteData --&gt; UpdateIndex[更新索引]
-    UpdateIndex --&gt; LoopFiles
-    LoopFiles --&gt;|完成| WriteIndex[写入索引]
-    WriteIndex --&gt; ClosePackage[关闭 Package]
-    ClosePackage --&gt; End([结束])
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始打包&lt;br/&gt;Start Packing]) --&gt; InitLayer[初始化层&lt;br/&gt;Initialization Layer]
+    
+    subgraph InitGroup["初始化 Initialization"]
+        direction TB
+        I1[读取文件列表&lt;br/&gt;Read File List&lt;br/&gt;获取待打包文件]
+        I2[创建 Package 文件&lt;br/&gt;Create Package File&lt;br/&gt;创建输出文件]
+        I3[写入 Package 头&lt;br/&gt;Write Package Header&lt;br/&gt;写入文件头信息]
+    end
+    
+    InitLayer --&gt; ProcessLayer[处理层&lt;br/&gt;Processing Layer]
+    
+    subgraph ProcessGroup["文件处理 File Processing"]
+        direction TB
+        P1{遍历文件&lt;br/&gt;Loop Files}
+        P2[读取文件内容&lt;br/&gt;Read File Content&lt;br/&gt;读取文件数据]
+        P3{需要压缩?&lt;br/&gt;Need Compression?}
+        P4[压缩数据&lt;br/&gt;Compress Data&lt;br/&gt;压缩文件数据]
+        P5[写入文件数据&lt;br/&gt;Write File Data&lt;br/&gt;写入到Package]
+        P6[更新索引&lt;br/&gt;Update Index&lt;br/&gt;更新文件索引]
+    end
+    
+    ProcessLayer --&gt; FinalizeLayer[完成层&lt;br/&gt;Finalization Layer]
+    
+    subgraph FinalizeGroup["完成处理 Finalization"]
+        direction TB
+        F1[写入索引&lt;br/&gt;Write Index&lt;br/&gt;写入文件索引]
+        F2[关闭 Package&lt;br/&gt;Close Package&lt;br/&gt;关闭文件]
+    end
+    
+    FinalizeLayer --&gt; End([打包完成&lt;br/&gt;Packing Complete])
+    
+    InitLayer -.-&gt;|包含| InitGroup
+    ProcessLayer -.-&gt;|包含| ProcessGroup
+    FinalizeLayer -.-&gt;|包含| FinalizeGroup
+    
+    I1 --&gt; I2
+    I2 --&gt; I3
+    I3 --&gt; P1
+    P1 --&gt;|下一个文件| P2
+    P1 --&gt;|完成| F1
+    P2 --&gt; P3
+    P3 --&gt;|是| P4
+    P3 --&gt;|否| P5
+    P4 --&gt; P5
+    P5 --&gt; P6
+    P6 --&gt; P1
+    F1 --&gt; F2
+    F2 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InitLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ProcessLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FinalizeLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style InitGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style I1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ProcessGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style P1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P6 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FinalizeGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>Package 格式的结构</strong>：</p>
@@ -2225,50 +2582,126 @@
 
 <p>Package 格式：将多个文件打包成一个文件：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["文件打包&lt;br/&gt;FilePackaging"]
-        B["压缩存储&lt;br/&gt;CompressedStorage"]
-        C["索引管理&lt;br/&gt;IndexManagement"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Package 格式&lt;br/&gt;Package Format]) --&gt; FeatureLayer[功能层&lt;br/&gt;Features Layer]
+    
+    subgraph FeatureGroup["核心功能 Core Features"]
+        direction TB
+        F1[文件打包&lt;br/&gt;File Packaging&lt;br/&gt;将多个文件打包]
+        F2[压缩存储&lt;br/&gt;Compressed Storage&lt;br/&gt;支持文件压缩]
+        F3[索引管理&lt;br/&gt;Index Management&lt;br/&gt;管理文件索引]
     end
     
-    subgraph Sub["子组件"]
-        D["文件读取&lt;br/&gt;FileRead"]
-        E["文件写入&lt;br/&gt;FileWrite"]
+    FeatureLayer --&gt; OperationLayer[操作层&lt;br/&gt;Operations Layer]
+    
+    subgraph OperationGroup["文件操作 File Operations"]
+        direction TB
+        O1[文件读取&lt;br/&gt;File Read&lt;br/&gt;读取打包文件]
+        O2[文件写入&lt;br/&gt;File Write&lt;br/&gt;写入打包文件]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    OperationLayer --&gt; End([Package 操作完成&lt;br/&gt;Package Operations Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    OperationLayer -.-&gt;|包含| OperationGroup
+    
+    F1 -.-&gt;|使用| O1
+    F2 -.-&gt;|使用| O2
+    F3 -.-&gt;|使用| O1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style FeatureLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OperationLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style OperationGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style O1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="62-archive-格式">6.2 Archive 格式</h3>
 
-<p>Archive 格式是一种归档存储格式，支持文件归档、压缩、索引和追加。让我们通过流程图来理解 Archive 格式的归档流程：</p>
+<p>Archive 格式是一种归档存储格式，支持文件归档、压缩、索引和追加。Archive 格式的归档流程（包括创建归档和追加文件）如下：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始归档]) --&gt; CreateArchive[创建 Archive 文件]
-    CreateArchive --&gt; WriteHeader[写入 Archive 头]
-    WriteHeader --&gt; LoopFiles{遍历文件}
-    LoopFiles --&gt;|下一个文件| ReadFile[读取文件]
-    ReadFile --&gt; Compress[压缩文件]
-    Compress --&gt; WriteData[写入文件数据]
-    WriteData --&gt; UpdateIndex[更新索引]
-    UpdateIndex --&gt; LoopFiles
-    LoopFiles --&gt;|完成| WriteIndex[写入索引]
-    WriteIndex --&gt; CloseArchive[关闭 Archive]
-    CloseArchive --&gt; End([结束])
+<pre><code class="language-mermaid">flowchart TB
+    Start([Archive 操作&lt;br/&gt;Archive Operations]) --&gt; OperationType{操作类型&lt;br/&gt;Operation Type}
     
-    AppendFile([追加文件]) --&gt; OpenArchive[打开 Archive]
-    OpenArchive --&gt; ReadIndex[读取索引]
-    ReadIndex --&gt; AppendData[追加文件数据]
-    AppendData --&gt; UpdateIndex2[更新索引]
-    UpdateIndex2 --&gt; WriteIndex2[写入索引]
-    WriteIndex2 --&gt; CloseArchive2[关闭 Archive]
-    CloseArchive2 --&gt; End2([结束])
+    OperationType --&gt;|创建归档| CreateFlow[创建归档流程&lt;br/&gt;Create Archive Flow]
+    OperationType --&gt;|追加文件| AppendFlow[追加文件流程&lt;br/&gt;Append File Flow]
+    
+    subgraph CreateGroup["创建归档流程 Create Archive Flow"]
+        direction TB
+        C1[创建 Archive 文件&lt;br/&gt;Create Archive File&lt;br/&gt;创建归档文件]
+        C2[写入 Archive 头&lt;br/&gt;Write Archive Header&lt;br/&gt;写入文件头信息]
+        C3{遍历文件&lt;br/&gt;Loop Files}
+        C4[读取文件&lt;br/&gt;Read File&lt;br/&gt;读取文件内容]
+        C5[压缩文件&lt;br/&gt;Compress File&lt;br/&gt;压缩文件数据]
+        C6[写入文件数据&lt;br/&gt;Write File Data&lt;br/&gt;写入到Archive]
+        C7[更新索引&lt;br/&gt;Update Index&lt;br/&gt;更新文件索引]
+        C8[写入索引&lt;br/&gt;Write Index&lt;br/&gt;写入文件索引]
+        C9[关闭 Archive&lt;br/&gt;Close Archive&lt;br/&gt;关闭文件]
+    end
+    
+    subgraph AppendGroup["追加文件流程 Append File Flow"]
+        direction TB
+        A1[打开 Archive&lt;br/&gt;Open Archive&lt;br/&gt;打开归档文件]
+        A2[读取索引&lt;br/&gt;Read Index&lt;br/&gt;读取文件索引]
+        A3[追加文件数据&lt;br/&gt;Append File Data&lt;br/&gt;追加新文件]
+        A4[更新索引&lt;br/&gt;Update Index&lt;br/&gt;更新文件索引]
+        A5[写入索引&lt;br/&gt;Write Index&lt;br/&gt;写入更新后的索引]
+        A6[关闭 Archive&lt;br/&gt;Close Archive&lt;br/&gt;关闭文件]
+    end
+    
+    CreateFlow --&gt; End1([创建完成&lt;br/&gt;Create Complete])
+    AppendFlow --&gt; End2([追加完成&lt;br/&gt;Append Complete])
+    
+    CreateFlow -.-&gt;|包含| CreateGroup
+    AppendFlow -.-&gt;|包含| AppendGroup
+    
+    C1 --&gt; C2
+    C2 --&gt; C3
+    C3 --&gt;|下一个文件| C4
+    C3 --&gt;|完成| C8
+    C4 --&gt; C5
+    C5 --&gt; C6
+    C6 --&gt; C7
+    C7 --&gt; C3
+    C8 --&gt; C9
+    C9 --&gt; End1
+    
+    A1 --&gt; A2
+    A2 --&gt; A3
+    A3 --&gt; A4
+    A4 --&gt; A5
+    A5 --&gt; A6
+    A6 --&gt; End2
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End1 fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End2 fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style OperationType fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CreateFlow fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style AppendFlow fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CreateGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C7 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C8 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C9 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style AppendGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style A1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A6 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>Archive 格式的结构</strong>：</p>
@@ -2331,29 +2764,49 @@
 
 <p>Archive 格式：归档存储格式的特点和应用：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["文件归档&lt;br/&gt;FileArchive"]
-        B["压缩存储&lt;br/&gt;CompressedStorage"]
-        C["索引追加&lt;br/&gt;IndexAppend"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Archive 格式&lt;br/&gt;Archive Format]) --&gt; FeatureLayer[功能层&lt;br/&gt;Features Layer]
+    
+    subgraph FeatureGroup["核心功能 Core Features"]
+        direction TB
+        F1[文件归档&lt;br/&gt;File Archive&lt;br/&gt;归档文件存储]
+        F2[压缩存储&lt;br/&gt;Compressed Storage&lt;br/&gt;支持文件压缩]
+        F3[索引追加&lt;br/&gt;Index Append&lt;br/&gt;支持索引追加]
     end
     
-    subgraph Sub["子组件"]
-        D["归档读取&lt;br/&gt;ArchiveRead"]
-        E["归档写入&lt;br/&gt;ArchiveWrite"]
+    FeatureLayer --&gt; OperationLayer[操作层&lt;br/&gt;Operations Layer]
+    
+    subgraph OperationGroup["文件操作 File Operations"]
+        direction TB
+        O1[归档读取&lt;br/&gt;Archive Read&lt;br/&gt;读取归档文件]
+        O2[归档写入&lt;br/&gt;Archive Write&lt;br/&gt;写入归档文件]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    OperationLayer --&gt; End([Archive 操作完成&lt;br/&gt;Archive Operations Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    OperationLayer -.-&gt;|包含| OperationGroup
+    
+    F1 -.-&gt;|使用| O1
+    F2 -.-&gt;|使用| O2
+    F3 -.-&gt;|使用| O1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style FeatureLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style OperationLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style F1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style F3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style OperationGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style O1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style O2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h3 id="63-压缩格式">6.3 压缩格式</h3>
 
-<p>IndexLib 支持多种压缩格式，包括 LZ4、Zstd、Snappy 和 Gzip。让我们通过类图来理解压缩格式的架构：</p>
+<p>IndexLib 支持多种压缩格式，包括 LZ4、Zstd、Snappy 和 Gzip。压缩格式的架构如下：</p>
 
 <pre><code class="language-mermaid">classDiagram
     class Compressor {
@@ -2474,52 +2927,91 @@
 
 <p>压缩格式：支持多种压缩算法：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["LZ4压缩&lt;br/&gt;LZ4Compression"]
-        B["Zstd压缩&lt;br/&gt;ZstdCompression"]
-        C["Snappy压缩&lt;br/&gt;SnappyCompression"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([压缩格式&lt;br/&gt;Compression Formats]) --&gt; AlgorithmLayer[压缩算法层&lt;br/&gt;Compression Algorithms Layer]
+    
+    subgraph AlgorithmGroup["压缩算法 Compression Algorithms"]
+        direction TB
+        A1[LZ4压缩&lt;br/&gt;LZ4 Compression&lt;br/&gt;快速压缩算法]
+        A2[Zstd压缩&lt;br/&gt;Zstd Compression&lt;br/&gt;高效压缩算法]
+        A3[Snappy压缩&lt;br/&gt;Snappy Compression&lt;br/&gt;快速压缩算法]
+        A4[Gzip压缩&lt;br/&gt;Gzip Compression&lt;br/&gt;通用压缩算法]
     end
     
-    subgraph Sub["子组件"]
-        D["Gzip压缩&lt;br/&gt;GzipCompression"]
-        E["压缩管理&lt;br/&gt;CompressionManagement"]
+    AlgorithmLayer --&gt; ManagementLayer[管理层&lt;br/&gt;Management Layer]
+    
+    subgraph ManagementGroup["压缩管理 Compression Management"]
+        direction TB
+        M1[压缩管理&lt;br/&gt;Compression Management&lt;br/&gt;统一管理接口]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    ManagementLayer --&gt; End([压缩功能完成&lt;br/&gt;Compression Features Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    AlgorithmLayer -.-&gt;|包含| AlgorithmGroup
+    ManagementLayer -.-&gt;|包含| ManagementGroup
+    
+    A1 -.-&gt;|使用| M1
+    A2 -.-&gt;|使用| M1
+    A3 -.-&gt;|使用| M1
+    A4 -.-&gt;|使用| M1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style AlgorithmLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ManagementLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style AlgorithmGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style A1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ManagementGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <h2 id="7-文件系统缓存">7. 文件系统缓存</h2>
 
 <h3 id="71-缓存机制">7.1 缓存机制</h3>
 
-<p>文件系统缓存的机制：</p>
+<p>文件系统缓存通过缓存文件内容、元数据和预取数据来提高文件访问性能。缓存机制的整体架构如下：</p>
 
-<p>文件系统缓存：通过缓存提高文件访问性能：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["文件缓存&lt;br/&gt;FileCache"]
-        B["元数据缓存&lt;br/&gt;MetadataCache"]
-        C["预取缓存&lt;br/&gt;PrefetchCache"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([文件系统缓存&lt;br/&gt;File System Cache]) --&gt; CacheLayer[缓存类型层&lt;br/&gt;Cache Types Layer]
+    
+    subgraph CacheGroup["缓存类型 Cache Types"]
+        direction TB
+        C1[文件缓存&lt;br/&gt;File Cache&lt;br/&gt;缓存文件内容]
+        C2[元数据缓存&lt;br/&gt;Metadata Cache&lt;br/&gt;缓存文件元数据]
+        C3[预取缓存&lt;br/&gt;Prefetch Cache&lt;br/&gt;预取文件数据]
     end
     
-    subgraph Sub["子组件"]
-        D["LRU缓存&lt;br/&gt;LRUCache"]
-        E["缓存管理&lt;br/&gt;CacheManagement"]
+    CacheLayer --&gt; StrategyLayer[策略层&lt;br/&gt;Strategy Layer]
+    
+    subgraph StrategyGroup["缓存策略 Cache Strategies"]
+        direction TB
+        S1[LRU缓存&lt;br/&gt;LRU Cache&lt;br/&gt;最近最少使用]
+        S2[缓存管理&lt;br/&gt;Cache Management&lt;br/&gt;统一管理接口]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    StrategyLayer --&gt; End([缓存功能完成&lt;br/&gt;Cache Features Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    CacheLayer -.-&gt;|包含| CacheGroup
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    
+    C1 -.-&gt;|使用| S1
+    C2 -.-&gt;|使用| S2
+    C3 -.-&gt;|使用| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style CacheLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style CacheGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style StrategyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>缓存机制</strong>：</p>
@@ -2532,28 +3024,46 @@
 
 <h3 id="72-缓存策略">7.2 缓存策略</h3>
 
-<p>文件系统缓存的策略：</p>
+<p>文件系统支持多种缓存策略，包括 LRU（最近最少使用）、LFU（最不经常使用）和按需缓存等。各种缓存策略及其支持功能如下：</p>
 
-<p>文件系统缓存策略：LRU、LFU 等缓存策略：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["LRU策略&lt;br/&gt;LRUStrategy"]
-        B["LFU策略&lt;br/&gt;LFUStrategy"]
-        C["按需缓存&lt;br/&gt;OnDemandCache"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([缓存策略&lt;br/&gt;Cache Strategies]) --&gt; StrategyLayer[策略层&lt;br/&gt;Strategies Layer]
+    
+    subgraph StrategyGroup["缓存策略 Cache Strategies"]
+        direction TB
+        S1[LRU策略&lt;br/&gt;LRU Strategy&lt;br/&gt;最近最少使用]
+        S2[LFU策略&lt;br/&gt;LFU Strategy&lt;br/&gt;最少使用频率]
+        S3[按需缓存&lt;br/&gt;On-Demand Cache&lt;br/&gt;按需加载缓存]
     end
     
-    subgraph Sub["子组件"]
-        D["预取缓存&lt;br/&gt;PrefetchCache"]
-        E["缓存淘汰&lt;br/&gt;CacheEviction"]
+    StrategyLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持功能 Support Features"]
+        direction TB
+        SF1[预取缓存&lt;br/&gt;Prefetch Cache&lt;br/&gt;提前加载数据]
+        SF2[缓存淘汰&lt;br/&gt;Cache Eviction&lt;br/&gt;淘汰过期缓存]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([缓存策略完成&lt;br/&gt;Cache Strategies Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    S1 -.-&gt;|使用| SF1
+    S2 -.-&gt;|使用| SF2
+    S3 -.-&gt;|使用| SF1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SF1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SF2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>缓存策略</strong>：</p>
@@ -2568,28 +3078,46 @@
 
 <h3 id="81-io-优化">8.1 IO 优化</h3>
 
-<p>文件系统 IO 的优化：</p>
+<p>文件系统通过多种 IO 优化策略来提高性能，包括批量 IO、异步 IO、预取等。IO 优化的整体架构如下：</p>
 
-<p>文件系统 IO 优化：批量 IO、异步 IO 等优化策略：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["批量IO&lt;br/&gt;BatchIO"]
-        B["异步IO&lt;br/&gt;AsyncIO"]
-        C["预取&lt;br/&gt;Prefetch"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([IO 优化&lt;br/&gt;IO Optimization]) --&gt; OptimizationLayer[优化策略层&lt;br/&gt;Optimization Strategies Layer]
+    
+    subgraph OptimizationGroup["优化策略 Optimization Strategies"]
+        direction TB
+        O1[批量IO&lt;br/&gt;Batch IO&lt;br/&gt;批量读取和写入]
+        O2[异步IO&lt;br/&gt;Async IO&lt;br/&gt;异步读取和写入]
+        O3[预取&lt;br/&gt;Prefetch&lt;br/&gt;预取文件数据]
     end
     
-    subgraph Sub["子组件"]
-        D["IO合并&lt;br/&gt;IOMerge"]
-        E["IO优化&lt;br/&gt;IOOptimization"]
+    OptimizationLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持功能 Support Features"]
+        direction TB
+        S1[IO合并&lt;br/&gt;IO Merge&lt;br/&gt;合并多个IO操作]
+        S2[IO优化&lt;br/&gt;IO Optimization&lt;br/&gt;统一优化接口]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([IO 优化完成&lt;br/&gt;IO Optimization Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    OptimizationLayer -.-&gt;|包含| OptimizationGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    O1 -.-&gt;|使用| S1
+    O2 -.-&gt;|使用| S2
+    O3 -.-&gt;|使用| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style OptimizationLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style OptimizationGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style O1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style O2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style O3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>IO 优化策略</strong>：</p>
@@ -2602,28 +3130,46 @@
 
 <h3 id="82-存储优化">8.2 存储优化</h3>
 
-<p>文件系统存储的优化：</p>
+<p>文件系统通过压缩、打包、存储分层等策略来优化存储效率。存储优化的整体架构如下：</p>
 
-<p>文件系统存储优化：压缩、打包等优化策略：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["文件压缩&lt;br/&gt;FileCompression"]
-        B["文件打包&lt;br/&gt;FilePackaging"]
-        C["存储分层&lt;br/&gt;StorageTiering"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([存储优化&lt;br/&gt;Storage Optimization]) --&gt; StrategyLayer[优化策略层&lt;br/&gt;Optimization Strategies Layer]
+    
+    subgraph StrategyGroup["优化策略 Optimization Strategies"]
+        direction TB
+        S1[文件压缩&lt;br/&gt;File Compression&lt;br/&gt;压缩文件数据]
+        S2[文件打包&lt;br/&gt;File Packaging&lt;br/&gt;打包多个文件]
+        S3[存储分层&lt;br/&gt;Storage Tiering&lt;br/&gt;分层存储管理]
     end
     
-    subgraph Sub["子组件"]
-        D["生命周期管理&lt;br/&gt;LifecycleManagement"]
-        E["存储优化&lt;br/&gt;StorageOptimization"]
+    StrategyLayer --&gt; ManagementLayer[管理层&lt;br/&gt;Management Layer]
+    
+    subgraph ManagementGroup["管理功能 Management Features"]
+        direction TB
+        M1[生命周期管理&lt;br/&gt;Lifecycle Management&lt;br/&gt;管理文件生命周期]
+        M2[存储优化&lt;br/&gt;Storage Optimization&lt;br/&gt;统一优化接口]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    ManagementLayer --&gt; End([存储优化完成&lt;br/&gt;Storage Optimization Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    ManagementLayer -.-&gt;|包含| ManagementGroup
+    
+    S1 -.-&gt;|使用| M1
+    S2 -.-&gt;|使用| M2
+    S3 -.-&gt;|使用| M1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ManagementLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ManagementGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style M1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>存储优化策略</strong>：</p>
@@ -2638,28 +3184,46 @@
 
 <h3 id="91-统一接口设计">9.1 统一接口设计</h3>
 
-<p>文件系统的统一接口设计：</p>
+<p>文件系统通过统一接口设计来屏蔽底层存储差异，支持多种存储后端。统一接口设计的核心要点如下：</p>
 
-<p>统一接口设计：通过统一接口屏蔽底层存储差异：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["接口抽象&lt;br/&gt;InterfaceAbstraction"]
-        B["多后端支持&lt;br/&gt;MultiBackendSupport"]
-        C["透明访问&lt;br/&gt;TransparentAccess"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([统一接口设计&lt;br/&gt;Unified Interface Design]) --&gt; DesignLayer[设计层&lt;br/&gt;Design Layer]
+    
+    subgraph DesignGroup["核心设计 Core Design"]
+        direction TB
+        D1[接口抽象&lt;br/&gt;Interface Abstraction&lt;br/&gt;统一接口定义]
+        D2[多后端支持&lt;br/&gt;Multi-Backend Support&lt;br/&gt;支持多种存储后端]
+        D3[透明访问&lt;br/&gt;Transparent Access&lt;br/&gt;透明访问机制]
     end
     
-    subgraph Sub["子组件"]
-        D["灵活扩展&lt;br/&gt;FlexibleExtension"]
-        E["存储适配&lt;br/&gt;StorageAdapter"]
+    DesignLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持功能 Support Features"]
+        direction TB
+        S1[灵活扩展&lt;br/&gt;Flexible Extension&lt;br/&gt;支持自定义扩展]
+        S2[存储适配&lt;br/&gt;Storage Adapter&lt;br/&gt;存储后端适配]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([统一接口完成&lt;br/&gt;Unified Interface Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    DesignLayer -.-&gt;|包含| DesignGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    D1 -.-&gt;|支持| S1
+    D2 -.-&gt;|使用| S2
+    D3 -.-&gt;|支持| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style DesignLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DesignGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style D1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style D3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>设计要点</strong>：</p>
@@ -2676,24 +3240,44 @@
 
 <p>逻辑路径设计：通过逻辑路径管理文件和版本：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["路径映射&lt;br/&gt;PathMapping"]
-        B["版本管理&lt;br/&gt;VersionManagement"]
-        C["Segment管理&lt;br/&gt;SegmentManagement"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([逻辑路径设计&lt;br/&gt;Logical Path Design]) --&gt; ManagementLayer[管理层&lt;br/&gt;Management Layer]
+    
+    subgraph ManagementGroup["管理功能 Management Features"]
+        direction TB
+        M1[路径映射&lt;br/&gt;Path Mapping&lt;br/&gt;物理路径到逻辑路径]
+        M2[版本管理&lt;br/&gt;Version Management&lt;br/&gt;版本路径管理]
+        M3[Segment管理&lt;br/&gt;Segment Management&lt;br/&gt;Segment路径管理]
     end
     
-    subgraph Sub["子组件"]
-        D["路径隔离&lt;br/&gt;PathIsolation"]
-        E["路径解析&lt;br/&gt;PathResolution"]
+    ManagementLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持功能 Support Features"]
+        direction TB
+        S1[路径隔离&lt;br/&gt;Path Isolation&lt;br/&gt;路径相互隔离]
+        S2[路径解析&lt;br/&gt;Path Resolution&lt;br/&gt;解析逻辑路径]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([逻辑路径设计完成&lt;br/&gt;Logical Path Design Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    ManagementLayer -.-&gt;|包含| ManagementGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    M1 -.-&gt;|使用| S1
+    M2 -.-&gt;|使用| S2
+    M3 -.-&gt;|使用| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ManagementLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ManagementGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>设计要点</strong>：</p>
@@ -2706,28 +3290,46 @@
 
 <h3 id="93-性能优化设计">9.3 性能优化设计</h3>
 
-<p>文件系统性能优化的设计：</p>
+<p>文件系统通过缓存、预取、批量 IO 等优化策略来提高性能。性能优化设计的核心机制如下：</p>
 
-<p>文件系统性能优化设计：缓存、预取、批量 IO 等优化策略：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Main["主要组件"]
-        A["缓存机制&lt;br/&gt;CacheMechanism"]
-        B["预取机制&lt;br/&gt;PrefetchMechanism"]
-        C["批量操作&lt;br/&gt;BatchOperation"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([性能优化设计&lt;br/&gt;Performance Optimization Design]) --&gt; MechanismLayer[机制层&lt;br/&gt;Mechanisms Layer]
+    
+    subgraph MechanismGroup["优化机制 Optimization Mechanisms"]
+        direction TB
+        M1[缓存机制&lt;br/&gt;Cache Mechanism&lt;br/&gt;文件内容缓存]
+        M2[预取机制&lt;br/&gt;Prefetch Mechanism&lt;br/&gt;预取文件数据]
+        M3[批量操作&lt;br/&gt;Batch Operation&lt;br/&gt;批量IO操作]
     end
     
-    subgraph Sub["子组件"]
-        D["异步操作&lt;br/&gt;AsyncOperation"]
-        E["性能调优&lt;br/&gt;PerformanceTuning"]
+    MechanismLayer --&gt; SupportLayer[支持功能层&lt;br/&gt;Support Features Layer]
+    
+    subgraph SupportGroup["支持功能 Support Features"]
+        direction TB
+        S1[异步操作&lt;br/&gt;Async Operation&lt;br/&gt;异步IO操作]
+        S2[性能调优&lt;br/&gt;Performance Tuning&lt;br/&gt;统一调优接口]
     end
     
-    A --&gt; D
-    B --&gt; E
-    C --&gt; D
+    SupportLayer --&gt; End([性能优化完成&lt;br/&gt;Performance Optimization Complete])
     
-    style Main fill:#e3f2fd
-    style Sub fill:#fff3e0
+    MechanismLayer -.-&gt;|包含| MechanismGroup
+    SupportLayer -.-&gt;|包含| SupportGroup
+    
+    M1 -.-&gt;|使用| S1
+    M2 -.-&gt;|使用| S2
+    M3 -.-&gt;|使用| S1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style MechanismLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SupportLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style MechanismGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SupportGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>设计要点</strong>：</p>
@@ -2740,22 +3342,44 @@
 
 <h2 id="10-小结">10. 小结</h2>
 
-<p>文件系统抽象与存储格式是 IndexLib 的核心功能，通过 IFileSystem、IDirectory、FileReader、FileWriter 等组件实现。通过本文的深入解析，我们了解到：</p>
+<p>文件系统抽象与存储格式是 IndexLib 的核心功能，通过 IFileSystem、IDirectory、FileReader、FileWriter 等组件实现统一的文件系统访问接口。通过本文的深入解析，我们了解到：</p>
 
-<p><strong>关键要点</strong>：</p>
+<h3 id="101-核心组件">10.1 核心组件</h3>
+
+<p><strong>关键组件</strong>：</p>
 <ul>
-  <li><strong>IFileSystem</strong>：文件系统接口，提供文件系统的基本操作，支持版本挂载和路径映射</li>
-  <li><strong>IDirectory</strong>：目录接口，提供目录和文件的操作，支持逻辑路径管理</li>
-  <li><strong>FileReader</strong>：文件读取器，提供文件读取功能，支持同步和异步读取</li>
-  <li><strong>FileWriter</strong>：文件写入器，提供文件写入功能，支持文件写入和截断</li>
-  <li><strong>Storage</strong>：存储抽象，提供底层存储操作，支持多种存储后端</li>
-  <li><strong>存储格式</strong>：支持 Package、Archive 等多种存储格式，优化存储效率</li>
-  <li><strong>缓存机制</strong>：通过缓存机制提高文件访问性能</li>
-  <li><strong>性能优化</strong>：通过 IO 优化、存储优化等策略提高文件系统性能</li>
-  <li><strong>统一接口</strong>：通过统一接口屏蔽底层存储差异，支持多种存储后端</li>
+  <li><strong>IFileSystem</strong>：文件系统接口，提供文件系统的基本操作，支持版本挂载和路径映射，是文件系统抽象的核心入口</li>
+  <li><strong>IDirectory</strong>：目录接口，提供目录和文件的操作，支持逻辑路径管理，实现目录级别的文件管理</li>
+  <li><strong>FileReader</strong>：文件读取器，提供文件读取功能，支持同步和异步读取，以及预取机制</li>
+  <li><strong>FileWriter</strong>：文件写入器，提供文件写入功能，支持文件写入、截断和预留空间</li>
+  <li><strong>Storage</strong>：存储抽象，提供底层存储操作，支持多种存储后端（本地、分布式、内存等）</li>
 </ul>
 
-<p>理解文件系统抽象与存储格式，是掌握 IndexLib 存储管理机制的关键。通过本系列文章的深入解析，我们已经全面了解了 IndexLib 的架构、核心组件、构建流程、查询流程、版本管理、Segment 合并、内存管理、索引类型、Locator 与数据一致性、文件系统抽象等各个方面。希望这些文章能够帮助读者深入理解 IndexLib 的设计和实现。</p>
+<h3 id="102-核心特性">10.2 核心特性</h3>
+
+<p><strong>关键特性</strong>：</p>
+<ul>
+  <li><strong>逻辑路径与物理路径</strong>：通过路径映射实现逻辑路径到物理路径的转换，支持版本管理和 Segment 管理</li>
+  <li><strong>存储格式</strong>：支持 Package、Archive 等多种存储格式，通过打包和压缩优化存储效率</li>
+  <li><strong>压缩格式</strong>：支持 LZ4、Zstd、Snappy、Gzip 等多种压缩算法，根据场景选择合适的压缩策略</li>
+  <li><strong>缓存机制</strong>：通过文件缓存、元数据缓存和预取缓存提高文件访问性能</li>
+  <li><strong>性能优化</strong>：通过 IO 优化（批量 IO、异步 IO）、存储优化（压缩、打包）等策略提高文件系统性能</li>
+</ul>
+
+<h3 id="103-设计原则">10.3 设计原则</h3>
+
+<p><strong>关键设计</strong>：</p>
+<ul>
+  <li><strong>统一接口</strong>：通过统一接口屏蔽底层存储差异，支持多种存储后端，实现透明的文件系统访问</li>
+  <li><strong>逻辑路径设计</strong>：通过逻辑路径管理文件和版本，实现路径隔离和路径解析</li>
+  <li><strong>性能优化设计</strong>：通过缓存、预取、批量操作等机制优化文件系统性能</li>
+</ul>
+
+<h3 id="104-总结">10.4 总结</h3>
+
+<p>理解文件系统抽象与存储格式，是掌握 IndexLib 存储管理机制的关键。文件系统抽象不仅提供了统一的文件访问接口，还通过逻辑路径、存储格式、缓存机制等特性，实现了高效、灵活、可扩展的存储管理方案。</p>
+
+<p>通过本系列文章的深入解析，我们已经全面了解了 IndexLib 的架构、核心组件、构建流程、查询流程、版本管理、Segment 合并、内存管理、索引类型、Locator 与数据一致性、文件系统抽象等各个方面。希望这些文章能够帮助读者深入理解 IndexLib 的设计和实现，为实际应用和二次开发提供参考。</p>
 
         
       </section>
