@@ -820,14 +820,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源标识&lt;br/&gt;_src"]
+        B["最小偏移量&lt;br/&gt;_minOffset"]
+        C["多进度信息&lt;br/&gt;_multiProgress"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["用户数据&lt;br/&gt;_userData"]
+        E["遗留标识&lt;br/&gt;_isLegacyLocator"]
     end
     
     A --&gt; D
@@ -873,14 +873,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId范围&lt;br/&gt;from/to"]
+        B["偏移量&lt;br/&gt;offset"]
+        C["进度向量&lt;br/&gt;ProgressVector"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多进度信息&lt;br/&gt;MultiProgress"]
+        E["进度管理&lt;br/&gt;ProgressManagement"]
     end
     
     A --&gt; D
@@ -906,14 +906,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["时间戳&lt;br/&gt;timestamp"]
+        B["并发索引&lt;br/&gt;concurrentIdx"]
+        C["Hash ID&lt;br/&gt;hashId"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据源索引&lt;br/&gt;sourceIdx"]
+        E["文档信息&lt;br/&gt;DocInfo"]
     end
     
     A --&gt; D
@@ -1071,14 +1071,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源检查&lt;br/&gt;SourceCheck"]
+        B["最小偏移量比较&lt;br/&gt;MinOffsetCompare"]
+        C["多进度比较&lt;br/&gt;MultiProgressCompare"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较结果&lt;br/&gt;CompareResult"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -1168,14 +1168,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["完全更快&lt;br/&gt;LCR_FULLY_FASTER"]
+        B["更慢&lt;br/&gt;LCR_SLOWER"]
+        C["部分更快&lt;br/&gt;LCR_PARTIAL_FASTER"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["无效比较&lt;br/&gt;LCR_INVALID"]
+        E["比较应用&lt;br/&gt;CompareApplication"]
     end
     
     A --&gt; D
@@ -1220,14 +1220,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId遍历&lt;br/&gt;HashIdIteration"]
+        B["进度比较&lt;br/&gt;ProgressCompare"]
+        C["结果聚合&lt;br/&gt;ResultAggregation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较优化&lt;br/&gt;CompareOptimization"]
+        E["并行比较&lt;br/&gt;ParallelCompare"]
     end
     
     A --&gt; D
@@ -1433,14 +1433,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["进度更新&lt;br/&gt;ProgressUpdate"]
+        B["多进度更新&lt;br/&gt;MultiProgressUpdate"]
+        C["最小偏移量更新&lt;br/&gt;MinOffsetUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新优化&lt;br/&gt;UpdateOptimization"]
+        E["并发更新&lt;br/&gt;ConcurrentUpdate"]
     end
     
     A --&gt; D
@@ -1459,14 +1459,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据处理完成&lt;br/&gt;DataProcessingComplete"]
+        B["版本提交&lt;br/&gt;VersionCommit"]
+        C["增量更新&lt;br/&gt;IncrementalUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新触发&lt;br/&gt;UpdateTrigger"]
+        E["更新同步&lt;br/&gt;UpdateSync"]
     end
     
     A --&gt; D
@@ -1625,14 +1625,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字段序列化&lt;br/&gt;FieldSerialization"]
+        B["多进度序列化&lt;br/&gt;MultiProgressSerialization"]
+        C["字符串编码&lt;br/&gt;StringEncoding"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化优化&lt;br/&gt;SerializationOptimization"]
+        E["格式转换&lt;br/&gt;FormatConversion"]
     end
     
     A --&gt; D
@@ -1806,14 +1806,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字符串解析&lt;br/&gt;StringParsing"]
+        B["字段反序列化&lt;br/&gt;FieldDeserialization"]
+        C["多进度反序列化&lt;br/&gt;MultiProgressDeserialization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["格式验证&lt;br/&gt;FormatValidation"]
+        E["反序列化优化&lt;br/&gt;DeserializationOptimization"]
     end
     
     A --&gt; D
@@ -1940,14 +1940,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["Locator比较&lt;br/&gt;LocatorCompare"]
+        B["重复检测&lt;br/&gt;DuplicateDetection"]
+        C["跳过处理&lt;br/&gt;SkipProcessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -2054,14 +2054,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["位置记录&lt;br/&gt;PositionRecording"]
+        B["进度追踪&lt;br/&gt;ProgressTracking"]
+        C["恢复机制&lt;br/&gt;RecoveryMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据完整性&lt;br/&gt;DataIntegrity"]
+        E["故障恢复&lt;br/&gt;FaultRecovery"]
     end
     
     A --&gt; D
@@ -2169,14 +2169,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源区分&lt;br/&gt;SourceDistinction"]
+        B["独立追踪&lt;br/&gt;IndependentTracking"]
+        C["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多源管理&lt;br/&gt;MultiSourceManagement"]
+        E["隔离机制&lt;br/&gt;IsolationMechanism"]
     end
     
     A --&gt; D
@@ -2197,14 +2197,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId分片&lt;br/&gt;HashIdSharding"]
+        B["并行处理&lt;br/&gt;ParallelProcessing"]
+        C["进度追踪&lt;br/&gt;ProgressTracking"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["分片管理&lt;br/&gt;ShardManagement"]
+        E["负载均衡&lt;br/&gt;LoadBalancing"]
     end
     
     A --&gt; D
@@ -2231,14 +2231,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发索引&lt;br/&gt;ConcurrentIndex"]
+        B["时间戳处理&lt;br/&gt;TimestampProcessing"]
+        C["顺序保证&lt;br/&gt;OrderGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["并发管理&lt;br/&gt;ConcurrencyManagement"]
+        E["冲突解决&lt;br/&gt;ConflictResolution"]
     end
     
     A --&gt; D
@@ -2265,14 +2265,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["用户数据存储&lt;br/&gt;UserDataStorage"]
+        B["自定义信息&lt;br/&gt;CustomInformation"]
+        C["业务扩展&lt;br/&gt;BusinessExtension"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据管理&lt;br/&gt;DataManagement"]
+        E["扩展支持&lt;br/&gt;ExtensionSupport"]
     end
     
     A --&gt; D
@@ -2301,14 +2301,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["实时判断&lt;br/&gt;RealTimeJudgment"]
+        B["数据检查&lt;br/&gt;DataCheck"]
+        C["处理决策&lt;br/&gt;ProcessingDecision"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["增量处理&lt;br/&gt;IncrementalProcessing"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -2336,14 +2336,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量处理&lt;br/&gt;BatchProcessing"]
+        B["重复检测&lt;br/&gt;DuplicateDetection"]
+        C["批量更新&lt;br/&gt;BatchUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["效率优化&lt;br/&gt;EfficiencyOptimization"]
+        E["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
     end
     
     A --&gt; D
@@ -2372,14 +2372,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["故障检测&lt;br/&gt;FaultDetection"]
+        B["位置恢复&lt;br/&gt;PositionRecovery"]
+        C["数据重处理&lt;br/&gt;DataReprocessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["恢复策略&lt;br/&gt;RecoveryStrategy"]
+        E["数据完整性&lt;br/&gt;DataIntegrity"]
     end
     
     A --&gt; D
@@ -2546,14 +2546,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["快速路径&lt;br/&gt;FastPath"]
+        B["最小偏移量优化&lt;br/&gt;MinOffsetOptimization"]
+        C["位运算优化&lt;br/&gt;BitwiseOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较缓存&lt;br/&gt;CompareCache"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -2651,14 +2651,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["格式优化&lt;br/&gt;FormatOptimization"]
+        B["压缩优化&lt;br/&gt;CompressionOptimization"]
+        C["版本兼容&lt;br/&gt;VersionCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化缓存&lt;br/&gt;SerializationCache"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -2806,14 +2806,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["简单设计&lt;br/&gt;SimpleDesign"]
+        B["高效实现&lt;br/&gt;EfficientImplementation"]
+        C["可靠保证&lt;br/&gt;ReliableGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["可扩展性&lt;br/&gt;Extensibility"]
+        E["易用性&lt;br/&gt;Usability"]
     end
     
     A --&gt; D
@@ -2913,14 +2913,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["遗留Locator支持&lt;br/&gt;LegacyLocatorSupport"]
+        B["版本兼容&lt;br/&gt;VersionCompatibility"]
+        C["向后兼容&lt;br/&gt;BackwardCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["兼容性检查&lt;br/&gt;CompatibilityCheck"]
+        E["平滑升级&lt;br/&gt;SmoothUpgrade"]
     end
     
     A --&gt; D
@@ -3021,14 +3021,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发访问&lt;br/&gt;ConcurrentAccess"]
+        B["线程安全&lt;br/&gt;ThreadSafety"]
+        C["锁机制&lt;br/&gt;LockMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["原子操作&lt;br/&gt;AtomicOperation"]
+        E["同步机制&lt;br/&gt;SynchronizationMechanism"]
     end
     
     A --&gt; D

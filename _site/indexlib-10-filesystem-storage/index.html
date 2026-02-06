@@ -1880,14 +1880,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件写入&lt;br/&gt;FileWrite"]
+        B["随机写入&lt;br/&gt;RandomWrite"]
+        C["顺序写入&lt;br/&gt;SequentialWrite"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["缓冲区管理&lt;br/&gt;BufferManagement"]
+        E["同步操作&lt;br/&gt;SyncOperation"]
     end
     
     A --&gt; D
@@ -1946,14 +1946,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["CreateInputStorage&lt;br/&gt;创建输入存储"]
+        B["CreateOutputStorage&lt;br/&gt;创建输出存储"]
+        C["CreateFileReader&lt;br/&gt;创建文件读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["CreateFileWriter&lt;br/&gt;创建文件写入器"]
+        E["Sync&lt;br/&gt;同步存储"]
     end
     
     A --&gt; D
@@ -1981,14 +1981,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["本地存储&lt;br/&gt;LocalStorage"]
+        B["分布式存储&lt;br/&gt;DistributedStorage"]
+        C["内存存储&lt;br/&gt;MemoryStorage"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["混合存储&lt;br/&gt;HybridStorage"]
+        E["存储后端&lt;br/&gt;StorageBackend"]
     end
     
     A --&gt; D
@@ -2227,14 +2227,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件打包&lt;br/&gt;FilePackaging"]
+        B["压缩存储&lt;br/&gt;CompressedStorage"]
+        C["索引管理&lt;br/&gt;IndexManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["文件读取&lt;br/&gt;FileRead"]
+        E["文件写入&lt;br/&gt;FileWrite"]
     end
     
     A --&gt; D
@@ -2333,14 +2333,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件归档&lt;br/&gt;FileArchive"]
+        B["压缩存储&lt;br/&gt;CompressedStorage"]
+        C["索引追加&lt;br/&gt;IndexAppend"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["归档读取&lt;br/&gt;ArchiveRead"]
+        E["归档写入&lt;br/&gt;ArchiveWrite"]
     end
     
     A --&gt; D
@@ -2476,14 +2476,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LZ4压缩&lt;br/&gt;LZ4Compression"]
+        B["Zstd压缩&lt;br/&gt;ZstdCompression"]
+        C["Snappy压缩&lt;br/&gt;SnappyCompression"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["Gzip压缩&lt;br/&gt;GzipCompression"]
+        E["压缩管理&lt;br/&gt;CompressionManagement"]
     end
     
     A --&gt; D
@@ -2504,14 +2504,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件缓存&lt;br/&gt;FileCache"]
+        B["元数据缓存&lt;br/&gt;MetadataCache"]
+        C["预取缓存&lt;br/&gt;PrefetchCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["LRU缓存&lt;br/&gt;LRUCache"]
+        E["缓存管理&lt;br/&gt;CacheManagement"]
     end
     
     A --&gt; D
@@ -2538,14 +2538,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LRU策略&lt;br/&gt;LRUStrategy"]
+        B["LFU策略&lt;br/&gt;LFUStrategy"]
+        C["按需缓存&lt;br/&gt;OnDemandCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["预取缓存&lt;br/&gt;PrefetchCache"]
+        E["缓存淘汰&lt;br/&gt;CacheEviction"]
     end
     
     A --&gt; D
@@ -2574,14 +2574,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量IO&lt;br/&gt;BatchIO"]
+        B["异步IO&lt;br/&gt;AsyncIO"]
+        C["预取&lt;br/&gt;Prefetch"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IO合并&lt;br/&gt;IOMerge"]
+        E["IO优化&lt;br/&gt;IOOptimization"]
     end
     
     A --&gt; D
@@ -2608,14 +2608,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件压缩&lt;br/&gt;FileCompression"]
+        B["文件打包&lt;br/&gt;FilePackaging"]
+        C["存储分层&lt;br/&gt;StorageTiering"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["生命周期管理&lt;br/&gt;LifecycleManagement"]
+        E["存储优化&lt;br/&gt;StorageOptimization"]
     end
     
     A --&gt; D
@@ -2644,14 +2644,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["接口抽象&lt;br/&gt;InterfaceAbstraction"]
+        B["多后端支持&lt;br/&gt;MultiBackendSupport"]
+        C["透明访问&lt;br/&gt;TransparentAccess"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["灵活扩展&lt;br/&gt;FlexibleExtension"]
+        E["存储适配&lt;br/&gt;StorageAdapter"]
     end
     
     A --&gt; D
@@ -2678,14 +2678,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["路径映射&lt;br/&gt;PathMapping"]
+        B["版本管理&lt;br/&gt;VersionManagement"]
+        C["Segment管理&lt;br/&gt;SegmentManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["路径隔离&lt;br/&gt;PathIsolation"]
+        E["路径解析&lt;br/&gt;PathResolution"]
     end
     
     A --&gt; D
@@ -2712,14 +2712,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["缓存机制&lt;br/&gt;CacheMechanism"]
+        B["预取机制&lt;br/&gt;PrefetchMechanism"]
+        C["批量操作&lt;br/&gt;BatchOperation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["异步操作&lt;br/&gt;AsyncOperation"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D

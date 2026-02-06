@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-06T11:42:00+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-06T14:31:14+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <p>文件系统抽象与存储格式概览：从文件系统抽象到存储格式的完整机制：</p>
 
@@ -1263,14 +1263,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件写入&lt;br/&gt;FileWrite"]
+        B["随机写入&lt;br/&gt;RandomWrite"]
+        C["顺序写入&lt;br/&gt;SequentialWrite"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["缓冲区管理&lt;br/&gt;BufferManagement"]
+        E["同步操作&lt;br/&gt;SyncOperation"]
     end
     
     A --&gt; D
@@ -1329,14 +1329,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["CreateInputStorage&lt;br/&gt;创建输入存储"]
+        B["CreateOutputStorage&lt;br/&gt;创建输出存储"]
+        C["CreateFileReader&lt;br/&gt;创建文件读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["CreateFileWriter&lt;br/&gt;创建文件写入器"]
+        E["Sync&lt;br/&gt;同步存储"]
     end
     
     A --&gt; D
@@ -1364,14 +1364,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["本地存储&lt;br/&gt;LocalStorage"]
+        B["分布式存储&lt;br/&gt;DistributedStorage"]
+        C["内存存储&lt;br/&gt;MemoryStorage"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["混合存储&lt;br/&gt;HybridStorage"]
+        E["存储后端&lt;br/&gt;StorageBackend"]
     end
     
     A --&gt; D
@@ -1610,14 +1610,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件打包&lt;br/&gt;FilePackaging"]
+        B["压缩存储&lt;br/&gt;CompressedStorage"]
+        C["索引管理&lt;br/&gt;IndexManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["文件读取&lt;br/&gt;FileRead"]
+        E["文件写入&lt;br/&gt;FileWrite"]
     end
     
     A --&gt; D
@@ -1716,14 +1716,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件归档&lt;br/&gt;FileArchive"]
+        B["压缩存储&lt;br/&gt;CompressedStorage"]
+        C["索引追加&lt;br/&gt;IndexAppend"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["归档读取&lt;br/&gt;ArchiveRead"]
+        E["归档写入&lt;br/&gt;ArchiveWrite"]
     end
     
     A --&gt; D
@@ -1859,14 +1859,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LZ4压缩&lt;br/&gt;LZ4Compression"]
+        B["Zstd压缩&lt;br/&gt;ZstdCompression"]
+        C["Snappy压缩&lt;br/&gt;SnappyCompression"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["Gzip压缩&lt;br/&gt;GzipCompression"]
+        E["压缩管理&lt;br/&gt;CompressionManagement"]
     end
     
     A --&gt; D
@@ -1887,14 +1887,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件缓存&lt;br/&gt;FileCache"]
+        B["元数据缓存&lt;br/&gt;MetadataCache"]
+        C["预取缓存&lt;br/&gt;PrefetchCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["LRU缓存&lt;br/&gt;LRUCache"]
+        E["缓存管理&lt;br/&gt;CacheManagement"]
     end
     
     A --&gt; D
@@ -1921,14 +1921,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["LRU策略&lt;br/&gt;LRUStrategy"]
+        B["LFU策略&lt;br/&gt;LFUStrategy"]
+        C["按需缓存&lt;br/&gt;OnDemandCache"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["预取缓存&lt;br/&gt;PrefetchCache"]
+        E["缓存淘汰&lt;br/&gt;CacheEviction"]
     end
     
     A --&gt; D
@@ -1957,14 +1957,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量IO&lt;br/&gt;BatchIO"]
+        B["异步IO&lt;br/&gt;AsyncIO"]
+        C["预取&lt;br/&gt;Prefetch"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IO合并&lt;br/&gt;IOMerge"]
+        E["IO优化&lt;br/&gt;IOOptimization"]
     end
     
     A --&gt; D
@@ -1991,14 +1991,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["文件压缩&lt;br/&gt;FileCompression"]
+        B["文件打包&lt;br/&gt;FilePackaging"]
+        C["存储分层&lt;br/&gt;StorageTiering"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["生命周期管理&lt;br/&gt;LifecycleManagement"]
+        E["存储优化&lt;br/&gt;StorageOptimization"]
     end
     
     A --&gt; D
@@ -2027,14 +2027,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["接口抽象&lt;br/&gt;InterfaceAbstraction"]
+        B["多后端支持&lt;br/&gt;MultiBackendSupport"]
+        C["透明访问&lt;br/&gt;TransparentAccess"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["灵活扩展&lt;br/&gt;FlexibleExtension"]
+        E["存储适配&lt;br/&gt;StorageAdapter"]
     end
     
     A --&gt; D
@@ -2061,14 +2061,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["路径映射&lt;br/&gt;PathMapping"]
+        B["版本管理&lt;br/&gt;VersionManagement"]
+        C["Segment管理&lt;br/&gt;SegmentManagement"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["路径隔离&lt;br/&gt;PathIsolation"]
+        E["路径解析&lt;br/&gt;PathResolution"]
     end
     
     A --&gt; D
@@ -2095,14 +2095,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["缓存机制&lt;br/&gt;CacheMechanism"]
+        B["预取机制&lt;br/&gt;PrefetchMechanism"]
+        C["批量操作&lt;br/&gt;BatchOperation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["异步操作&lt;br/&gt;AsyncOperation"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -2343,14 +2343,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源标识&lt;br/&gt;_src"]
+        B["最小偏移量&lt;br/&gt;_minOffset"]
+        C["多进度信息&lt;br/&gt;_multiProgress"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["用户数据&lt;br/&gt;_userData"]
+        E["遗留标识&lt;br/&gt;_isLegacyLocator"]
     end
     
     A --&gt; D
@@ -2396,14 +2396,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId范围&lt;br/&gt;from/to"]
+        B["偏移量&lt;br/&gt;offset"]
+        C["进度向量&lt;br/&gt;ProgressVector"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多进度信息&lt;br/&gt;MultiProgress"]
+        E["进度管理&lt;br/&gt;ProgressManagement"]
     end
     
     A --&gt; D
@@ -2429,14 +2429,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["时间戳&lt;br/&gt;timestamp"]
+        B["并发索引&lt;br/&gt;concurrentIdx"]
+        C["Hash ID&lt;br/&gt;hashId"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据源索引&lt;br/&gt;sourceIdx"]
+        E["文档信息&lt;br/&gt;DocInfo"]
     end
     
     A --&gt; D
@@ -2594,14 +2594,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源检查&lt;br/&gt;SourceCheck"]
+        B["最小偏移量比较&lt;br/&gt;MinOffsetCompare"]
+        C["多进度比较&lt;br/&gt;MultiProgressCompare"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较结果&lt;br/&gt;CompareResult"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -2691,14 +2691,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["完全更快&lt;br/&gt;LCR_FULLY_FASTER"]
+        B["更慢&lt;br/&gt;LCR_SLOWER"]
+        C["部分更快&lt;br/&gt;LCR_PARTIAL_FASTER"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["无效比较&lt;br/&gt;LCR_INVALID"]
+        E["比较应用&lt;br/&gt;CompareApplication"]
     end
     
     A --&gt; D
@@ -2743,14 +2743,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId遍历&lt;br/&gt;HashIdIteration"]
+        B["进度比较&lt;br/&gt;ProgressCompare"]
+        C["结果聚合&lt;br/&gt;ResultAggregation"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较优化&lt;br/&gt;CompareOptimization"]
+        E["并行比较&lt;br/&gt;ParallelCompare"]
     end
     
     A --&gt; D
@@ -2956,14 +2956,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["进度更新&lt;br/&gt;ProgressUpdate"]
+        B["多进度更新&lt;br/&gt;MultiProgressUpdate"]
+        C["最小偏移量更新&lt;br/&gt;MinOffsetUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新优化&lt;br/&gt;UpdateOptimization"]
+        E["并发更新&lt;br/&gt;ConcurrentUpdate"]
     end
     
     A --&gt; D
@@ -2982,14 +2982,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据处理完成&lt;br/&gt;DataProcessingComplete"]
+        B["版本提交&lt;br/&gt;VersionCommit"]
+        C["增量更新&lt;br/&gt;IncrementalUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["更新触发&lt;br/&gt;UpdateTrigger"]
+        E["更新同步&lt;br/&gt;UpdateSync"]
     end
     
     A --&gt; D
@@ -3148,14 +3148,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字段序列化&lt;br/&gt;FieldSerialization"]
+        B["多进度序列化&lt;br/&gt;MultiProgressSerialization"]
+        C["字符串编码&lt;br/&gt;StringEncoding"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化优化&lt;br/&gt;SerializationOptimization"]
+        E["格式转换&lt;br/&gt;FormatConversion"]
     end
     
     A --&gt; D
@@ -3329,14 +3329,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["字符串解析&lt;br/&gt;StringParsing"]
+        B["字段反序列化&lt;br/&gt;FieldDeserialization"]
+        C["多进度反序列化&lt;br/&gt;MultiProgressDeserialization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["格式验证&lt;br/&gt;FormatValidation"]
+        E["反序列化优化&lt;br/&gt;DeserializationOptimization"]
     end
     
     A --&gt; D
@@ -3463,14 +3463,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["Locator比较&lt;br/&gt;LocatorCompare"]
+        B["重复检测&lt;br/&gt;DuplicateDetection"]
+        C["跳过处理&lt;br/&gt;SkipProcessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -3577,14 +3577,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["位置记录&lt;br/&gt;PositionRecording"]
+        B["进度追踪&lt;br/&gt;ProgressTracking"]
+        C["恢复机制&lt;br/&gt;RecoveryMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据完整性&lt;br/&gt;DataIntegrity"]
+        E["故障恢复&lt;br/&gt;FaultRecovery"]
     end
     
     A --&gt; D
@@ -3692,14 +3692,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["数据源区分&lt;br/&gt;SourceDistinction"]
+        B["独立追踪&lt;br/&gt;IndependentTracking"]
+        C["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["多源管理&lt;br/&gt;MultiSourceManagement"]
+        E["隔离机制&lt;br/&gt;IsolationMechanism"]
     end
     
     A --&gt; D
@@ -3720,14 +3720,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["HashId分片&lt;br/&gt;HashIdSharding"]
+        B["并行处理&lt;br/&gt;ParallelProcessing"]
+        C["进度追踪&lt;br/&gt;ProgressTracking"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["分片管理&lt;br/&gt;ShardManagement"]
+        E["负载均衡&lt;br/&gt;LoadBalancing"]
     end
     
     A --&gt; D
@@ -3754,14 +3754,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发索引&lt;br/&gt;ConcurrentIndex"]
+        B["时间戳处理&lt;br/&gt;TimestampProcessing"]
+        C["顺序保证&lt;br/&gt;OrderGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["并发管理&lt;br/&gt;ConcurrencyManagement"]
+        E["冲突解决&lt;br/&gt;ConflictResolution"]
     end
     
     A --&gt; D
@@ -3788,14 +3788,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["用户数据存储&lt;br/&gt;UserDataStorage"]
+        B["自定义信息&lt;br/&gt;CustomInformation"]
+        C["业务扩展&lt;br/&gt;BusinessExtension"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["数据管理&lt;br/&gt;DataManagement"]
+        E["扩展支持&lt;br/&gt;ExtensionSupport"]
     end
     
     A --&gt; D
@@ -3824,14 +3824,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["实时判断&lt;br/&gt;RealTimeJudgment"]
+        B["数据检查&lt;br/&gt;DataCheck"]
+        C["处理决策&lt;br/&gt;ProcessingDecision"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["增量处理&lt;br/&gt;IncrementalProcessing"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -3859,14 +3859,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["批量处理&lt;br/&gt;BatchProcessing"]
+        B["重复检测&lt;br/&gt;DuplicateDetection"]
+        C["批量更新&lt;br/&gt;BatchUpdate"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["效率优化&lt;br/&gt;EfficiencyOptimization"]
+        E["一致性保证&lt;br/&gt;ConsistencyGuarantee"]
     end
     
     A --&gt; D
@@ -3895,14 +3895,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["故障检测&lt;br/&gt;FaultDetection"]
+        B["位置恢复&lt;br/&gt;PositionRecovery"]
+        C["数据重处理&lt;br/&gt;DataReprocessing"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["恢复策略&lt;br/&gt;RecoveryStrategy"]
+        E["数据完整性&lt;br/&gt;DataIntegrity"]
     end
     
     A --&gt; D
@@ -4069,14 +4069,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["快速路径&lt;br/&gt;FastPath"]
+        B["最小偏移量优化&lt;br/&gt;MinOffsetOptimization"]
+        C["位运算优化&lt;br/&gt;BitwiseOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["比较缓存&lt;br/&gt;CompareCache"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -4174,14 +4174,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["格式优化&lt;br/&gt;FormatOptimization"]
+        B["压缩优化&lt;br/&gt;CompressionOptimization"]
+        C["版本兼容&lt;br/&gt;VersionCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["序列化缓存&lt;br/&gt;SerializationCache"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -4329,14 +4329,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["简单设计&lt;br/&gt;SimpleDesign"]
+        B["高效实现&lt;br/&gt;EfficientImplementation"]
+        C["可靠保证&lt;br/&gt;ReliableGuarantee"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["可扩展性&lt;br/&gt;Extensibility"]
+        E["易用性&lt;br/&gt;Usability"]
     end
     
     A --&gt; D
@@ -4436,14 +4436,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["遗留Locator支持&lt;br/&gt;LegacyLocatorSupport"]
+        B["版本兼容&lt;br/&gt;VersionCompatibility"]
+        C["向后兼容&lt;br/&gt;BackwardCompatibility"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["兼容性检查&lt;br/&gt;CompatibilityCheck"]
+        E["平滑升级&lt;br/&gt;SmoothUpgrade"]
     end
     
     A --&gt; D
@@ -4544,14 +4544,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["并发访问&lt;br/&gt;ConcurrentAccess"]
+        B["线程安全&lt;br/&gt;ThreadSafety"]
+        C["锁机制&lt;br/&gt;LockMechanism"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["原子操作&lt;br/&gt;AtomicOperation"]
+        E["同步机制&lt;br/&gt;SynchronizationMechanism"]
     end
     
     A --&gt; D
@@ -4816,14 +4816,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["倒排索引&lt;br/&gt;InvertedIndex"]
+        B["正排索引&lt;br/&gt;AttributeIndex"]
+        C["主键索引&lt;br/&gt;PrimaryKeyIndex"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["摘要索引&lt;br/&gt;SummaryIndex"]
+        E["删除位图&lt;br/&gt;DeletionMap"]
     end
     
     A --&gt; D
@@ -4851,14 +4851,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletReader&lt;br/&gt;读取器"]
+        B["NormalTabletWriter&lt;br/&gt;写入器"]
+        C["IndexReader&lt;br/&gt;索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["AttributeReader&lt;br/&gt;属性读取器"]
+        E["SummaryReader&lt;br/&gt;摘要读取器"]
     end
     
     A --&gt; D
@@ -4953,14 +4953,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["全文检索&lt;br/&gt;FullTextSearch"]
+        B["属性查询&lt;br/&gt;AttributeQuery"]
+        C["主键查询&lt;br/&gt;PrimaryKeyQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询&lt;br/&gt;RangeQuery"]
+        E["聚合查询&lt;br/&gt;AggregationQuery"]
     end
     
     A --&gt; D
@@ -5058,14 +5058,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键索引&lt;br/&gt;PrimaryKeyIndex"]
+        B["键值存储&lt;br/&gt;KeyValueStorage"]
+        C["属性查询&lt;br/&gt;AttributeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["打包属性&lt;br/&gt;PackAttribute"]
+        E["值读取器&lt;br/&gt;ValueReader"]
     end
     
     A --&gt; D
@@ -5092,14 +5092,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["KVTabletReader&lt;br/&gt;KV读取器"]
+        B["KVTabletWriter&lt;br/&gt;KV写入器"]
+        C["KVIndexReader&lt;br/&gt;KV索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["PackAttributeFormatter&lt;br/&gt;打包属性格式化器"]
+        E["ValueReader&lt;br/&gt;值读取器"]
     end
     
     A --&gt; D
@@ -5126,14 +5126,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键查询&lt;br/&gt;PrimaryKeyQuery"]
+        B["批量主键查询&lt;br/&gt;BatchPrimaryKeyQuery"]
+        C["属性查询&lt;br/&gt;AttributeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["值读取&lt;br/&gt;ValueRead"]
+        E["属性读取&lt;br/&gt;AttributeRead"]
     end
     
     A --&gt; D
@@ -5173,14 +5173,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键索引&lt;br/&gt;PrimaryKeyIndex"]
+        B["排序键索引&lt;br/&gt;SortKeyIndex"]
+        C["多值存储&lt;br/&gt;MultiValueStorage"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询&lt;br/&gt;RangeQuery"]
+        E["属性查询&lt;br/&gt;AttributeQuery"]
     end
     
     A --&gt; D
@@ -5207,14 +5207,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["KKVTabletReader&lt;br/&gt;KKV读取器"]
+        B["KKVTabletWriter&lt;br/&gt;KKV写入器"]
+        C["KKVReader&lt;br/&gt;KKV索引读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["KKVIterator&lt;br/&gt;KKV迭代器"]
+        E["ValueReader&lt;br/&gt;值读取器"]
     end
     
     A --&gt; D
@@ -5241,14 +5241,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["主键查询&lt;br/&gt;PrimaryKeyQuery"]
+        B["主键+排序键查询&lt;br/&gt;PrimaryKey+SortKeyQuery"]
+        C["范围查询&lt;br/&gt;RangeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["属性查询&lt;br/&gt;AttributeQuery"]
+        E["迭代器查询&lt;br/&gt;IteratorQuery"]
     end
     
     A --&gt; D
@@ -5289,14 +5289,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletReader&lt;br/&gt;标准表读取器"]
+        B["KVTabletReader&lt;br/&gt;键值表读取器"]
+        C["KKVTabletReader&lt;br/&gt;键键值表读取器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IndexReader&lt;br/&gt;索引读取器"]
+        E["AttributeReader&lt;br/&gt;属性读取器"]
     end
     
     A --&gt; D
@@ -5322,14 +5322,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTabletWriter&lt;br/&gt;标准表写入器"]
+        B["KVTabletWriter&lt;br/&gt;键值表写入器"]
+        C["KKVTabletWriter&lt;br/&gt;键键值表写入器"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["IndexBuilder&lt;br/&gt;索引构建器"]
+        E["DocumentBuilder&lt;br/&gt;文档构建器"]
     end
     
     A --&gt; D
@@ -5355,14 +5355,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable构建&lt;br/&gt;倒排+正排+主键"]
+        B["KVTable构建&lt;br/&gt;主键索引"]
+        C["KKVTable构建&lt;br/&gt;主键+排序键"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引构建器&lt;br/&gt;IndexBuilder"]
+        E["文档构建器&lt;br/&gt;DocumentBuilder"]
     end
     
     A --&gt; D
@@ -5390,14 +5390,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["全文检索场景&lt;br/&gt;FullTextSearch"]
+        B["复杂查询场景&lt;br/&gt;ComplexQuery"]
+        C["多字段查询场景&lt;br/&gt;MultiFieldQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["范围查询&lt;br/&gt;RangeQuery"]
+        E["聚合查询&lt;br/&gt;AggregationQuery"]
     end
     
     A --&gt; D
@@ -5424,14 +5424,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["简单存储场景&lt;br/&gt;SimpleStorage"]
+        B["主键查询场景&lt;br/&gt;PrimaryKeyQuery"]
+        C["高性能场景&lt;br/&gt;HighPerformance"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["键值存储&lt;br/&gt;KeyValueStorage"]
+        E["快速查询&lt;br/&gt;FastQuery"]
     end
     
     A --&gt; D
@@ -5458,14 +5458,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["多值存储场景&lt;br/&gt;MultiValueStorage"]
+        B["排序键查询场景&lt;br/&gt;SortKeyQuery"]
+        C["范围查询场景&lt;br/&gt;RangeQuery"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["有序存储&lt;br/&gt;OrderedStorage"]
+        E["迭代器查询&lt;br/&gt;IteratorQuery"]
     end
     
     A --&gt; D
@@ -5494,14 +5494,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable性能&lt;br/&gt;全文检索高"]
+        B["KVTable性能&lt;br/&gt;主键查询最高"]
+        C["KKVTable性能&lt;br/&gt;主键+排序键高"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["复杂查询性能&lt;br/&gt;ComplexQuery"]
+        E["范围查询性能&lt;br/&gt;RangeQuery"]
     end
     
     A --&gt; D
@@ -5527,14 +5527,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable存储&lt;br/&gt;空间较大"]
+        B["KVTable存储&lt;br/&gt;空间较小"]
+        C["KKVTable存储&lt;br/&gt;空间中等"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引存储&lt;br/&gt;IndexStorage"]
+        E["数据存储&lt;br/&gt;DataStorage"]
     end
     
     A --&gt; D
@@ -5560,14 +5560,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable构建&lt;br/&gt;时间较长"]
+        B["KVTable构建&lt;br/&gt;时间最短"]
+        C["KKVTable构建&lt;br/&gt;时间中等"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["索引构建&lt;br/&gt;IndexBuild"]
+        E["文档构建&lt;br/&gt;DocumentBuild"]
     end
     
     A --&gt; D
@@ -5595,14 +5595,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["实现TabletReader&lt;br/&gt;自定义读取器"]
+        B["实现TabletWriter&lt;br/&gt;自定义写入器"]
+        C["实现索引构建&lt;br/&gt;自定义构建逻辑"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["注册索引类型&lt;br/&gt;RegisterType"]
+        E["扩展接口&lt;br/&gt;ExtendInterface"]
     end
     
     A --&gt; D
@@ -5629,14 +5629,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["NormalTable&lt;br/&gt;最早完整功能"]
+        B["KVTable&lt;br/&gt;简单场景优化"]
+        C["KKVTable&lt;br/&gt;多值存储优化"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["功能演进&lt;br/&gt;FeatureEvolution"]
+        E["性能优化&lt;br/&gt;PerformanceOptimization"]
     end
     
     A --&gt; D
@@ -5664,14 +5664,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["ITabletReader&lt;br/&gt;统一查询接口"]
+        B["ITabletWriter&lt;br/&gt;统一写入接口"]
+        C["ITabletSchema&lt;br/&gt;统一Schema接口"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["接口实现&lt;br/&gt;InterfaceImplementation"]
+        E["类型扩展&lt;br/&gt;TypeExtension"]
     end
     
     A --&gt; D
@@ -5697,14 +5697,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["接口抽象&lt;br/&gt;InterfaceAbstraction"]
+        B["插件机制&lt;br/&gt;PluginMechanism"]
+        C["配置驱动&lt;br/&gt;ConfigurationDriven"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["类型扩展&lt;br/&gt;TypeExtension"]
+        E["功能扩展&lt;br/&gt;FeatureExtension"]
     end
     
     A --&gt; D
@@ -5730,14 +5730,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["针对性优化&lt;br/&gt;TargetedOptimization"]
+        B["查询优化&lt;br/&gt;QueryOptimization"]
+        C["构建优化&lt;br/&gt;BuildOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["性能调优&lt;br/&gt;PerformanceTuning"]
+        E["资源优化&lt;br/&gt;ResourceOptimization"]
     end
     
     A --&gt; D
@@ -7063,14 +7063,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["延迟回收&lt;br/&gt;DelayedRecycle"]
+        B["按需回收&lt;br/&gt;OnDemandRecycle"]
+        C["并发安全&lt;br/&gt;ConcurrentSafe"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源释放&lt;br/&gt;ResourceRelease"]
+        E["内存清理&lt;br/&gt;MemoryCleanup"]
     end
     
     A --&gt; D
@@ -7097,14 +7097,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["内存池&lt;br/&gt;MemoryPool"]
+        B["批量操作&lt;br/&gt;BatchOperation"]
+        C["缓存优化&lt;br/&gt;CacheOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源控制&lt;br/&gt;ResourceControl"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D
@@ -12334,21 +12334,35 @@
 
 <p><code class="language-plaintext highlighter-rouge">DoOpen()</code> 方法初始化 NormalTabletReader：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[初始化TabletData] --&gt; B[创建MultiFieldIndexReader]
-    B --&gt; C[创建DeletionMapReader]
-    C --&gt; D[创建PrimaryKeyReader]
-    D --&gt; E[创建SummaryReader]
-    E --&gt; F[创建AttributeReader]
+<pre><code class="language-mermaid">flowchart LR
+    Start([DoOpen 开始]) --&gt; Step1[1. 初始化&lt;br/&gt;TabletData]
     
-    G[DoOpen流程] --&gt; A
-    F --&gt; H[完成初始化]
+    Step1 --&gt; Step2[2. 创建&lt;br/&gt;Reader 组件]
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style G fill:#fce4ec
+    subgraph Readers["Reader 组件创建顺序"]
+        direction LR
+        R1["① MultiFieldIndexReader&lt;br/&gt;多字段倒排索引"]
+        R2["② DeletionMapReader&lt;br/&gt;删除映射"]
+        R3["③ PrimaryKeyReader&lt;br/&gt;主键索引"]
+        R4["④ SummaryReader&lt;br/&gt;摘要"]
+        R5["⑤ AttributeReader&lt;br/&gt;属性"]
+        
+        R1 --&gt; R2 --&gt; R3 --&gt; R4 --&gt; R5
+    end
+    
+    Step2 --&gt; R1
+    R5 --&gt; Complete([完成初始化])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Step1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Readers fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style R1 fill:#e3f2fd,stroke:#1976d2,stroke-width:1.5px
+    style R2 fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px
+    style R3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.5px
+    style R4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px
+    style R5 fill:#e0f2f1,stroke:#00695c,stroke-width:1.5px
+    style Complete fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>DoOpen 流程</strong>：</p>
@@ -12365,18 +12379,52 @@
 
 <p><code class="language-plaintext highlighter-rouge">Search()</code> 方法实现标准表的查询：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[解析查询] --&gt; B[获取IndexReader]
-    B --&gt; C[遍历Segment]
-    C --&gt; D[并行查询]
-    D --&gt; E[过滤删除文档]
-    E --&gt; F[合并结果]
-    F --&gt; G[返回结果]
+<pre><code class="language-mermaid">flowchart LR
+    Start([Search 开始]) --&gt; A[解析查询]
     
-    style A fill:#e3f2fd
-    style D fill:#fff3e0
-    style E fill:#e8f5e9
-    style F fill:#f3e5f5
+    A --&gt; Prepare[准备阶段]
+    
+    subgraph Prepare["准备阶段"]
+        direction LR
+        B[获取 IndexReader]
+        C[遍历 Segment]
+        B --&gt; C
+    end
+    
+    Prepare --&gt; B
+    C --&gt; Query[查询阶段]
+    
+    subgraph Query["查询阶段"]
+        direction LR
+        D[并行查询]
+    end
+    
+    Query --&gt; D
+    D --&gt; PostProcess[后处理阶段]
+    
+    subgraph PostProcess["后处理阶段"]
+        direction LR
+        E[过滤删除文档]
+        F[合并结果]
+        G[返回结果]
+        E --&gt; F --&gt; G
+    end
+    
+    PostProcess --&gt; E
+    G --&gt; End([完成])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Prepare fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style B fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style C fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style PostProcess fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style F fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style G fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p><strong>Search 流程</strong>：</p>
@@ -12396,19 +12444,40 @@
 
 <p>查询剪枝可以减少不必要的查询：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[查询剪枝] --&gt; B[Locator剪枝]
-    A --&gt; C[范围剪枝]
-    A --&gt; D[索引剪枝]
+<pre><code class="language-mermaid">flowchart TD
+    Start([查询剪枝]) --&gt; Strategies[剪枝策略]
     
-    B --&gt; E[判断Segment是否包含结果]
-    C --&gt; F[减少查询范围]
-    D --&gt; G[跳过不相关索引]
+    subgraph Strategies["三种剪枝策略"]
+        direction LR
+        S1[Locator 剪枝]
+        S2[范围剪枝]
+        S3[索引剪枝]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategies --&gt; S1
+    Strategies --&gt; S2
+    Strategies --&gt; S3
+    
+    S1 --&gt; R1[判断 Segment&lt;br/&gt;是否包含结果]
+    S2 --&gt; R2[减少查询范围&lt;br/&gt;缩小搜索空间]
+    S3 --&gt; R3[跳过不相关索引&lt;br/&gt;提高查询效率]
+    
+    R1 --&gt; Benefit[优化效果]
+    R2 --&gt; Benefit
+    R3 --&gt; Benefit
+    
+    Benefit --&gt; End([减少不必要查询&lt;br/&gt;提升性能])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Strategies fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px
+    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.5px
+    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px
+    style R1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style R2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style R3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p><strong>查询剪枝策略</strong>：</p>
@@ -12422,19 +12491,51 @@
 
 <p>查询缓存可以提高查询性能：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[查询缓存] --&gt; B[结果缓存]
-    A --&gt; C[索引缓存]
-    A --&gt; D[统计缓存]
+<pre><code class="language-mermaid">flowchart TD
+    Start([查询缓存机制]) --&gt; CacheLayer[缓存层]
     
-    B --&gt; E[避免重复查询]
-    C --&gt; F[减少IO操作]
-    D --&gt; G[减少计算开销]
+    subgraph CacheLayer["缓存层"]
+        direction TB
+        
+        subgraph Cache1["结果缓存"]
+            direction LR
+            C1[结果缓存] --&gt; E1[避免重复查询&lt;br/&gt;直接返回缓存结果]
+        end
+        
+        subgraph Cache2["索引缓存"]
+            direction LR
+            C2[索引缓存] --&gt; E2[减少 IO 操作&lt;br/&gt;从内存读取索引]
+        end
+        
+        subgraph Cache3["统计缓存"]
+            direction LR
+            C3[统计缓存] --&gt; E3[减少计算开销&lt;br/&gt;复用统计信息]
+        end
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    CacheLayer --&gt; Cache1
+    CacheLayer --&gt; Cache2
+    CacheLayer --&gt; Cache3
+    
+    E1 --&gt; Benefit[综合性能提升]
+    E2 --&gt; Benefit
+    E3 --&gt; Benefit
+    
+    Benefit --&gt; End([提升查询性能&lt;br/&gt;降低系统负载])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CacheLayer fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style Cache1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style E1 fill:#fff8e1,stroke:#f57c00,stroke-width:1.5px
+    style Cache2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style Cache3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style E3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>查询缓存机制</strong>：</p>
@@ -12448,19 +12549,17 @@
 
 <p>并行查询可以提高查询性能：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[并行查询优化] --&gt; B[Segment并行]
-    A --&gt; C[索引并行]
-    A --&gt; D[结果并行合并]
+<pre><code class="language-mermaid">flowchart LR
+    Start[并行查询优化] --&gt; P1[1. Segment 并行&lt;br/&gt;多个 Segment 并行查询]
+    P1 --&gt; P2[2. 索引并行&lt;br/&gt;多个索引并行查询]
+    P2 --&gt; P3[3. 结果并行合并&lt;br/&gt;查询结果并行合并]
+    P3 --&gt; Benefit[性能提升&lt;br/&gt;缩短延迟&lt;br/&gt;提高吞吐量]
     
-    B --&gt; E[多个Segment并行查询]
-    C --&gt; F[多个索引并行查询]
-    D --&gt; G[查询结果并行合并]
-    
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style P3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
 </code></pre>
 
 <p><strong>并行查询优化</strong>：</p>
@@ -12476,19 +12575,41 @@
 
 <p>索引加载优化可以减少查询延迟：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[索引加载优化] --&gt; B[按需加载]
-    A --&gt; C[懒加载]
-    A --&gt; D[预加载]
+<pre><code class="language-mermaid">flowchart TD
+    Start[索引加载优化] --&gt; Strategies[优化策略]
     
-    B --&gt; E[只加载查询需要的索引]
-    C --&gt; F[查询时才加载]
-    D --&gt; G[预加载常用索引]
+    subgraph Strategies["三种优化策略"]
+        direction LR
+        L1[1. 按需加载&lt;br/&gt;只加载查询需要的索引]
+        L2[2. 懒加载&lt;br/&gt;查询时才加载索引数据]
+        L3[3. 预加载&lt;br/&gt;预加载常用索引减少延迟]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategies --&gt; L1
+    Strategies --&gt; L2
+    Strategies --&gt; L3
+    
+    L1 --&gt; Benefit[优化效果]
+    L2 --&gt; Benefit
+    L3 --&gt; Benefit
+    
+    subgraph Effects["优化效果"]
+        direction LR
+        E1[减少内存占用]
+        E2[提升加载效率]
+    end
+    
+    Benefit --&gt; Effects
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Strategies fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style L1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style L2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style L3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Effects fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style E1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
 </code></pre>
 
 <p><strong>索引加载优化</strong>：</p>
@@ -12502,19 +12623,17 @@
 
 <p>内存优化可以减少内存使用：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[内存优化] --&gt; B[内存池]
-    A --&gt; C[缓存控制]
-    A --&gt; D[内存回收]
+<pre><code class="language-mermaid">flowchart LR
+    Start[内存优化] --&gt; M1[1. 内存池&lt;br/&gt;减少内存分配开销]
+    M1 --&gt; M2[2. 缓存控制&lt;br/&gt;控制缓存大小避免溢出]
+    M2 --&gt; M3[3. 内存回收&lt;br/&gt;及时回收不再使用的内存]
+    M3 --&gt; Benefit[优化效果&lt;br/&gt;降低内存占用&lt;br/&gt;提升系统稳定性]
     
-    B --&gt; E[减少内存分配开销]
-    C --&gt; F[避免内存溢出]
-    D --&gt; G[及时回收内存]
-    
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style M3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
 </code></pre>
 
 <p><strong>内存优化策略</strong>：</p>
@@ -12528,19 +12647,35 @@
 
 <p>IO 优化可以减少 IO 操作：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[IO优化] --&gt; B[批量读取]
-    A --&gt; C[预读]
-    A --&gt; D[IO合并]
+<pre><code class="language-mermaid">flowchart TD
+    Start[IO 优化] --&gt; Strategy[优化策略]
     
-    B --&gt; E[减少IO次数]
-    C --&gt; F[预读可能需要的数据]
-    D --&gt; G[减少IO开销]
+    subgraph Strategy["三种优化策略"]
+        direction LR
+        I1[1. 批量读取&lt;br/&gt;减少 IO 次数]
+        I2[2. 预读&lt;br/&gt;减少查询延迟]
+        I3[3. IO 合并&lt;br/&gt;减少 IO 开销]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategy --&gt; I1
+    Strategy --&gt; I2
+    Strategy --&gt; I3
+    
+    I1 --&gt; Benefit[优化效果]
+    I2 --&gt; Benefit
+    I3 --&gt; Benefit
+    
+    Benefit --&gt; E1[提升 IO 效率]
+    Benefit --&gt; E2[降低系统负载]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Strategy fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style I1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style I2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style I3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style E1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
 </code></pre>
 
 <p><strong>IO 优化策略</strong>：</p>
@@ -12556,18 +12691,24 @@
 
 <p>在全文检索场景中，查询流程：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[解析查询] --&gt; B[获取InvertedIndexReader]
-    B --&gt; C[查找term]
-    C --&gt; D[获取倒排列表]
-    D --&gt; E[过滤删除文档]
-    E --&gt; F[计算相关性]
-    F --&gt; G[排序返回]
+<pre><code class="language-mermaid">flowchart LR
+    Start([全文检索]) --&gt; S1[解析查询]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    S1 --&gt; S2[获取 InvertedIndexReader]
+    S2 --&gt; S3[查找 term]
+    S3 --&gt; S4[获取倒排列表]
+    S4 --&gt; S5[过滤删除文档]
+    S5 --&gt; S6[计算相关性]
+    S6 --&gt; End([排序返回])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style S4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    style S5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style S6 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>全文检索流程</strong>：</p>
@@ -12585,17 +12726,22 @@
 
 <p>在属性查询场景中，查询流程：</p>
 
-<pre><code class="language-mermaid">graph LR
-    A[解析查询] --&gt; B[获取AttributeReader]
-    B --&gt; C[遍历Segment]
-    C --&gt; D[查询属性]
-    D --&gt; E[过滤匹配]
-    E --&gt; F[返回结果]
+<pre><code class="language-mermaid">flowchart LR
+    Start([属性查询]) --&gt; A1[解析查询]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style F fill:#f3e5f5
+    A1 --&gt; A2[获取 AttributeReader]
+    A2 --&gt; A3[遍历 Segment]
+    A3 --&gt; A4[查询属性]
+    A4 --&gt; A5[过滤匹配]
+    A5 --&gt; End([返回结果])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style A1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style A3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style A4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    style A5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 </code></pre>
 
 <p><strong>属性查询流程</strong>：</p>

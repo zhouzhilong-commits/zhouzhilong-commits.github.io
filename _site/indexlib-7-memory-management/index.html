@@ -1788,14 +1788,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["延迟回收&lt;br/&gt;DelayedRecycle"]
+        B["按需回收&lt;br/&gt;OnDemandRecycle"]
+        C["并发安全&lt;br/&gt;ConcurrentSafe"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源释放&lt;br/&gt;ResourceRelease"]
+        E["内存清理&lt;br/&gt;MemoryCleanup"]
     end
     
     A --&gt; D
@@ -1822,14 +1822,14 @@
 
 <pre><code class="language-mermaid">flowchart TD
     subgraph Main["主要组件"]
-        A["核心组件A"]
-        B["核心组件B"]
-        C["核心组件C"]
+        A["内存池&lt;br/&gt;MemoryPool"]
+        B["批量操作&lt;br/&gt;BatchOperation"]
+        C["缓存优化&lt;br/&gt;CacheOptimization"]
     end
     
     subgraph Sub["子组件"]
-        D["子组件D"]
-        E["子组件E"]
+        D["资源控制&lt;br/&gt;ResourceControl"]
+        E["性能调优&lt;br/&gt;PerformanceTuning"]
     end
     
     A --&gt; D

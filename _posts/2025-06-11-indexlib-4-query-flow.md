@@ -1528,21 +1528,35 @@ flowchart TD
 `DoOpen()` 方法初始化 NormalTabletReader：
 
 ```mermaid
-graph LR
-    A[初始化TabletData] --> B[创建MultiFieldIndexReader]
-    B --> C[创建DeletionMapReader]
-    C --> D[创建PrimaryKeyReader]
-    D --> E[创建SummaryReader]
-    E --> F[创建AttributeReader]
+flowchart LR
+    Start([DoOpen 开始]) --> Step1[1. 初始化<br/>TabletData]
     
-    G[DoOpen流程] --> A
-    F --> H[完成初始化]
+    Step1 --> Step2[2. 创建<br/>Reader 组件]
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style G fill:#fce4ec
+    subgraph Readers["Reader 组件创建顺序"]
+        direction LR
+        R1["① MultiFieldIndexReader<br/>多字段倒排索引"]
+        R2["② DeletionMapReader<br/>删除映射"]
+        R3["③ PrimaryKeyReader<br/>主键索引"]
+        R4["④ SummaryReader<br/>摘要"]
+        R5["⑤ AttributeReader<br/>属性"]
+        
+        R1 --> R2 --> R3 --> R4 --> R5
+    end
+    
+    Step2 --> R1
+    R5 --> Complete([完成初始化])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Step1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Step2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Readers fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style R1 fill:#e3f2fd,stroke:#1976d2,stroke-width:1.5px
+    style R2 fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px
+    style R3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.5px
+    style R4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px
+    style R5 fill:#e0f2f1,stroke:#00695c,stroke-width:1.5px
+    style Complete fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **DoOpen 流程**：
@@ -1558,18 +1572,52 @@ graph LR
 `Search()` 方法实现标准表的查询：
 
 ```mermaid
-graph LR
-    A[解析查询] --> B[获取IndexReader]
-    B --> C[遍历Segment]
-    C --> D[并行查询]
-    D --> E[过滤删除文档]
-    E --> F[合并结果]
-    F --> G[返回结果]
+flowchart LR
+    Start([Search 开始]) --> A[解析查询]
     
-    style A fill:#e3f2fd
-    style D fill:#fff3e0
-    style E fill:#e8f5e9
-    style F fill:#f3e5f5
+    A --> Prepare[准备阶段]
+    
+    subgraph Prepare["准备阶段"]
+        direction LR
+        B[获取 IndexReader]
+        C[遍历 Segment]
+        B --> C
+    end
+    
+    Prepare --> B
+    C --> Query[查询阶段]
+    
+    subgraph Query["查询阶段"]
+        direction LR
+        D[并行查询]
+    end
+    
+    Query --> D
+    D --> PostProcess[后处理阶段]
+    
+    subgraph PostProcess["后处理阶段"]
+        direction LR
+        E[过滤删除文档]
+        F[合并结果]
+        G[返回结果]
+        E --> F --> G
+    end
+    
+    PostProcess --> E
+    G --> End([完成])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style A fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Prepare fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style B fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style C fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style PostProcess fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style E fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style F fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style G fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
 ```
 
 **Search 流程**：
@@ -1588,19 +1636,40 @@ graph LR
 查询剪枝可以减少不必要的查询：
 
 ```mermaid
-graph LR
-    A[查询剪枝] --> B[Locator剪枝]
-    A --> C[范围剪枝]
-    A --> D[索引剪枝]
+flowchart TD
+    Start([查询剪枝]) --> Strategies[剪枝策略]
     
-    B --> E[判断Segment是否包含结果]
-    C --> F[减少查询范围]
-    D --> G[跳过不相关索引]
+    subgraph Strategies["三种剪枝策略"]
+        direction LR
+        S1[Locator 剪枝]
+        S2[范围剪枝]
+        S3[索引剪枝]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategies --> S1
+    Strategies --> S2
+    Strategies --> S3
+    
+    S1 --> R1[判断 Segment<br/>是否包含结果]
+    S2 --> R2[减少查询范围<br/>缩小搜索空间]
+    S3 --> R3[跳过不相关索引<br/>提高查询效率]
+    
+    R1 --> Benefit[优化效果]
+    R2 --> Benefit
+    R3 --> Benefit
+    
+    Benefit --> End([减少不必要查询<br/>提升性能])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Strategies fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px
+    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.5px
+    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px
+    style R1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style R2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style R3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
 ```
 
 **查询剪枝策略**：
@@ -1613,19 +1682,51 @@ graph LR
 查询缓存可以提高查询性能：
 
 ```mermaid
-graph LR
-    A[查询缓存] --> B[结果缓存]
-    A --> C[索引缓存]
-    A --> D[统计缓存]
+flowchart TD
+    Start([查询缓存机制]) --> CacheLayer[缓存层]
     
-    B --> E[避免重复查询]
-    C --> F[减少IO操作]
-    D --> G[减少计算开销]
+    subgraph CacheLayer["缓存层"]
+        direction TB
+        
+        subgraph Cache1["结果缓存"]
+            direction LR
+            C1[结果缓存] --> E1[避免重复查询<br/>直接返回缓存结果]
+        end
+        
+        subgraph Cache2["索引缓存"]
+            direction LR
+            C2[索引缓存] --> E2[减少 IO 操作<br/>从内存读取索引]
+        end
+        
+        subgraph Cache3["统计缓存"]
+            direction LR
+            C3[统计缓存] --> E3[减少计算开销<br/>复用统计信息]
+        end
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    CacheLayer --> Cache1
+    CacheLayer --> Cache2
+    CacheLayer --> Cache3
+    
+    E1 --> Benefit[综合性能提升]
+    E2 --> Benefit
+    E3 --> Benefit
+    
+    Benefit --> End([提升查询性能<br/>降低系统负载])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CacheLayer fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style Cache1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style E1 fill:#fff8e1,stroke:#f57c00,stroke-width:1.5px
+    style Cache2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
+    style Cache3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C3 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style E3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **查询缓存机制**：
@@ -1638,19 +1739,17 @@ graph LR
 并行查询可以提高查询性能：
 
 ```mermaid
-graph LR
-    A[并行查询优化] --> B[Segment并行]
-    A --> C[索引并行]
-    A --> D[结果并行合并]
+flowchart LR
+    Start[并行查询优化] --> P1[1. Segment 并行<br/>多个 Segment 并行查询]
+    P1 --> P2[2. 索引并行<br/>多个索引并行查询]
+    P2 --> P3[3. 结果并行合并<br/>查询结果并行合并]
+    P3 --> Benefit[性能提升<br/>缩短延迟<br/>提高吞吐量]
     
-    B --> E[多个Segment并行查询]
-    C --> F[多个索引并行查询]
-    D --> G[查询结果并行合并]
-    
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style P3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
 ```
 
 **并行查询优化**：
@@ -1665,19 +1764,41 @@ graph LR
 索引加载优化可以减少查询延迟：
 
 ```mermaid
-graph LR
-    A[索引加载优化] --> B[按需加载]
-    A --> C[懒加载]
-    A --> D[预加载]
+flowchart TD
+    Start[索引加载优化] --> Strategies[优化策略]
     
-    B --> E[只加载查询需要的索引]
-    C --> F[查询时才加载]
-    D --> G[预加载常用索引]
+    subgraph Strategies["三种优化策略"]
+        direction LR
+        L1[1. 按需加载<br/>只加载查询需要的索引]
+        L2[2. 懒加载<br/>查询时才加载索引数据]
+        L3[3. 预加载<br/>预加载常用索引减少延迟]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategies --> L1
+    Strategies --> L2
+    Strategies --> L3
+    
+    L1 --> Benefit[优化效果]
+    L2 --> Benefit
+    L3 --> Benefit
+    
+    subgraph Effects["优化效果"]
+        direction LR
+        E1[减少内存占用]
+        E2[提升加载效率]
+    end
+    
+    Benefit --> Effects
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Strategies fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style L1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style L2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style L3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style Effects fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style E1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
 ```
 
 **索引加载优化**：
@@ -1690,19 +1811,17 @@ graph LR
 内存优化可以减少内存使用：
 
 ```mermaid
-graph LR
-    A[内存优化] --> B[内存池]
-    A --> C[缓存控制]
-    A --> D[内存回收]
+flowchart LR
+    Start[内存优化] --> M1[1. 内存池<br/>减少内存分配开销]
+    M1 --> M2[2. 缓存控制<br/>控制缓存大小避免溢出]
+    M2 --> M3[3. 内存回收<br/>及时回收不再使用的内存]
+    M3 --> Benefit[优化效果<br/>降低内存占用<br/>提升系统稳定性]
     
-    B --> E[减少内存分配开销]
-    C --> F[避免内存溢出]
-    D --> G[及时回收内存]
-    
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style M3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
 ```
 
 **内存优化策略**：
@@ -1715,19 +1834,35 @@ graph LR
 IO 优化可以减少 IO 操作：
 
 ```mermaid
-graph LR
-    A[IO优化] --> B[批量读取]
-    A --> C[预读]
-    A --> D[IO合并]
+flowchart TD
+    Start[IO 优化] --> Strategy[优化策略]
     
-    B --> E[减少IO次数]
-    C --> F[预读可能需要的数据]
-    D --> G[减少IO开销]
+    subgraph Strategy["三种优化策略"]
+        direction LR
+        I1[1. 批量读取<br/>减少 IO 次数]
+        I2[2. 预读<br/>减少查询延迟]
+        I3[3. IO 合并<br/>减少 IO 开销]
+    end
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
+    Strategy --> I1
+    Strategy --> I2
+    Strategy --> I3
+    
+    I1 --> Benefit[优化效果]
+    I2 --> Benefit
+    I3 --> Benefit
+    
+    Benefit --> E1[提升 IO 效率]
+    Benefit --> E2[降低系统负载]
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Strategy fill:#f5f5f5,stroke:#757575,stroke-width:2px
+    style I1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style I2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style I3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style E1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
+    style E2 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
 ```
 
 **IO 优化策略**：
@@ -1742,18 +1877,24 @@ graph LR
 在全文检索场景中，查询流程：
 
 ```mermaid
-graph LR
-    A[解析查询] --> B[获取InvertedIndexReader]
-    B --> C[查找term]
-    C --> D[获取倒排列表]
-    D --> E[过滤删除文档]
-    E --> F[计算相关性]
-    F --> G[排序返回]
+flowchart LR
+    Start([全文检索]) --> S1[解析查询]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style G fill:#f3e5f5
+    S1 --> S2[获取 InvertedIndexReader]
+    S2 --> S3[查找 term]
+    S3 --> S4[获取倒排列表]
+    S4 --> S5[过滤删除文档]
+    S5 --> S6[计算相关性]
+    S6 --> End([排序返回])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style S4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    style S5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style S6 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **全文检索流程**：
@@ -1770,17 +1911,22 @@ graph LR
 在属性查询场景中，查询流程：
 
 ```mermaid
-graph LR
-    A[解析查询] --> B[获取AttributeReader]
-    B --> C[遍历Segment]
-    C --> D[查询属性]
-    D --> E[过滤匹配]
-    E --> F[返回结果]
+flowchart LR
+    Start([属性查询]) --> A1[解析查询]
     
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#e8f5e9
-    style F fill:#f3e5f5
+    A1 --> A2[获取 AttributeReader]
+    A2 --> A3[遍历 Segment]
+    A3 --> A4[查询属性]
+    A4 --> A5[过滤匹配]
+    A5 --> End([返回结果])
+    
+    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style A1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style A3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style A4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    style A5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
 ```
 
 **属性查询流程**：
