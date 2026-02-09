@@ -12,47 +12,84 @@ date: 2025-07-05
 内存管理与资源控制概览：从内存配额到内存回收的完整机制：
 
 ```mermaid
-flowchart LR
-    subgraph Quota["内存配额"]
-        Q1[MemoryQuotaController<br/>配额控制器]
-        Q2[层级配额管理<br/>Hierarchical Quota]
-        Q3[配额分配<br/>Quota Allocation]
+flowchart TB
+    Start([内存管理与资源控制概览<br/>Memory Management & Resource Control Overview]) --> QuotaLayer[内存配额层<br/>Memory Quota Layer]
+    
+    subgraph QuotaGroup["内存配额 Memory Quota"]
+        direction TB
+        Q1[MemoryQuotaController<br/>配额控制器<br/>管理内存配额和分配]
+        Q2[层级配额管理<br/>Hierarchical Quota<br/>支持多级配额管理]
+        Q3[配额分配<br/>Quota Allocation<br/>动态分配内存配额]
         Q1 --> Q2
         Q2 --> Q3
     end
     
-    subgraph Calculate["内存计算"]
-        C1[TabletMemoryCalculator<br/>内存计算器]
-        C2[实时统计<br/>Real-time Statistics]
-        C3[分类统计<br/>Categorized Statistics]
+    QuotaLayer --> CalculateLayer[内存计算层<br/>Memory Calculation Layer]
+    
+    subgraph CalculateGroup["内存计算 Memory Calculation"]
+        direction TB
+        C1[TabletMemoryCalculator<br/>内存计算器<br/>计算Tablet内存使用]
+        C2[实时统计<br/>Real-time Statistics<br/>实时统计内存使用]
+        C3[分类统计<br/>Categorized Statistics<br/>按类型统计内存]
         C1 --> C2
         C2 --> C3
     end
     
-    subgraph Reclaim["内存回收"]
-        R1[IIndexMemoryReclaimer<br/>内存回收器]
-        R2[延迟回收<br/>Delayed Reclaim]
-        R3[按需回收<br/>On-Demand Reclaim]
+    CalculateLayer --> ReclaimLayer[内存回收层<br/>Memory Reclaim Layer]
+    
+    subgraph ReclaimGroup["内存回收 Memory Reclaim"]
+        direction TB
+        R1[IIndexMemoryReclaimer<br/>内存回收器<br/>回收不再使用的内存]
+        R2[延迟回收<br/>Delayed Reclaim<br/>延迟回收避免频繁操作]
+        R3[按需回收<br/>On-Demand Reclaim<br/>内存紧张时按需回收]
         R1 --> R2
         R2 --> R3
     end
     
-    subgraph Resource["资源控制"]
-        RE1[BuildResourceCalculator<br/>构建资源计算器]
-        RE2[资源估算<br/>Resource Estimation]
-        RE3[资源预留<br/>Resource Reservation]
+    ReclaimLayer --> ResourceLayer[资源控制层<br/>Resource Control Layer]
+    
+    subgraph ResourceGroup["资源控制 Resource Control"]
+        direction TB
+        RE1[BuildResourceCalculator<br/>构建资源计算器<br/>计算构建资源使用]
+        RE2[资源估算<br/>Resource Estimation<br/>估算资源需求]
+        RE3[资源预留<br/>Resource Reservation<br/>预留构建资源]
         RE1 --> RE2
         RE2 --> RE3
     end
     
-    Q3 --> C1
-    C3 --> R1
-    R3 --> RE1
+    ResourceLayer --> End([内存管理完成<br/>Memory Management Complete])
     
-    style Quota fill:#e3f2fd
-    style Calculate fill:#fff3e0
-    style Reclaim fill:#f3e5f5
-    style Resource fill:#e8f5e9
+    QuotaLayer -.->|包含| QuotaGroup
+    CalculateLayer -.->|包含| CalculateGroup
+    ReclaimLayer -.->|包含| ReclaimGroup
+    ResourceLayer -.->|包含| ResourceGroup
+    
+    Q3 -.->|使用| C1
+    C3 -.->|触发| R1
+    R3 -.->|使用| RE1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style QuotaLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CalculateLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ReclaimLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ResourceLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style QuotaGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Q1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Q2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Q3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CalculateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ReclaimGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style ResourceGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style RE1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style RE2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style RE3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 ## 1. 内存管理概览
@@ -671,16 +708,71 @@ flowchart TD
 内存回收机制：从 Retire 到 Reclaim 的回收流程：
 
 ```mermaid
-flowchart LR
-    A["使用中<br/>In Use"] --> B["标记待回收<br/>Retire"]
-    B --> C["延迟回收<br/>Delayed Reclaim"]
-    C --> D{"内存紧张?"}
-    D -->|是| E["执行回收<br/>Reclaim"]
-    D -->|否| C
-    E --> F["释放内存<br/>Free Memory"]
+flowchart TB
+    Start([内存回收流程<br/>Memory Reclaim Flow]) --> UseLayer[使用中阶段<br/>In Use Phase]
     
-    style A fill:#e3f2fd
-    style F fill:#e8f5e9
+    subgraph UseGroup["使用中 In Use"]
+        direction TB
+        U1[内存使用中<br/>Memory In Use<br/>内存正在被使用]
+    end
+    
+    UseLayer --> RetireLayer[标记待回收阶段<br/>Retire Phase]
+    
+    subgraph RetireGroup["标记待回收 Retire"]
+        direction TB
+        R1[标记待回收<br/>Retire<br/>标记为待回收状态]
+        R2[加入回收队列<br/>Add to Reclaim Queue<br/>加入延迟回收队列]
+        R1 --> R2
+    end
+    
+    RetireLayer --> DelayLayer[延迟回收阶段<br/>Delayed Reclaim Phase]
+    
+    subgraph DelayGroup["延迟回收 Delayed Reclaim"]
+        direction TB
+        D1[延迟回收<br/>Delayed Reclaim<br/>延迟一段时间后回收]
+        D2{内存紧张?<br/>Memory Pressure?}
+        D1 --> D2
+    end
+    
+    DelayLayer --> ReclaimLayer[执行回收阶段<br/>Reclaim Phase]
+    
+    subgraph ReclaimGroup["执行回收 Execute Reclaim"]
+        direction TB
+        E1[执行回收<br/>Reclaim<br/>尝试回收内存]
+        E2[释放内存<br/>Free Memory<br/>释放内存空间]
+        E1 --> E2
+    end
+    
+    ReclaimLayer --> End([回收完成<br/>Reclaim Complete])
+    
+    UseLayer -.->|包含| UseGroup
+    RetireLayer -.->|包含| RetireGroup
+    DelayLayer -.->|包含| DelayGroup
+    ReclaimLayer -.->|包含| ReclaimGroup
+    
+    U1 --> R1
+    R2 --> D1
+    D2 -->|是| E1
+    D2 -->|否| D1
+    E2 --> End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style UseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style RetireLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DelayLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ReclaimLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style U1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style RetireGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style R1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style R2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style DelayGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style D1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style ReclaimGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style E1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 **内存回收流程图**：

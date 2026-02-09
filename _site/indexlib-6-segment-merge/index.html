@@ -596,7 +596,7 @@
 
 
   
-	  16 分钟阅读
+	  18 分钟阅读
 	
 </p>
           
@@ -619,55 +619,96 @@
 
 <p>Segment 合并策略概览：从合并策略到合并执行的完整流程：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Strategy["合并策略"]
-        S1[MergeStrategy&lt;br/&gt;策略接口]
-        S2[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
-        S3[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
-        S4[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Segment 合并策略概览&lt;br/&gt;Segment Merge Strategy Overview]) --&gt; StrategyLayer[合并策略层&lt;br/&gt;Merge Strategy Layer]
+    
+    subgraph StrategyGroup["合并策略 Merge Strategy"]
+        direction TB
+        S1[MergeStrategy&lt;br/&gt;策略接口&lt;br/&gt;合并策略抽象接口]
+        S2[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;优化索引结构]
+        S3[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
+        S4[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并]
         S1 --&gt; S2
         S1 --&gt; S3
         S1 --&gt; S4
     end
     
-    subgraph Plan["合并计划"]
-        P1[MergePlan&lt;br/&gt;合并计划]
-        P2[SegmentMergePlan&lt;br/&gt;Segment合并计划]
-        P3[目标版本&lt;br/&gt;Target Version]
+    StrategyLayer --&gt; PlanLayer[合并计划层&lt;br/&gt;Merge Plan Layer]
+    
+    subgraph PlanGroup["合并计划 Merge Plan"]
+        direction TB
+        P1[MergePlan&lt;br/&gt;合并计划&lt;br/&gt;合并任务计划]
+        P2[SegmentMergePlan&lt;br/&gt;Segment合并计划&lt;br/&gt;Segment合并详情]
+        P3[目标版本&lt;br/&gt;Target Version&lt;br/&gt;合并后的目标版本]
         P1 --&gt; P2
         P1 --&gt; P3
     end
     
-    subgraph Execution["合并执行"]
-        E1[VersionMerger&lt;br/&gt;版本合并器]
-        E2[IndexMergeOperation&lt;br/&gt;合并操作]
-        E3[读取源Segment&lt;br/&gt;Read Source Segments]
-        E4[合并索引数据&lt;br/&gt;Merge Index Data]
-        E5[写入目标Segment&lt;br/&gt;Write Target Segment]
+    PlanLayer --&gt; ExecutionLayer[合并执行层&lt;br/&gt;Merge Execution Layer]
+    
+    subgraph ExecutionGroup["合并执行 Merge Execution"]
+        direction TB
+        E1[VersionMerger&lt;br/&gt;版本合并器&lt;br/&gt;执行版本合并]
+        E2[IndexMergeOperation&lt;br/&gt;合并操作&lt;br/&gt;索引合并操作]
+        E3[读取源Segment&lt;br/&gt;Read Source Segments&lt;br/&gt;读取待合并Segment]
+        E4[合并索引数据&lt;br/&gt;Merge Index Data&lt;br/&gt;合并倒排/正排索引]
+        E5[写入目标Segment&lt;br/&gt;Write Target Segment&lt;br/&gt;写入合并后的Segment]
         E1 --&gt; E2
         E2 --&gt; E3
         E3 --&gt; E4
         E4 --&gt; E5
     end
     
-    subgraph Commit["版本提交"]
-        C1[创建新版本&lt;br/&gt;Create New Version]
-        C2[Fence机制&lt;br/&gt;原子性保证]
-        C3[提交版本&lt;br/&gt;Commit Version]
-        C4[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
+    ExecutionLayer --&gt; CommitLayer[版本提交层&lt;br/&gt;Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;创建包含合并Segment的版本]
+        C2[Fence机制&lt;br/&gt;Fence Mechanism&lt;br/&gt;原子性保证]
+        C3[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;提交新版本]
+        C4[清理旧Segment&lt;br/&gt;Cleanup Old Segments&lt;br/&gt;删除不再需要的Segment]
         C1 --&gt; C2
         C2 --&gt; C3
         C3 --&gt; C4
     end
     
-    S2 --&gt; P1
-    P2 --&gt; E1
-    E5 --&gt; C1
+    CommitLayer --&gt; End([合并完成&lt;br/&gt;Merge Complete])
     
-    style Strategy fill:#e3f2fd
-    style Plan fill:#fff3e0
-    style Execution fill:#f3e5f5
-    style Commit fill:#e8f5e9
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    PlanLayer -.-&gt;|包含| PlanGroup
+    ExecutionLayer -.-&gt;|包含| ExecutionGroup
+    CommitLayer -.-&gt;|包含| CommitGroup
+    
+    S2 -.-&gt;|生成| P1
+    P2 -.-&gt;|执行| E1
+    E5 -.-&gt;|创建| C1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style PlanLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ExecutionLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style PlanGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style P1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ExecutionGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style E1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h2 id="1-segment-合并概览">1. Segment 合并概览</h2>
@@ -906,37 +947,66 @@
 
 <p>合并策略类型：Optimize、Realtime、ShardBased 等：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Base["基础接口"]
-        B1[MergeStrategy&lt;br/&gt;策略接口]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并策略体系&lt;br/&gt;Merge Strategy System]) --&gt; BaseLayer[基础接口层&lt;br/&gt;Base Interface Layer]
+    
+    subgraph BaseGroup["基础接口 Base Interface"]
+        direction TB
+        B1[MergeStrategy&lt;br/&gt;策略接口&lt;br/&gt;合并策略抽象接口]
     end
     
-    subgraph Strategies["合并策略实现"]
+    BaseLayer --&gt; StrategyLayer[策略实现层&lt;br/&gt;Strategy Implementation Layer]
+    
+    subgraph StrategyGroup["合并策略实现 Merge Strategy Implementations"]
+        direction TB
         S1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;合并所有符合条件的Segment]
         S2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
         S3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并Segment]
         S4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略&lt;br/&gt;针对KV表的优化合并]
     end
     
-    subgraph Features["策略特性"]
-        F1[全量合并&lt;br/&gt;Full Merge]
-        F2[实时合并&lt;br/&gt;Realtime Merge]
-        F3[分片合并&lt;br/&gt;Shard Merge]
-        F4[KV优化&lt;br/&gt;KV Optimize]
+    StrategyLayer --&gt; FeatureLayer[策略特性层&lt;br/&gt;Strategy Features Layer]
+    
+    subgraph FeatureGroup["策略特性 Strategy Features"]
+        direction TB
+        F1[全量合并&lt;br/&gt;Full Merge&lt;br/&gt;合并所有Segment]
+        F2[实时合并&lt;br/&gt;Realtime Merge&lt;br/&gt;实时合并小Segment]
+        F3[分片合并&lt;br/&gt;Shard Merge&lt;br/&gt;按分片合并]
+        F4[KV优化&lt;br/&gt;KV Optimize&lt;br/&gt;KV表优化合并]
     end
     
-    B1 --&gt; S1
-    B1 --&gt; S2
-    B1 --&gt; S3
-    B1 --&gt; S4
-    S1 --&gt; F1
-    S2 --&gt; F2
-    S3 --&gt; F3
-    S4 --&gt; F4
+    FeatureLayer --&gt; End([策略体系完成&lt;br/&gt;Strategy System Complete])
     
-    style Base fill:#e3f2fd
-    style Strategies fill:#fff3e0
-    style Features fill:#f3e5f5
+    BaseLayer -.-&gt;|包含| BaseGroup
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    
+    B1 -.-&gt;|实现| S1
+    B1 -.-&gt;|实现| S2
+    B1 -.-&gt;|实现| S3
+    B1 -.-&gt;|实现| S4
+    S1 -.-&gt;|提供| F1
+    S2 -.-&gt;|提供| F2
+    S3 -.-&gt;|提供| F3
+    S4 -.-&gt;|提供| F4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style BaseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style BaseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style StrategyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>合并策略类型</strong>：</p>
@@ -1556,40 +1626,73 @@
 
 <p>合并策略的选择：根据场景选择不同的合并策略：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Scenarios["应用场景"]
-        SC1[全量合并场景&lt;br/&gt;Full Merge Scenario]
-        SC2[实时合并场景&lt;br/&gt;Realtime Merge Scenario]
-        SC3[分片合并场景&lt;br/&gt;Shard Merge Scenario]
-        SC4[KV表场景&lt;br/&gt;KV Table Scenario]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并策略选择&lt;br/&gt;Merge Strategy Selection]) --&gt; ScenarioLayer[应用场景层&lt;br/&gt;Application Scenarios Layer]
+    
+    subgraph ScenarioGroup["应用场景 Application Scenarios"]
+        direction TB
+        SC1[全量合并场景&lt;br/&gt;Full Merge Scenario&lt;br/&gt;需要合并所有Segment]
+        SC2[实时合并场景&lt;br/&gt;Realtime Merge Scenario&lt;br/&gt;实时合并小Segment]
+        SC3[分片合并场景&lt;br/&gt;Shard Merge Scenario&lt;br/&gt;按分片合并Segment]
+        SC4[KV表场景&lt;br/&gt;KV Table Scenario&lt;br/&gt;KV表优化合并]
     end
     
-    subgraph Strategies["合并策略"]
-        ST1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
-        ST2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
-        ST3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
-        ST4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略]
+    ScenarioLayer --&gt; StrategyLayer[合并策略层&lt;br/&gt;Merge Strategy Layer]
+    
+    subgraph StrategyGroup["合并策略 Merge Strategies"]
+        direction TB
+        ST1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;合并所有符合条件的Segment]
+        ST2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
+        ST3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并Segment]
+        ST4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略&lt;br/&gt;针对KV表优化]
     end
     
-    subgraph Features["策略特点"]
-        F1[合并所有符合条件的Segment&lt;br/&gt;适用于全量合并]
-        F2[实时合并小Segment&lt;br/&gt;适用于实时场景]
-        F3[按分片合并Segment&lt;br/&gt;适用于分片场景]
-        F4[针对KV表优化&lt;br/&gt;适用于KV表]
+    StrategyLayer --&gt; FeatureLayer[策略特点层&lt;br/&gt;Strategy Features Layer]
+    
+    subgraph FeatureGroup["策略特点 Strategy Features"]
+        direction TB
+        F1[合并所有符合条件的Segment&lt;br/&gt;Merge All Eligible Segments&lt;br/&gt;适用于全量合并]
+        F2[实时合并小Segment&lt;br/&gt;Realtime Merge Small Segments&lt;br/&gt;适用于实时场景]
+        F3[按分片合并Segment&lt;br/&gt;Merge by Shard&lt;br/&gt;适用于分片场景]
+        F4[针对KV表优化&lt;br/&gt;KV Table Optimization&lt;br/&gt;适用于KV表]
     end
     
-    SC1 --&gt; ST1
-    SC2 --&gt; ST2
-    SC3 --&gt; ST3
-    SC4 --&gt; ST4
-    ST1 --&gt; F1
-    ST2 --&gt; F2
-    ST3 --&gt; F3
-    ST4 --&gt; F4
+    FeatureLayer --&gt; End([策略选择完成&lt;br/&gt;Strategy Selection Complete])
     
-    style Scenarios fill:#e3f2fd
-    style Strategies fill:#fff3e0
-    style Features fill:#f3e5f5
+    ScenarioLayer -.-&gt;|包含| ScenarioGroup
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    
+    SC1 -.-&gt;|选择| ST1
+    SC2 -.-&gt;|选择| ST2
+    SC3 -.-&gt;|选择| ST3
+    SC4 -.-&gt;|选择| ST4
+    
+    ST1 -.-&gt;|提供| F1
+    ST2 -.-&gt;|提供| F2
+    ST3 -.-&gt;|提供| F3
+    ST4 -.-&gt;|提供| F4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ScenarioLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ScenarioGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SC1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style StrategyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ST1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>策略选择</strong>：</p>
@@ -1662,40 +1765,72 @@
 
 <p>合并时机的选择：在线合并、离线合并等：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Timing["合并时机"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并时机选择&lt;br/&gt;Merge Timing Selection]) --&gt; TimingLayer[合并时机层&lt;br/&gt;Merge Timing Layer]
+    
+    subgraph TimingGroup["合并时机 Merge Timing"]
+        direction TB
         T1[在线合并&lt;br/&gt;Online Merge&lt;br/&gt;服务运行期间进行]
         T2[离线合并&lt;br/&gt;Offline Merge&lt;br/&gt;服务停止时进行]
         T3[定时合并&lt;br/&gt;Scheduled Merge&lt;br/&gt;定期触发合并]
         T4[按需合并&lt;br/&gt;On-Demand Merge&lt;br/&gt;根据需求触发]
     end
     
-    subgraph Advantages["时机优势"]
-        A1[不影响服务可用性&lt;br/&gt;No Impact on Availability]
-        A2[更彻底优化索引&lt;br/&gt;More Thorough Optimization]
-        A3[保持索引结构优化&lt;br/&gt;Maintain Index Structure]
-        A4[灵活控制合并&lt;br/&gt;Flexible Control]
+    TimingLayer --&gt; AdvantageLayer[时机优势层&lt;br/&gt;Timing Advantages Layer]
+    
+    subgraph AdvantageGroup["时机优势 Timing Advantages"]
+        direction TB
+        A1[不影响服务可用性&lt;br/&gt;No Impact on Availability&lt;br/&gt;在线合并的优势]
+        A2[更彻底优化索引&lt;br/&gt;More Thorough Optimization&lt;br/&gt;离线合并的优势]
+        A3[保持索引结构优化&lt;br/&gt;Maintain Index Structure&lt;br/&gt;定时合并的优势]
+        A4[灵活控制合并&lt;br/&gt;Flexible Control&lt;br/&gt;按需合并的优势]
     end
     
-    subgraph Tradeoffs["权衡"]
-        TR1[可能影响查询性能&lt;br/&gt;May Impact Query Performance]
-        TR2[需要停止服务&lt;br/&gt;Require Service Stop]
-        TR3[固定时间触发&lt;br/&gt;Fixed Time Trigger]
-        TR4[需要手动干预&lt;br/&gt;Require Manual Intervention]
+    AdvantageLayer --&gt; TradeoffLayer[权衡层&lt;br/&gt;Tradeoffs Layer]
+    
+    subgraph TradeoffGroup["权衡 Tradeoffs"]
+        direction TB
+        TR1[可能影响查询性能&lt;br/&gt;May Impact Query Performance&lt;br/&gt;在线合并的权衡]
+        TR2[需要停止服务&lt;br/&gt;Require Service Stop&lt;br/&gt;离线合并的权衡]
+        TR3[固定时间触发&lt;br/&gt;Fixed Time Trigger&lt;br/&gt;定时合并的权衡]
+        TR4[需要手动干预&lt;br/&gt;Require Manual Intervention&lt;br/&gt;按需合并的权衡]
     end
     
-    T1 --&gt; A1
-    T2 --&gt; A2
-    T3 --&gt; A3
-    T4 --&gt; A4
-    T1 --&gt; TR1
-    T2 --&gt; TR2
-    T3 --&gt; TR3
-    T4 --&gt; TR4
+    TradeoffLayer --&gt; End([时机选择完成&lt;br/&gt;Timing Selection Complete])
     
-    style Timing fill:#e3f2fd
-    style Advantages fill:#fff3e0
-    style Tradeoffs fill:#f3e5f5
+    TimingLayer -.-&gt;|包含| TimingGroup
+    AdvantageLayer -.-&gt;|包含| AdvantageGroup
+    TradeoffLayer -.-&gt;|包含| TradeoffGroup
+    
+    T1 -.-&gt;|提供| A1
+    T2 -.-&gt;|提供| A2
+    T3 -.-&gt;|提供| A3
+    T4 -.-&gt;|提供| A4
+    T1 -.-&gt;|权衡| TR1
+    T2 -.-&gt;|权衡| TR2
+    T3 -.-&gt;|权衡| TR3
+    T4 -.-&gt;|权衡| TR4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style TimingLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style AdvantageLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style TradeoffLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style TimingGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style T1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style AdvantageGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style TradeoffGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style TR1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>合并时机</strong>：</p>

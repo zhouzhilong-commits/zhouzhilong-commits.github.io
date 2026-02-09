@@ -129,37 +129,122 @@ IndexLib 的索引构建流程包括四个核心阶段：
 **流程关系图**：
 
 ```mermaid
-flowchart LR
-    Start[开始构建] --> Build[Build构建索引]
+flowchart TB
+    Start([开始构建<br/>Start Build]) --> BuildLayer[Build阶段<br/>Build Phase]
     
-    Build -->|写入内存| MemSegment[MemSegment内存段]
+    subgraph BuildGroup["Build 构建索引 Build Index"]
+        direction TB
+        B1[Build构建索引<br/>Build Index<br/>接收文档批次]
+        B2[写入内存<br/>Write to Memory<br/>构建到MemSegment]
+        B1 --> B2
+    end
     
-    MemSegment -->|触发转储| Flush[Flush转储]
+    BuildLayer --> MemLayer[MemSegment阶段<br/>MemSegment Phase]
     
-    Flush -->|转储到磁盘| DiskSegment[DiskSegment磁盘段]
+    subgraph MemGroup["MemSegment 内存段"]
+        direction TB
+        M1[MemSegment内存段<br/>Memory Segment<br/>实时构建和写入]
+    end
     
-    DiskSegment -->|触发封存| Seal[Seal封存]
+    MemLayer --> FlushLayer[Flush阶段<br/>Flush Phase]
     
-    Seal -->|标记只读| SealSegment[Sealed Segment已封存]
+    subgraph FlushGroup["Flush 转储 Flush"]
+        direction TB
+        F1[触发转储<br/>Trigger Flush<br/>内存超阈值或文档数超阈值]
+        F2[转储到磁盘<br/>Flush to Disk<br/>异步转储索引文件]
+        F1 --> F2
+    end
     
-    SealSegment -->|触发提交| Commit[Commit提交版本]
+    FlushLayer --> DiskLayer[DiskSegment阶段<br/>DiskSegment Phase]
     
-    Commit -->|更新版本| Version[Version版本]
+    subgraph DiskGroup["DiskSegment 磁盘段"]
+        direction TB
+        D1[DiskSegment磁盘段<br/>Disk Segment<br/>持久化存储]
+    end
     
-    Version -->|持久化| Disk[磁盘存储]
+    DiskLayer --> SealLayer[Seal阶段<br/>Seal Phase]
     
-    Disk -.->|继续构建| Build
+    subgraph SealGroup["Seal 封存 Seal"]
+        direction TB
+        S1[触发封存<br/>Trigger Seal<br/>Segment数量或时间间隔]
+        S2[标记只读<br/>Mark Read-Only<br/>Sealed Segment已封存]
+        S1 --> S2
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Build fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style MemSegment fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Flush fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style DiskSegment fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Seal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style SealSegment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Commit fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style Version fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Disk fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    SealLayer --> CommitLayer[Commit阶段<br/>Commit Phase]
+    
+    subgraph CommitGroup["Commit 提交版本 Commit Version"]
+        direction TB
+        C1[触发提交<br/>Trigger Commit<br/>版本更新条件]
+        C2[更新版本<br/>Update Version<br/>创建新Version]
+        C1 --> C2
+    end
+    
+    CommitLayer --> VersionLayer[Version阶段<br/>Version Phase]
+    
+    subgraph VersionGroup["Version 版本"]
+        direction TB
+        V1[Version版本<br/>Version<br/>记录Segment列表和Locator]
+    end
+    
+    VersionLayer --> DiskLayer2[磁盘存储阶段<br/>Disk Storage Phase]
+    
+    subgraph DiskGroup2["磁盘存储 Disk Storage"]
+        direction TB
+        DS1[持久化<br/>Persistence<br/>写入磁盘]
+    end
+    
+    DiskLayer2 --> Continue{继续构建?<br/>Continue Build?}
+    Continue -->|是| BuildLayer
+    Continue -->|否| End([构建完成<br/>Build Complete])
+    
+    BuildLayer -.->|包含| BuildGroup
+    MemLayer -.->|包含| MemGroup
+    FlushLayer -.->|包含| FlushGroup
+    DiskLayer -.->|包含| DiskGroup
+    SealLayer -.->|包含| SealGroup
+    CommitLayer -.->|包含| CommitGroup
+    VersionLayer -.->|包含| VersionGroup
+    DiskLayer2 -.->|包含| DiskGroup2
+    
+    B2 --> M1
+    M1 --> F1
+    F2 --> D1
+    D1 --> S1
+    S2 --> C1
+    C2 --> V1
+    V1 --> DS1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style BuildLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MemLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FlushLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DiskLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SealLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style DiskLayer2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style BuildGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style MemGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style FlushGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style F1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style DiskGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style D1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SealGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style VersionGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DiskGroup2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style DS1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 ### 1.2 核心接口
@@ -1603,44 +1688,87 @@ public:
 **Commit 的关键步骤**：
 
 ```mermaid
-flowchart LR
-    Start[Commit开始] --> Prepare[准备版本信息]
+flowchart TB
+    Start([Commit开始<br/>Commit Start]) --> PrepareLayer[准备阶段<br/>Preparation Phase]
     
-    Prepare --> Collect[收集Segment列表<br/>CreateSlice ST_BUILT]
-    Collect --> Locator[准备Locator<br/>最新数据处理位置]
-    Locator --> FenceCreate[创建Fence目录<br/>临时目录]
-    
-    FenceCreate --> Write[写入Version文件<br/>版本信息 Segment列表 Locator]
-    Write --> Atomic[原子切换<br/>重命名为正式版本目录]
-    
-    Atomic --> Update[更新TabletData<br/>_onDiskVersion _segments]
-    Update --> End[Commit完成]
-    
-    subgraph Fence["Fence机制原子性保证"]
+    subgraph PrepareGroup["准备版本信息 Prepare Version Information"]
         direction TB
-        F1[临时目录<br/>version.fence]
-        F2[写入所有文件<br/>Version Segment列表]
-        F3[原子重命名<br/>rename操作]
-        F4[保证原子性<br/>要么全部成功要么全部失败]
-        
+        P1[准备版本信息<br/>Prepare Version Information]
+        P2[收集Segment列表<br/>Collect Segment List<br/>CreateSlice ST_BUILT]
+        P3[准备Locator<br/>Prepare Locator<br/>最新数据处理位置]
+        P1 --> P2
+        P2 --> P3
+    end
+    
+    PrepareLayer --> FenceLayer[Fence机制阶段<br/>Fence Mechanism Phase]
+    
+    subgraph FenceGroup["Fence机制原子性保证 Fence Mechanism Atomicity"]
+        direction TB
+        F1[创建Fence目录<br/>Create Fence Directory<br/>临时目录 version.fence]
+        F2[写入所有文件<br/>Write All Files<br/>Version Segment列表]
+        F3[原子重命名<br/>Atomic Rename<br/>rename操作]
+        F4[保证原子性<br/>Guarantee Atomicity<br/>要么全部成功要么全部失败]
         F1 --> F2
         F2 --> F3
         F3 --> F4
     end
     
-    FenceCreate -.->|使用| Fence
-    Atomic -.->|完成| Fence
+    FenceLayer --> WriteLayer[写入阶段<br/>Write Phase]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Prepare fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style Collect fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style Locator fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style FenceCreate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
-    style Atomic fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
-    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Fence fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    subgraph WriteGroup["写入Version文件 Write Version File"]
+        direction TB
+        W1[写入Version文件<br/>Write Version File<br/>版本信息 Segment列表 Locator]
+    end
+    
+    WriteLayer --> AtomicLayer[原子切换阶段<br/>Atomic Switch Phase]
+    
+    subgraph AtomicGroup["原子切换 Atomic Switch"]
+        direction TB
+        A1[原子切换<br/>Atomic Switch<br/>重命名为正式版本目录]
+    end
+    
+    AtomicLayer --> UpdateLayer[更新阶段<br/>Update Phase]
+    
+    subgraph UpdateGroup["更新TabletData Update TabletData"]
+        direction TB
+        U1[更新TabletData<br/>Update TabletData<br/>_onDiskVersion _segments]
+    end
+    
+    UpdateLayer --> End([Commit完成<br/>Commit Complete])
+    
+    PrepareLayer -.->|包含| PrepareGroup
+    FenceLayer -.->|包含| FenceGroup
+    WriteLayer -.->|包含| WriteGroup
+    AtomicLayer -.->|包含| AtomicGroup
+    UpdateLayer -.->|包含| UpdateGroup
+    
+    P3 --> F1
+    F4 --> W1
+    W1 --> A1
+    A1 --> U1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style PrepareLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FenceLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style WriteLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style AtomicLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style PrepareGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style FenceGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style F1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style AtomicGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style A1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 1. **准备版本信息**：收集所有已构建的 Segment，准备 Locator
@@ -1654,27 +1782,85 @@ flowchart LR
 Fence 机制保证版本提交的原子性：
 
 ```mermaid
-flowchart LR
-    Start[开始提交] --> Create[创建Fence目录<br/>临时目录version.fence]
+flowchart TB
+    Start([开始提交<br/>Start Commit]) --> CreateLayer[创建Fence目录阶段<br/>Create Fence Directory Phase]
     
-    Create --> Write[写入Version文件<br/>版本信息 Segment列表 Locator]
-    Write --> Switch[原子切换<br/>rename操作]
-    Switch --> Rename[重命名为正式版本<br/>version.fence → version_N]
-    
-    Rename --> Update[更新TabletData<br/>切换到新版本]
-    Update --> End[提交完成]
-    
-    subgraph Atomic["原子性保证"]
+    subgraph CreateGroup["创建Fence目录 Create Fence Directory"]
         direction TB
-        A1[临时目录<br/>version.fence]
-        A2[写入所有文件<br/>Version Segment列表]
-        A3[原子重命名<br/>rename操作]
-        A4[要么全部成功<br/>要么全部失败]
-        
+        C1[创建Fence目录<br/>Create Fence Directory<br/>临时目录version.fence]
+    end
+    
+    CreateLayer --> WriteLayer[写入阶段<br/>Write Phase]
+    
+    subgraph WriteGroup["写入Version文件 Write Version File"]
+        direction TB
+        W1[写入Version文件<br/>Write Version File<br/>版本信息 Segment列表 Locator]
+    end
+    
+    WriteLayer --> SwitchLayer[原子切换阶段<br/>Atomic Switch Phase]
+    
+    subgraph SwitchGroup["原子切换 Atomic Switch"]
+        direction TB
+        S1[原子切换<br/>Atomic Switch<br/>rename操作]
+        S2[重命名为正式版本<br/>Rename to Official Version<br/>version.fence → version_N]
+        S1 --> S2
+    end
+    
+    SwitchLayer --> UpdateLayer[更新阶段<br/>Update Phase]
+    
+    subgraph UpdateGroup["更新TabletData Update TabletData"]
+        direction TB
+        U1[更新TabletData<br/>Update TabletData<br/>切换到新版本]
+    end
+    
+    UpdateLayer --> AtomicLayer[原子性保证阶段<br/>Atomicity Guarantee Phase]
+    
+    subgraph AtomicGroup["原子性保证 Atomicity Guarantee"]
+        direction TB
+        A1[临时目录<br/>Temporary Directory<br/>version.fence]
+        A2[写入所有文件<br/>Write All Files<br/>Version Segment列表]
+        A3[原子重命名<br/>Atomic Rename<br/>rename操作]
+        A4[要么全部成功<br/>要么全部失败<br/>All or Nothing]
         A1 --> A2
         A2 --> A3
         A3 --> A4
     end
+    
+    AtomicLayer --> End([提交完成<br/>Commit Complete])
+    
+    CreateLayer -.->|包含| CreateGroup
+    WriteLayer -.->|包含| WriteGroup
+    SwitchLayer -.->|包含| SwitchGroup
+    UpdateLayer -.->|包含| UpdateGroup
+    AtomicLayer -.->|包含| AtomicGroup
+    
+    C1 --> W1
+    W1 --> S1
+    S2 --> U1
+    U1 --> A1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style CreateLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style WriteLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SwitchLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style AtomicLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CreateGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SwitchGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style S1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style AtomicGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style A1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+```
     
     Create -.->|使用| Atomic
     Switch -.->|完成| Atomic
@@ -1730,28 +1916,109 @@ struct CommitOptions
 每次 Commit 都会创建新版本，版本号递增：
 
 ```mermaid
-flowchart LR
-    V1[Version 1<br/>versionId=1] --> V1Content[Segment 1,2<br/>Locator timestamp=100]
+flowchart TB
+    Start([版本演进流程<br/>Version Evolution Flow]) --> V1Layer[Version 1 层<br/>Version 1 Layer]
     
-    V1Content --> Commit1[Commit操作]
-    
-    Commit1 --> V2[Version 2<br/>versionId=2]
-    V2 --> V2Content[Segment 1,2,3<br/>Locator timestamp=200]
-    
-    V2Content --> Commit2[Commit操作]
-    
-    Commit2 --> V3[Version 3<br/>versionId=3]
-    V3 --> V3Content[Segment 4<br/>Locator timestamp=300]
-    
-    subgraph Evolution["版本演进特点"]
+    subgraph V1Group["Version 1 版本信息"]
         direction TB
-        E1[版本号递增<br/>versionId单调递增]
-        E2[Segment列表变化<br/>新增或合并Segment]
-        E3[Locator更新<br/>记录最新处理位置]
-        
+        V1_ID[versionId: 1<br/>版本号1]
+        V1_SEG[Segment 1,2<br/>索引段1和2]
+        V1_LOC[Locator timestamp=100<br/>处理位置时间戳100]
+        V1_ID --> V1_SEG
+        V1_SEG --> V1_LOC
+    end
+    
+    V1Layer --> Commit1Layer[Commit 操作层<br/>Commit Operation Layer]
+    
+    subgraph Commit1Group["Commit 操作 Commit Operation"]
+        direction TB
+        C1[Commit操作<br/>Commit Operation<br/>提交新版本]
+    end
+    
+    Commit1Layer --> V2Layer[Version 2 层<br/>Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[versionId: 2<br/>版本号2]
+        V2_SEG[Segment 1,2,3<br/>新增Segment 3]
+        V2_LOC[Locator timestamp=200<br/>处理位置时间戳200]
+        V2_ID --> V2_SEG
+        V2_SEG --> V2_LOC
+    end
+    
+    V2Layer --> Commit2Layer[Commit 操作层<br/>Commit Operation Layer]
+    
+    subgraph Commit2Group["Commit 操作 Commit Operation"]
+        direction TB
+        C2[Commit操作<br/>Commit Operation<br/>提交新版本]
+    end
+    
+    Commit2Layer --> V3Layer[Version 3 层<br/>Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[versionId: 3<br/>版本号3]
+        V3_SEG[Segment 4<br/>合并后的Segment 4]
+        V3_LOC[Locator timestamp=300<br/>处理位置时间戳300]
+        V3_ID --> V3_SEG
+        V3_SEG --> V3_LOC
+    end
+    
+    V3Layer --> EvolutionLayer[版本演进特点层<br/>Version Evolution Features Layer]
+    
+    subgraph EvolutionGroup["版本演进特点 Version Evolution Features"]
+        direction TB
+        E1[版本号递增<br/>VersionId Monotonic Increase<br/>versionId单调递增]
+        E2[Segment列表变化<br/>Segment List Changes<br/>新增或合并Segment]
+        E3[Locator更新<br/>Locator Update<br/>记录最新处理位置]
         E1 --> E2
         E2 --> E3
     end
+    
+    EvolutionLayer --> End([版本演进完成<br/>Version Evolution Complete])
+    
+    V1Layer -.->|包含| V1Group
+    Commit1Layer -.->|包含| Commit1Group
+    V2Layer -.->|包含| V2Group
+    Commit2Layer -.->|包含| Commit2Group
+    V3Layer -.->|包含| V3Group
+    EvolutionLayer -.->|包含| EvolutionGroup
+    
+    V1Group -.->|提交| Commit1Group
+    Commit1Group -.->|创建| V2Group
+    V2Group -.->|提交| Commit2Group
+    Commit2Group -.->|创建| V3Group
+    V3Group -.->|展示| EvolutionGroup
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Commit1Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Commit2Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V3Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style EvolutionLayer fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SEG fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_LOC fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Commit1Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SEG fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_LOC fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Commit2Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3Group fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3_ID fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_SEG fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_LOC fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style EvolutionGroup fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style E1 fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style E2 fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style E3 fill:#ffe082,stroke:#f9a825,stroke-width:2px
+```
     
     V3Content -.->|演进特点| Evolution
     

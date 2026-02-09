@@ -887,77 +887,183 @@ private:
 **Version 演进**：
 
 ```mermaid
-flowchart LR
-    subgraph V1["Version 1<br/>versionId=1<br/>timestamp=100"]
+flowchart TB
+    Start([版本演进流程<br/>Version Evolution Flow]) --> V1Layer[Version 1 层<br/>Version 1 Layer]
+    
+    subgraph V1Group["Version 1 版本信息"]
         direction TB
-        V1_S1[Segment 1]
-        V1_S2[Segment 2]
-        V1_S3[Segment 3]
-        V1_L[Locator<br/>ts=100]
-        V1_S1 --- V1_S2
-        V1_S2 --- V1_S3
-        V1_S3 --- V1_L
+        V1_ID[versionId: 1<br/>版本号1]
+        V1_TS[timestamp: 100<br/>时间戳100]
+        V1_S1[Segment 1<br/>索引段1]
+        V1_S2[Segment 2<br/>索引段2]
+        V1_S3[Segment 3<br/>索引段3]
+        V1_L[Locator<br/>ts=100<br/>处理位置信息]
+        V1_ID --> V1_TS
+        V1_TS --> V1_S1
+        V1_S1 --> V1_S2
+        V1_S2 --> V1_S3
+        V1_S3 --> V1_L
     end
     
-    V1 -->|Commit| Commit1[Commit操作<br/>新增Segment 4<br/>更新Locator ts=200<br/>versionId: 1→2]
+    V1Layer --> Commit1Layer[Commit 操作层<br/>Commit Operation Layer]
     
-    subgraph V2["Version 2<br/>versionId=2<br/>timestamp=200"]
+    subgraph Commit1Group["Commit 操作 Commit Operation"]
         direction TB
-        V2_S1[Segment 1]
-        V2_S2[Segment 2]
-        V2_S3[Segment 3]
+        C1_1[新增Segment 4<br/>Add Segment 4]
+        C1_2[更新Locator<br/>Update Locator<br/>ts=200]
+        C1_3[递增版本号<br/>Increment VersionId<br/>1→2]
+        C1_1 --> C1_2
+        C1_2 --> C1_3
+    end
+    
+    Commit1Layer --> V2Layer[Version 2 层<br/>Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[versionId: 2<br/>版本号2]
+        V2_TS[timestamp: 200<br/>时间戳200]
+        V2_S1[Segment 1<br/>复用]
+        V2_S2[Segment 2<br/>复用]
+        V2_S3[Segment 3<br/>复用]
         V2_S4[Segment 4<br/>新增]
-        V2_L[Locator<br/>ts=200]
-        V2_S1 --- V2_S2
-        V2_S2 --- V2_S3
-        V2_S3 --- V2_S4
-        V2_S4 --- V2_L
+        V2_L[Locator<br/>ts=200<br/>处理位置信息]
+        V2_ID --> V2_TS
+        V2_TS --> V2_S1
+        V2_S1 --> V2_S2
+        V2_S2 --> V2_S3
+        V2_S3 --> V2_S4
+        V2_S4 --> V2_L
     end
     
-    V2 -->|Commit| Commit2[Commit操作<br/>新增Segment 5<br/>更新Locator ts=300<br/>versionId: 2→3]
+    V2Layer --> Commit2Layer[Commit 操作层<br/>Commit Operation Layer]
     
-    subgraph V3["Version 3<br/>versionId=3<br/>timestamp=300"]
+    subgraph Commit2Group["Commit 操作 Commit Operation"]
         direction TB
-        V3_S1[Segment 1]
-        V3_S2[Segment 2]
-        V3_S3[Segment 3]
-        V3_S4[Segment 4]
+        C2_1[新增Segment 5<br/>Add Segment 5]
+        C2_2[更新Locator<br/>Update Locator<br/>ts=300]
+        C2_3[递增版本号<br/>Increment VersionId<br/>2→3]
+        C2_1 --> C2_2
+        C2_2 --> C2_3
+    end
+    
+    Commit2Layer --> V3Layer[Version 3 层<br/>Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[versionId: 3<br/>版本号3]
+        V3_TS[timestamp: 300<br/>时间戳300]
+        V3_S1[Segment 1<br/>复用]
+        V3_S2[Segment 2<br/>复用]
+        V3_S3[Segment 3<br/>复用]
+        V3_S4[Segment 4<br/>复用]
         V3_S5[Segment 5<br/>新增]
-        V3_L[Locator<br/>ts=300]
-        V3_S1 --- V3_S2
-        V3_S2 --- V3_S3
-        V3_S3 --- V3_S4
-        V3_S4 --- V3_S5
-        V3_S5 --- V3_L
+        V3_L[Locator<br/>ts=300<br/>处理位置信息]
+        V3_ID --> V3_TS
+        V3_TS --> V3_S1
+        V3_S1 --> V3_S2
+        V3_S2 --> V3_S3
+        V3_S3 --> V3_S4
+        V3_S4 --> V3_S5
+        V3_S5 --> V3_L
     end
     
-    V3 -->|Merge| Merge[Merge操作<br/>合并Segment 1-5<br/>创建Segment 6<br/>删除旧Segment<br/>更新Locator ts=400<br/>versionId: 3→4]
+    V3Layer --> MergeLayer[合并操作层<br/>Merge Operation Layer]
     
-    subgraph V4["Version 4<br/>versionId=4<br/>timestamp=400"]
+    subgraph MergeGroup["合并操作 Merge Operation"]
         direction TB
-        V4_S6[Segment 6<br/>合并后]
-        V4_L[Locator<br/>ts=400]
-        V4_S6 --- V4_L
+        M1[合并Segment 1-5<br/>Merge Segments 1-5]
+        M2[创建Segment 6<br/>Create Segment 6]
+        M3[删除旧Segment<br/>Delete Old Segments]
+        M4[更新Locator<br/>Update Locator<br/>ts=400]
+        M5[递增版本号<br/>Increment VersionId<br/>3→4]
+        M1 --> M2
+        M2 --> M3
+        M3 --> M4
+        M4 --> M5
     end
     
-    V1_S1 -.->|复用| V2_S1
-    V1_S2 -.->|复用| V2_S2
-    V1_S3 -.->|复用| V2_S3
-    V2_S1 -.->|复用| V3_S1
-    V2_S2 -.->|复用| V3_S2
-    V2_S3 -.->|复用| V3_S3
-    V2_S4 -.->|复用| V3_S4
+    MergeLayer --> V4Layer[Version 4 层<br/>Version 4 Layer]
     
-    style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style V4 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style Commit1 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style Commit2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style Merge fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    subgraph V4Group["Version 4 版本信息"]
+        direction TB
+        V4_ID[versionId: 4<br/>版本号4]
+        V4_TS[timestamp: 400<br/>时间戳400]
+        V4_S6[Segment 6<br/>合并后]
+        V4_L[Locator<br/>ts=400<br/>处理位置信息]
+        V4_ID --> V4_TS
+        V4_TS --> V4_S6
+        V4_S6 --> V4_L
+    end
+    
+    V4Layer --> End([版本演进完成<br/>Version Evolution Complete])
+    
+    V1Layer -.->|包含| V1Group
+    Commit1Layer -.->|包含| Commit1Group
+    V2Layer -.->|包含| V2Group
+    Commit2Layer -.->|包含| Commit2Group
+    V3Layer -.->|包含| V3Group
+    MergeLayer -.->|包含| MergeGroup
+    V4Layer -.->|包含| V4Group
+    
+    V1Group -.->|提交| Commit1Group
+    Commit1Group -.->|创建| V2Group
+    V2Group -.->|提交| Commit2Group
+    Commit2Group -.->|创建| V3Group
+    V3Group -.->|合并| MergeGroup
+    MergeGroup -.->|创建| V4Group
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Commit1Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Commit2Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V3Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style MergeLayer fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style V4Layer fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_TS fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_L fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Commit1Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C1_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C1_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_TS fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
     style V2_S4 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V2_L fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Commit2Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C2_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3Group fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3_ID fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_TS fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
     style V3_S5 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V3_L fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style MergeGroup fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style M1 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M2 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M3 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M4 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M5 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style V4Group fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V4_ID fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style V4_TS fill:#ffe082,stroke:#f9a825,stroke-width:2px
     style V4_S6 fill:#4caf50,stroke:#1b5e20,stroke-width:2px
+    style V4_L fill:#ffe082,stroke:#f9a825,stroke-width:2px
 ```
 
 版本演进示例：
@@ -1422,56 +1528,127 @@ TabletReader 提供索引查询接口。让我们先通过图理解查询流程�
 **TabletReader 查询流程**：
 
 ```mermaid
-flowchart LR
-    subgraph Input["1. 输入阶段"]
+flowchart TB
+    Start([查询流程开始<br/>Query Flow Start]) --> InputLayer[输入阶段<br/>Input Phase]
+    
+    subgraph InputGroup["1. 输入阶段 Input Phase"]
         direction TB
-        A1[JSON 查询请求] --> A2[解析JSON查询<br/>QueryParser]
-        A2 --> A3[提取查询类型和条件<br/>TermQuery/RangeQuery等]
-        A3 --> A4[创建内部Query对象]
+        A1[JSON 查询请求<br/>JSON Query Request]
+        A2[解析JSON查询<br/>Parse JSON Query<br/>QueryParser]
+        A3[提取查询类型和条件<br/>Extract Query Type and Conditions<br/>TermQuery/RangeQuery等]
+        A4[创建内部Query对象<br/>Create Internal Query Object]
+        A1 --> A2
+        A2 --> A3
+        A3 --> A4
     end
     
-    subgraph Reader["2. IndexReader获取"]
+    InputLayer --> ReaderLayer[IndexReader获取阶段<br/>IndexReader Acquisition Phase]
+    
+    subgraph ReaderGroup["2. IndexReader获取 IndexReader Acquisition"]
         direction TB
-        B1[GetIndexReader<br/>indexType, indexName] --> B2{缓存中存在?}
-        B2 -->|是| B3[返回缓存的IndexReader]
-        B2 -->|否| B4[创建新的IndexReader<br/>InvertedIndexReader<br/>AttributeReader<br/>PrimaryKeyReader]
-        B4 --> B5[缓存IndexReader]
-        B3 --> B6[IndexReader就绪]
+        B1[GetIndexReader<br/>indexType, indexName]
+        B2{缓存中存在?<br/>Cache Exists?}
+        B3[返回缓存的IndexReader<br/>Return Cached IndexReader]
+        B4[创建新的IndexReader<br/>Create New IndexReader<br/>InvertedIndexReader<br/>AttributeReader<br/>PrimaryKeyReader]
+        B5[缓存IndexReader<br/>Cache IndexReader]
+        B6[IndexReader就绪<br/>IndexReader Ready]
+        B1 --> B2
+        B2 -->|是| B3
+        B2 -->|否| B4
+        B4 --> B5
+        B3 --> B6
         B5 --> B6
     end
     
-    subgraph Query["3. 查询执行阶段"]
+    ReaderLayer --> QueryLayer[查询执行阶段<br/>Query Execution Phase]
+    
+    subgraph QueryGroup["3. 查询执行阶段 Query Execution Phase"]
         direction TB
-        C1[TabletData.CreateSlice<br/>获取Segment列表] --> C2[遍历Segment]
-        C2 --> C3[并行查询各Segment<br/>Segment1/Segment2/Segment3]
-        C3 --> C4[DocId转换<br/>GlobalDocId → LocalDocId]
-        C4 --> C5[IndexReader.Search<br/>执行索引查询]
+        C1[TabletData.CreateSlice<br/>获取Segment列表<br/>Get Segment List]
+        C2[遍历Segment<br/>Traverse Segments]
+        C3[并行查询各Segment<br/>Parallel Query Segments<br/>Segment1/Segment2/Segment3]
+        C4[DocId转换<br/>DocId Conversion<br/>GlobalDocId → LocalDocId]
+        C5[IndexReader.Search<br/>执行索引查询<br/>Execute Index Query]
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+        C4 --> C5
     end
     
-    subgraph Process["4. 结果处理阶段"]
+    QueryLayer --> ProcessLayer[结果处理阶段<br/>Result Processing Phase]
+    
+    subgraph ProcessGroup["4. 结果处理阶段 Result Processing Phase"]
         direction TB
-        D1[收集各Segment结果] --> D2[DocId去重]
-        D2 --> D3[排序<br/>相关性分数或指定字段]
-        D3 --> D4[分页处理<br/>offset/limit]
-        D4 --> D5[聚合统计<br/>可选]
+        D1[收集各Segment结果<br/>Collect Segment Results]
+        D2[DocId去重<br/>DocId Deduplication]
+        D3[排序<br/>Sorting<br/>相关性分数或指定字段]
+        D4[分页处理<br/>Pagination<br/>offset/limit]
+        D5[聚合统计<br/>Aggregation<br/>可选]
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
     end
     
-    subgraph Output["5. 输出阶段"]
+    ProcessLayer --> OutputLayer[输出阶段<br/>Output Phase]
+    
+    subgraph OutputGroup["5. 输出阶段 Output Phase"]
         direction TB
-        E1[字段选择] --> E2[序列化为JSON]
-        E2 --> E3[返回JSON结果]
+        E1[字段选择<br/>Field Selection]
+        E2[序列化为JSON<br/>Serialize to JSON]
+        E3[返回JSON结果<br/>Return JSON Result]
+        E1 --> E2
+        E2 --> E3
     end
     
-    Input -->|Query对象| Reader
-    Reader -->|IndexReader| Query
-    Query -->|查询结果| Process
-    Process -->|处理后的结果| Output
+    OutputLayer --> End([查询完成<br/>Query Complete])
     
-    style Input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Reader fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Process fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    InputLayer -.->|包含| InputGroup
+    ReaderLayer -.->|包含| ReaderGroup
+    QueryLayer -.->|包含| QueryGroup
+    ProcessLayer -.->|包含| ProcessGroup
+    OutputLayer -.->|包含| OutputGroup
+    
+    A4 --> B1
+    B6 --> C1
+    C5 --> D1
+    D5 --> E1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InputLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ReaderLayer fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style QueryLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ProcessLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style OutputLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style InputGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style A1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ReaderGroup fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style B1 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B2 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B3 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B4 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B5 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B6 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style QueryGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ProcessGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style D1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style OutputGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style E1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 从图中可以看到查询流程：

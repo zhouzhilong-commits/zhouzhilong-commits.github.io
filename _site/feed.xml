@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-06T20:02:48+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-09T10:32:06+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <h2 id="文件系统抽象与存储格式概览">文件系统抽象与存储格式概览</h2>
 
@@ -8506,47 +8506,84 @@
 
 <p>内存管理与资源控制概览：从内存配额到内存回收的完整机制：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Quota["内存配额"]
-        Q1[MemoryQuotaController&lt;br/&gt;配额控制器]
-        Q2[层级配额管理&lt;br/&gt;Hierarchical Quota]
-        Q3[配额分配&lt;br/&gt;Quota Allocation]
+<pre><code class="language-mermaid">flowchart TB
+    Start([内存管理与资源控制概览&lt;br/&gt;Memory Management &amp; Resource Control Overview]) --&gt; QuotaLayer[内存配额层&lt;br/&gt;Memory Quota Layer]
+    
+    subgraph QuotaGroup["内存配额 Memory Quota"]
+        direction TB
+        Q1[MemoryQuotaController&lt;br/&gt;配额控制器&lt;br/&gt;管理内存配额和分配]
+        Q2[层级配额管理&lt;br/&gt;Hierarchical Quota&lt;br/&gt;支持多级配额管理]
+        Q3[配额分配&lt;br/&gt;Quota Allocation&lt;br/&gt;动态分配内存配额]
         Q1 --&gt; Q2
         Q2 --&gt; Q3
     end
     
-    subgraph Calculate["内存计算"]
-        C1[TabletMemoryCalculator&lt;br/&gt;内存计算器]
-        C2[实时统计&lt;br/&gt;Real-time Statistics]
-        C3[分类统计&lt;br/&gt;Categorized Statistics]
+    QuotaLayer --&gt; CalculateLayer[内存计算层&lt;br/&gt;Memory Calculation Layer]
+    
+    subgraph CalculateGroup["内存计算 Memory Calculation"]
+        direction TB
+        C1[TabletMemoryCalculator&lt;br/&gt;内存计算器&lt;br/&gt;计算Tablet内存使用]
+        C2[实时统计&lt;br/&gt;Real-time Statistics&lt;br/&gt;实时统计内存使用]
+        C3[分类统计&lt;br/&gt;Categorized Statistics&lt;br/&gt;按类型统计内存]
         C1 --&gt; C2
         C2 --&gt; C3
     end
     
-    subgraph Reclaim["内存回收"]
-        R1[IIndexMemoryReclaimer&lt;br/&gt;内存回收器]
-        R2[延迟回收&lt;br/&gt;Delayed Reclaim]
-        R3[按需回收&lt;br/&gt;On-Demand Reclaim]
+    CalculateLayer --&gt; ReclaimLayer[内存回收层&lt;br/&gt;Memory Reclaim Layer]
+    
+    subgraph ReclaimGroup["内存回收 Memory Reclaim"]
+        direction TB
+        R1[IIndexMemoryReclaimer&lt;br/&gt;内存回收器&lt;br/&gt;回收不再使用的内存]
+        R2[延迟回收&lt;br/&gt;Delayed Reclaim&lt;br/&gt;延迟回收避免频繁操作]
+        R3[按需回收&lt;br/&gt;On-Demand Reclaim&lt;br/&gt;内存紧张时按需回收]
         R1 --&gt; R2
         R2 --&gt; R3
     end
     
-    subgraph Resource["资源控制"]
-        RE1[BuildResourceCalculator&lt;br/&gt;构建资源计算器]
-        RE2[资源估算&lt;br/&gt;Resource Estimation]
-        RE3[资源预留&lt;br/&gt;Resource Reservation]
+    ReclaimLayer --&gt; ResourceLayer[资源控制层&lt;br/&gt;Resource Control Layer]
+    
+    subgraph ResourceGroup["资源控制 Resource Control"]
+        direction TB
+        RE1[BuildResourceCalculator&lt;br/&gt;构建资源计算器&lt;br/&gt;计算构建资源使用]
+        RE2[资源估算&lt;br/&gt;Resource Estimation&lt;br/&gt;估算资源需求]
+        RE3[资源预留&lt;br/&gt;Resource Reservation&lt;br/&gt;预留构建资源]
         RE1 --&gt; RE2
         RE2 --&gt; RE3
     end
     
-    Q3 --&gt; C1
-    C3 --&gt; R1
-    R3 --&gt; RE1
+    ResourceLayer --&gt; End([内存管理完成&lt;br/&gt;Memory Management Complete])
     
-    style Quota fill:#e3f2fd
-    style Calculate fill:#fff3e0
-    style Reclaim fill:#f3e5f5
-    style Resource fill:#e8f5e9
+    QuotaLayer -.-&gt;|包含| QuotaGroup
+    CalculateLayer -.-&gt;|包含| CalculateGroup
+    ReclaimLayer -.-&gt;|包含| ReclaimGroup
+    ResourceLayer -.-&gt;|包含| ResourceGroup
+    
+    Q3 -.-&gt;|使用| C1
+    C3 -.-&gt;|触发| R1
+    R3 -.-&gt;|使用| RE1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style QuotaLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CalculateLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ReclaimLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ResourceLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style QuotaGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Q1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Q2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Q3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CalculateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ReclaimGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style R3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style ResourceGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style RE1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style RE2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style RE3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h2 id="1-内存管理概览">1. 内存管理概览</h2>
@@ -9211,16 +9248,71 @@
 
 <p>内存回收机制：从 Retire 到 Reclaim 的回收流程：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    A["使用中&lt;br/&gt;In Use"] --&gt; B["标记待回收&lt;br/&gt;Retire"]
-    B --&gt; C["延迟回收&lt;br/&gt;Delayed Reclaim"]
-    C --&gt; D{"内存紧张?"}
-    D --&gt;|是| E["执行回收&lt;br/&gt;Reclaim"]
-    D --&gt;|否| C
-    E --&gt; F["释放内存&lt;br/&gt;Free Memory"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([内存回收流程&lt;br/&gt;Memory Reclaim Flow]) --&gt; UseLayer[使用中阶段&lt;br/&gt;In Use Phase]
     
-    style A fill:#e3f2fd
-    style F fill:#e8f5e9
+    subgraph UseGroup["使用中 In Use"]
+        direction TB
+        U1[内存使用中&lt;br/&gt;Memory In Use&lt;br/&gt;内存正在被使用]
+    end
+    
+    UseLayer --&gt; RetireLayer[标记待回收阶段&lt;br/&gt;Retire Phase]
+    
+    subgraph RetireGroup["标记待回收 Retire"]
+        direction TB
+        R1[标记待回收&lt;br/&gt;Retire&lt;br/&gt;标记为待回收状态]
+        R2[加入回收队列&lt;br/&gt;Add to Reclaim Queue&lt;br/&gt;加入延迟回收队列]
+        R1 --&gt; R2
+    end
+    
+    RetireLayer --&gt; DelayLayer[延迟回收阶段&lt;br/&gt;Delayed Reclaim Phase]
+    
+    subgraph DelayGroup["延迟回收 Delayed Reclaim"]
+        direction TB
+        D1[延迟回收&lt;br/&gt;Delayed Reclaim&lt;br/&gt;延迟一段时间后回收]
+        D2{内存紧张?&lt;br/&gt;Memory Pressure?}
+        D1 --&gt; D2
+    end
+    
+    DelayLayer --&gt; ReclaimLayer[执行回收阶段&lt;br/&gt;Reclaim Phase]
+    
+    subgraph ReclaimGroup["执行回收 Execute Reclaim"]
+        direction TB
+        E1[执行回收&lt;br/&gt;Reclaim&lt;br/&gt;尝试回收内存]
+        E2[释放内存&lt;br/&gt;Free Memory&lt;br/&gt;释放内存空间]
+        E1 --&gt; E2
+    end
+    
+    ReclaimLayer --&gt; End([回收完成&lt;br/&gt;Reclaim Complete])
+    
+    UseLayer -.-&gt;|包含| UseGroup
+    RetireLayer -.-&gt;|包含| RetireGroup
+    DelayLayer -.-&gt;|包含| DelayGroup
+    ReclaimLayer -.-&gt;|包含| ReclaimGroup
+    
+    U1 --&gt; R1
+    R2 --&gt; D1
+    D2 --&gt;|是| E1
+    D2 --&gt;|否| D1
+    E2 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style UseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style RetireLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DelayLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ReclaimLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style U1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style RetireGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style R1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style R2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style DelayGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style D1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style ReclaimGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style E1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p><strong>内存回收流程图</strong>：</p>
@@ -9881,55 +9973,96 @@
 
 <p>Segment 合并策略概览：从合并策略到合并执行的完整流程：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Strategy["合并策略"]
-        S1[MergeStrategy&lt;br/&gt;策略接口]
-        S2[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
-        S3[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
-        S4[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Segment 合并策略概览&lt;br/&gt;Segment Merge Strategy Overview]) --&gt; StrategyLayer[合并策略层&lt;br/&gt;Merge Strategy Layer]
+    
+    subgraph StrategyGroup["合并策略 Merge Strategy"]
+        direction TB
+        S1[MergeStrategy&lt;br/&gt;策略接口&lt;br/&gt;合并策略抽象接口]
+        S2[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;优化索引结构]
+        S3[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
+        S4[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并]
         S1 --&gt; S2
         S1 --&gt; S3
         S1 --&gt; S4
     end
     
-    subgraph Plan["合并计划"]
-        P1[MergePlan&lt;br/&gt;合并计划]
-        P2[SegmentMergePlan&lt;br/&gt;Segment合并计划]
-        P3[目标版本&lt;br/&gt;Target Version]
+    StrategyLayer --&gt; PlanLayer[合并计划层&lt;br/&gt;Merge Plan Layer]
+    
+    subgraph PlanGroup["合并计划 Merge Plan"]
+        direction TB
+        P1[MergePlan&lt;br/&gt;合并计划&lt;br/&gt;合并任务计划]
+        P2[SegmentMergePlan&lt;br/&gt;Segment合并计划&lt;br/&gt;Segment合并详情]
+        P3[目标版本&lt;br/&gt;Target Version&lt;br/&gt;合并后的目标版本]
         P1 --&gt; P2
         P1 --&gt; P3
     end
     
-    subgraph Execution["合并执行"]
-        E1[VersionMerger&lt;br/&gt;版本合并器]
-        E2[IndexMergeOperation&lt;br/&gt;合并操作]
-        E3[读取源Segment&lt;br/&gt;Read Source Segments]
-        E4[合并索引数据&lt;br/&gt;Merge Index Data]
-        E5[写入目标Segment&lt;br/&gt;Write Target Segment]
+    PlanLayer --&gt; ExecutionLayer[合并执行层&lt;br/&gt;Merge Execution Layer]
+    
+    subgraph ExecutionGroup["合并执行 Merge Execution"]
+        direction TB
+        E1[VersionMerger&lt;br/&gt;版本合并器&lt;br/&gt;执行版本合并]
+        E2[IndexMergeOperation&lt;br/&gt;合并操作&lt;br/&gt;索引合并操作]
+        E3[读取源Segment&lt;br/&gt;Read Source Segments&lt;br/&gt;读取待合并Segment]
+        E4[合并索引数据&lt;br/&gt;Merge Index Data&lt;br/&gt;合并倒排/正排索引]
+        E5[写入目标Segment&lt;br/&gt;Write Target Segment&lt;br/&gt;写入合并后的Segment]
         E1 --&gt; E2
         E2 --&gt; E3
         E3 --&gt; E4
         E4 --&gt; E5
     end
     
-    subgraph Commit["版本提交"]
-        C1[创建新版本&lt;br/&gt;Create New Version]
-        C2[Fence机制&lt;br/&gt;原子性保证]
-        C3[提交版本&lt;br/&gt;Commit Version]
-        C4[清理旧Segment&lt;br/&gt;Cleanup Old Segments]
+    ExecutionLayer --&gt; CommitLayer[版本提交层&lt;br/&gt;Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;创建包含合并Segment的版本]
+        C2[Fence机制&lt;br/&gt;Fence Mechanism&lt;br/&gt;原子性保证]
+        C3[提交版本&lt;br/&gt;Commit Version&lt;br/&gt;提交新版本]
+        C4[清理旧Segment&lt;br/&gt;Cleanup Old Segments&lt;br/&gt;删除不再需要的Segment]
         C1 --&gt; C2
         C2 --&gt; C3
         C3 --&gt; C4
     end
     
-    S2 --&gt; P1
-    P2 --&gt; E1
-    E5 --&gt; C1
+    CommitLayer --&gt; End([合并完成&lt;br/&gt;Merge Complete])
     
-    style Strategy fill:#e3f2fd
-    style Plan fill:#fff3e0
-    style Execution fill:#f3e5f5
-    style Commit fill:#e8f5e9
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    PlanLayer -.-&gt;|包含| PlanGroup
+    ExecutionLayer -.-&gt;|包含| ExecutionGroup
+    CommitLayer -.-&gt;|包含| CommitGroup
+    
+    S2 -.-&gt;|生成| P1
+    P2 -.-&gt;|执行| E1
+    E5 -.-&gt;|创建| C1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style PlanLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ExecutionLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style PlanGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style P1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style P3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ExecutionGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style E1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style E5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h2 id="1-segment-合并概览">1. Segment 合并概览</h2>
@@ -10168,37 +10301,66 @@
 
 <p>合并策略类型：Optimize、Realtime、ShardBased 等：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Base["基础接口"]
-        B1[MergeStrategy&lt;br/&gt;策略接口]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并策略体系&lt;br/&gt;Merge Strategy System]) --&gt; BaseLayer[基础接口层&lt;br/&gt;Base Interface Layer]
+    
+    subgraph BaseGroup["基础接口 Base Interface"]
+        direction TB
+        B1[MergeStrategy&lt;br/&gt;策略接口&lt;br/&gt;合并策略抽象接口]
     end
     
-    subgraph Strategies["合并策略实现"]
+    BaseLayer --&gt; StrategyLayer[策略实现层&lt;br/&gt;Strategy Implementation Layer]
+    
+    subgraph StrategyGroup["合并策略实现 Merge Strategy Implementations"]
+        direction TB
         S1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;合并所有符合条件的Segment]
         S2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
         S3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并Segment]
         S4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略&lt;br/&gt;针对KV表的优化合并]
     end
     
-    subgraph Features["策略特性"]
-        F1[全量合并&lt;br/&gt;Full Merge]
-        F2[实时合并&lt;br/&gt;Realtime Merge]
-        F3[分片合并&lt;br/&gt;Shard Merge]
-        F4[KV优化&lt;br/&gt;KV Optimize]
+    StrategyLayer --&gt; FeatureLayer[策略特性层&lt;br/&gt;Strategy Features Layer]
+    
+    subgraph FeatureGroup["策略特性 Strategy Features"]
+        direction TB
+        F1[全量合并&lt;br/&gt;Full Merge&lt;br/&gt;合并所有Segment]
+        F2[实时合并&lt;br/&gt;Realtime Merge&lt;br/&gt;实时合并小Segment]
+        F3[分片合并&lt;br/&gt;Shard Merge&lt;br/&gt;按分片合并]
+        F4[KV优化&lt;br/&gt;KV Optimize&lt;br/&gt;KV表优化合并]
     end
     
-    B1 --&gt; S1
-    B1 --&gt; S2
-    B1 --&gt; S3
-    B1 --&gt; S4
-    S1 --&gt; F1
-    S2 --&gt; F2
-    S3 --&gt; F3
-    S4 --&gt; F4
+    FeatureLayer --&gt; End([策略体系完成&lt;br/&gt;Strategy System Complete])
     
-    style Base fill:#e3f2fd
-    style Strategies fill:#fff3e0
-    style Features fill:#f3e5f5
+    BaseLayer -.-&gt;|包含| BaseGroup
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    
+    B1 -.-&gt;|实现| S1
+    B1 -.-&gt;|实现| S2
+    B1 -.-&gt;|实现| S3
+    B1 -.-&gt;|实现| S4
+    S1 -.-&gt;|提供| F1
+    S2 -.-&gt;|提供| F2
+    S3 -.-&gt;|提供| F3
+    S4 -.-&gt;|提供| F4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style BaseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style BaseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style StrategyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>合并策略类型</strong>：</p>
@@ -10818,40 +10980,73 @@
 
 <p>合并策略的选择：根据场景选择不同的合并策略：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Scenarios["应用场景"]
-        SC1[全量合并场景&lt;br/&gt;Full Merge Scenario]
-        SC2[实时合并场景&lt;br/&gt;Realtime Merge Scenario]
-        SC3[分片合并场景&lt;br/&gt;Shard Merge Scenario]
-        SC4[KV表场景&lt;br/&gt;KV Table Scenario]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并策略选择&lt;br/&gt;Merge Strategy Selection]) --&gt; ScenarioLayer[应用场景层&lt;br/&gt;Application Scenarios Layer]
+    
+    subgraph ScenarioGroup["应用场景 Application Scenarios"]
+        direction TB
+        SC1[全量合并场景&lt;br/&gt;Full Merge Scenario&lt;br/&gt;需要合并所有Segment]
+        SC2[实时合并场景&lt;br/&gt;Realtime Merge Scenario&lt;br/&gt;实时合并小Segment]
+        SC3[分片合并场景&lt;br/&gt;Shard Merge Scenario&lt;br/&gt;按分片合并Segment]
+        SC4[KV表场景&lt;br/&gt;KV Table Scenario&lt;br/&gt;KV表优化合并]
     end
     
-    subgraph Strategies["合并策略"]
-        ST1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略]
-        ST2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略]
-        ST3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略]
-        ST4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略]
+    ScenarioLayer --&gt; StrategyLayer[合并策略层&lt;br/&gt;Merge Strategy Layer]
+    
+    subgraph StrategyGroup["合并策略 Merge Strategies"]
+        direction TB
+        ST1[OptimizeMergeStrategy&lt;br/&gt;优化合并策略&lt;br/&gt;合并所有符合条件的Segment]
+        ST2[RealtimeMergeStrategy&lt;br/&gt;实时合并策略&lt;br/&gt;实时合并小Segment]
+        ST3[ShardBasedMergeStrategy&lt;br/&gt;分片合并策略&lt;br/&gt;按分片合并Segment]
+        ST4[KeyValueOptimizeMergeStrategy&lt;br/&gt;KV优化合并策略&lt;br/&gt;针对KV表优化]
     end
     
-    subgraph Features["策略特点"]
-        F1[合并所有符合条件的Segment&lt;br/&gt;适用于全量合并]
-        F2[实时合并小Segment&lt;br/&gt;适用于实时场景]
-        F3[按分片合并Segment&lt;br/&gt;适用于分片场景]
-        F4[针对KV表优化&lt;br/&gt;适用于KV表]
+    StrategyLayer --&gt; FeatureLayer[策略特点层&lt;br/&gt;Strategy Features Layer]
+    
+    subgraph FeatureGroup["策略特点 Strategy Features"]
+        direction TB
+        F1[合并所有符合条件的Segment&lt;br/&gt;Merge All Eligible Segments&lt;br/&gt;适用于全量合并]
+        F2[实时合并小Segment&lt;br/&gt;Realtime Merge Small Segments&lt;br/&gt;适用于实时场景]
+        F3[按分片合并Segment&lt;br/&gt;Merge by Shard&lt;br/&gt;适用于分片场景]
+        F4[针对KV表优化&lt;br/&gt;KV Table Optimization&lt;br/&gt;适用于KV表]
     end
     
-    SC1 --&gt; ST1
-    SC2 --&gt; ST2
-    SC3 --&gt; ST3
-    SC4 --&gt; ST4
-    ST1 --&gt; F1
-    ST2 --&gt; F2
-    ST3 --&gt; F3
-    ST4 --&gt; F4
+    FeatureLayer --&gt; End([策略选择完成&lt;br/&gt;Strategy Selection Complete])
     
-    style Scenarios fill:#e3f2fd
-    style Strategies fill:#fff3e0
-    style Features fill:#f3e5f5
+    ScenarioLayer -.-&gt;|包含| ScenarioGroup
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    FeatureLayer -.-&gt;|包含| FeatureGroup
+    
+    SC1 -.-&gt;|选择| ST1
+    SC2 -.-&gt;|选择| ST2
+    SC3 -.-&gt;|选择| ST3
+    SC4 -.-&gt;|选择| ST4
+    
+    ST1 -.-&gt;|提供| F1
+    ST2 -.-&gt;|提供| F2
+    ST3 -.-&gt;|提供| F3
+    ST4 -.-&gt;|提供| F4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ScenarioLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style StrategyLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FeatureLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ScenarioGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SC1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SC4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style StrategyGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ST1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ST4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FeatureGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style F1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style F4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>策略选择</strong>：</p>
@@ -10924,40 +11119,72 @@
 
 <p>合并时机的选择：在线合并、离线合并等：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Timing["合并时机"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([合并时机选择&lt;br/&gt;Merge Timing Selection]) --&gt; TimingLayer[合并时机层&lt;br/&gt;Merge Timing Layer]
+    
+    subgraph TimingGroup["合并时机 Merge Timing"]
+        direction TB
         T1[在线合并&lt;br/&gt;Online Merge&lt;br/&gt;服务运行期间进行]
         T2[离线合并&lt;br/&gt;Offline Merge&lt;br/&gt;服务停止时进行]
         T3[定时合并&lt;br/&gt;Scheduled Merge&lt;br/&gt;定期触发合并]
         T4[按需合并&lt;br/&gt;On-Demand Merge&lt;br/&gt;根据需求触发]
     end
     
-    subgraph Advantages["时机优势"]
-        A1[不影响服务可用性&lt;br/&gt;No Impact on Availability]
-        A2[更彻底优化索引&lt;br/&gt;More Thorough Optimization]
-        A3[保持索引结构优化&lt;br/&gt;Maintain Index Structure]
-        A4[灵活控制合并&lt;br/&gt;Flexible Control]
+    TimingLayer --&gt; AdvantageLayer[时机优势层&lt;br/&gt;Timing Advantages Layer]
+    
+    subgraph AdvantageGroup["时机优势 Timing Advantages"]
+        direction TB
+        A1[不影响服务可用性&lt;br/&gt;No Impact on Availability&lt;br/&gt;在线合并的优势]
+        A2[更彻底优化索引&lt;br/&gt;More Thorough Optimization&lt;br/&gt;离线合并的优势]
+        A3[保持索引结构优化&lt;br/&gt;Maintain Index Structure&lt;br/&gt;定时合并的优势]
+        A4[灵活控制合并&lt;br/&gt;Flexible Control&lt;br/&gt;按需合并的优势]
     end
     
-    subgraph Tradeoffs["权衡"]
-        TR1[可能影响查询性能&lt;br/&gt;May Impact Query Performance]
-        TR2[需要停止服务&lt;br/&gt;Require Service Stop]
-        TR3[固定时间触发&lt;br/&gt;Fixed Time Trigger]
-        TR4[需要手动干预&lt;br/&gt;Require Manual Intervention]
+    AdvantageLayer --&gt; TradeoffLayer[权衡层&lt;br/&gt;Tradeoffs Layer]
+    
+    subgraph TradeoffGroup["权衡 Tradeoffs"]
+        direction TB
+        TR1[可能影响查询性能&lt;br/&gt;May Impact Query Performance&lt;br/&gt;在线合并的权衡]
+        TR2[需要停止服务&lt;br/&gt;Require Service Stop&lt;br/&gt;离线合并的权衡]
+        TR3[固定时间触发&lt;br/&gt;Fixed Time Trigger&lt;br/&gt;定时合并的权衡]
+        TR4[需要手动干预&lt;br/&gt;Require Manual Intervention&lt;br/&gt;按需合并的权衡]
     end
     
-    T1 --&gt; A1
-    T2 --&gt; A2
-    T3 --&gt; A3
-    T4 --&gt; A4
-    T1 --&gt; TR1
-    T2 --&gt; TR2
-    T3 --&gt; TR3
-    T4 --&gt; TR4
+    TradeoffLayer --&gt; End([时机选择完成&lt;br/&gt;Timing Selection Complete])
     
-    style Timing fill:#e3f2fd
-    style Advantages fill:#fff3e0
-    style Tradeoffs fill:#f3e5f5
+    TimingLayer -.-&gt;|包含| TimingGroup
+    AdvantageLayer -.-&gt;|包含| AdvantageGroup
+    TradeoffLayer -.-&gt;|包含| TradeoffGroup
+    
+    T1 -.-&gt;|提供| A1
+    T2 -.-&gt;|提供| A2
+    T3 -.-&gt;|提供| A3
+    T4 -.-&gt;|提供| A4
+    T1 -.-&gt;|权衡| TR1
+    T2 -.-&gt;|权衡| TR2
+    T3 -.-&gt;|权衡| TR3
+    T4 -.-&gt;|权衡| TR4
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style TimingLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style AdvantageLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style TradeoffLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style TimingGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style T1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style T4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style AdvantageGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style A1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style A4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style TradeoffGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style TR1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style TR4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>合并时机</strong>：</p>
@@ -11471,63 +11698,109 @@
 
 <p>版本管理与增量更新概览：Version 与 Locator 的协同工作：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Input["数据输入"]
-        A[数据源&lt;br/&gt;DataSource]
-        B[文档流&lt;br/&gt;Document Stream]
-        A --&gt; B
+<pre><code class="language-mermaid">flowchart TB
+    Start([版本管理与增量更新&lt;br/&gt;Version Management &amp; Incremental Update]) --&gt; InputLayer[数据输入层&lt;br/&gt;Data Input Layer]
+    
+    subgraph InputGroup["数据输入 Data Input"]
+        direction TB
+        I1[数据源&lt;br/&gt;DataSource&lt;br/&gt;数据来源]
+        I2[文档流&lt;br/&gt;Document Stream&lt;br/&gt;文档数据流]
+        I1 --&gt; I2
     end
     
-    subgraph Version["版本管理"]
-        C[Version&lt;br/&gt;版本信息]
-        D[VersionId&lt;br/&gt;版本号递增]
-        E[Segments&lt;br/&gt;Segment列表]
-        F[Schema演进&lt;br/&gt;SchemaId映射]
-        C --&gt; D
-        C --&gt; E
-        C --&gt; F
+    InputLayer --&gt; LocatorLayer[位置信息层&lt;br/&gt;Locator Layer]
+    
+    subgraph LocatorGroup["位置信息 Locator"]
+        direction TB
+        L1[Locator&lt;br/&gt;数据处理位置&lt;br/&gt;记录处理进度]
+        L2[Timestamp&lt;br/&gt;时间戳&lt;br/&gt;数据时间信息]
+        L3[MultiProgress&lt;br/&gt;多进度信息&lt;br/&gt;多分片进度]
+        L4[HashId&lt;br/&gt;分片标识&lt;br/&gt;数据分片ID]
+        L1 --&gt; L2
+        L1 --&gt; L3
+        L3 --&gt; L4
     end
     
-    subgraph Locator["位置信息"]
-        G[Locator&lt;br/&gt;数据处理位置]
-        H[Timestamp&lt;br/&gt;时间戳]
-        I[MultiProgress&lt;br/&gt;多进度信息]
-        J[HashId&lt;br/&gt;分片标识]
-        G --&gt; H
-        G --&gt; I
-        I --&gt; J
+    LocatorLayer --&gt; UpdateLayer[增量更新层&lt;br/&gt;Incremental Update Layer]
+    
+    subgraph UpdateGroup["增量更新 Incremental Update"]
+        direction TB
+        U1[IsFasterThan&lt;br/&gt;比较判断&lt;br/&gt;判断数据是否已处理]
+        U2[数据过滤&lt;br/&gt;Filter Processed&lt;br/&gt;过滤已处理数据]
+        U3[处理新数据&lt;br/&gt;Process New Data&lt;br/&gt;构建新索引]
+        U4[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;记录处理进度]
+        U1 --&gt; U2
+        U2 --&gt; U3
+        U3 --&gt; U4
     end
     
-    subgraph Update["增量更新"]
-        K[IsFasterThan&lt;br/&gt;比较判断]
-        L[数据过滤&lt;br/&gt;过滤已处理]
-        M[处理新数据&lt;br/&gt;构建索引]
-        N[更新Locator&lt;br/&gt;记录进度]
-        K --&gt; L
-        L --&gt; M
-        M --&gt; N
+    UpdateLayer --&gt; VersionLayer[版本管理层&lt;br/&gt;Version Management Layer]
+    
+    subgraph VersionGroup["版本管理 Version Management"]
+        direction TB
+        V1[Version&lt;br/&gt;版本信息&lt;br/&gt;版本元数据]
+        V2[VersionId&lt;br/&gt;版本号递增&lt;br/&gt;单调递增版本号]
+        V3[Segments&lt;br/&gt;Segment列表&lt;br/&gt;包含的Segment]
+        V4[Schema演进&lt;br/&gt;Schema Evolution&lt;br/&gt;SchemaId映射]
+        V1 --&gt; V2
+        V1 --&gt; V3
+        V1 --&gt; V4
     end
     
-    subgraph Commit["版本提交"]
-        O[VersionCommitter&lt;br/&gt;版本提交器]
-        P[Fence机制&lt;br/&gt;原子性保证]
-        Q[持久化&lt;br/&gt;写入磁盘]
-        O --&gt; P
-        P --&gt; Q
+    VersionLayer --&gt; CommitLayer[版本提交层&lt;br/&gt;Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[VersionCommitter&lt;br/&gt;版本提交器&lt;br/&gt;提交新版本]
+        C2[Fence机制&lt;br/&gt;Fence Mechanism&lt;br/&gt;原子性保证]
+        C3[持久化&lt;br/&gt;Persistence&lt;br/&gt;写入磁盘]
+        C1 --&gt; C2
+        C2 --&gt; C3
     end
     
-    B --&gt; G
-    G --&gt; K
-    K --&gt; C
-    N --&gt; C
-    C --&gt; O
-    Q --&gt; E
+    CommitLayer --&gt; End([版本管理完成&lt;br/&gt;Version Management Complete])
     
-    style Input fill:#e3f2fd
-    style Version fill:#fff3e0
-    style Locator fill:#f3e5f5
-    style Update fill:#e8f5e9
-    style Commit fill:#fce4ec
+    InputLayer -.-&gt;|包含| InputGroup
+    LocatorLayer -.-&gt;|包含| LocatorGroup
+    UpdateLayer -.-&gt;|包含| UpdateGroup
+    VersionLayer -.-&gt;|包含| VersionGroup
+    CommitLayer -.-&gt;|包含| CommitGroup
+    
+    I2 --&gt; L1
+    L1 --&gt; U1
+    U4 --&gt; V1
+    V1 --&gt; C1
+    C3 --&gt; V3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InputLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style LocatorLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style CommitLayer fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style InputGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style I1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style LocatorGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style VersionGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CommitGroup fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style C1 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style C2 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style C3 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
 </code></pre>
 
 <h2 id="1-版本管理概览">1. 版本管理概览</h2>
@@ -11547,14 +11820,17 @@
 
 <p>版本管理架构：Version、Locator、Segment 的关系：</p>
 
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Version["Version 版本信息"]
-        V1[VersionId&lt;br/&gt;版本号单调递增]
-        V2[Segments&lt;br/&gt;Segment列表]
-        V3[Locator&lt;br/&gt;位置信息]
-        V4[Timestamp&lt;br/&gt;时间戳]
-        V5[Sealed&lt;br/&gt;封存状态]
-        V6[SchemaId&lt;br/&gt;Schema标识]
+<pre><code class="language-mermaid">flowchart TB
+    Start([版本管理架构&lt;br/&gt;Version Management Architecture]) --&gt; VersionLayer[版本信息层&lt;br/&gt;Version Information Layer]
+    
+    subgraph VersionGroup["Version 版本信息 Version Information"]
+        direction TB
+        V1[VersionId&lt;br/&gt;版本号单调递增&lt;br/&gt;每次Commit递增]
+        V2[Segments&lt;br/&gt;Segment列表&lt;br/&gt;包含的Segment集合]
+        V3[Locator&lt;br/&gt;位置信息&lt;br/&gt;数据处理位置]
+        V4[Timestamp&lt;br/&gt;时间戳&lt;br/&gt;版本创建时间]
+        V5[Sealed&lt;br/&gt;封存状态&lt;br/&gt;是否封存]
+        V6[SchemaId&lt;br/&gt;Schema标识&lt;br/&gt;当前Schema版本]
         V1 --&gt; V2
         V1 --&gt; V3
         V1 --&gt; V4
@@ -11562,47 +11838,88 @@
         V1 --&gt; V6
     end
     
-    subgraph Segment["Segment 索引段"]
-        S1[SegmentId&lt;br/&gt;段标识]
-        S2[SchemaId&lt;br/&gt;段Schema]
-        S3[IndexFiles&lt;br/&gt;索引文件]
-        S4[SegmentInfo&lt;br/&gt;段信息]
+    VersionLayer --&gt; SegmentLayer[索引段层&lt;br/&gt;Segment Layer]
+    
+    subgraph SegmentGroup["Segment 索引段 Segment"]
+        direction TB
+        S1[SegmentId&lt;br/&gt;段标识&lt;br/&gt;唯一标识Segment]
+        S2[SchemaId&lt;br/&gt;段Schema&lt;br/&gt;Segment的Schema版本]
+        S3[IndexFiles&lt;br/&gt;索引文件&lt;br/&gt;索引数据文件]
+        S4[SegmentInfo&lt;br/&gt;段信息&lt;br/&gt;Segment元数据]
         S1 --&gt; S2
         S1 --&gt; S3
         S1 --&gt; S4
     end
     
-    subgraph Locator["Locator 位置信息"]
-        L1[SourceId&lt;br/&gt;数据源标识]
-        L2[Timestamp&lt;br/&gt;时间戳]
-        L3[ConcurrentIdx&lt;br/&gt;并发索引]
-        L4[HashId&lt;br/&gt;分片标识]
-        L5[MultiProgress&lt;br/&gt;多进度信息]
+    SegmentLayer --&gt; LocatorLayer[位置信息层&lt;br/&gt;Locator Layer]
+    
+    subgraph LocatorGroup["Locator 位置信息 Locator"]
+        direction TB
+        L1[SourceId&lt;br/&gt;数据源标识&lt;br/&gt;数据来源ID]
+        L2[Timestamp&lt;br/&gt;时间戳&lt;br/&gt;数据时间信息]
+        L3[ConcurrentIdx&lt;br/&gt;并发索引&lt;br/&gt;并发处理索引]
+        L4[HashId&lt;br/&gt;分片标识&lt;br/&gt;数据分片ID]
+        L5[MultiProgress&lt;br/&gt;多进度信息&lt;br/&gt;多分片处理进度]
         L1 --&gt; L2
         L2 --&gt; L3
         L3 --&gt; L4
         L4 --&gt; L5
     end
     
-    subgraph Commit["版本提交"]
-        C1[VersionCommitter&lt;br/&gt;提交器]
-        C2[Fence目录&lt;br/&gt;临时目录]
-        C3[原子切换&lt;br/&gt;重命名操作]
-        C4[持久化&lt;br/&gt;写入磁盘]
+    LocatorLayer --&gt; CommitLayer[版本提交层&lt;br/&gt;Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[VersionCommitter&lt;br/&gt;版本提交器&lt;br/&gt;提交新版本]
+        C2[Fence目录&lt;br/&gt;Fence Directory&lt;br/&gt;临时目录保证原子性]
+        C3[原子切换&lt;br/&gt;Atomic Switch&lt;br/&gt;重命名操作]
+        C4[持久化&lt;br/&gt;Persistence&lt;br/&gt;写入磁盘]
         C1 --&gt; C2
         C2 --&gt; C3
         C3 --&gt; C4
     end
     
-    V2 --&gt;|包含| S1
-    V3 --&gt;|包含| L1
-    V1 --&gt;|提交| C1
-    C4 --&gt;|更新| V1
+    CommitLayer --&gt; End([版本管理完成&lt;br/&gt;Version Management Complete])
     
-    style Version fill:#e3f2fd
-    style Segment fill:#fff3e0
-    style Locator fill:#f3e5f5
-    style Commit fill:#e8f5e9
+    VersionLayer -.-&gt;|包含| VersionGroup
+    SegmentLayer -.-&gt;|包含| SegmentGroup
+    LocatorLayer -.-&gt;|包含| LocatorGroup
+    CommitLayer -.-&gt;|包含| CommitGroup
+    
+    V2 -.-&gt;|包含| S1
+    V3 -.-&gt;|包含| L1
+    V1 -.-&gt;|提交| C1
+    C4 -.-&gt;|更新| V1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style VersionLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SegmentLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style LocatorLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SegmentGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style LocatorGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h3 id="12-版本管理的作用">1.2 版本管理的作用</h3>
@@ -11781,55 +12098,108 @@
 
 <p>Version 演进：从 V1 到 V2 的版本变化：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph V1["Version 1"]
-        V1_ID[VersionId: 1]
-        V1_SEG[Segments: 1, 2]
-        V1_LOC[Locator: timestamp=100]
-        V1_SCHEMA[SchemaId: 0]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Version 演进流程&lt;br/&gt;Version Evolution Flow]) --&gt; V1Layer[Version 1 层&lt;br/&gt;Version 1 Layer]
+    
+    subgraph V1Group["Version 1 版本信息"]
+        direction TB
+        V1_ID[VersionId: 1&lt;br/&gt;版本号1]
+        V1_SEG[Segments: 1, 2&lt;br/&gt;包含Segment 1和2]
+        V1_LOC[Locator: timestamp=100&lt;br/&gt;处理到时间戳100]
+        V1_SCHEMA[SchemaId: 0&lt;br/&gt;Schema版本0]
         V1_ID --&gt; V1_SEG
         V1_ID --&gt; V1_LOC
         V1_ID --&gt; V1_SCHEMA
     end
     
-    subgraph Commit["Commit 操作"]
-        C1[收集Segment]
-        C2[更新Locator]
-        C3[递增VersionId]
-        C4[创建新版本]
+    V1Layer --&gt; CommitLayer[提交操作层&lt;br/&gt;Commit Operation Layer]
+    
+    subgraph CommitGroup["Commit 操作 Commit Operation"]
+        direction TB
+        C1[收集Segment&lt;br/&gt;Collect Segments&lt;br/&gt;收集所有Segment]
+        C2[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;更新处理位置]
+        C3[递增VersionId&lt;br/&gt;Increment VersionId&lt;br/&gt;版本号递增]
+        C4[创建新版本&lt;br/&gt;Create New Version&lt;br/&gt;创建Version 2]
         C1 --&gt; C2
         C2 --&gt; C3
         C3 --&gt; C4
     end
     
-    subgraph V2["Version 2"]
-        V2_ID[VersionId: 2]
-        V2_SEG[Segments: 1, 2, 3]
-        V2_LOC[Locator: timestamp=200]
-        V2_SCHEMA[SchemaId: 0]
+    CommitLayer --&gt; V2Layer[Version 2 层&lt;br/&gt;Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[VersionId: 2&lt;br/&gt;版本号递增为2]
+        V2_SEG[Segments: 1, 2, 3&lt;br/&gt;新增Segment 3]
+        V2_LOC[Locator: timestamp=200&lt;br/&gt;处理到时间戳200]
+        V2_SCHEMA[SchemaId: 0&lt;br/&gt;Schema版本0保持不变]
         V2_ID --&gt; V2_SEG
         V2_ID --&gt; V2_LOC
         V2_ID --&gt; V2_SCHEMA
     end
     
-    subgraph V3["Version 3"]
-        V3_ID[VersionId: 3]
-        V3_SEG[Segments: 4]
-        V3_LOC[Locator: timestamp=300]
-        V3_SCHEMA[SchemaId: 0]
+    V2Layer --&gt; MergeLayer[合并操作层&lt;br/&gt;Merge Operation Layer]
+    
+    subgraph MergeGroup["合并操作 Merge Operation"]
+        direction TB
+        M1[合并Segment 1和2&lt;br/&gt;Merge Segments 1 and 2&lt;br/&gt;合并为Segment 4]
+    end
+    
+    MergeLayer --&gt; V3Layer[Version 3 层&lt;br/&gt;Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[VersionId: 3&lt;br/&gt;版本号递增为3]
+        V3_SEG[Segments: 4&lt;br/&gt;合并后的Segment 4]
+        V3_LOC[Locator: timestamp=300&lt;br/&gt;处理到时间戳300]
+        V3_SCHEMA[SchemaId: 0&lt;br/&gt;Schema版本0保持不变]
         V3_ID --&gt; V3_SEG
         V3_ID --&gt; V3_LOC
         V3_ID --&gt; V3_SCHEMA
     end
     
-    V1 --&gt;|Commit| Commit
-    Commit --&gt; V2
-    V2 --&gt;|Merge| V3
+    V3Layer --&gt; End([版本演进完成&lt;br/&gt;Version Evolution Complete])
     
-    style V1 fill:#e3f2fd
-    style Commit fill:#fff3e0
-    style V2 fill:#f3e5f5
-    style V3 fill:#e8f5e9
+    V1Layer -.-&gt;|包含| V1Group
+    CommitLayer -.-&gt;|包含| CommitGroup
+    V2Layer -.-&gt;|包含| V2Group
+    MergeLayer -.-&gt;|包含| MergeGroup
+    V3Layer -.-&gt;|包含| V3Group
+    
+    V1Group -.-&gt;|提交| CommitGroup
+    CommitGroup -.-&gt;|创建| V2Group
+    V2Group -.-&gt;|合并| MergeGroup
+    MergeGroup -.-&gt;|创建| V3Group
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CommitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style MergeLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3Layer fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SEG fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_LOC fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SCHEMA fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CommitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SEG fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_LOC fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SCHEMA fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style MergeGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style M1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3Group fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style V3_ID fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_SEG fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_LOC fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_SCHEMA fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
 </code></pre>
 
 <p><strong>版本演进示例</strong>：</p>
@@ -12080,75 +12450,90 @@
 
 <p>Version 加载：从磁盘加载版本信息：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start([Version 加载开始]) --&gt; Load
+<pre><code class="language-mermaid">flowchart TB
+    Start([Version 加载开始&lt;br/&gt;Version Load Start]) --&gt; LoadLayer[加载阶段&lt;br/&gt;Load Phase]
     
-    subgraph Load["1. 加载阶段"]
-        direction LR
-        L1["VersionLoader.Load&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;加载版本信息&lt;br/&gt;从磁盘读取&lt;br/&gt;&lt;br/&gt;调用Load方法&lt;br/&gt;开始版本加载流程"]
-        L2["读取版本文件&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;version.0, version.1等&lt;br/&gt;按版本号顺序&lt;br/&gt;&lt;br/&gt;遍历版本文件&lt;br/&gt;找到最新版本"]
-        L3["解析JSON&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;反序列化Version对象&lt;br/&gt;转换为内存结构&lt;br/&gt;&lt;br/&gt;解析JSON格式&lt;br/&gt;构建Version对象"]
-        L1 --&gt; L2 --&gt; L3
+    subgraph LoadGroup["1. 加载阶段 Load Phase"]
+        direction TB
+        L1[VersionLoader.Load&lt;br/&gt;加载版本信息&lt;br/&gt;从磁盘读取]
+        L2[读取版本文件&lt;br/&gt;version.0, version.1等&lt;br/&gt;按版本号顺序&lt;br/&gt;找到最新版本]
+        L3[解析JSON&lt;br/&gt;反序列化Version对象&lt;br/&gt;转换为内存结构]
+        L1 --&gt; L2
+        L2 --&gt; L3
     end
     
-    Load --&gt; L1
-    L3 --&gt; Validate
+    LoadLayer --&gt; ValidateLayer[验证阶段&lt;br/&gt;Validate Phase]
     
-    subgraph Validate["2. 验证阶段"]
-        direction LR
-        V1["ValidateVersion&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;验证版本有效性&lt;br/&gt;检查基本格式&lt;br/&gt;&lt;br/&gt;验证版本号&lt;br/&gt;检查必要字段"]
-        V2["检查Segment存在性&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;Segment文件是否存在&lt;br/&gt;验证文件完整性&lt;br/&gt;&lt;br/&gt;遍历Segment列表&lt;br/&gt;确认文件可访问"]
-        V3["检查Schema兼容性&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;Schema版本映射检查&lt;br/&gt;确保兼容性&lt;br/&gt;&lt;br/&gt;验证Schema版本&lt;br/&gt;检查变更兼容"]
-        V4["检查Locator有效性&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;Locator格式正确性&lt;br/&gt;验证数据一致性&lt;br/&gt;&lt;br/&gt;检查Locator格式&lt;br/&gt;验证进度信息"]
-        V1 --&gt; V2 --&gt; V3 --&gt; V4
+    subgraph ValidateGroup["2. 验证阶段 Validate Phase"]
+        direction TB
+        V1[ValidateVersion&lt;br/&gt;验证版本有效性&lt;br/&gt;检查基本格式]
+        V2[检查Segment存在性&lt;br/&gt;Segment文件是否存在&lt;br/&gt;验证文件完整性]
+        V3[检查Schema兼容性&lt;br/&gt;Schema版本映射检查&lt;br/&gt;确保兼容性]
+        V4[检查Locator有效性&lt;br/&gt;Locator格式正确性&lt;br/&gt;验证数据一致性]
+        V1 --&gt; V2
+        V2 --&gt; V3
+        V3 --&gt; V4
     end
     
-    Validate --&gt; V1
-    V4 --&gt; Segment
+    ValidateLayer --&gt; SegmentLayer[加载Segment阶段&lt;br/&gt;Load Segment Phase]
     
-    subgraph Segment["3. 加载Segment"]
-        direction LR
-        S1["根据Segment列表&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;加载Segment信息&lt;br/&gt;遍历所有Segment&lt;br/&gt;&lt;br/&gt;读取Segment元数据&lt;br/&gt;准备加载Segment"]
-        S2["OpenSegment&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;打开Segment文件&lt;br/&gt;初始化文件句柄&lt;br/&gt;&lt;br/&gt;创建文件读取器&lt;br/&gt;准备读取数据"]
-        S3["加载索引文件&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;按需加载索引数据&lt;br/&gt;延迟加载策略&lt;br/&gt;&lt;br/&gt;根据查询需求&lt;br/&gt;加载必要索引"]
-        S4["创建DiskSegment&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;DiskSegment对象&lt;br/&gt;封装Segment信息&lt;br/&gt;&lt;br/&gt;构建Segment对象&lt;br/&gt;建立索引关系"]
-        S1 --&gt; S2 --&gt; S3 --&gt; S4
+    subgraph SegmentGroup["3. 加载Segment Load Segment"]
+        direction TB
+        S1[根据Segment列表&lt;br/&gt;加载Segment信息&lt;br/&gt;遍历所有Segment]
+        S2[OpenSegment&lt;br/&gt;打开Segment文件&lt;br/&gt;初始化文件句柄]
+        S3[加载索引文件&lt;br/&gt;按需加载索引数据&lt;br/&gt;延迟加载策略]
+        S4[创建DiskSegment&lt;br/&gt;DiskSegment对象&lt;br/&gt;封装Segment信息]
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S3 --&gt; S4
     end
     
-    Segment --&gt; S1
-    S4 --&gt; Init
+    SegmentLayer --&gt; InitLayer[初始化TabletData阶段&lt;br/&gt;Initialize TabletData Phase]
     
-    subgraph Init["4. 初始化TabletData"]
-        direction LR
-        I1["UpdateVersion&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;更新Version引用&lt;br/&gt;设置当前版本&lt;br/&gt;&lt;br/&gt;更新TabletData&lt;br/&gt;切换到新版本"]
-        I2["设置Segment列表&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;添加到TabletData&lt;br/&gt;建立索引关系&lt;br/&gt;&lt;br/&gt;组织Segment结构&lt;br/&gt;准备查询索引"]
-        I3["初始化查询器&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;准备查询功能&lt;br/&gt;创建Reader对象&lt;br/&gt;&lt;br/&gt;初始化IndexReader&lt;br/&gt;准备接受查询"]
-        I1 --&gt; I2 --&gt; I3
+    subgraph InitGroup["4. 初始化TabletData Initialize TabletData"]
+        direction TB
+        I1[UpdateVersion&lt;br/&gt;更新Version引用&lt;br/&gt;设置当前版本]
+        I2[设置Segment列表&lt;br/&gt;添加到TabletData&lt;br/&gt;建立索引关系]
+        I3[初始化查询器&lt;br/&gt;准备查询功能&lt;br/&gt;创建Reader对象]
+        I1 --&gt; I2
+        I2 --&gt; I3
     end
     
-    Init --&gt; I1
-    I3 --&gt; End([完成加载])
+    InitLayer --&gt; End([完成加载&lt;br/&gt;Load Complete])
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Load fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style L1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
-    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
-    style L3 fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
-    style Validate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
-    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
-    style V3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
-    style V4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
-    style Segment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style S1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
-    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
-    style S3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
-    style S4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
-    style Init fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style I1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
-    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
-    style I3 fill:#81c784,stroke:#2e7d32,stroke-width:1.5px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    LoadLayer -.-&gt;|包含| LoadGroup
+    ValidateLayer -.-&gt;|包含| ValidateGroup
+    SegmentLayer -.-&gt;|包含| SegmentGroup
+    InitLayer -.-&gt;|包含| InitGroup
+    
+    L3 --&gt; V1
+    V4 --&gt; S1
+    S4 --&gt; I1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style LoadLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ValidateLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SegmentLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style InitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style LoadGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ValidateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SegmentGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style InitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style I1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style I3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p><strong>加载流程</strong>：</p>
@@ -15295,17 +15680,46 @@
 
 <p>并行查询可以提高查询性能：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[并行查询优化] --&gt; P1[1. Segment 并行&lt;br/&gt;多个 Segment 并行查询]
-    P1 --&gt; P2[2. 索引并行&lt;br/&gt;多个索引并行查询]
-    P2 --&gt; P3[3. 结果并行合并&lt;br/&gt;查询结果并行合并]
-    P3 --&gt; Benefit[性能提升&lt;br/&gt;缩短延迟&lt;br/&gt;提高吞吐量]
+<pre><code class="language-mermaid">flowchart TB
+    Start([并行查询优化&lt;br/&gt;Parallel Query Optimization]) --&gt; StrategyLayer[优化策略层&lt;br/&gt;Optimization Strategies Layer]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style P1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style P2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style P3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    subgraph StrategyGroup["并行查询策略 Parallel Query Strategies"]
+        direction TB
+        S1[Segment 并行&lt;br/&gt;Segment Parallel&lt;br/&gt;多个Segment并行查询&lt;br/&gt;提高查询吞吐量]
+        S2[索引并行&lt;br/&gt;Index Parallel&lt;br/&gt;多个索引并行查询&lt;br/&gt;充分利用多核CPU]
+        S3[结果并行合并&lt;br/&gt;Result Parallel Merge&lt;br/&gt;查询结果并行合并&lt;br/&gt;减少合并时间]
+    end
+    
+    StrategyLayer --&gt; BenefitLayer[性能提升层&lt;br/&gt;Performance Benefits Layer]
+    
+    subgraph BenefitGroup["性能提升 Performance Benefits"]
+        direction TB
+        B1[缩短查询延迟&lt;br/&gt;Reduce Query Latency&lt;br/&gt;并行执行减少等待时间]
+        B2[提高查询吞吐量&lt;br/&gt;Increase Throughput&lt;br/&gt;充分利用系统资源]
+        B3[提升系统效率&lt;br/&gt;Improve Efficiency&lt;br/&gt;优化资源利用率]
+    end
+    
+    BenefitLayer --&gt; End([优化完成&lt;br/&gt;Optimization Complete])
+    
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    S1 -.-&gt;|实现| B1
+    S2 -.-&gt;|实现| B2
+    S3 -.-&gt;|实现| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style BenefitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style BenefitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>并行查询优化</strong>：</p>
@@ -15369,17 +15783,46 @@
 
 <p>内存优化可以减少内存使用：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[内存优化] --&gt; M1[1. 内存池&lt;br/&gt;减少内存分配开销]
-    M1 --&gt; M2[2. 缓存控制&lt;br/&gt;控制缓存大小避免溢出]
-    M2 --&gt; M3[3. 内存回收&lt;br/&gt;及时回收不再使用的内存]
-    M3 --&gt; Benefit[优化效果&lt;br/&gt;降低内存占用&lt;br/&gt;提升系统稳定性]
+<pre><code class="language-mermaid">flowchart TB
+    Start([内存优化&lt;br/&gt;Memory Optimization]) --&gt; StrategyLayer[优化策略层&lt;br/&gt;Optimization Strategies Layer]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style M1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style M3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    subgraph StrategyGroup["内存优化策略 Memory Optimization Strategies"]
+        direction TB
+        M1[内存池&lt;br/&gt;Memory Pool&lt;br/&gt;减少内存分配开销&lt;br/&gt;提高分配效率]
+        M2[缓存控制&lt;br/&gt;Cache Control&lt;br/&gt;控制缓存大小避免溢出&lt;br/&gt;动态调整缓存策略]
+        M3[内存回收&lt;br/&gt;Memory Reclaim&lt;br/&gt;及时回收不再使用的内存&lt;br/&gt;释放内存空间]
+    end
+    
+    StrategyLayer --&gt; BenefitLayer[优化效果层&lt;br/&gt;Optimization Benefits Layer]
+    
+    subgraph BenefitGroup["优化效果 Optimization Benefits"]
+        direction TB
+        B1[降低内存占用&lt;br/&gt;Reduce Memory Usage&lt;br/&gt;减少内存分配和占用]
+        B2[提升系统稳定性&lt;br/&gt;Improve Stability&lt;br/&gt;避免内存溢出和崩溃]
+        B3[提高性能&lt;br/&gt;Improve Performance&lt;br/&gt;减少内存分配开销]
+    end
+    
+    BenefitLayer --&gt; End([优化完成&lt;br/&gt;Optimization Complete])
+    
+    StrategyLayer -.-&gt;|包含| StrategyGroup
+    BenefitLayer -.-&gt;|包含| BenefitGroup
+    
+    M1 -.-&gt;|实现| B1
+    M2 -.-&gt;|实现| B2
+    M3 -.-&gt;|实现| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style BenefitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style BenefitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 </code></pre>
 
 <p><strong>内存优化策略</strong>：</p>
@@ -15437,24 +15880,70 @@
 
 <p>在全文检索场景中，查询流程：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start([全文检索]) --&gt; S1[解析查询]
+<pre><code class="language-mermaid">flowchart TB
+    Start([全文检索流程&lt;br/&gt;Full-Text Search Flow]) --&gt; ParseLayer[解析层&lt;br/&gt;Parse Layer]
     
-    S1 --&gt; S2[获取 InvertedIndexReader]
-    S2 --&gt; S3[查找 term]
-    S3 --&gt; S4[获取倒排列表]
-    S4 --&gt; S5[过滤删除文档]
-    S5 --&gt; S6[计算相关性]
-    S6 --&gt; End([排序返回])
+    subgraph ParseGroup["查询解析 Query Parsing"]
+        direction TB
+        P1[解析查询&lt;br/&gt;Parse Query&lt;br/&gt;解析term查询条件]
+        P2[获取 InvertedIndexReader&lt;br/&gt;Get InvertedIndexReader&lt;br/&gt;获取倒排索引Reader]
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style S4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
-    style S5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style S6 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    ParseLayer --&gt; SearchLayer[查找层&lt;br/&gt;Search Layer]
+    
+    subgraph SearchGroup["索引查找 Index Search"]
+        direction TB
+        S1[查找 term&lt;br/&gt;Search Term&lt;br/&gt;在倒排索引中查找]
+        S2[获取倒排列表&lt;br/&gt;Get Posting List&lt;br/&gt;获取term对应的DocId列表]
+    end
+    
+    SearchLayer --&gt; FilterLayer[过滤层&lt;br/&gt;Filter Layer]
+    
+    subgraph FilterGroup["结果过滤 Result Filtering"]
+        direction TB
+        F1[过滤删除文档&lt;br/&gt;Filter Deleted Docs&lt;br/&gt;通过DeletionMap过滤]
+        F2[计算相关性&lt;br/&gt;Calculate Relevance&lt;br/&gt;计算文档相关性分数]
+    end
+    
+    FilterLayer --&gt; ResultLayer[结果层&lt;br/&gt;Result Layer]
+    
+    subgraph ResultGroup["结果处理 Result Processing"]
+        direction TB
+        R1[排序返回&lt;br/&gt;Sort and Return&lt;br/&gt;按相关性分数排序]
+    end
+    
+    ResultLayer --&gt; End([查询完成&lt;br/&gt;Query Complete])
+    
+    ParseLayer -.-&gt;|包含| ParseGroup
+    SearchLayer -.-&gt;|包含| SearchGroup
+    FilterLayer -.-&gt;|包含| FilterGroup
+    ResultLayer -.-&gt;|包含| ResultGroup
+    
+    P1 --&gt; P2
+    P2 --&gt; S1
+    S1 --&gt; S2
+    S2 --&gt; F1
+    F1 --&gt; F2
+    F2 --&gt; R1
+    R1 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ParseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SearchLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FilterLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style ResultLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SearchGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FilterGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style F1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style F2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ResultGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>全文检索流程</strong>：</p>
@@ -15472,22 +15961,67 @@
 
 <p>在属性查询场景中，查询流程：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start([属性查询]) --&gt; A1[解析查询]
+<pre><code class="language-mermaid">flowchart TB
+    Start([属性查询流程&lt;br/&gt;Attribute Query Flow]) --&gt; ParseLayer[解析层&lt;br/&gt;Parse Layer]
     
-    A1 --&gt; A2[获取 AttributeReader]
-    A2 --&gt; A3[遍历 Segment]
-    A3 --&gt; A4[查询属性]
-    A4 --&gt; A5[过滤匹配]
-    A5 --&gt; End([返回结果])
+    subgraph ParseGroup["查询解析 Query Parsing"]
+        direction TB
+        P1[解析查询&lt;br/&gt;Parse Query&lt;br/&gt;解析属性查询条件]
+        P2[获取 AttributeReader&lt;br/&gt;Get AttributeReader&lt;br/&gt;获取属性索引Reader]
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style A1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style A2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style A3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style A4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
-    style A5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    ParseLayer --&gt; TraverseLayer[遍历层&lt;br/&gt;Traverse Layer]
+    
+    subgraph TraverseGroup["Segment遍历 Segment Traversal"]
+        direction TB
+        T1[遍历 Segment&lt;br/&gt;Traverse Segments&lt;br/&gt;遍历所有已构建的Segment]
+    end
+    
+    TraverseLayer --&gt; QueryLayer[查询层&lt;br/&gt;Query Layer]
+    
+    subgraph QueryGroup["属性查询 Attribute Query"]
+        direction TB
+        Q1[查询属性&lt;br/&gt;Query Attribute&lt;br/&gt;在Segment内查询属性值]
+        Q2[过滤匹配&lt;br/&gt;Filter Matches&lt;br/&gt;过滤匹配查询条件的文档]
+    end
+    
+    QueryLayer --&gt; ResultLayer[结果层&lt;br/&gt;Result Layer]
+    
+    subgraph ResultGroup["结果返回 Result Return"]
+        direction TB
+        R1[返回结果&lt;br/&gt;Return Results&lt;br/&gt;返回匹配的文档列表]
+    end
+    
+    ResultLayer --&gt; End([查询完成&lt;br/&gt;Query Complete])
+    
+    ParseLayer -.-&gt;|包含| ParseGroup
+    TraverseLayer -.-&gt;|包含| TraverseGroup
+    QueryLayer -.-&gt;|包含| QueryGroup
+    ResultLayer -.-&gt;|包含| ResultGroup
+    
+    P1 --&gt; P2
+    P2 --&gt; T1
+    T1 --&gt; Q1
+    Q1 --&gt; Q2
+    Q2 --&gt; R1
+    R1 --&gt; End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ParseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style TraverseLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style QueryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style ResultLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style TraverseGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style T1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style QueryGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style Q1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style Q2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ResultGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
 
 <p><strong>属性查询流程</strong>：</p>
@@ -15757,37 +16291,122 @@
 
 <p><strong>流程关系图</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[开始构建] --&gt; Build[Build构建索引]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始构建&lt;br/&gt;Start Build]) --&gt; BuildLayer[Build阶段&lt;br/&gt;Build Phase]
     
-    Build --&gt;|写入内存| MemSegment[MemSegment内存段]
+    subgraph BuildGroup["Build 构建索引 Build Index"]
+        direction TB
+        B1[Build构建索引&lt;br/&gt;Build Index&lt;br/&gt;接收文档批次]
+        B2[写入内存&lt;br/&gt;Write to Memory&lt;br/&gt;构建到MemSegment]
+        B1 --&gt; B2
+    end
     
-    MemSegment --&gt;|触发转储| Flush[Flush转储]
+    BuildLayer --&gt; MemLayer[MemSegment阶段&lt;br/&gt;MemSegment Phase]
     
-    Flush --&gt;|转储到磁盘| DiskSegment[DiskSegment磁盘段]
+    subgraph MemGroup["MemSegment 内存段"]
+        direction TB
+        M1[MemSegment内存段&lt;br/&gt;Memory Segment&lt;br/&gt;实时构建和写入]
+    end
     
-    DiskSegment --&gt;|触发封存| Seal[Seal封存]
+    MemLayer --&gt; FlushLayer[Flush阶段&lt;br/&gt;Flush Phase]
     
-    Seal --&gt;|标记只读| SealSegment[Sealed Segment已封存]
+    subgraph FlushGroup["Flush 转储 Flush"]
+        direction TB
+        F1[触发转储&lt;br/&gt;Trigger Flush&lt;br/&gt;内存超阈值或文档数超阈值]
+        F2[转储到磁盘&lt;br/&gt;Flush to Disk&lt;br/&gt;异步转储索引文件]
+        F1 --&gt; F2
+    end
     
-    SealSegment --&gt;|触发提交| Commit[Commit提交版本]
+    FlushLayer --&gt; DiskLayer[DiskSegment阶段&lt;br/&gt;DiskSegment Phase]
     
-    Commit --&gt;|更新版本| Version[Version版本]
+    subgraph DiskGroup["DiskSegment 磁盘段"]
+        direction TB
+        D1[DiskSegment磁盘段&lt;br/&gt;Disk Segment&lt;br/&gt;持久化存储]
+    end
     
-    Version --&gt;|持久化| Disk[磁盘存储]
+    DiskLayer --&gt; SealLayer[Seal阶段&lt;br/&gt;Seal Phase]
     
-    Disk -.-&gt;|继续构建| Build
+    subgraph SealGroup["Seal 封存 Seal"]
+        direction TB
+        S1[触发封存&lt;br/&gt;Trigger Seal&lt;br/&gt;Segment数量或时间间隔]
+        S2[标记只读&lt;br/&gt;Mark Read-Only&lt;br/&gt;Sealed Segment已封存]
+        S1 --&gt; S2
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Build fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style MemSegment fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Flush fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style DiskSegment fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Seal fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style SealSegment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Commit fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style Version fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Disk fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    SealLayer --&gt; CommitLayer[Commit阶段&lt;br/&gt;Commit Phase]
+    
+    subgraph CommitGroup["Commit 提交版本 Commit Version"]
+        direction TB
+        C1[触发提交&lt;br/&gt;Trigger Commit&lt;br/&gt;版本更新条件]
+        C2[更新版本&lt;br/&gt;Update Version&lt;br/&gt;创建新Version]
+        C1 --&gt; C2
+    end
+    
+    CommitLayer --&gt; VersionLayer[Version阶段&lt;br/&gt;Version Phase]
+    
+    subgraph VersionGroup["Version 版本"]
+        direction TB
+        V1[Version版本&lt;br/&gt;Version&lt;br/&gt;记录Segment列表和Locator]
+    end
+    
+    VersionLayer --&gt; DiskLayer2[磁盘存储阶段&lt;br/&gt;Disk Storage Phase]
+    
+    subgraph DiskGroup2["磁盘存储 Disk Storage"]
+        direction TB
+        DS1[持久化&lt;br/&gt;Persistence&lt;br/&gt;写入磁盘]
+    end
+    
+    DiskLayer2 --&gt; Continue{继续构建?&lt;br/&gt;Continue Build?}
+    Continue --&gt;|是| BuildLayer
+    Continue --&gt;|否| End([构建完成&lt;br/&gt;Build Complete])
+    
+    BuildLayer -.-&gt;|包含| BuildGroup
+    MemLayer -.-&gt;|包含| MemGroup
+    FlushLayer -.-&gt;|包含| FlushGroup
+    DiskLayer -.-&gt;|包含| DiskGroup
+    SealLayer -.-&gt;|包含| SealGroup
+    CommitLayer -.-&gt;|包含| CommitGroup
+    VersionLayer -.-&gt;|包含| VersionGroup
+    DiskLayer2 -.-&gt;|包含| DiskGroup2
+    
+    B2 --&gt; M1
+    M1 --&gt; F1
+    F2 --&gt; D1
+    D1 --&gt; S1
+    S2 --&gt; C1
+    C2 --&gt; V1
+    V1 --&gt; DS1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style BuildLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style MemLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FlushLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DiskLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SealLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style DiskLayer2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style BuildGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style B2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style MemGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style FlushGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style F1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style DiskGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style D1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SealGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style VersionGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style DiskGroup2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style DS1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <h3 id="12-核心接口">1.2 核心接口</h3>
@@ -17325,44 +17944,87 @@
 
 <p><strong>Commit 的关键步骤</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[Commit开始] --&gt; Prepare[准备版本信息]
+<pre><code class="language-mermaid">flowchart TB
+    Start([Commit开始&lt;br/&gt;Commit Start]) --&gt; PrepareLayer[准备阶段&lt;br/&gt;Preparation Phase]
     
-    Prepare --&gt; Collect[收集Segment列表&lt;br/&gt;CreateSlice ST_BUILT]
-    Collect --&gt; Locator[准备Locator&lt;br/&gt;最新数据处理位置]
-    Locator --&gt; FenceCreate[创建Fence目录&lt;br/&gt;临时目录]
-    
-    FenceCreate --&gt; Write[写入Version文件&lt;br/&gt;版本信息 Segment列表 Locator]
-    Write --&gt; Atomic[原子切换&lt;br/&gt;重命名为正式版本目录]
-    
-    Atomic --&gt; Update[更新TabletData&lt;br/&gt;_onDiskVersion _segments]
-    Update --&gt; End[Commit完成]
-    
-    subgraph Fence["Fence机制原子性保证"]
+    subgraph PrepareGroup["准备版本信息 Prepare Version Information"]
         direction TB
-        F1[临时目录&lt;br/&gt;version.fence]
-        F2[写入所有文件&lt;br/&gt;Version Segment列表]
-        F3[原子重命名&lt;br/&gt;rename操作]
-        F4[保证原子性&lt;br/&gt;要么全部成功要么全部失败]
-        
+        P1[准备版本信息&lt;br/&gt;Prepare Version Information]
+        P2[收集Segment列表&lt;br/&gt;Collect Segment List&lt;br/&gt;CreateSlice ST_BUILT]
+        P3[准备Locator&lt;br/&gt;Prepare Locator&lt;br/&gt;最新数据处理位置]
+        P1 --&gt; P2
+        P2 --&gt; P3
+    end
+    
+    PrepareLayer --&gt; FenceLayer[Fence机制阶段&lt;br/&gt;Fence Mechanism Phase]
+    
+    subgraph FenceGroup["Fence机制原子性保证 Fence Mechanism Atomicity"]
+        direction TB
+        F1[创建Fence目录&lt;br/&gt;Create Fence Directory&lt;br/&gt;临时目录 version.fence]
+        F2[写入所有文件&lt;br/&gt;Write All Files&lt;br/&gt;Version Segment列表]
+        F3[原子重命名&lt;br/&gt;Atomic Rename&lt;br/&gt;rename操作]
+        F4[保证原子性&lt;br/&gt;Guarantee Atomicity&lt;br/&gt;要么全部成功要么全部失败]
         F1 --&gt; F2
         F2 --&gt; F3
         F3 --&gt; F4
     end
     
-    FenceCreate -.-&gt;|使用| Fence
-    Atomic -.-&gt;|完成| Fence
+    FenceLayer --&gt; WriteLayer[写入阶段&lt;br/&gt;Write Phase]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Prepare fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style Collect fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style Locator fill:#e3f2fd,stroke:#1976d2,stroke-width:1px
-    style FenceCreate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
-    style Atomic fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
-    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Fence fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    subgraph WriteGroup["写入Version文件 Write Version File"]
+        direction TB
+        W1[写入Version文件&lt;br/&gt;Write Version File&lt;br/&gt;版本信息 Segment列表 Locator]
+    end
+    
+    WriteLayer --&gt; AtomicLayer[原子切换阶段&lt;br/&gt;Atomic Switch Phase]
+    
+    subgraph AtomicGroup["原子切换 Atomic Switch"]
+        direction TB
+        A1[原子切换&lt;br/&gt;Atomic Switch&lt;br/&gt;重命名为正式版本目录]
+    end
+    
+    AtomicLayer --&gt; UpdateLayer[更新阶段&lt;br/&gt;Update Phase]
+    
+    subgraph UpdateGroup["更新TabletData Update TabletData"]
+        direction TB
+        U1[更新TabletData&lt;br/&gt;Update TabletData&lt;br/&gt;_onDiskVersion _segments]
+    end
+    
+    UpdateLayer --&gt; End([Commit完成&lt;br/&gt;Commit Complete])
+    
+    PrepareLayer -.-&gt;|包含| PrepareGroup
+    FenceLayer -.-&gt;|包含| FenceGroup
+    WriteLayer -.-&gt;|包含| WriteGroup
+    AtomicLayer -.-&gt;|包含| AtomicGroup
+    UpdateLayer -.-&gt;|包含| UpdateGroup
+    
+    P3 --&gt; F1
+    F4 --&gt; W1
+    W1 --&gt; A1
+    A1 --&gt; U1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style PrepareLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style FenceLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style WriteLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style AtomicLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style PrepareGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style FenceGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style F1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style F4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style AtomicGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style A1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -17377,40 +18039,98 @@
 
 <p>Fence 机制保证版本提交的原子性：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[开始提交] --&gt; Create[创建Fence目录&lt;br/&gt;临时目录version.fence]
+<pre><code class="language-mermaid">flowchart TB
+    Start([开始提交&lt;br/&gt;Start Commit]) --&gt; CreateLayer[创建Fence目录阶段&lt;br/&gt;Create Fence Directory Phase]
     
-    Create --&gt; Write[写入Version文件&lt;br/&gt;版本信息 Segment列表 Locator]
-    Write --&gt; Switch[原子切换&lt;br/&gt;rename操作]
-    Switch --&gt; Rename[重命名为正式版本&lt;br/&gt;version.fence → version_N]
-    
-    Rename --&gt; Update[更新TabletData&lt;br/&gt;切换到新版本]
-    Update --&gt; End[提交完成]
-    
-    subgraph Atomic["原子性保证"]
+    subgraph CreateGroup["创建Fence目录 Create Fence Directory"]
         direction TB
-        A1[临时目录&lt;br/&gt;version.fence]
-        A2[写入所有文件&lt;br/&gt;Version Segment列表]
-        A3[原子重命名&lt;br/&gt;rename操作]
-        A4[要么全部成功&lt;br/&gt;要么全部失败]
-        
+        C1[创建Fence目录&lt;br/&gt;Create Fence Directory&lt;br/&gt;临时目录version.fence]
+    end
+    
+    CreateLayer --&gt; WriteLayer[写入阶段&lt;br/&gt;Write Phase]
+    
+    subgraph WriteGroup["写入Version文件 Write Version File"]
+        direction TB
+        W1[写入Version文件&lt;br/&gt;Write Version File&lt;br/&gt;版本信息 Segment列表 Locator]
+    end
+    
+    WriteLayer --&gt; SwitchLayer[原子切换阶段&lt;br/&gt;Atomic Switch Phase]
+    
+    subgraph SwitchGroup["原子切换 Atomic Switch"]
+        direction TB
+        S1[原子切换&lt;br/&gt;Atomic Switch&lt;br/&gt;rename操作]
+        S2[重命名为正式版本&lt;br/&gt;Rename to Official Version&lt;br/&gt;version.fence → version_N]
+        S1 --&gt; S2
+    end
+    
+    SwitchLayer --&gt; UpdateLayer[更新阶段&lt;br/&gt;Update Phase]
+    
+    subgraph UpdateGroup["更新TabletData Update TabletData"]
+        direction TB
+        U1[更新TabletData&lt;br/&gt;Update TabletData&lt;br/&gt;切换到新版本]
+    end
+    
+    UpdateLayer --&gt; AtomicLayer[原子性保证阶段&lt;br/&gt;Atomicity Guarantee Phase]
+    
+    subgraph AtomicGroup["原子性保证 Atomicity Guarantee"]
+        direction TB
+        A1[临时目录&lt;br/&gt;Temporary Directory&lt;br/&gt;version.fence]
+        A2[写入所有文件&lt;br/&gt;Write All Files&lt;br/&gt;Version Segment列表]
+        A3[原子重命名&lt;br/&gt;Atomic Rename&lt;br/&gt;rename操作]
+        A4[要么全部成功&lt;br/&gt;要么全部失败&lt;br/&gt;All or Nothing]
         A1 --&gt; A2
         A2 --&gt; A3
         A3 --&gt; A4
     end
     
-    Create -.-&gt;|使用| Atomic
-    Switch -.-&gt;|完成| Atomic
+    AtomicLayer --&gt; End([提交完成&lt;br/&gt;Commit Complete])
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Create fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
-    style Switch fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Rename fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
-    style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
-    style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Atomic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    CreateLayer -.-&gt;|包含| CreateGroup
+    WriteLayer -.-&gt;|包含| WriteGroup
+    SwitchLayer -.-&gt;|包含| SwitchGroup
+    UpdateLayer -.-&gt;|包含| UpdateGroup
+    AtomicLayer -.-&gt;|包含| AtomicGroup
+    
+    C1 --&gt; W1
+    W1 --&gt; S1
+    S2 --&gt; U1
+    U1 --&gt; A1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style CreateLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style WriteLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SwitchLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style AtomicLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CreateGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style C1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style WriteGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style W1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SwitchGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style S1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style AtomicGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style A1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style A4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 </code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Create -.-&gt;|使用| Atomic
+Switch -.-&gt;|完成| Atomic
+
+style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+style Create fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+style Write fill:#fff3e0,stroke:#f57c00,stroke-width:1px
+style Switch fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+style Rename fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+style Update fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+style End fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+style Atomic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px ```
+</code></pre></div></div>
 
 <p><strong>Fence 机制</strong>：</p>
 <ul>
@@ -17455,41 +18175,122 @@
 
 <p>每次 Commit 都会创建新版本，版本号递增：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    V1[Version 1&lt;br/&gt;versionId=1] --&gt; V1Content[Segment 1,2&lt;br/&gt;Locator timestamp=100]
+<pre><code class="language-mermaid">flowchart TB
+    Start([版本演进流程&lt;br/&gt;Version Evolution Flow]) --&gt; V1Layer[Version 1 层&lt;br/&gt;Version 1 Layer]
     
-    V1Content --&gt; Commit1[Commit操作]
-    
-    Commit1 --&gt; V2[Version 2&lt;br/&gt;versionId=2]
-    V2 --&gt; V2Content[Segment 1,2,3&lt;br/&gt;Locator timestamp=200]
-    
-    V2Content --&gt; Commit2[Commit操作]
-    
-    Commit2 --&gt; V3[Version 3&lt;br/&gt;versionId=3]
-    V3 --&gt; V3Content[Segment 4&lt;br/&gt;Locator timestamp=300]
-    
-    subgraph Evolution["版本演进特点"]
+    subgraph V1Group["Version 1 版本信息"]
         direction TB
-        E1[版本号递增&lt;br/&gt;versionId单调递增]
-        E2[Segment列表变化&lt;br/&gt;新增或合并Segment]
-        E3[Locator更新&lt;br/&gt;记录最新处理位置]
-        
+        V1_ID[versionId: 1&lt;br/&gt;版本号1]
+        V1_SEG[Segment 1,2&lt;br/&gt;索引段1和2]
+        V1_LOC[Locator timestamp=100&lt;br/&gt;处理位置时间戳100]
+        V1_ID --&gt; V1_SEG
+        V1_SEG --&gt; V1_LOC
+    end
+    
+    V1Layer --&gt; Commit1Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
+    
+    subgraph Commit1Group["Commit 操作 Commit Operation"]
+        direction TB
+        C1[Commit操作&lt;br/&gt;Commit Operation&lt;br/&gt;提交新版本]
+    end
+    
+    Commit1Layer --&gt; V2Layer[Version 2 层&lt;br/&gt;Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[versionId: 2&lt;br/&gt;版本号2]
+        V2_SEG[Segment 1,2,3&lt;br/&gt;新增Segment 3]
+        V2_LOC[Locator timestamp=200&lt;br/&gt;处理位置时间戳200]
+        V2_ID --&gt; V2_SEG
+        V2_SEG --&gt; V2_LOC
+    end
+    
+    V2Layer --&gt; Commit2Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
+    
+    subgraph Commit2Group["Commit 操作 Commit Operation"]
+        direction TB
+        C2[Commit操作&lt;br/&gt;Commit Operation&lt;br/&gt;提交新版本]
+    end
+    
+    Commit2Layer --&gt; V3Layer[Version 3 层&lt;br/&gt;Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[versionId: 3&lt;br/&gt;版本号3]
+        V3_SEG[Segment 4&lt;br/&gt;合并后的Segment 4]
+        V3_LOC[Locator timestamp=300&lt;br/&gt;处理位置时间戳300]
+        V3_ID --&gt; V3_SEG
+        V3_SEG --&gt; V3_LOC
+    end
+    
+    V3Layer --&gt; EvolutionLayer[版本演进特点层&lt;br/&gt;Version Evolution Features Layer]
+    
+    subgraph EvolutionGroup["版本演进特点 Version Evolution Features"]
+        direction TB
+        E1[版本号递增&lt;br/&gt;VersionId Monotonic Increase&lt;br/&gt;versionId单调递增]
+        E2[Segment列表变化&lt;br/&gt;Segment List Changes&lt;br/&gt;新增或合并Segment]
+        E3[Locator更新&lt;br/&gt;Locator Update&lt;br/&gt;记录最新处理位置]
         E1 --&gt; E2
         E2 --&gt; E3
     end
     
-    V3Content -.-&gt;|演进特点| Evolution
+    EvolutionLayer --&gt; End([版本演进完成&lt;br/&gt;Version Evolution Complete])
     
-    style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style V1Content fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
-    style Commit1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V2Content fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
-    style Commit2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style V3Content fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
-    style Evolution fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    V1Layer -.-&gt;|包含| V1Group
+    Commit1Layer -.-&gt;|包含| Commit1Group
+    V2Layer -.-&gt;|包含| V2Group
+    Commit2Layer -.-&gt;|包含| Commit2Group
+    V3Layer -.-&gt;|包含| V3Group
+    EvolutionLayer -.-&gt;|包含| EvolutionGroup
+    
+    V1Group -.-&gt;|提交| Commit1Group
+    Commit1Group -.-&gt;|创建| V2Group
+    V2Group -.-&gt;|提交| Commit2Group
+    Commit2Group -.-&gt;|创建| V3Group
+    V3Group -.-&gt;|展示| EvolutionGroup
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Commit1Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Commit2Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V3Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style EvolutionLayer fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SEG fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_LOC fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Commit1Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SEG fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_LOC fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Commit2Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3Group fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3_ID fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_SEG fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_LOC fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style EvolutionGroup fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style E1 fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style E2 fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style E3 fill:#ffe082,stroke:#f9a825,stroke-width:2px
 </code></pre>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>V3Content -.-&gt;|演进特点| Evolution
+
+style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+style V1Content fill:#c5e1f5,stroke:#1976d2,stroke-width:1px
+style Commit1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+style V2Content fill:#ffe0b2,stroke:#f57c00,stroke-width:1px
+style Commit2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+style V3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+style V3Content fill:#c8e6c9,stroke:#2e7d32,stroke-width:1px
+style Evolution fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px ```
+</code></pre></div></div>
 
 <p><strong>版本演进示例</strong>：</p>
 <ul>
@@ -19741,61 +20542,98 @@
 
 <p><strong>DocId 转换流程</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    Start[查询请求&lt;br/&gt;GlobalDocId] --&gt; Locate[定位Segment]
+<pre><code class="language-mermaid">flowchart TB
+    Start([查询请求&lt;br/&gt;Query Request&lt;br/&gt;GlobalDocId]) --&gt; LocateLayer[定位Segment阶段&lt;br/&gt;Locate Segment Phase]
     
-    subgraph Locate["1. 定位Segment"]
+    subgraph LocateGroup["1. 定位Segment Locate Segment"]
         direction TB
-        L1[遍历Segment列表] --&gt; L2[计算BaseDocId&lt;br/&gt;累加前面Segment的docCount]
-        L2 --&gt; L3{GlobalDocId在范围内?&lt;br/&gt;BaseDocId &lt;= GlobalDocId&lt;br/&gt;&lt; BaseDocId + docCount}
+        L1[遍历Segment列表&lt;br/&gt;Traverse Segment List]
+        L2[计算BaseDocId&lt;br/&gt;Calculate BaseDocId&lt;br/&gt;累加前面Segment的docCount]
+        L3{GlobalDocId在范围内?&lt;br/&gt;In Range?&lt;br/&gt;BaseDocId &lt;= GlobalDocId&lt;br/&gt;&lt; BaseDocId + docCount}
+        L4[找到对应Segment&lt;br/&gt;Found Target Segment]
+        L1 --&gt; L2
+        L2 --&gt; L3
         L3 --&gt;|否| L1
-        L3 --&gt;|是| L4[找到对应Segment]
+        L3 --&gt;|是| L4
     end
     
-    Locate --&gt; Convert[DocId转换]
+    LocateLayer --&gt; ConvertLayer[DocId转换阶段&lt;br/&gt;DocId Conversion Phase]
     
-    subgraph Convert["2. DocId转换"]
+    subgraph ConvertGroup["2. DocId转换 DocId Conversion"]
         direction TB
-        C1[获取BaseDocId] --&gt; C2[计算LocalDocId&lt;br/&gt;LocalDocId = GlobalDocId - BaseDocId]
-        C2 --&gt; C3[验证有效性&lt;br/&gt;0 &lt;= LocalDocId &lt; docCount]
+        C1[获取BaseDocId&lt;br/&gt;Get BaseDocId]
+        C2[计算LocalDocId&lt;br/&gt;Calculate LocalDocId&lt;br/&gt;LocalDocId = GlobalDocId - BaseDocId]
+        C3[验证有效性&lt;br/&gt;Validate&lt;br/&gt;0 &lt;= LocalDocId &lt; docCount]
+        C1 --&gt; C2
+        C2 --&gt; C3
     end
     
-    Convert --&gt; Query[Segment内查询]
+    ConvertLayer --&gt; QueryLayer[Segment内查询阶段&lt;br/&gt;Segment Query Phase]
     
-    subgraph Query["3. Segment内查询"]
+    subgraph QueryGroup["3. Segment内查询 Segment Query"]
         direction TB
-        Q1[使用LocalDocId查询&lt;br/&gt;IndexReader.Get] --&gt; Q2[InvertedIndexer&lt;br/&gt;倒排索引]
-        Q1 --&gt; Q3[AttributeIndexer&lt;br/&gt;正排索引]
-        Q2 --&gt; Q4[返回文档数据]
+        Q1[使用LocalDocId查询&lt;br/&gt;Query with LocalDocId&lt;br/&gt;IndexReader.Get]
+        Q2[InvertedIndexer&lt;br/&gt;倒排索引&lt;br/&gt;Inverted Index]
+        Q3[AttributeIndexer&lt;br/&gt;正排索引&lt;br/&gt;Attribute Index]
+        Q4[返回文档数据&lt;br/&gt;Return Document Data]
+        Q1 --&gt; Q2
+        Q1 --&gt; Q3
+        Q2 --&gt; Q4
         Q3 --&gt; Q4
     end
     
-    Query --&gt; Result[返回查询结果]
+    QueryLayer --&gt; ExampleLayer[转换示例&lt;br/&gt;Conversion Example]
     
-    subgraph Example["转换示例"]
+    subgraph ExampleGroup["转换示例 Conversion Example"]
         direction TB
-        E1["GlobalDocId = 1500"]
-        E2["Segment1: BaseDocId=0, docCount=1000&lt;br/&gt;范围: 0-999 不在范围内"]
-        E3["Segment2: BaseDocId=1000, docCount=2000&lt;br/&gt;范围: 1000-2999 在范围内"]
-        E4["LocalDocId = 1500 - 1000 = 500"]
-        E5["在Segment2内查询&lt;br/&gt;LocalDocId=500"]
-        
+        E1[GlobalDocId = 1500]
+        E2[Segment1: BaseDocId=0, docCount=1000&lt;br/&gt;范围: 0-999 不在范围内]
+        E3[Segment2: BaseDocId=1000, docCount=2000&lt;br/&gt;范围: 1000-2999 在范围内]
+        E4[LocalDocId = 1500 - 1000 = 500]
+        E5[在Segment2内查询&lt;br/&gt;Query in Segment2&lt;br/&gt;LocalDocId=500]
         E1 --&gt; E2
         E2 --&gt; E3
         E3 --&gt; E4
         E4 --&gt; E5
     end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Locate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Convert fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Query fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Result fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Example fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    ExampleLayer --&gt; End([返回查询结果&lt;br/&gt;Return Query Result])
+    
+    LocateLayer -.-&gt;|包含| LocateGroup
+    ConvertLayer -.-&gt;|包含| ConvertGroup
+    QueryLayer -.-&gt;|包含| QueryGroup
+    ExampleLayer -.-&gt;|包含| ExampleGroup
+    
+    L4 --&gt; C1
+    C3 --&gt; Q1
+    Q4 --&gt; E1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style LocateLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ConvertLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style QueryLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ExampleLayer fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style LocateGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
     style L3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style L4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
-    style C2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ConvertGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style QueryGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Q1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Q2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Q3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
     style Q4 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style ExampleGroup fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style E1 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E2 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E3 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E4 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E5 fill:#ffe082,stroke:#f57f17,stroke-width:2px
 </code></pre>
 
 <ol>
@@ -21071,77 +21909,183 @@
 
 <p><strong>Version 演进</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph V1["Version 1&lt;br/&gt;versionId=1&lt;br/&gt;timestamp=100"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([版本演进流程&lt;br/&gt;Version Evolution Flow]) --&gt; V1Layer[Version 1 层&lt;br/&gt;Version 1 Layer]
+    
+    subgraph V1Group["Version 1 版本信息"]
         direction TB
-        V1_S1[Segment 1]
-        V1_S2[Segment 2]
-        V1_S3[Segment 3]
-        V1_L[Locator&lt;br/&gt;ts=100]
-        V1_S1 --- V1_S2
-        V1_S2 --- V1_S3
-        V1_S3 --- V1_L
+        V1_ID[versionId: 1&lt;br/&gt;版本号1]
+        V1_TS[timestamp: 100&lt;br/&gt;时间戳100]
+        V1_S1[Segment 1&lt;br/&gt;索引段1]
+        V1_S2[Segment 2&lt;br/&gt;索引段2]
+        V1_S3[Segment 3&lt;br/&gt;索引段3]
+        V1_L[Locator&lt;br/&gt;ts=100&lt;br/&gt;处理位置信息]
+        V1_ID --&gt; V1_TS
+        V1_TS --&gt; V1_S1
+        V1_S1 --&gt; V1_S2
+        V1_S2 --&gt; V1_S3
+        V1_S3 --&gt; V1_L
     end
     
-    V1 --&gt;|Commit| Commit1[Commit操作&lt;br/&gt;新增Segment 4&lt;br/&gt;更新Locator ts=200&lt;br/&gt;versionId: 1→2]
+    V1Layer --&gt; Commit1Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
     
-    subgraph V2["Version 2&lt;br/&gt;versionId=2&lt;br/&gt;timestamp=200"]
+    subgraph Commit1Group["Commit 操作 Commit Operation"]
         direction TB
-        V2_S1[Segment 1]
-        V2_S2[Segment 2]
-        V2_S3[Segment 3]
+        C1_1[新增Segment 4&lt;br/&gt;Add Segment 4]
+        C1_2[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=200]
+        C1_3[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;1→2]
+        C1_1 --&gt; C1_2
+        C1_2 --&gt; C1_3
+    end
+    
+    Commit1Layer --&gt; V2Layer[Version 2 层&lt;br/&gt;Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[versionId: 2&lt;br/&gt;版本号2]
+        V2_TS[timestamp: 200&lt;br/&gt;时间戳200]
+        V2_S1[Segment 1&lt;br/&gt;复用]
+        V2_S2[Segment 2&lt;br/&gt;复用]
+        V2_S3[Segment 3&lt;br/&gt;复用]
         V2_S4[Segment 4&lt;br/&gt;新增]
-        V2_L[Locator&lt;br/&gt;ts=200]
-        V2_S1 --- V2_S2
-        V2_S2 --- V2_S3
-        V2_S3 --- V2_S4
-        V2_S4 --- V2_L
+        V2_L[Locator&lt;br/&gt;ts=200&lt;br/&gt;处理位置信息]
+        V2_ID --&gt; V2_TS
+        V2_TS --&gt; V2_S1
+        V2_S1 --&gt; V2_S2
+        V2_S2 --&gt; V2_S3
+        V2_S3 --&gt; V2_S4
+        V2_S4 --&gt; V2_L
     end
     
-    V2 --&gt;|Commit| Commit2[Commit操作&lt;br/&gt;新增Segment 5&lt;br/&gt;更新Locator ts=300&lt;br/&gt;versionId: 2→3]
+    V2Layer --&gt; Commit2Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
     
-    subgraph V3["Version 3&lt;br/&gt;versionId=3&lt;br/&gt;timestamp=300"]
+    subgraph Commit2Group["Commit 操作 Commit Operation"]
         direction TB
-        V3_S1[Segment 1]
-        V3_S2[Segment 2]
-        V3_S3[Segment 3]
-        V3_S4[Segment 4]
+        C2_1[新增Segment 5&lt;br/&gt;Add Segment 5]
+        C2_2[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=300]
+        C2_3[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;2→3]
+        C2_1 --&gt; C2_2
+        C2_2 --&gt; C2_3
+    end
+    
+    Commit2Layer --&gt; V3Layer[Version 3 层&lt;br/&gt;Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[versionId: 3&lt;br/&gt;版本号3]
+        V3_TS[timestamp: 300&lt;br/&gt;时间戳300]
+        V3_S1[Segment 1&lt;br/&gt;复用]
+        V3_S2[Segment 2&lt;br/&gt;复用]
+        V3_S3[Segment 3&lt;br/&gt;复用]
+        V3_S4[Segment 4&lt;br/&gt;复用]
         V3_S5[Segment 5&lt;br/&gt;新增]
-        V3_L[Locator&lt;br/&gt;ts=300]
-        V3_S1 --- V3_S2
-        V3_S2 --- V3_S3
-        V3_S3 --- V3_S4
-        V3_S4 --- V3_S5
-        V3_S5 --- V3_L
+        V3_L[Locator&lt;br/&gt;ts=300&lt;br/&gt;处理位置信息]
+        V3_ID --&gt; V3_TS
+        V3_TS --&gt; V3_S1
+        V3_S1 --&gt; V3_S2
+        V3_S2 --&gt; V3_S3
+        V3_S3 --&gt; V3_S4
+        V3_S4 --&gt; V3_S5
+        V3_S5 --&gt; V3_L
     end
     
-    V3 --&gt;|Merge| Merge[Merge操作&lt;br/&gt;合并Segment 1-5&lt;br/&gt;创建Segment 6&lt;br/&gt;删除旧Segment&lt;br/&gt;更新Locator ts=400&lt;br/&gt;versionId: 3→4]
+    V3Layer --&gt; MergeLayer[合并操作层&lt;br/&gt;Merge Operation Layer]
     
-    subgraph V4["Version 4&lt;br/&gt;versionId=4&lt;br/&gt;timestamp=400"]
+    subgraph MergeGroup["合并操作 Merge Operation"]
         direction TB
-        V4_S6[Segment 6&lt;br/&gt;合并后]
-        V4_L[Locator&lt;br/&gt;ts=400]
-        V4_S6 --- V4_L
+        M1[合并Segment 1-5&lt;br/&gt;Merge Segments 1-5]
+        M2[创建Segment 6&lt;br/&gt;Create Segment 6]
+        M3[删除旧Segment&lt;br/&gt;Delete Old Segments]
+        M4[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=400]
+        M5[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;3→4]
+        M1 --&gt; M2
+        M2 --&gt; M3
+        M3 --&gt; M4
+        M4 --&gt; M5
     end
     
-    V1_S1 -.-&gt;|复用| V2_S1
-    V1_S2 -.-&gt;|复用| V2_S2
-    V1_S3 -.-&gt;|复用| V2_S3
-    V2_S1 -.-&gt;|复用| V3_S1
-    V2_S2 -.-&gt;|复用| V3_S2
-    V2_S3 -.-&gt;|复用| V3_S3
-    V2_S4 -.-&gt;|复用| V3_S4
+    MergeLayer --&gt; V4Layer[Version 4 层&lt;br/&gt;Version 4 Layer]
     
-    style V1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style V2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style V4 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style Commit1 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style Commit2 fill:#fff9c4,stroke:#f9a825,stroke-width:2px
-    style Merge fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    subgraph V4Group["Version 4 版本信息"]
+        direction TB
+        V4_ID[versionId: 4&lt;br/&gt;版本号4]
+        V4_TS[timestamp: 400&lt;br/&gt;时间戳400]
+        V4_S6[Segment 6&lt;br/&gt;合并后]
+        V4_L[Locator&lt;br/&gt;ts=400&lt;br/&gt;处理位置信息]
+        V4_ID --&gt; V4_TS
+        V4_TS --&gt; V4_S6
+        V4_S6 --&gt; V4_L
+    end
+    
+    V4Layer --&gt; End([版本演进完成&lt;br/&gt;Version Evolution Complete])
+    
+    V1Layer -.-&gt;|包含| V1Group
+    Commit1Layer -.-&gt;|包含| Commit1Group
+    V2Layer -.-&gt;|包含| V2Group
+    Commit2Layer -.-&gt;|包含| Commit2Group
+    V3Layer -.-&gt;|包含| V3Group
+    MergeLayer -.-&gt;|包含| MergeGroup
+    V4Layer -.-&gt;|包含| V4Group
+    
+    V1Group -.-&gt;|提交| Commit1Group
+    Commit1Group -.-&gt;|创建| V2Group
+    V2Group -.-&gt;|提交| Commit2Group
+    Commit2Group -.-&gt;|创建| V3Group
+    V3Group -.-&gt;|合并| MergeGroup
+    MergeGroup -.-&gt;|创建| V4Group
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Commit1Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Commit2Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V3Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style MergeLayer fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style V4Layer fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_TS fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_L fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style Commit1Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C1_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C1_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_TS fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
     style V2_S4 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V2_L fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Commit2Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C2_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3Group fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3_ID fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_TS fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3_S4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
     style V3_S5 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style V3_L fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style MergeGroup fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style M1 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M2 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M3 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M4 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style M5 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style V4Group fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    style V4_ID fill:#ffe082,stroke:#f9a825,stroke-width:2px
+    style V4_TS fill:#ffe082,stroke:#f9a825,stroke-width:2px
     style V4_S6 fill:#4caf50,stroke:#1b5e20,stroke-width:2px
+    style V4_L fill:#ffe082,stroke:#f9a825,stroke-width:2px
 </code></pre>
 
 <p>版本演进示例：</p>
@@ -21626,56 +22570,127 @@
 
 <p><strong>TabletReader 查询流程</strong>：</p>
 
-<pre><code class="language-mermaid">flowchart LR
-    subgraph Input["1. 输入阶段"]
+<pre><code class="language-mermaid">flowchart TB
+    Start([查询流程开始&lt;br/&gt;Query Flow Start]) --&gt; InputLayer[输入阶段&lt;br/&gt;Input Phase]
+    
+    subgraph InputGroup["1. 输入阶段 Input Phase"]
         direction TB
-        A1[JSON 查询请求] --&gt; A2[解析JSON查询&lt;br/&gt;QueryParser]
-        A2 --&gt; A3[提取查询类型和条件&lt;br/&gt;TermQuery/RangeQuery等]
-        A3 --&gt; A4[创建内部Query对象]
+        A1[JSON 查询请求&lt;br/&gt;JSON Query Request]
+        A2[解析JSON查询&lt;br/&gt;Parse JSON Query&lt;br/&gt;QueryParser]
+        A3[提取查询类型和条件&lt;br/&gt;Extract Query Type and Conditions&lt;br/&gt;TermQuery/RangeQuery等]
+        A4[创建内部Query对象&lt;br/&gt;Create Internal Query Object]
+        A1 --&gt; A2
+        A2 --&gt; A3
+        A3 --&gt; A4
     end
     
-    subgraph Reader["2. IndexReader获取"]
+    InputLayer --&gt; ReaderLayer[IndexReader获取阶段&lt;br/&gt;IndexReader Acquisition Phase]
+    
+    subgraph ReaderGroup["2. IndexReader获取 IndexReader Acquisition"]
         direction TB
-        B1[GetIndexReader&lt;br/&gt;indexType, indexName] --&gt; B2{缓存中存在?}
-        B2 --&gt;|是| B3[返回缓存的IndexReader]
-        B2 --&gt;|否| B4[创建新的IndexReader&lt;br/&gt;InvertedIndexReader&lt;br/&gt;AttributeReader&lt;br/&gt;PrimaryKeyReader]
-        B4 --&gt; B5[缓存IndexReader]
-        B3 --&gt; B6[IndexReader就绪]
+        B1[GetIndexReader&lt;br/&gt;indexType, indexName]
+        B2{缓存中存在?&lt;br/&gt;Cache Exists?}
+        B3[返回缓存的IndexReader&lt;br/&gt;Return Cached IndexReader]
+        B4[创建新的IndexReader&lt;br/&gt;Create New IndexReader&lt;br/&gt;InvertedIndexReader&lt;br/&gt;AttributeReader&lt;br/&gt;PrimaryKeyReader]
+        B5[缓存IndexReader&lt;br/&gt;Cache IndexReader]
+        B6[IndexReader就绪&lt;br/&gt;IndexReader Ready]
+        B1 --&gt; B2
+        B2 --&gt;|是| B3
+        B2 --&gt;|否| B4
+        B4 --&gt; B5
+        B3 --&gt; B6
         B5 --&gt; B6
     end
     
-    subgraph Query["3. 查询执行阶段"]
+    ReaderLayer --&gt; QueryLayer[查询执行阶段&lt;br/&gt;Query Execution Phase]
+    
+    subgraph QueryGroup["3. 查询执行阶段 Query Execution Phase"]
         direction TB
-        C1[TabletData.CreateSlice&lt;br/&gt;获取Segment列表] --&gt; C2[遍历Segment]
-        C2 --&gt; C3[并行查询各Segment&lt;br/&gt;Segment1/Segment2/Segment3]
-        C3 --&gt; C4[DocId转换&lt;br/&gt;GlobalDocId → LocalDocId]
-        C4 --&gt; C5[IndexReader.Search&lt;br/&gt;执行索引查询]
+        C1[TabletData.CreateSlice&lt;br/&gt;获取Segment列表&lt;br/&gt;Get Segment List]
+        C2[遍历Segment&lt;br/&gt;Traverse Segments]
+        C3[并行查询各Segment&lt;br/&gt;Parallel Query Segments&lt;br/&gt;Segment1/Segment2/Segment3]
+        C4[DocId转换&lt;br/&gt;DocId Conversion&lt;br/&gt;GlobalDocId → LocalDocId]
+        C5[IndexReader.Search&lt;br/&gt;执行索引查询&lt;br/&gt;Execute Index Query]
+        C1 --&gt; C2
+        C2 --&gt; C3
+        C3 --&gt; C4
+        C4 --&gt; C5
     end
     
-    subgraph Process["4. 结果处理阶段"]
+    QueryLayer --&gt; ProcessLayer[结果处理阶段&lt;br/&gt;Result Processing Phase]
+    
+    subgraph ProcessGroup["4. 结果处理阶段 Result Processing Phase"]
         direction TB
-        D1[收集各Segment结果] --&gt; D2[DocId去重]
-        D2 --&gt; D3[排序&lt;br/&gt;相关性分数或指定字段]
-        D3 --&gt; D4[分页处理&lt;br/&gt;offset/limit]
-        D4 --&gt; D5[聚合统计&lt;br/&gt;可选]
+        D1[收集各Segment结果&lt;br/&gt;Collect Segment Results]
+        D2[DocId去重&lt;br/&gt;DocId Deduplication]
+        D3[排序&lt;br/&gt;Sorting&lt;br/&gt;相关性分数或指定字段]
+        D4[分页处理&lt;br/&gt;Pagination&lt;br/&gt;offset/limit]
+        D5[聚合统计&lt;br/&gt;Aggregation&lt;br/&gt;可选]
+        D1 --&gt; D2
+        D2 --&gt; D3
+        D3 --&gt; D4
+        D4 --&gt; D5
     end
     
-    subgraph Output["5. 输出阶段"]
+    ProcessLayer --&gt; OutputLayer[输出阶段&lt;br/&gt;Output Phase]
+    
+    subgraph OutputGroup["5. 输出阶段 Output Phase"]
         direction TB
-        E1[字段选择] --&gt; E2[序列化为JSON]
-        E2 --&gt; E3[返回JSON结果]
+        E1[字段选择&lt;br/&gt;Field Selection]
+        E2[序列化为JSON&lt;br/&gt;Serialize to JSON]
+        E3[返回JSON结果&lt;br/&gt;Return JSON Result]
+        E1 --&gt; E2
+        E2 --&gt; E3
     end
     
-    Input --&gt;|Query对象| Reader
-    Reader --&gt;|IndexReader| Query
-    Query --&gt;|查询结果| Process
-    Process --&gt;|处理后的结果| Output
+    OutputLayer --&gt; End([查询完成&lt;br/&gt;Query Complete])
     
-    style Input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Reader fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    style Query fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Process fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    InputLayer -.-&gt;|包含| InputGroup
+    ReaderLayer -.-&gt;|包含| ReaderGroup
+    QueryLayer -.-&gt;|包含| QueryGroup
+    ProcessLayer -.-&gt;|包含| ProcessGroup
+    OutputLayer -.-&gt;|包含| OutputGroup
+    
+    A4 --&gt; B1
+    B6 --&gt; C1
+    C5 --&gt; D1
+    D5 --&gt; E1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InputLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ReaderLayer fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style QueryLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ProcessLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style OutputLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style InputGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style A1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style A4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ReaderGroup fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style B1 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B2 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B3 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B4 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B5 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style B6 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style QueryGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style ProcessGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style D1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style D5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style OutputGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style E1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style E3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 </code></pre>
 
 <p>从图中可以看到查询流程：</p>

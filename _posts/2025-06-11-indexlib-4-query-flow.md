@@ -1739,17 +1739,46 @@ flowchart TD
 并行查询可以提高查询性能：
 
 ```mermaid
-flowchart LR
-    Start[并行查询优化] --> P1[1. Segment 并行<br/>多个 Segment 并行查询]
-    P1 --> P2[2. 索引并行<br/>多个索引并行查询]
-    P2 --> P3[3. 结果并行合并<br/>查询结果并行合并]
-    P3 --> Benefit[性能提升<br/>缩短延迟<br/>提高吞吐量]
+flowchart TB
+    Start([并行查询优化<br/>Parallel Query Optimization]) --> StrategyLayer[优化策略层<br/>Optimization Strategies Layer]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style P1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style P2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style P3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    subgraph StrategyGroup["并行查询策略 Parallel Query Strategies"]
+        direction TB
+        S1[Segment 并行<br/>Segment Parallel<br/>多个Segment并行查询<br/>提高查询吞吐量]
+        S2[索引并行<br/>Index Parallel<br/>多个索引并行查询<br/>充分利用多核CPU]
+        S3[结果并行合并<br/>Result Parallel Merge<br/>查询结果并行合并<br/>减少合并时间]
+    end
+    
+    StrategyLayer --> BenefitLayer[性能提升层<br/>Performance Benefits Layer]
+    
+    subgraph BenefitGroup["性能提升 Performance Benefits"]
+        direction TB
+        B1[缩短查询延迟<br/>Reduce Query Latency<br/>并行执行减少等待时间]
+        B2[提高查询吞吐量<br/>Increase Throughput<br/>充分利用系统资源]
+        B3[提升系统效率<br/>Improve Efficiency<br/>优化资源利用率]
+    end
+    
+    BenefitLayer --> End([优化完成<br/>Optimization Complete])
+    
+    StrategyLayer -.->|包含| StrategyGroup
+    BenefitLayer -.->|包含| BenefitGroup
+    
+    S1 -.->|实现| B1
+    S2 -.->|实现| B2
+    S3 -.->|实现| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style BenefitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style BenefitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **并行查询优化**：
@@ -1811,17 +1840,46 @@ flowchart TD
 内存优化可以减少内存使用：
 
 ```mermaid
-flowchart LR
-    Start[内存优化] --> M1[1. 内存池<br/>减少内存分配开销]
-    M1 --> M2[2. 缓存控制<br/>控制缓存大小避免溢出]
-    M2 --> M3[3. 内存回收<br/>及时回收不再使用的内存]
-    M3 --> Benefit[优化效果<br/>降低内存占用<br/>提升系统稳定性]
+flowchart TB
+    Start([内存优化<br/>Memory Optimization]) --> StrategyLayer[优化策略层<br/>Optimization Strategies Layer]
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style M1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style M3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Benefit fill:#fff9c4,stroke:#f9a825,stroke-width:3px
+    subgraph StrategyGroup["内存优化策略 Memory Optimization Strategies"]
+        direction TB
+        M1[内存池<br/>Memory Pool<br/>减少内存分配开销<br/>提高分配效率]
+        M2[缓存控制<br/>Cache Control<br/>控制缓存大小避免溢出<br/>动态调整缓存策略]
+        M3[内存回收<br/>Memory Reclaim<br/>及时回收不再使用的内存<br/>释放内存空间]
+    end
+    
+    StrategyLayer --> BenefitLayer[优化效果层<br/>Optimization Benefits Layer]
+    
+    subgraph BenefitGroup["优化效果 Optimization Benefits"]
+        direction TB
+        B1[降低内存占用<br/>Reduce Memory Usage<br/>减少内存分配和占用]
+        B2[提升系统稳定性<br/>Improve Stability<br/>避免内存溢出和崩溃]
+        B3[提高性能<br/>Improve Performance<br/>减少内存分配开销]
+    end
+    
+    BenefitLayer --> End([优化完成<br/>Optimization Complete])
+    
+    StrategyLayer -.->|包含| StrategyGroup
+    BenefitLayer -.->|包含| BenefitGroup
+    
+    M1 -.->|实现| B1
+    M2 -.->|实现| B2
+    M3 -.->|实现| B3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style StrategyLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style BenefitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style StrategyGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style M1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style M3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style BenefitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style B1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style B3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
 ```
 
 **内存优化策略**：
@@ -1877,24 +1935,70 @@ flowchart TD
 在全文检索场景中，查询流程：
 
 ```mermaid
-flowchart LR
-    Start([全文检索]) --> S1[解析查询]
+flowchart TB
+    Start([全文检索流程<br/>Full-Text Search Flow]) --> ParseLayer[解析层<br/>Parse Layer]
     
-    S1 --> S2[获取 InvertedIndexReader]
-    S2 --> S3[查找 term]
-    S3 --> S4[获取倒排列表]
-    S4 --> S5[过滤删除文档]
-    S5 --> S6[计算相关性]
-    S6 --> End([排序返回])
+    subgraph ParseGroup["查询解析 Query Parsing"]
+        direction TB
+        P1[解析查询<br/>Parse Query<br/>解析term查询条件]
+        P2[获取 InvertedIndexReader<br/>Get InvertedIndexReader<br/>获取倒排索引Reader]
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style S1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style S2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style S4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
-    style S5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style S6 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    ParseLayer --> SearchLayer[查找层<br/>Search Layer]
+    
+    subgraph SearchGroup["索引查找 Index Search"]
+        direction TB
+        S1[查找 term<br/>Search Term<br/>在倒排索引中查找]
+        S2[获取倒排列表<br/>Get Posting List<br/>获取term对应的DocId列表]
+    end
+    
+    SearchLayer --> FilterLayer[过滤层<br/>Filter Layer]
+    
+    subgraph FilterGroup["结果过滤 Result Filtering"]
+        direction TB
+        F1[过滤删除文档<br/>Filter Deleted Docs<br/>通过DeletionMap过滤]
+        F2[计算相关性<br/>Calculate Relevance<br/>计算文档相关性分数]
+    end
+    
+    FilterLayer --> ResultLayer[结果层<br/>Result Layer]
+    
+    subgraph ResultGroup["结果处理 Result Processing"]
+        direction TB
+        R1[排序返回<br/>Sort and Return<br/>按相关性分数排序]
+    end
+    
+    ResultLayer --> End([查询完成<br/>Query Complete])
+    
+    ParseLayer -.->|包含| ParseGroup
+    SearchLayer -.->|包含| SearchGroup
+    FilterLayer -.->|包含| FilterGroup
+    ResultLayer -.->|包含| ResultGroup
+    
+    P1 --> P2
+    P2 --> S1
+    S1 --> S2
+    S2 --> F1
+    F1 --> F2
+    F2 --> R1
+    R1 --> End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ParseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SearchLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style FilterLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style ResultLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SearchGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style FilterGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style F1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style F2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ResultGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 ```
 
 **全文检索流程**：
@@ -1911,22 +2015,67 @@ flowchart LR
 在属性查询场景中，查询流程：
 
 ```mermaid
-flowchart LR
-    Start([属性查询]) --> A1[解析查询]
+flowchart TB
+    Start([属性查询流程<br/>Attribute Query Flow]) --> ParseLayer[解析层<br/>Parse Layer]
     
-    A1 --> A2[获取 AttributeReader]
-    A2 --> A3[遍历 Segment]
-    A3 --> A4[查询属性]
-    A4 --> A5[过滤匹配]
-    A5 --> End([返回结果])
+    subgraph ParseGroup["查询解析 Query Parsing"]
+        direction TB
+        P1[解析查询<br/>Parse Query<br/>解析属性查询条件]
+        P2[获取 AttributeReader<br/>Get AttributeReader<br/>获取属性索引Reader]
+    end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style A1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style A2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style A3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style A4 fill:#e0f2f1,stroke:#00695c,stroke-width:2px
-    style A5 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    ParseLayer --> TraverseLayer[遍历层<br/>Traverse Layer]
+    
+    subgraph TraverseGroup["Segment遍历 Segment Traversal"]
+        direction TB
+        T1[遍历 Segment<br/>Traverse Segments<br/>遍历所有已构建的Segment]
+    end
+    
+    TraverseLayer --> QueryLayer[查询层<br/>Query Layer]
+    
+    subgraph QueryGroup["属性查询 Attribute Query"]
+        direction TB
+        Q1[查询属性<br/>Query Attribute<br/>在Segment内查询属性值]
+        Q2[过滤匹配<br/>Filter Matches<br/>过滤匹配查询条件的文档]
+    end
+    
+    QueryLayer --> ResultLayer[结果层<br/>Result Layer]
+    
+    subgraph ResultGroup["结果返回 Result Return"]
+        direction TB
+        R1[返回结果<br/>Return Results<br/>返回匹配的文档列表]
+    end
+    
+    ResultLayer --> End([查询完成<br/>Query Complete])
+    
+    ParseLayer -.->|包含| ParseGroup
+    TraverseLayer -.->|包含| TraverseGroup
+    QueryLayer -.->|包含| QueryGroup
+    ResultLayer -.->|包含| ResultGroup
+    
+    P1 --> P2
+    P2 --> T1
+    T1 --> Q1
+    Q1 --> Q2
+    Q2 --> R1
+    R1 --> End
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style ParseLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style TraverseLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style QueryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style ResultLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ParseGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style P1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style P2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style TraverseGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style T1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style QueryGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style Q1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style Q2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style ResultGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style R1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
 ```
 
 **属性查询流程**：

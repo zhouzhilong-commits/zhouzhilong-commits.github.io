@@ -1436,61 +1436,98 @@ for (auto& seg : segments) {
 **DocId 转换流程**：
 
 ```mermaid
-flowchart LR
-    Start[查询请求<br/>GlobalDocId] --> Locate[定位Segment]
+flowchart TB
+    Start([查询请求<br/>Query Request<br/>GlobalDocId]) --> LocateLayer[定位Segment阶段<br/>Locate Segment Phase]
     
-    subgraph Locate["1. 定位Segment"]
+    subgraph LocateGroup["1. 定位Segment Locate Segment"]
         direction TB
-        L1[遍历Segment列表] --> L2[计算BaseDocId<br/>累加前面Segment的docCount]
-        L2 --> L3{GlobalDocId在范围内?<br/>BaseDocId <= GlobalDocId<br/>< BaseDocId + docCount}
+        L1[遍历Segment列表<br/>Traverse Segment List]
+        L2[计算BaseDocId<br/>Calculate BaseDocId<br/>累加前面Segment的docCount]
+        L3{GlobalDocId在范围内?<br/>In Range?<br/>BaseDocId <= GlobalDocId<br/>< BaseDocId + docCount}
+        L4[找到对应Segment<br/>Found Target Segment]
+        L1 --> L2
+        L2 --> L3
         L3 -->|否| L1
-        L3 -->|是| L4[找到对应Segment]
+        L3 -->|是| L4
     end
     
-    Locate --> Convert[DocId转换]
+    LocateLayer --> ConvertLayer[DocId转换阶段<br/>DocId Conversion Phase]
     
-    subgraph Convert["2. DocId转换"]
+    subgraph ConvertGroup["2. DocId转换 DocId Conversion"]
         direction TB
-        C1[获取BaseDocId] --> C2[计算LocalDocId<br/>LocalDocId = GlobalDocId - BaseDocId]
-        C2 --> C3[验证有效性<br/>0 <= LocalDocId < docCount]
+        C1[获取BaseDocId<br/>Get BaseDocId]
+        C2[计算LocalDocId<br/>Calculate LocalDocId<br/>LocalDocId = GlobalDocId - BaseDocId]
+        C3[验证有效性<br/>Validate<br/>0 <= LocalDocId < docCount]
+        C1 --> C2
+        C2 --> C3
     end
     
-    Convert --> Query[Segment内查询]
+    ConvertLayer --> QueryLayer[Segment内查询阶段<br/>Segment Query Phase]
     
-    subgraph Query["3. Segment内查询"]
+    subgraph QueryGroup["3. Segment内查询 Segment Query"]
         direction TB
-        Q1[使用LocalDocId查询<br/>IndexReader.Get] --> Q2[InvertedIndexer<br/>倒排索引]
-        Q1 --> Q3[AttributeIndexer<br/>正排索引]
-        Q2 --> Q4[返回文档数据]
+        Q1[使用LocalDocId查询<br/>Query with LocalDocId<br/>IndexReader.Get]
+        Q2[InvertedIndexer<br/>倒排索引<br/>Inverted Index]
+        Q3[AttributeIndexer<br/>正排索引<br/>Attribute Index]
+        Q4[返回文档数据<br/>Return Document Data]
+        Q1 --> Q2
+        Q1 --> Q3
+        Q2 --> Q4
         Q3 --> Q4
     end
     
-    Query --> Result[返回查询结果]
+    QueryLayer --> ExampleLayer[转换示例<br/>Conversion Example]
     
-    subgraph Example["转换示例"]
+    subgraph ExampleGroup["转换示例 Conversion Example"]
         direction TB
-        E1["GlobalDocId = 1500"]
-        E2["Segment1: BaseDocId=0, docCount=1000<br/>范围: 0-999 不在范围内"]
-        E3["Segment2: BaseDocId=1000, docCount=2000<br/>范围: 1000-2999 在范围内"]
-        E4["LocalDocId = 1500 - 1000 = 500"]
-        E5["在Segment2内查询<br/>LocalDocId=500"]
-        
+        E1[GlobalDocId = 1500]
+        E2[Segment1: BaseDocId=0, docCount=1000<br/>范围: 0-999 不在范围内]
+        E3[Segment2: BaseDocId=1000, docCount=2000<br/>范围: 1000-2999 在范围内]
+        E4[LocalDocId = 1500 - 1000 = 500]
+        E5[在Segment2内查询<br/>Query in Segment2<br/>LocalDocId=500]
         E1 --> E2
         E2 --> E3
         E3 --> E4
         E4 --> E5
     end
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Locate fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Convert fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Query fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Result fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Example fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+    ExampleLayer --> End([返回查询结果<br/>Return Query Result])
+    
+    LocateLayer -.->|包含| LocateGroup
+    ConvertLayer -.->|包含| ConvertGroup
+    QueryLayer -.->|包含| QueryGroup
+    ExampleLayer -.->|包含| ExampleGroup
+    
+    L4 --> C1
+    C3 --> Q1
+    Q4 --> E1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style LocateLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ConvertLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style QueryLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style ExampleLayer fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style LocateGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
     style L3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style L4 fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
-    style C2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style ConvertGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style QueryGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Q1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Q2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style Q3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
     style Q4 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style ExampleGroup fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style E1 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E2 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E3 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E4 fill:#ffe082,stroke:#f57f17,stroke-width:2px
+    style E5 fill:#ffe082,stroke:#f57f17,stroke-width:2px
 ```
 
 1. **定位 Segment**：根据全局 DocId 找到对应的 Segment

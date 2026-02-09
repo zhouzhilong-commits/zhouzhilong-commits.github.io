@@ -12,63 +12,109 @@ date: 2025-06-24
 版本管理与增量更新概览：Version 与 Locator 的协同工作：
 
 ```mermaid
-flowchart LR
-    subgraph Input["数据输入"]
-        A[数据源<br/>DataSource]
-        B[文档流<br/>Document Stream]
-        A --> B
+flowchart TB
+    Start([版本管理与增量更新<br/>Version Management & Incremental Update]) --> InputLayer[数据输入层<br/>Data Input Layer]
+    
+    subgraph InputGroup["数据输入 Data Input"]
+        direction TB
+        I1[数据源<br/>DataSource<br/>数据来源]
+        I2[文档流<br/>Document Stream<br/>文档数据流]
+        I1 --> I2
     end
     
-    subgraph Version["版本管理"]
-        C[Version<br/>版本信息]
-        D[VersionId<br/>版本号递增]
-        E[Segments<br/>Segment列表]
-        F[Schema演进<br/>SchemaId映射]
-        C --> D
-        C --> E
-        C --> F
+    InputLayer --> LocatorLayer[位置信息层<br/>Locator Layer]
+    
+    subgraph LocatorGroup["位置信息 Locator"]
+        direction TB
+        L1[Locator<br/>数据处理位置<br/>记录处理进度]
+        L2[Timestamp<br/>时间戳<br/>数据时间信息]
+        L3[MultiProgress<br/>多进度信息<br/>多分片进度]
+        L4[HashId<br/>分片标识<br/>数据分片ID]
+        L1 --> L2
+        L1 --> L3
+        L3 --> L4
     end
     
-    subgraph Locator["位置信息"]
-        G[Locator<br/>数据处理位置]
-        H[Timestamp<br/>时间戳]
-        I[MultiProgress<br/>多进度信息]
-        J[HashId<br/>分片标识]
-        G --> H
-        G --> I
-        I --> J
+    LocatorLayer --> UpdateLayer[增量更新层<br/>Incremental Update Layer]
+    
+    subgraph UpdateGroup["增量更新 Incremental Update"]
+        direction TB
+        U1[IsFasterThan<br/>比较判断<br/>判断数据是否已处理]
+        U2[数据过滤<br/>Filter Processed<br/>过滤已处理数据]
+        U3[处理新数据<br/>Process New Data<br/>构建新索引]
+        U4[更新Locator<br/>Update Locator<br/>记录处理进度]
+        U1 --> U2
+        U2 --> U3
+        U3 --> U4
     end
     
-    subgraph Update["增量更新"]
-        K[IsFasterThan<br/>比较判断]
-        L[数据过滤<br/>过滤已处理]
-        M[处理新数据<br/>构建索引]
-        N[更新Locator<br/>记录进度]
-        K --> L
-        L --> M
-        M --> N
+    UpdateLayer --> VersionLayer[版本管理层<br/>Version Management Layer]
+    
+    subgraph VersionGroup["版本管理 Version Management"]
+        direction TB
+        V1[Version<br/>版本信息<br/>版本元数据]
+        V2[VersionId<br/>版本号递增<br/>单调递增版本号]
+        V3[Segments<br/>Segment列表<br/>包含的Segment]
+        V4[Schema演进<br/>Schema Evolution<br/>SchemaId映射]
+        V1 --> V2
+        V1 --> V3
+        V1 --> V4
     end
     
-    subgraph Commit["版本提交"]
-        O[VersionCommitter<br/>版本提交器]
-        P[Fence机制<br/>原子性保证]
-        Q[持久化<br/>写入磁盘]
-        O --> P
-        P --> Q
+    VersionLayer --> CommitLayer[版本提交层<br/>Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[VersionCommitter<br/>版本提交器<br/>提交新版本]
+        C2[Fence机制<br/>Fence Mechanism<br/>原子性保证]
+        C3[持久化<br/>Persistence<br/>写入磁盘]
+        C1 --> C2
+        C2 --> C3
     end
     
-    B --> G
-    G --> K
-    K --> C
-    N --> C
-    C --> O
-    Q --> E
+    CommitLayer --> End([版本管理完成<br/>Version Management Complete])
     
-    style Input fill:#e3f2fd
-    style Version fill:#fff3e0
-    style Locator fill:#f3e5f5
-    style Update fill:#e8f5e9
-    style Commit fill:#fce4ec
+    InputLayer -.->|包含| InputGroup
+    LocatorLayer -.->|包含| LocatorGroup
+    UpdateLayer -.->|包含| UpdateGroup
+    VersionLayer -.->|包含| VersionGroup
+    CommitLayer -.->|包含| CommitGroup
+    
+    I2 --> L1
+    L1 --> U1
+    U4 --> V1
+    V1 --> C1
+    C3 --> V3
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style InputLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style LocatorLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style UpdateLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style CommitLayer fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style InputGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style I1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style I2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style LocatorGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style UpdateGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style U1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style U4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style VersionGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style CommitGroup fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style C1 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style C2 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style C3 fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
 ```
 
 ## 1. 版本管理概览
@@ -87,14 +133,17 @@ IndexLib 的版本管理包括以下核心概念：
 版本管理架构：Version、Locator、Segment 的关系：
 
 ```mermaid
-flowchart TD
-    subgraph Version["Version 版本信息"]
-        V1[VersionId<br/>版本号单调递增]
-        V2[Segments<br/>Segment列表]
-        V3[Locator<br/>位置信息]
-        V4[Timestamp<br/>时间戳]
-        V5[Sealed<br/>封存状态]
-        V6[SchemaId<br/>Schema标识]
+flowchart TB
+    Start([版本管理架构<br/>Version Management Architecture]) --> VersionLayer[版本信息层<br/>Version Information Layer]
+    
+    subgraph VersionGroup["Version 版本信息 Version Information"]
+        direction TB
+        V1[VersionId<br/>版本号单调递增<br/>每次Commit递增]
+        V2[Segments<br/>Segment列表<br/>包含的Segment集合]
+        V3[Locator<br/>位置信息<br/>数据处理位置]
+        V4[Timestamp<br/>时间戳<br/>版本创建时间]
+        V5[Sealed<br/>封存状态<br/>是否封存]
+        V6[SchemaId<br/>Schema标识<br/>当前Schema版本]
         V1 --> V2
         V1 --> V3
         V1 --> V4
@@ -102,47 +151,88 @@ flowchart TD
         V1 --> V6
     end
     
-    subgraph Segment["Segment 索引段"]
-        S1[SegmentId<br/>段标识]
-        S2[SchemaId<br/>段Schema]
-        S3[IndexFiles<br/>索引文件]
-        S4[SegmentInfo<br/>段信息]
+    VersionLayer --> SegmentLayer[索引段层<br/>Segment Layer]
+    
+    subgraph SegmentGroup["Segment 索引段 Segment"]
+        direction TB
+        S1[SegmentId<br/>段标识<br/>唯一标识Segment]
+        S2[SchemaId<br/>段Schema<br/>Segment的Schema版本]
+        S3[IndexFiles<br/>索引文件<br/>索引数据文件]
+        S4[SegmentInfo<br/>段信息<br/>Segment元数据]
         S1 --> S2
         S1 --> S3
         S1 --> S4
     end
     
-    subgraph Locator["Locator 位置信息"]
-        L1[SourceId<br/>数据源标识]
-        L2[Timestamp<br/>时间戳]
-        L3[ConcurrentIdx<br/>并发索引]
-        L4[HashId<br/>分片标识]
-        L5[MultiProgress<br/>多进度信息]
+    SegmentLayer --> LocatorLayer[位置信息层<br/>Locator Layer]
+    
+    subgraph LocatorGroup["Locator 位置信息 Locator"]
+        direction TB
+        L1[SourceId<br/>数据源标识<br/>数据来源ID]
+        L2[Timestamp<br/>时间戳<br/>数据时间信息]
+        L3[ConcurrentIdx<br/>并发索引<br/>并发处理索引]
+        L4[HashId<br/>分片标识<br/>数据分片ID]
+        L5[MultiProgress<br/>多进度信息<br/>多分片处理进度]
         L1 --> L2
         L2 --> L3
         L3 --> L4
         L4 --> L5
     end
     
-    subgraph Commit["版本提交"]
-        C1[VersionCommitter<br/>提交器]
-        C2[Fence目录<br/>临时目录]
-        C3[原子切换<br/>重命名操作]
-        C4[持久化<br/>写入磁盘]
+    LocatorLayer --> CommitLayer[版本提交层<br/>Version Commit Layer]
+    
+    subgraph CommitGroup["版本提交 Version Commit"]
+        direction TB
+        C1[VersionCommitter<br/>版本提交器<br/>提交新版本]
+        C2[Fence目录<br/>Fence Directory<br/>临时目录保证原子性]
+        C3[原子切换<br/>Atomic Switch<br/>重命名操作]
+        C4[持久化<br/>Persistence<br/>写入磁盘]
         C1 --> C2
         C2 --> C3
         C3 --> C4
     end
     
-    V2 -->|包含| S1
-    V3 -->|包含| L1
-    V1 -->|提交| C1
-    C4 -->|更新| V1
+    CommitLayer --> End([版本管理完成<br/>Version Management Complete])
     
-    style Version fill:#e3f2fd
-    style Segment fill:#fff3e0
-    style Locator fill:#f3e5f5
-    style Commit fill:#e8f5e9
+    VersionLayer -.->|包含| VersionGroup
+    SegmentLayer -.->|包含| SegmentGroup
+    LocatorLayer -.->|包含| LocatorGroup
+    CommitLayer -.->|包含| CommitGroup
+    
+    V2 -.->|包含| S1
+    V3 -.->|包含| L1
+    V1 -.->|提交| C1
+    C4 -.->|更新| V1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style VersionLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SegmentLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style LocatorLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style CommitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style VersionGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V5 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V6 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style SegmentGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style S1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style S4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style LocatorGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style L1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style L5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style CommitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style C1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style C4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 ### 1.2 版本管理的作用
@@ -312,55 +402,108 @@ flowchart TD
 Version 演进：从 V1 到 V2 的版本变化：
 
 ```mermaid
-flowchart LR
-    subgraph V1["Version 1"]
-        V1_ID[VersionId: 1]
-        V1_SEG[Segments: 1, 2]
-        V1_LOC[Locator: timestamp=100]
-        V1_SCHEMA[SchemaId: 0]
+flowchart TB
+    Start([Version 演进流程<br/>Version Evolution Flow]) --> V1Layer[Version 1 层<br/>Version 1 Layer]
+    
+    subgraph V1Group["Version 1 版本信息"]
+        direction TB
+        V1_ID[VersionId: 1<br/>版本号1]
+        V1_SEG[Segments: 1, 2<br/>包含Segment 1和2]
+        V1_LOC[Locator: timestamp=100<br/>处理到时间戳100]
+        V1_SCHEMA[SchemaId: 0<br/>Schema版本0]
         V1_ID --> V1_SEG
         V1_ID --> V1_LOC
         V1_ID --> V1_SCHEMA
     end
     
-    subgraph Commit["Commit 操作"]
-        C1[收集Segment]
-        C2[更新Locator]
-        C3[递增VersionId]
-        C4[创建新版本]
+    V1Layer --> CommitLayer[提交操作层<br/>Commit Operation Layer]
+    
+    subgraph CommitGroup["Commit 操作 Commit Operation"]
+        direction TB
+        C1[收集Segment<br/>Collect Segments<br/>收集所有Segment]
+        C2[更新Locator<br/>Update Locator<br/>更新处理位置]
+        C3[递增VersionId<br/>Increment VersionId<br/>版本号递增]
+        C4[创建新版本<br/>Create New Version<br/>创建Version 2]
         C1 --> C2
         C2 --> C3
         C3 --> C4
     end
     
-    subgraph V2["Version 2"]
-        V2_ID[VersionId: 2]
-        V2_SEG[Segments: 1, 2, 3]
-        V2_LOC[Locator: timestamp=200]
-        V2_SCHEMA[SchemaId: 0]
+    CommitLayer --> V2Layer[Version 2 层<br/>Version 2 Layer]
+    
+    subgraph V2Group["Version 2 版本信息"]
+        direction TB
+        V2_ID[VersionId: 2<br/>版本号递增为2]
+        V2_SEG[Segments: 1, 2, 3<br/>新增Segment 3]
+        V2_LOC[Locator: timestamp=200<br/>处理到时间戳200]
+        V2_SCHEMA[SchemaId: 0<br/>Schema版本0保持不变]
         V2_ID --> V2_SEG
         V2_ID --> V2_LOC
         V2_ID --> V2_SCHEMA
     end
     
-    subgraph V3["Version 3"]
-        V3_ID[VersionId: 3]
-        V3_SEG[Segments: 4]
-        V3_LOC[Locator: timestamp=300]
-        V3_SCHEMA[SchemaId: 0]
+    V2Layer --> MergeLayer[合并操作层<br/>Merge Operation Layer]
+    
+    subgraph MergeGroup["合并操作 Merge Operation"]
+        direction TB
+        M1[合并Segment 1和2<br/>Merge Segments 1 and 2<br/>合并为Segment 4]
+    end
+    
+    MergeLayer --> V3Layer[Version 3 层<br/>Version 3 Layer]
+    
+    subgraph V3Group["Version 3 版本信息"]
+        direction TB
+        V3_ID[VersionId: 3<br/>版本号递增为3]
+        V3_SEG[Segments: 4<br/>合并后的Segment 4]
+        V3_LOC[Locator: timestamp=300<br/>处理到时间戳300]
+        V3_SCHEMA[SchemaId: 0<br/>Schema版本0保持不变]
         V3_ID --> V3_SEG
         V3_ID --> V3_LOC
         V3_ID --> V3_SCHEMA
     end
     
-    V1 -->|Commit| Commit
-    Commit --> V2
-    V2 -->|Merge| V3
+    V3Layer --> End([版本演进完成<br/>Version Evolution Complete])
     
-    style V1 fill:#e3f2fd
-    style Commit fill:#fff3e0
-    style V2 fill:#f3e5f5
-    style V3 fill:#e8f5e9
+    V1Layer -.->|包含| V1Group
+    CommitLayer -.->|包含| CommitGroup
+    V2Layer -.->|包含| V2Group
+    MergeLayer -.->|包含| MergeGroup
+    V3Layer -.->|包含| V3Group
+    
+    V1Group -.->|提交| CommitGroup
+    CommitGroup -.->|创建| V2Group
+    V2Group -.->|合并| MergeGroup
+    MergeGroup -.->|创建| V3Group
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style CommitLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style MergeLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style V3Layer fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SEG fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_LOC fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style V1_SCHEMA fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style CommitGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SEG fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_LOC fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style V2_SCHEMA fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style MergeGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style M1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style V3Group fill:#fce4ec,stroke:#ef4444,stroke-width:3px
+    style V3_ID fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_SEG fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_LOC fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
+    style V3_SCHEMA fill:#f8bbd0,stroke:#ef4444,stroke-width:2px
 ```
 
 **版本演进示例**：
@@ -591,75 +734,90 @@ Version 的加载通过 `VersionLoader` 实现：
 Version 加载：从磁盘加载版本信息：
 
 ```mermaid
-flowchart LR
-    Start([Version 加载开始]) --> Load
+flowchart TB
+    Start([Version 加载开始<br/>Version Load Start]) --> LoadLayer[加载阶段<br/>Load Phase]
     
-    subgraph Load["1. 加载阶段"]
-        direction LR
-        L1["VersionLoader.Load<br/><br/><br/>加载版本信息<br/>从磁盘读取<br/><br/>调用Load方法<br/>开始版本加载流程"]
-        L2["读取版本文件<br/><br/><br/>version.0, version.1等<br/>按版本号顺序<br/><br/>遍历版本文件<br/>找到最新版本"]
-        L3["解析JSON<br/><br/><br/>反序列化Version对象<br/>转换为内存结构<br/><br/>解析JSON格式<br/>构建Version对象"]
-        L1 --> L2 --> L3
+    subgraph LoadGroup["1. 加载阶段 Load Phase"]
+        direction TB
+        L1[VersionLoader.Load<br/>加载版本信息<br/>从磁盘读取]
+        L2[读取版本文件<br/>version.0, version.1等<br/>按版本号顺序<br/>找到最新版本]
+        L3[解析JSON<br/>反序列化Version对象<br/>转换为内存结构]
+        L1 --> L2
+        L2 --> L3
     end
     
-    Load --> L1
-    L3 --> Validate
+    LoadLayer --> ValidateLayer[验证阶段<br/>Validate Phase]
     
-    subgraph Validate["2. 验证阶段"]
-        direction LR
-        V1["ValidateVersion<br/><br/><br/>验证版本有效性<br/>检查基本格式<br/><br/>验证版本号<br/>检查必要字段"]
-        V2["检查Segment存在性<br/><br/><br/>Segment文件是否存在<br/>验证文件完整性<br/><br/>遍历Segment列表<br/>确认文件可访问"]
-        V3["检查Schema兼容性<br/><br/><br/>Schema版本映射检查<br/>确保兼容性<br/><br/>验证Schema版本<br/>检查变更兼容"]
-        V4["检查Locator有效性<br/><br/><br/>Locator格式正确性<br/>验证数据一致性<br/><br/>检查Locator格式<br/>验证进度信息"]
-        V1 --> V2 --> V3 --> V4
+    subgraph ValidateGroup["2. 验证阶段 Validate Phase"]
+        direction TB
+        V1[ValidateVersion<br/>验证版本有效性<br/>检查基本格式]
+        V2[检查Segment存在性<br/>Segment文件是否存在<br/>验证文件完整性]
+        V3[检查Schema兼容性<br/>Schema版本映射检查<br/>确保兼容性]
+        V4[检查Locator有效性<br/>Locator格式正确性<br/>验证数据一致性]
+        V1 --> V2
+        V2 --> V3
+        V3 --> V4
     end
     
-    Validate --> V1
-    V4 --> Segment
+    ValidateLayer --> SegmentLayer[加载Segment阶段<br/>Load Segment Phase]
     
-    subgraph Segment["3. 加载Segment"]
-        direction LR
-        S1["根据Segment列表<br/><br/><br/>加载Segment信息<br/>遍历所有Segment<br/><br/>读取Segment元数据<br/>准备加载Segment"]
-        S2["OpenSegment<br/><br/><br/>打开Segment文件<br/>初始化文件句柄<br/><br/>创建文件读取器<br/>准备读取数据"]
-        S3["加载索引文件<br/><br/><br/>按需加载索引数据<br/>延迟加载策略<br/><br/>根据查询需求<br/>加载必要索引"]
-        S4["创建DiskSegment<br/><br/><br/>DiskSegment对象<br/>封装Segment信息<br/><br/>构建Segment对象<br/>建立索引关系"]
-        S1 --> S2 --> S3 --> S4
+    subgraph SegmentGroup["3. 加载Segment Load Segment"]
+        direction TB
+        S1[根据Segment列表<br/>加载Segment信息<br/>遍历所有Segment]
+        S2[OpenSegment<br/>打开Segment文件<br/>初始化文件句柄]
+        S3[加载索引文件<br/>按需加载索引数据<br/>延迟加载策略]
+        S4[创建DiskSegment<br/>DiskSegment对象<br/>封装Segment信息]
+        S1 --> S2
+        S2 --> S3
+        S3 --> S4
     end
     
-    Segment --> S1
-    S4 --> Init
+    SegmentLayer --> InitLayer[初始化TabletData阶段<br/>Initialize TabletData Phase]
     
-    subgraph Init["4. 初始化TabletData"]
-        direction LR
-        I1["UpdateVersion<br/><br/><br/>更新Version引用<br/>设置当前版本<br/><br/>更新TabletData<br/>切换到新版本"]
-        I2["设置Segment列表<br/><br/><br/>添加到TabletData<br/>建立索引关系<br/><br/>组织Segment结构<br/>准备查询索引"]
-        I3["初始化查询器<br/><br/><br/>准备查询功能<br/>创建Reader对象<br/><br/>初始化IndexReader<br/>准备接受查询"]
-        I1 --> I2 --> I3
+    subgraph InitGroup["4. 初始化TabletData Initialize TabletData"]
+        direction TB
+        I1[UpdateVersion<br/>更新Version引用<br/>设置当前版本]
+        I2[设置Segment列表<br/>添加到TabletData<br/>建立索引关系]
+        I3[初始化查询器<br/>准备查询功能<br/>创建Reader对象]
+        I1 --> I2
+        I2 --> I3
     end
     
-    Init --> I1
-    I3 --> End([完成加载])
+    InitLayer --> End([完成加载<br/>Load Complete])
     
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Load fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style L1 fill:#c5e1f5,stroke:#1976d2,stroke-width:1.5px
-    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:1.5px
-    style L3 fill:#64b5f6,stroke:#1976d2,stroke-width:1.5px
-    style Validate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style V1 fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
-    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:1.5px
-    style V3 fill:#ffb74d,stroke:#f57c00,stroke-width:1.5px
-    style V4 fill:#ffa726,stroke:#f57c00,stroke-width:1.5px
-    style Segment fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style S1 fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
-    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:1.5px
-    style S3 fill:#ba68c8,stroke:#7b1fa2,stroke-width:1.5px
-    style S4 fill:#ab47bc,stroke:#7b1fa2,stroke-width:1.5px
-    style Init fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style I1 fill:#c8e6c9,stroke:#2e7d32,stroke-width:1.5px
-    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:1.5px
-    style I3 fill:#81c784,stroke:#2e7d32,stroke-width:1.5px
-    style End fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    LoadLayer -.->|包含| LoadGroup
+    ValidateLayer -.->|包含| ValidateGroup
+    SegmentLayer -.->|包含| SegmentGroup
+    InitLayer -.->|包含| InitGroup
+    
+    L3 --> V1
+    V4 --> S1
+    S4 --> I1
+    
+    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
+    style LoadLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style ValidateLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style SegmentLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style InitLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style LoadGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style L1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style L3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style ValidateGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style V1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style V4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
+    style SegmentGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style S4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+    style InitGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style I1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style I2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
+    style I3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
 ```
 
 **加载流程**：
