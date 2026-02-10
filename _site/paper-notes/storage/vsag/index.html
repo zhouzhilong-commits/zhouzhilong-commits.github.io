@@ -1,0 +1,1284 @@
+
+
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+
+
+<meta charset="utf-8">
+
+
+
+
+<!-- begin SEO -->
+
+
+
+
+
+
+
+
+
+<title>VSAG：图 ANNS 的优化搜索框架（论文笔记） - zhouzhilong</title>
+
+
+
+
+
+
+
+<meta property="og:locale" content="zh-CN">
+<meta property="og:site_name" content="zhouzhilong">
+<meta property="og:title" content="VSAG：图 ANNS 的优化搜索框架（论文笔记）">
+
+
+  <link rel="canonical" href="http://localhost:4000/paper-notes/storage/vsag/">
+  <meta property="og:url" content="http://localhost:4000/paper-notes/storage/vsag/">
+
+
+
+  <meta property="og:description" content="  论文：VSAG: An Optimized Search Framework for Graph-based Approximate Nearest Neighbor Search（PVLDB 18(12), 5017-5030, 2025）原文：https://www.vldb.org/pvldb/vol18/p5017-cheng.pdfDOI：10.14778/3750601.3750624Artifact / Code：论文中给出 https://github.com/antgroup/vsag（GitHub: antgroup/vsag）">
+
+
+
+
+
+  
+
+  
+
+
+
+
+
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2026-01-01T00:00:00+08:00">
+
+
+
+
+
+
+
+
+  <script type="application/ld+json">
+    {
+      "@context" : "http://schema.org",
+      "@type" : "Person",
+      "name" : "周智龙",
+      "url" : "http://localhost:4000",
+      "sameAs" : null
+    }
+  </script>
+
+
+
+
+
+
+<!-- end SEO -->
+
+
+
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<meta http-equiv="cleartype" content="on">
+    
+
+
+<!-- start custom head snippets -->
+
+<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-touch-icon-57x57.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-touch-icon-60x60.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-touch-icon-72x72.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-touch-icon-76x76.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-touch-icon-114x114.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-touch-icon-120x120.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-touch-icon-144x144.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-touch-icon-152x152.png?v=M44lzPylqQ">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-180x180.png?v=M44lzPylqQ">
+<link rel="icon" type="image/png" href="/images/favicon-32x32.png?v=M44lzPylqQ" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/android-chrome-192x192.png?v=M44lzPylqQ" sizes="192x192">
+<link rel="icon" type="image/png" href="/images/favicon-96x96.png?v=M44lzPylqQ" sizes="96x96">
+<link rel="icon" type="image/png" href="/images/favicon-16x16.png?v=M44lzPylqQ" sizes="16x16">
+<link rel="manifest" href="/images/manifest.json?v=M44lzPylqQ">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=M44lzPylqQ" color="#000000">
+<link rel="shortcut icon" href="/images/favicon.ico?v=M44lzPylqQ">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-TileImage" content="/images/mstile-144x144.png?v=M44lzPylqQ">
+<meta name="msapplication-config" content="/images/browserconfig.xml?v=M44lzPylqQ">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/assets/css/academicons.css"/>
+
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "all" } } }); </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML' async></script>
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+    
+
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <button><div class="navicon"></div></button>
+        
+
+
+
+
+
+
+
+<ul class="visible-links">
+  
+    <li class="masthead__menu-item masthead__menu-item--lg"><a href="/">zhouzhilong</a></li>
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/storage-basics/" class="masthead__dropdown-trigger" aria-haspopup="true">存储</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/storage-basics/">存储基础</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/rocksdb/">RocksDB</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/kv-storage/">KV存储</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/consensus/">分布式一致性</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/indexlib/">IndexLib</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/paper-notes/">论文笔记</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item masthead__menu-item--dropdown">
+      
+        <a href="/cs-foundations/" class="masthead__dropdown-trigger" aria-haspopup="true">计算机基础</a>
+      
+
+      
+        
+        
+
+
+
+
+
+
+
+<ul class="masthead__submenu">
+  
+
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/os/">操作系统</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/network/">计算机网络</a>
+      
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cs/architecture/">计算机组成</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+      
+    </li>
+  
+    
+
+    
+    
+
+    <li class="masthead__menu-item">
+      
+        <a href="/cpp/">CPP</a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+
+
+<div id="main" role="main">
+  
+
+
+
+
+
+
+
+
+
+
+
+  <div class="sidebar sticky" data-sidebar-toggle="true">
+  
+  
+
+  
+    
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        <span class="nav__sub-title">论文笔记</span>
+      
+
+      
+        
+
+
+
+
+
+<nav class="nav__list">
+  
+
+
+<ul>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/vsag/" class="active"><span class="nav__sub-title">VSAG：图 ANNS 的优化搜索框架（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/bigtable/" class=""><span class="nav__sub-title">Bigtable：A Distributed Storage System for Structured Data（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/raid/" class=""><span class="nav__sub-title">RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lfs/" class=""><span class="nav__sub-title">LFS：The Design and Implementation of a Log-Structured File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/wafl/" class=""><span class="nav__sub-title">WAFL：Write Anywhere File Layout（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/arc/" class=""><span class="nav__sub-title">ARC：Adaptive Replacement Cache（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/polardb/" class=""><span class="nav__sub-title">PolarDB：云原生数据库架构（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/dynamo/" class=""><span class="nav__sub-title">Dynamo：Amazon's Highly Available Key-value Store（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/gfs/" class=""><span class="nav__sub-title">GFS：The Google File System（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/rocksdb-tuning/" class=""><span class="nav__sub-title">RocksDB 调优与实践（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/storage/lsm-tree/" class=""><span class="nav__sub-title">LSM-Tree：The Log-Structured Merge-Tree（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/aries-recovery/" class=""><span class="nav__sub-title">ARIES：Recovery Algorithm（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/silo-oltp/" class=""><span class="nav__sub-title">Silo：High Performance OLTP（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/databases/system-r-access-path-selection/" class=""><span class="nav__sub-title">System R：Access Path Selection（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/chubby/" class=""><span class="nav__sub-title">Chubby：A Lock Service（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/mapreduce/" class=""><span class="nav__sub-title">MapReduce：Simplified Data Processing（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+    
+    
+
+    <li>
+      
+        
+        
+
+        <a href="/paper-notes/distributed/spanner/" class=""><span class="nav__sub-title">Spanner：Globally-Distributed Database（论文笔记）</span></a>
+      
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+      
+    </li>
+  
+</ul>
+
+
+</nav>
+
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="VSAG：图 ANNS 的优化搜索框架（论文笔记）">
+    <meta itemprop="description" content="  论文：VSAG: An Optimized Search Framework for Graph-based Approximate Nearest Neighbor Search（PVLDB 18(12), 5017-5030, 2025）原文：https://www.vldb.org/pvldb/vol18/p5017-cheng.pdfDOI：10.14778/3750601.3750624Artifact / Code：论文中给出 https://github.com/antgroup/vsag（GitHub: antgroup/vsag）">
+    <meta itemprop="datePublished" content="January 01, 2026">
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 class="page__title" itemprop="headline">VSAG：图 ANNS 的优化搜索框架（论文笔记）
+</h1>
+          
+            <p class="page__meta"><i class="fa fa-clock-o" aria-hidden="true"></i> 
+
+
+  
+	  5 分钟阅读
+	
+</p>
+          
+        
+          
+          
+          
+            <p class="page__date"><strong><i class="fa fa-fw fa-calendar" aria-hidden="true"></i> 发布于：</strong> <time datetime="2026-01-01T00:00:00+08:00">January 01, 2026</time></p>
+          
+        
+        
+             
+        
+    
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        <blockquote>
+  <p>论文：<strong>VSAG: An Optimized Search Framework for Graph-based Approximate Nearest Neighbor Search</strong>（PVLDB 18(12), 5017-5030, 2025）<br />
+原文：<a href="https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf"><code class="language-plaintext highlighter-rouge">https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf</code></a><br />
+DOI：10.14778/3750601.3750624<br />
+Artifact / Code：论文中给出 <code class="language-plaintext highlighter-rouge">https://github.com/antgroup/vsag</code>（<a href="https://github.com/antgroup/vsag">GitHub: antgroup/vsag</a>）</p>
+</blockquote>
+
+<p>VSAG 是一个面向<strong>图结构 ANNS（Approximate Nearest Neighbor Search）</strong>的生产级优化框架。它不是提出全新的图索引结构，而是针对“线上真实瓶颈”做了三类工程优化：<strong>内存访问</strong>、<strong>参数调优</strong>、<strong>距离计算</strong>，并在保持精度（召回）前提下，把吞吐做到了相对现有库（如 HNSWlib）的数倍提升。</p>
+
+<h2 id="0-tldr先看结论">0. TL;DR（先看结论）</h2>
+
+<ul>
+  <li><strong>定位问题的方式很工程</strong>：论文把“图 ANNS 为什么慢”拆成可量化的三类瓶颈：随机内存访问（cache miss）、距离计算、参数调优成本。</li>
+  <li><strong>解决方案也很工程</strong>：VSAG 不是新算法，而是一个“优化框架”，重点是三条主线：
+    <ul>
+      <li><strong>Efficient memory access</strong>：prefetch + 更 cache-friendly 的向量组织方式，显著降低 cache miss。</li>
+      <li><strong>Automated parameter tuning</strong>：自动选参数，避免“调参必须反复 rebuild”的高成本。</li>
+      <li><strong>Efficient distance computation</strong>：利用现代硬件 + 标量量化 + 低精度切换，显著降低距离计算成本。</li>
+    </ul>
+  </li>
+  <li><strong>论文宣称的总体效果</strong>：在同等精度下，VSAG <strong>相对 HNSWlib 最高可达 4× speedup</strong>（摘要结论）。</li>
+</ul>
+
+<h2 id="1-背景为什么图-anns-在生产中会慢">1. 背景：为什么图 ANNS 在生产中会慢</h2>
+
+<p>图 ANNS（如 HNSW、VAMANA 等）在查询阶段通常是“从入口点出发做图遍历 + 维护候选集 + 多次距离计算”。论文指出三类常见瓶颈：</p>
+
+<ul>
+  <li><strong>随机内存访问开销大</strong>：图遍历会产生大量“跳来跳去”的访问，导致缓存不命中（尤其 L3 miss）上升，CPU 大量时间耗在等内存。</li>
+  <li><strong>距离计算开销高</strong>：高维向量距离（如 L2 / IP）本身就重，候选多时更明显。</li>
+  <li><strong>参数敏感且调参成本高</strong>：图索引的效果/吞吐对参数非常敏感，但传统方式往往需要反复 rebuild 才能尝试不同参数，代价很高。</li>
+</ul>
+
+<h3 id="11-论文给的线上味证据瓶颈分解与调参代价">1.1 论文给的“线上味”证据：瓶颈分解与调参代价</h3>
+
+<p>论文在引言里用一个具体实验把问题说得很硬：</p>
+
+<ul>
+  <li>baseline 选的是 <strong>HNSW + SQ4（标量量化）</strong>（因为生产系统通常会用量化降低距离计算成本）</li>
+  <li>在 <strong>GIST1M</strong> 上做 <strong>1000 次查询</strong>，观察到：
+    <ul>
+      <li><strong>每个查询需要 &gt;2959 次随机向量访问（总约 1.4MB）</strong>，带来 <strong>67.42% 的 L3 cache miss rate</strong></li>
+      <li><strong>内存访问耗时占 63.02%</strong>（说明主要在“等内存”）</li>
+      <li>即便用了 SQ4，<strong>距离计算仍占 26.12%</strong></li>
+      <li>参数如果选到更优，QPS 可从 <strong>1530 提升到 2182（+42.6%）</strong></li>
+      <li>但 brute-force 调参要 <strong>&gt;60 小时</strong>（几乎不可用）</li>
+    </ul>
+  </li>
+</ul>
+
+<p>这组数字非常典型：图 ANNS 的线上性能往往首先是<strong>硬件行为</strong>（缓存/带宽/随机访问）决定的，其次才是“算法步数”。</p>
+
+<pre><code class="language-mermaid">graph TD
+    D1Start[One query] --&gt; D1Core[Graph ANNS search core]
+
+    D1Core --&gt; D1MemA
+    D1Core --&gt; D1DistA
+    D1Core --&gt; D1TuneA
+
+    subgraph D1MemG[Memory access bottleneck]
+        D1MemA[Random vector neighbor access]
+        D1MemB[High L3 cache miss]
+        D1MemC[CPU stall waiting memory]
+        D1MemS1[L3 miss 67.42 percent]
+        D1MemS2[Time share 63.02 percent]
+        D1MemA --&gt; D1MemB --&gt; D1MemC
+        D1MemC --&gt; D1MemS1
+        D1MemC --&gt; D1MemS2
+    end
+
+    subgraph D1DistG[Distance compute bottleneck]
+        D1DistA[Many candidates high dimension]
+        D1DistS1[Time share 26.12 percent]
+        D1DistA --&gt; D1DistS1
+    end
+
+    subgraph D1TuneG[Parameter tuning bottleneck]
+        D1TuneA[Sensitive parameters affect recall qps latency]
+        D1TuneS1[QPS gain 42.6 percent]
+        D1TuneS2[Tuning cost 60 hours plus]
+        D1TuneA --&gt; D1TuneS1
+        D1TuneA --&gt; D1TuneS2
+    end
+
+    %% Use unique class names per diagram (avoid cross-diagram collisions in some renderers)
+    classDef D1_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D1_core fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef D1_box fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D1_metric fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D1Start D1_start
+    class D1Core D1_core
+    class D1MemA D1_box
+    class D1MemB D1_box
+    class D1MemC D1_box
+    class D1DistA D1_box
+    class D1TuneA D1_box
+    class D1MemS1 D1_metric
+    class D1MemS2 D1_metric
+    class D1DistS1 D1_metric
+    class D1TuneS1 D1_metric
+    class D1TuneS2 D1_metric
+</code></pre>
+
+<h2 id="2-vsag-的核心贡献论文的三件事">2. VSAG 的核心贡献（论文的三件事）</h2>
+
+<p>论文把 VSAG 的优化归纳为三部分（摘要中给出）：</p>
+
+<h3 id="21-efficient-memory-access更缓存友好的访问">2.1 Efficient Memory Access：更“缓存友好”的访问</h3>
+
+<p>目标是减少 cache miss，让“图遍历 + 向量读取”尽可能连续、可预取。</p>
+
+<p>直觉上可以理解为：</p>
+<ul>
+  <li><strong>减少随机跳转带来的冷访问</strong>（尽量让向量存放/访问更贴近硬件缓存的工作方式）</li>
+  <li><strong>用预取（prefetching）提前把后续可能访问的向量拉进缓存</strong></li>
+</ul>
+
+<p>（论文原文用 “prefetching” 和 “cache-friendly vector organization” 概括。）</p>
+
+<h4 id="211-把图遍历画成数据通路会更容易理解">2.1.1 把“图遍历”画成数据通路，会更容易理解</h4>
+
+<pre><code class="language-mermaid">graph TD
+    D2Q[Query q] --&gt; D2Init[Init entry point]
+    D2Init --&gt; D2Expand[Expand node u]
+
+    subgraph D2LoopG[Traversal loop]
+        D2Expand --&gt; D2Read[Read neighbor list]
+        D2Read --&gt; D2PF[Prefetch]
+        D2PF --&gt; D2Dist[Compute distance]
+        D2Dist --&gt; D2Heap[Update candidate set]
+        D2Heap --&gt; D2Check[Check stop condition]
+        D2Check --&gt; D2More[Continue]
+        D2More --&gt; D2Expand
+    end
+
+    D2Check --&gt; D2Out[Output top k]
+
+    classDef D2_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D2_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D2_mem fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef D2_compute fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef D2_ctrl fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D2Q D2_start
+    class D2Out D2_start
+    class D2Init D2_step
+    class D2Expand D2_step
+    class D2Read D2_step
+    class D2Heap D2_step
+    class D2PF D2_mem
+    class D2Dist D2_compute
+    class D2Check D2_ctrl
+</code></pre>
+
+<p>这张图对应一个很现实的工程目标：<strong>让“下一批要访问的向量”尽可能提前进入 cache</strong>，让 CPU 算距离时不至于完全空转等内存。</p>
+
+<h3 id="22-automated-parameter-tuning免重建的自动调参">2.2 Automated Parameter Tuning：免重建的自动调参</h3>
+
+<p>论文强调：生产环境里“为了调参反复 rebuild 索引”非常贵，因此 VSAG 的目标是<strong>自动选择性能更优的参数</strong>，并避免把调参成本放大到不可接受。</p>
+
+<p>可以把它理解成把“参数选择”做成一条可重复的离线/半离线流水线：</p>
+
+<pre><code class="language-mermaid">graph TD
+    D3Start[Goal: higher QPS at same recall] --&gt; D3Constraint[Constraints: recall target, latency SLO, memory budget]
+    D3Constraint --&gt; D3Space[Parameter space: candidate configs]
+
+    subgraph D3Eval[Evaluation and selection loop]
+        D3Workload[Sample workload: queries and dataset slice]
+        D3Run[Run benchmark: build/search trials]
+        D3Metric[Compute metrics: recall, qps, p95, p99]
+        D3Select[Select best config: objective or Pareto]
+        D3Workload --&gt; D3Run --&gt; D3Metric --&gt; D3Select
+    end
+
+    D3Space --&gt; D3Workload
+    D3Select --&gt; D3Out[Output config: tuned parameters]
+    D3Out --&gt; D3Benefit[Benefit: fewer rebuild iterations]
+
+    classDef D3_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D3_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D3_dec fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D3Start D3_start
+    class D3Out D3_start
+    class D3Constraint D3_step
+    class D3Space D3_step
+    class D3Workload D3_step
+    class D3Run D3_step
+    class D3Metric D3_step
+    class D3Benefit D3_step
+    class D3Select D3_dec
+</code></pre>
+
+<p>（这里用笔记化的抽象表示，具体策略以论文为准。）</p>
+
+<h4 id="221-这点为什么值得单独写">2.2.1 这点为什么值得单独写</h4>
+
+<p>很多 ANNS 系统在工程上真正难的不是实现 HNSW，而是：</p>
+<ul>
+  <li><strong>你怎么选参数</strong>（而不是“默认参数能不能跑”）</li>
+  <li><strong>你怎么把参数选择变成可重复的流程</strong>（而不是靠经验拍脑袋）</li>
+</ul>
+
+<p>论文在 Table 1 里把“Parameter tuning cost”当成一项指标，是很强的信号：<strong>调参成本已经是系统成本的一部分</strong>。</p>
+
+<h3 id="23-efficient-distance-computation更快的距离计算">2.3 Efficient Distance Computation：更快的距离计算</h3>
+
+<p>VSAG 的距离计算优化强调三点（摘要原话）：</p>
+<ul>
+  <li><strong>leverages modern hardware</strong>：充分利用现代 CPU/指令特性</li>
+  <li><strong>scalar quantization</strong>：用标量量化降低计算/带宽成本</li>
+  <li><strong>smartly switches to low-precision representation</strong>：在合适的阶段切换低精度表示，显著降低距离计算代价</li>
+</ul>
+
+<p>可以把它理解成“先用更便宜的表示快速筛，再在必要时做更精确的计算”：</p>
+
+<pre><code class="language-mermaid">graph TD
+    D4Q[Query vector q] --&gt; D4Cand[Candidates C]
+    D4Cand --&gt; D4Coarse[Stage A: coarse scoring]
+    D4Coarse --&gt; D4Rep[Low precision / SQ]
+    D4Rep --&gt; D4ScoreA[Approx distance]
+    D4ScoreA --&gt; D4Keep[Keep TopM or TopK]
+    D4Keep --&gt; D4Refine[Stage B: refine optional]
+    D4Refine --&gt; D4ScoreB[High precision distance]
+    D4ScoreB --&gt; D4Out[TopK results]
+
+    %% Use the most compatible class syntax: no trailing semicolons, no comma-separated node lists
+    classDef D4_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D4_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D4_coarse fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef D4_refine fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef D4_keep fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D4Q D4_start
+    class D4Out D4_start
+    class D4Cand D4_step
+    class D4Coarse D4_coarse
+    class D4Rep D4_coarse
+    class D4ScoreA D4_coarse
+    class D4Refine D4_refine
+    class D4ScoreB D4_refine
+    class D4Keep D4_keep
+</code></pre>
+
+<h4 id="231-低精度切换一个常见且有效的代价模型">2.3.1 低精度切换：一个常见且有效的代价模型</h4>
+
+<p>你可以把它理解成“分两段算距离”：</p>
+<ul>
+  <li><strong>粗筛</strong>：便宜的距离（量化/低精度）→ 快速砍掉大量候选</li>
+  <li><strong>精排</strong>：昂贵的距离（更高精度）→ 只算少量候选</li>
+</ul>
+
+<p>这样距离计算的重活被限制在更小的集合里，更容易把总成本压下去。</p>
+
+<h2 id="3-论文里的关键实验结论抓核心数字">3. 论文里的关键实验结论（抓核心数字）</h2>
+
+<p>论文在摘要与表格中强调了“同精度下吞吐提升”和“瓶颈占比下降”。在给出的对比表（GIST1M）里（论文 Table 1）：</p>
+
+<ul>
+  <li><strong>VSAG 在 Recall@10 接近 90% 时的 QPS 更高</strong>（相对 HNSW 基线更优）</li>
+  <li><strong>距离计算成本显著下降</strong>（表中示例：VSAG 0.1ms vs HNSW 1.62ms）</li>
+  <li><strong>L3 cache miss rate 明显下降</strong>（表中示例：VSAG 39.23% vs HNSW 94.46%）</li>
+  <li><strong>参数调优成本显著下降</strong>（表中示例：VSAG 2.92h vs HNSW &gt; 60h）</li>
+  <li>论文摘要还给出整体结论：在相同精度下，<strong>相对 HNSWlib 可达到最高 4× 加速</strong>。</li>
+</ul>
+
+<blockquote>
+  <p>注：以上数字来自论文原文的摘要与表格（见原文 PDF）。</p>
+</blockquote>
+
+<h3 id="31-table-1gist1m对照表一眼看出优化打在了哪里">3.1 Table 1（GIST1M）对照表：一眼看出“优化打在了哪里”</h3>
+
+<p>下面把论文 Table 1 的核心对比摘出来（便于复用和讨论）：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric (GIST1M)</th>
+      <th style="text-align: right">IVFPQFS</th>
+      <th style="text-align: right">HNSW</th>
+      <th style="text-align: right">VSAG</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Memory Footprint</td>
+      <td style="text-align: right">3.8G</td>
+      <td style="text-align: right">4.0G</td>
+      <td style="text-align: right">4.5G</td>
+    </tr>
+    <tr>
+      <td>Recall@10 (QPS=2000)</td>
+      <td style="text-align: right">84.57%</td>
+      <td style="text-align: right">59.46%</td>
+      <td style="text-align: right">89.80%</td>
+    </tr>
+    <tr>
+      <td>QPS (Recall@10=90%)</td>
+      <td style="text-align: right">1195</td>
+      <td style="text-align: right">511.9</td>
+      <td style="text-align: right">2167.3</td>
+    </tr>
+    <tr>
+      <td>Distance Computation Cost</td>
+      <td style="text-align: right">0.71ms</td>
+      <td style="text-align: right">1.62ms</td>
+      <td style="text-align: right">0.1ms</td>
+    </tr>
+    <tr>
+      <td>L3 Cache Miss Rate</td>
+      <td style="text-align: right">13.98%</td>
+      <td style="text-align: right">94.46%</td>
+      <td style="text-align: right">39.23%</td>
+    </tr>
+    <tr>
+      <td>Parameter Tuning Cost</td>
+      <td style="text-align: right">&gt;20h</td>
+      <td style="text-align: right">&gt;60h</td>
+      <td style="text-align: right">2.92h</td>
+    </tr>
+    <tr>
+      <td>Parameter Tuning</td>
+      <td style="text-align: right">manual</td>
+      <td style="text-align: right">manual</td>
+      <td style="text-align: right">auto</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>这张表里最“值钱”的三行是：</p>
+<ul>
+  <li><strong>L3 Cache Miss Rate</strong>（内存访问优化是否真有效）</li>
+  <li><strong>Distance Computation Cost</strong>（距离计算是否真变便宜）</li>
+  <li><strong>Parameter Tuning Cost</strong>（工程成本是否真能降下来）</li>
+</ul>
+
+<h2 id="4-我觉得这篇论文最值得带走的点">4. 我觉得这篇论文最值得带走的点</h2>
+
+<h3 id="41-图-anns-的性能天花板很多时候不在算法而在硬件行为">4.1 图 ANNS 的“性能天花板”很多时候不在算法，而在硬件行为</h3>
+
+<p>很多系统以为“换个更强的图结构”就够了，但生产中最大的敌人往往是：</p>
+<ul>
+  <li>cache miss</li>
+  <li>内存带宽</li>
+  <li>分支预测/随机访问</li>
+</ul>
+
+<p>VSAG 的价值在于把这些问题放进一套系统化的优化框架里。</p>
+
+<h3 id="42-调参是第一等公民">4.2 调参是“第一等公民”</h3>
+
+<p>当索引构建很贵时，调参必须尽量做到：</p>
+<ul>
+  <li>可自动化</li>
+  <li>可复用</li>
+  <li>尽可能避免 rebuild</li>
+</ul>
+
+<p>否则工程上根本落不了地。</p>
+
+<h3 id="43-低精度量化不只是压缩还是算得更快">4.3 低精度/量化不只是“压缩”，还是“算得更快”</h3>
+
+<p>VSAG 把量化与硬件优化放进距离计算主链路中，目标是降低每一次距离计算的真实成本（而不是只减少存储占用）。</p>
+
+<h2 id="5-带着这几个问题再读原文更容易学到可迁移的工程经验">5. 带着这几个问题再读原文（更容易学到“可迁移的工程经验”）</h2>
+
+<ul>
+  <li><strong>profile 先行</strong>：你的查询到底卡在 memory 还是 compute？</li>
+  <li><strong>cache 指标要量化</strong>：L3 miss 到底是多少？是否接近“随机访问极限”？</li>
+  <li><strong>调参是系统工程</strong>：调参要不要 rebuild？调参成本是否可控？</li>
+  <li><strong>距离计算分层</strong>：能不能“低精度粗筛 + 高精度精排”？</li>
+</ul>
+
+<h2 id="6-进一步阅读">6. 进一步阅读</h2>
+
+<ul>
+  <li><strong>论文原文</strong>：<a href="https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf"><code class="language-plaintext highlighter-rouge">https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf</code></a></li>
+  <li><strong>项目代码（论文给出）</strong>：<code class="language-plaintext highlighter-rouge">https://github.com/antgroup/vsag</code></li>
+</ul>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+      </footer>
+
+      
+
+      
+    </div>
+
+    
+  </article>
+
+</div>
+
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+<a href="/sitemap/">Sitemap</a>
+<!-- end custom footer snippets -->
+
+        
+
+
+<div class="page__footer-copyright">
+  &copy; 2026 周智龙
+</div>
+
+      </footer>
+    </div>
+
+    <script src="/assets/js/main.min.js"></script>
+<script src="/assets/js/sidebar-toggle.js"></script>
+<script src="/assets/js/home-page-size.js"></script>
+
+<!-- Mermaid.js for diagram rendering -->
+<!-- Pin Mermaid version to avoid syntax/behavior drifting across builds -->
+<script>
+  (function() {
+    // Load Mermaid with fallback
+    function loadMermaid() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js';
+      script.onerror = function() {
+        // Fallback to unpkg if jsdelivr fails
+        this.onerror = null;
+        this.src = 'https://unpkg.com/mermaid@10.9.5/dist/mermaid.min.js';
+      };
+      script.onload = function() {
+        // Initialize Mermaid after script loads
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({ 
+            startOnLoad: false,  // We'll manually initialize after processing code blocks
+            theme: 'base',
+            themeVariables: {
+              fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'",
+              fontSize: "14px",
+              primaryColor: "#eef2ff",
+              primaryBorderColor: "#6366f1",
+              primaryTextColor: "#111827",
+              secondaryColor: "#ecfeff",
+              secondaryBorderColor: "#06b6d4",
+              secondaryTextColor: "#0f172a",
+              tertiaryColor: "#f0fdf4",
+              tertiaryBorderColor: "#22c55e",
+              tertiaryTextColor: "#0f172a",
+              lineColor: "#475569",
+              actorBkg: "#eef2ff",
+              actorBorder: "#6366f1",
+              actorTextColor: "#111827",
+              noteBkgColor: "#fff7ed",
+              noteTextColor: "#0f172a",
+              noteBorderColor: "#fb923c"
+            },
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              curve: 'basis',
+              nodeSpacing: 80,
+              rankSpacing: 100,
+              padding: 20
+            },
+            sequence: {
+              diagramMarginX: 50,
+              diagramMarginY: 10,
+              actorMargin: 50,
+              width: 150,
+              height: 65,
+              boxMargin: 10,
+              boxTextMargin: 5,
+              noteMargin: 10,
+              messageMargin: 35,
+              mirrorActors: true,
+              bottomMarginAdj: 1,
+              useMaxWidth: true,
+              rightAngles: false,
+              showSequenceNumbers: false
+            },
+            state: {
+              useMaxWidth: true
+            }
+          });
+          
+          // Process mermaid code blocks
+          processMermaidBlocks();
+        }
+      };
+      document.head.appendChild(script);
+    }
+    
+    function processMermaidBlocks() {
+      // Find all code blocks with language-mermaid or containing mermaid
+      const codeBlocks = document.querySelectorAll('code.language-mermaid, code[class*="mermaid"]');
+      
+      codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (pre && pre.tagName === 'PRE') {
+          const mermaidDiv = document.createElement('div');
+          mermaidDiv.className = 'mermaid';
+          mermaidDiv.textContent = codeBlock.textContent;
+          pre.parentNode.replaceChild(mermaidDiv, pre);
+        }
+      });
+      
+      // Also check for pre > code structure
+      const allPreCode = document.querySelectorAll('pre > code');
+      allPreCode.forEach(function(code) {
+        const pre = code.parentElement;
+        const codeText = code.textContent.trim();
+        if (codeText && (
+          codeText.startsWith('graph ') || 
+          codeText.startsWith('sequenceDiagram') ||
+          codeText.startsWith('stateDiagram') ||
+          codeText.startsWith('classDiagram') ||
+          code.classList.contains('language-mermaid')
+        )) {
+          if (pre.classList.contains('language-mermaid') || 
+              code.classList.contains('language-mermaid') ||
+              codeText.match(/^(graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|gitgraph|journey|requirement)/)) {
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            mermaidDiv.textContent = codeText;
+            pre.parentNode.replaceChild(mermaidDiv, pre);
+          }
+        }
+      });
+      
+      // Run Mermaid after processing
+      if (typeof mermaid !== 'undefined' && mermaid.run) {
+        mermaid.run();
+      }
+    }
+    
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMermaid);
+    } else {
+      loadMermaid();
+    }
+  })();
+</script>
+
+
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', '', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+
+
+
+
+  </body>
+</html>
+

@@ -1,4 +1,383 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-09T10:32:06+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-02-10T10:56:21+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">zhouzhilong</title><subtitle>周智龙的个人博客</subtitle><author><name>周智龙</name></author><entry><title type="html">VSAG：图 ANNS 的优化搜索框架（论文笔记）</title><link href="http://localhost:4000/paper-notes/storage/vsag/" rel="alternate" type="text/html" title="VSAG：图 ANNS 的优化搜索框架（论文笔记）" /><published>2026-01-01T00:00:00+08:00</published><updated>2026-01-01T00:00:00+08:00</updated><id>http://localhost:4000/paper-notes/storage/paper-vsag</id><content type="html" xml:base="http://localhost:4000/paper-notes/storage/vsag/"><![CDATA[<blockquote>
+  <p>论文：<strong>VSAG: An Optimized Search Framework for Graph-based Approximate Nearest Neighbor Search</strong>（PVLDB 18(12), 5017-5030, 2025）<br />
+原文：<a href="https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf"><code class="language-plaintext highlighter-rouge">https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf</code></a><br />
+DOI：10.14778/3750601.3750624<br />
+Artifact / Code：论文中给出 <code class="language-plaintext highlighter-rouge">https://github.com/antgroup/vsag</code>（<a href="https://github.com/antgroup/vsag">GitHub: antgroup/vsag</a>）</p>
+</blockquote>
+
+<p>VSAG 是一个面向<strong>图结构 ANNS（Approximate Nearest Neighbor Search）</strong>的生产级优化框架。它不是提出全新的图索引结构，而是针对“线上真实瓶颈”做了三类工程优化：<strong>内存访问</strong>、<strong>参数调优</strong>、<strong>距离计算</strong>，并在保持精度（召回）前提下，把吞吐做到了相对现有库（如 HNSWlib）的数倍提升。</p>
+
+<h2 id="0-tldr先看结论">0. TL;DR（先看结论）</h2>
+
+<ul>
+  <li><strong>定位问题的方式很工程</strong>：论文把“图 ANNS 为什么慢”拆成可量化的三类瓶颈：随机内存访问（cache miss）、距离计算、参数调优成本。</li>
+  <li><strong>解决方案也很工程</strong>：VSAG 不是新算法，而是一个“优化框架”，重点是三条主线：
+    <ul>
+      <li><strong>Efficient memory access</strong>：prefetch + 更 cache-friendly 的向量组织方式，显著降低 cache miss。</li>
+      <li><strong>Automated parameter tuning</strong>：自动选参数，避免“调参必须反复 rebuild”的高成本。</li>
+      <li><strong>Efficient distance computation</strong>：利用现代硬件 + 标量量化 + 低精度切换，显著降低距离计算成本。</li>
+    </ul>
+  </li>
+  <li><strong>论文宣称的总体效果</strong>：在同等精度下，VSAG <strong>相对 HNSWlib 最高可达 4× speedup</strong>（摘要结论）。</li>
+</ul>
+
+<h2 id="1-背景为什么图-anns-在生产中会慢">1. 背景：为什么图 ANNS 在生产中会慢</h2>
+
+<p>图 ANNS（如 HNSW、VAMANA 等）在查询阶段通常是“从入口点出发做图遍历 + 维护候选集 + 多次距离计算”。论文指出三类常见瓶颈：</p>
+
+<ul>
+  <li><strong>随机内存访问开销大</strong>：图遍历会产生大量“跳来跳去”的访问，导致缓存不命中（尤其 L3 miss）上升，CPU 大量时间耗在等内存。</li>
+  <li><strong>距离计算开销高</strong>：高维向量距离（如 L2 / IP）本身就重，候选多时更明显。</li>
+  <li><strong>参数敏感且调参成本高</strong>：图索引的效果/吞吐对参数非常敏感，但传统方式往往需要反复 rebuild 才能尝试不同参数，代价很高。</li>
+</ul>
+
+<h3 id="11-论文给的线上味证据瓶颈分解与调参代价">1.1 论文给的“线上味”证据：瓶颈分解与调参代价</h3>
+
+<p>论文在引言里用一个具体实验把问题说得很硬：</p>
+
+<ul>
+  <li>baseline 选的是 <strong>HNSW + SQ4（标量量化）</strong>（因为生产系统通常会用量化降低距离计算成本）</li>
+  <li>在 <strong>GIST1M</strong> 上做 <strong>1000 次查询</strong>，观察到：
+    <ul>
+      <li><strong>每个查询需要 &gt;2959 次随机向量访问（总约 1.4MB）</strong>，带来 <strong>67.42% 的 L3 cache miss rate</strong></li>
+      <li><strong>内存访问耗时占 63.02%</strong>（说明主要在“等内存”）</li>
+      <li>即便用了 SQ4，<strong>距离计算仍占 26.12%</strong></li>
+      <li>参数如果选到更优，QPS 可从 <strong>1530 提升到 2182（+42.6%）</strong></li>
+      <li>但 brute-force 调参要 <strong>&gt;60 小时</strong>（几乎不可用）</li>
+    </ul>
+  </li>
+</ul>
+
+<p>这组数字非常典型：图 ANNS 的线上性能往往首先是<strong>硬件行为</strong>（缓存/带宽/随机访问）决定的，其次才是“算法步数”。</p>
+
+<pre><code class="language-mermaid">graph TD
+    D1Start[One query] --&gt; D1Core[Graph ANNS search core]
+
+    D1Core --&gt; D1MemA
+    D1Core --&gt; D1DistA
+    D1Core --&gt; D1TuneA
+
+    subgraph D1MemG[Memory access bottleneck]
+        D1MemA[Random vector neighbor access]
+        D1MemB[High L3 cache miss]
+        D1MemC[CPU stall waiting memory]
+        D1MemS1[L3 miss 67.42 percent]
+        D1MemS2[Time share 63.02 percent]
+        D1MemA --&gt; D1MemB --&gt; D1MemC
+        D1MemC --&gt; D1MemS1
+        D1MemC --&gt; D1MemS2
+    end
+
+    subgraph D1DistG[Distance compute bottleneck]
+        D1DistA[Many candidates high dimension]
+        D1DistS1[Time share 26.12 percent]
+        D1DistA --&gt; D1DistS1
+    end
+
+    subgraph D1TuneG[Parameter tuning bottleneck]
+        D1TuneA[Sensitive parameters affect recall qps latency]
+        D1TuneS1[QPS gain 42.6 percent]
+        D1TuneS2[Tuning cost 60 hours plus]
+        D1TuneA --&gt; D1TuneS1
+        D1TuneA --&gt; D1TuneS2
+    end
+
+    %% Use unique class names per diagram (avoid cross-diagram collisions in some renderers)
+    classDef D1_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D1_core fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef D1_box fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D1_metric fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D1Start D1_start
+    class D1Core D1_core
+    class D1MemA D1_box
+    class D1MemB D1_box
+    class D1MemC D1_box
+    class D1DistA D1_box
+    class D1TuneA D1_box
+    class D1MemS1 D1_metric
+    class D1MemS2 D1_metric
+    class D1DistS1 D1_metric
+    class D1TuneS1 D1_metric
+    class D1TuneS2 D1_metric
+</code></pre>
+
+<h2 id="2-vsag-的核心贡献论文的三件事">2. VSAG 的核心贡献（论文的三件事）</h2>
+
+<p>论文把 VSAG 的优化归纳为三部分（摘要中给出）：</p>
+
+<h3 id="21-efficient-memory-access更缓存友好的访问">2.1 Efficient Memory Access：更“缓存友好”的访问</h3>
+
+<p>目标是减少 cache miss，让“图遍历 + 向量读取”尽可能连续、可预取。</p>
+
+<p>直觉上可以理解为：</p>
+<ul>
+  <li><strong>减少随机跳转带来的冷访问</strong>（尽量让向量存放/访问更贴近硬件缓存的工作方式）</li>
+  <li><strong>用预取（prefetching）提前把后续可能访问的向量拉进缓存</strong></li>
+</ul>
+
+<p>（论文原文用 “prefetching” 和 “cache-friendly vector organization” 概括。）</p>
+
+<h4 id="211-把图遍历画成数据通路会更容易理解">2.1.1 把“图遍历”画成数据通路，会更容易理解</h4>
+
+<pre><code class="language-mermaid">graph TD
+    D2Q[Query q] --&gt; D2Init[Init entry point]
+    D2Init --&gt; D2Expand[Expand node u]
+
+    subgraph D2LoopG[Traversal loop]
+        D2Expand --&gt; D2Read[Read neighbor list]
+        D2Read --&gt; D2PF[Prefetch]
+        D2PF --&gt; D2Dist[Compute distance]
+        D2Dist --&gt; D2Heap[Update candidate set]
+        D2Heap --&gt; D2Check[Check stop condition]
+        D2Check --&gt; D2More[Continue]
+        D2More --&gt; D2Expand
+    end
+
+    D2Check --&gt; D2Out[Output top k]
+
+    classDef D2_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D2_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D2_mem fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef D2_compute fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef D2_ctrl fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D2Q D2_start
+    class D2Out D2_start
+    class D2Init D2_step
+    class D2Expand D2_step
+    class D2Read D2_step
+    class D2Heap D2_step
+    class D2PF D2_mem
+    class D2Dist D2_compute
+    class D2Check D2_ctrl
+</code></pre>
+
+<p>这张图对应一个很现实的工程目标：<strong>让“下一批要访问的向量”尽可能提前进入 cache</strong>，让 CPU 算距离时不至于完全空转等内存。</p>
+
+<h3 id="22-automated-parameter-tuning免重建的自动调参">2.2 Automated Parameter Tuning：免重建的自动调参</h3>
+
+<p>论文强调：生产环境里“为了调参反复 rebuild 索引”非常贵，因此 VSAG 的目标是<strong>自动选择性能更优的参数</strong>，并避免把调参成本放大到不可接受。</p>
+
+<p>可以把它理解成把“参数选择”做成一条可重复的离线/半离线流水线：</p>
+
+<pre><code class="language-mermaid">graph TD
+    D3Start[Goal: higher QPS at same recall] --&gt; D3Constraint[Constraints: recall target, latency SLO, memory budget]
+    D3Constraint --&gt; D3Space[Parameter space: candidate configs]
+
+    subgraph D3Eval[Evaluation and selection loop]
+        D3Workload[Sample workload: queries and dataset slice]
+        D3Run[Run benchmark: build/search trials]
+        D3Metric[Compute metrics: recall, qps, p95, p99]
+        D3Select[Select best config: objective or Pareto]
+        D3Workload --&gt; D3Run --&gt; D3Metric --&gt; D3Select
+    end
+
+    D3Space --&gt; D3Workload
+    D3Select --&gt; D3Out[Output config: tuned parameters]
+    D3Out --&gt; D3Benefit[Benefit: fewer rebuild iterations]
+
+    classDef D3_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D3_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D3_dec fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D3Start D3_start
+    class D3Out D3_start
+    class D3Constraint D3_step
+    class D3Space D3_step
+    class D3Workload D3_step
+    class D3Run D3_step
+    class D3Metric D3_step
+    class D3Benefit D3_step
+    class D3Select D3_dec
+</code></pre>
+
+<p>（这里用笔记化的抽象表示，具体策略以论文为准。）</p>
+
+<h4 id="221-这点为什么值得单独写">2.2.1 这点为什么值得单独写</h4>
+
+<p>很多 ANNS 系统在工程上真正难的不是实现 HNSW，而是：</p>
+<ul>
+  <li><strong>你怎么选参数</strong>（而不是“默认参数能不能跑”）</li>
+  <li><strong>你怎么把参数选择变成可重复的流程</strong>（而不是靠经验拍脑袋）</li>
+</ul>
+
+<p>论文在 Table 1 里把“Parameter tuning cost”当成一项指标，是很强的信号：<strong>调参成本已经是系统成本的一部分</strong>。</p>
+
+<h3 id="23-efficient-distance-computation更快的距离计算">2.3 Efficient Distance Computation：更快的距离计算</h3>
+
+<p>VSAG 的距离计算优化强调三点（摘要原话）：</p>
+<ul>
+  <li><strong>leverages modern hardware</strong>：充分利用现代 CPU/指令特性</li>
+  <li><strong>scalar quantization</strong>：用标量量化降低计算/带宽成本</li>
+  <li><strong>smartly switches to low-precision representation</strong>：在合适的阶段切换低精度表示，显著降低距离计算代价</li>
+</ul>
+
+<p>可以把它理解成“先用更便宜的表示快速筛，再在必要时做更精确的计算”：</p>
+
+<pre><code class="language-mermaid">graph TD
+    D4Q[Query vector q] --&gt; D4Cand[Candidates C]
+    D4Cand --&gt; D4Coarse[Stage A: coarse scoring]
+    D4Coarse --&gt; D4Rep[Low precision / SQ]
+    D4Rep --&gt; D4ScoreA[Approx distance]
+    D4ScoreA --&gt; D4Keep[Keep TopM or TopK]
+    D4Keep --&gt; D4Refine[Stage B: refine optional]
+    D4Refine --&gt; D4ScoreB[High precision distance]
+    D4ScoreB --&gt; D4Out[TopK results]
+
+    %% Use the most compatible class syntax: no trailing semicolons, no comma-separated node lists
+    classDef D4_start fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef D4_step fill:#ffffff,stroke:#9e9e9e,stroke-width:1px
+    classDef D4_coarse fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef D4_refine fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef D4_keep fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    class D4Q D4_start
+    class D4Out D4_start
+    class D4Cand D4_step
+    class D4Coarse D4_coarse
+    class D4Rep D4_coarse
+    class D4ScoreA D4_coarse
+    class D4Refine D4_refine
+    class D4ScoreB D4_refine
+    class D4Keep D4_keep
+</code></pre>
+
+<h4 id="231-低精度切换一个常见且有效的代价模型">2.3.1 低精度切换：一个常见且有效的代价模型</h4>
+
+<p>你可以把它理解成“分两段算距离”：</p>
+<ul>
+  <li><strong>粗筛</strong>：便宜的距离（量化/低精度）→ 快速砍掉大量候选</li>
+  <li><strong>精排</strong>：昂贵的距离（更高精度）→ 只算少量候选</li>
+</ul>
+
+<p>这样距离计算的重活被限制在更小的集合里，更容易把总成本压下去。</p>
+
+<h2 id="3-论文里的关键实验结论抓核心数字">3. 论文里的关键实验结论（抓核心数字）</h2>
+
+<p>论文在摘要与表格中强调了“同精度下吞吐提升”和“瓶颈占比下降”。在给出的对比表（GIST1M）里（论文 Table 1）：</p>
+
+<ul>
+  <li><strong>VSAG 在 Recall@10 接近 90% 时的 QPS 更高</strong>（相对 HNSW 基线更优）</li>
+  <li><strong>距离计算成本显著下降</strong>（表中示例：VSAG 0.1ms vs HNSW 1.62ms）</li>
+  <li><strong>L3 cache miss rate 明显下降</strong>（表中示例：VSAG 39.23% vs HNSW 94.46%）</li>
+  <li><strong>参数调优成本显著下降</strong>（表中示例：VSAG 2.92h vs HNSW &gt; 60h）</li>
+  <li>论文摘要还给出整体结论：在相同精度下，<strong>相对 HNSWlib 可达到最高 4× 加速</strong>。</li>
+</ul>
+
+<blockquote>
+  <p>注：以上数字来自论文原文的摘要与表格（见原文 PDF）。</p>
+</blockquote>
+
+<h3 id="31-table-1gist1m对照表一眼看出优化打在了哪里">3.1 Table 1（GIST1M）对照表：一眼看出“优化打在了哪里”</h3>
+
+<p>下面把论文 Table 1 的核心对比摘出来（便于复用和讨论）：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric (GIST1M)</th>
+      <th style="text-align: right">IVFPQFS</th>
+      <th style="text-align: right">HNSW</th>
+      <th style="text-align: right">VSAG</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Memory Footprint</td>
+      <td style="text-align: right">3.8G</td>
+      <td style="text-align: right">4.0G</td>
+      <td style="text-align: right">4.5G</td>
+    </tr>
+    <tr>
+      <td>Recall@10 (QPS=2000)</td>
+      <td style="text-align: right">84.57%</td>
+      <td style="text-align: right">59.46%</td>
+      <td style="text-align: right">89.80%</td>
+    </tr>
+    <tr>
+      <td>QPS (Recall@10=90%)</td>
+      <td style="text-align: right">1195</td>
+      <td style="text-align: right">511.9</td>
+      <td style="text-align: right">2167.3</td>
+    </tr>
+    <tr>
+      <td>Distance Computation Cost</td>
+      <td style="text-align: right">0.71ms</td>
+      <td style="text-align: right">1.62ms</td>
+      <td style="text-align: right">0.1ms</td>
+    </tr>
+    <tr>
+      <td>L3 Cache Miss Rate</td>
+      <td style="text-align: right">13.98%</td>
+      <td style="text-align: right">94.46%</td>
+      <td style="text-align: right">39.23%</td>
+    </tr>
+    <tr>
+      <td>Parameter Tuning Cost</td>
+      <td style="text-align: right">&gt;20h</td>
+      <td style="text-align: right">&gt;60h</td>
+      <td style="text-align: right">2.92h</td>
+    </tr>
+    <tr>
+      <td>Parameter Tuning</td>
+      <td style="text-align: right">manual</td>
+      <td style="text-align: right">manual</td>
+      <td style="text-align: right">auto</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>这张表里最“值钱”的三行是：</p>
+<ul>
+  <li><strong>L3 Cache Miss Rate</strong>（内存访问优化是否真有效）</li>
+  <li><strong>Distance Computation Cost</strong>（距离计算是否真变便宜）</li>
+  <li><strong>Parameter Tuning Cost</strong>（工程成本是否真能降下来）</li>
+</ul>
+
+<h2 id="4-我觉得这篇论文最值得带走的点">4. 我觉得这篇论文最值得带走的点</h2>
+
+<h3 id="41-图-anns-的性能天花板很多时候不在算法而在硬件行为">4.1 图 ANNS 的“性能天花板”很多时候不在算法，而在硬件行为</h3>
+
+<p>很多系统以为“换个更强的图结构”就够了，但生产中最大的敌人往往是：</p>
+<ul>
+  <li>cache miss</li>
+  <li>内存带宽</li>
+  <li>分支预测/随机访问</li>
+</ul>
+
+<p>VSAG 的价值在于把这些问题放进一套系统化的优化框架里。</p>
+
+<h3 id="42-调参是第一等公民">4.2 调参是“第一等公民”</h3>
+
+<p>当索引构建很贵时，调参必须尽量做到：</p>
+<ul>
+  <li>可自动化</li>
+  <li>可复用</li>
+  <li>尽可能避免 rebuild</li>
+</ul>
+
+<p>否则工程上根本落不了地。</p>
+
+<h3 id="43-低精度量化不只是压缩还是算得更快">4.3 低精度/量化不只是“压缩”，还是“算得更快”</h3>
+
+<p>VSAG 把量化与硬件优化放进距离计算主链路中，目标是降低每一次距离计算的真实成本（而不是只减少存储占用）。</p>
+
+<h2 id="5-带着这几个问题再读原文更容易学到可迁移的工程经验">5. 带着这几个问题再读原文（更容易学到“可迁移的工程经验”）</h2>
+
+<ul>
+  <li><strong>profile 先行</strong>：你的查询到底卡在 memory 还是 compute？</li>
+  <li><strong>cache 指标要量化</strong>：L3 miss 到底是多少？是否接近“随机访问极限”？</li>
+  <li><strong>调参是系统工程</strong>：调参要不要 rebuild？调参成本是否可控？</li>
+  <li><strong>距离计算分层</strong>：能不能“低精度粗筛 + 高精度精排”？</li>
+</ul>
+
+<h2 id="6-进一步阅读">6. 进一步阅读</h2>
+
+<ul>
+  <li><strong>论文原文</strong>：<a href="https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf"><code class="language-plaintext highlighter-rouge">https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf</code></a></li>
+  <li><strong>项目代码（论文给出）</strong>：<code class="language-plaintext highlighter-rouge">https://github.com/antgroup/vsag</code></li>
+</ul>]]></content><author><name>周智龙</name></author><category term="VSAG" /><category term="ANNS" /><category term="向量检索" /><category term="向量数据库" /><category term="HNSW" /><category term="HNSWlib" /><category term="PVLDB" /><category term="标量量化" /><category term="论文笔记" /><summary type="html"><![CDATA[论文：VSAG: An Optimized Search Framework for Graph-based Approximate Nearest Neighbor Search（PVLDB 18(12), 5017-5030, 2025） 原文：https://www.vldb.org/pvldb/vol18/p5017-cheng.pdf DOI：10.14778/3750601.3750624 Artifact / Code：论文中给出 https://github.com/antgroup/vsag（GitHub: antgroup/vsag）]]></summary></entry><entry><title type="html">IndexLib（10）：文件系统抽象与存储格式</title><link href="http://localhost:4000/indexlib-10-filesystem-storage/" rel="alternate" type="text/html" title="IndexLib（10）：文件系统抽象与存储格式" /><published>2025-07-28T00:00:00+08:00</published><updated>2025-07-28T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-10-filesystem-storage</id><content type="html" xml:base="http://localhost:4000/indexlib-10-filesystem-storage/"><![CDATA[<p>在上一篇文章中，我们深入了解了 Locator 与数据一致性的实现。本文将继续深入，详细解析文件系统抽象与存储格式的实现，这是理解 IndexLib 如何管理文件存储和访问的关键。</p>
 
 <h2 id="文件系统抽象与存储格式概览">文件系统抽象与存储格式概览</h2>
 
@@ -20981,2323 +21360,4 @@ style Evolution fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px ```
   <li><strong>内存管理优化</strong>：使用内存池、及时回收、实时监控等优化内存使用</li>
 </ul>
 
-<p>理解 Tablet 和 Segment 的组织方式，是掌握 IndexLib 索引构建和查询机制的基础。在下一篇文章中，我们将深入介绍索引构建的完整流程，包括 Build、Flush、Seal、Commit 等各个阶段的实现细节和性能优化策略。</p>]]></content><author><name>周智龙</name></author><category term="IndexLib" /><category term="搜索引擎" /><category term="存储" /><summary type="html"><![CDATA[在上一篇文章中，我们介绍了 IndexLib 的整体架构和核心概念。本文将继续深入，详细解析 Tablet 和 Segment 的组织方式，这是理解 IndexLib 索引机制的关键。]]></summary></entry><entry><title type="html">IndexLib（1）：架构概览与核心概念</title><link href="http://localhost:4000/indexlib-1-architecture-overview/" rel="alternate" type="text/html" title="IndexLib（1）：架构概览与核心概念" /><published>2025-05-08T00:00:00+08:00</published><updated>2025-05-08T00:00:00+08:00</updated><id>http://localhost:4000/indexlib-1-architecture-overview</id><content type="html" xml:base="http://localhost:4000/indexlib-1-architecture-overview/"><![CDATA[<h2 id="前言">前言</h2>
-
-<p>最近因为工作需要，我开始深入接触 IndexLib 这个阿里巴巴 Havenask 搜索引擎的核心索引库。IndexLib 是一个高性能、可扩展的 C++ 索引引擎，代码量庞大、设计精良，但文档相对较少。为了更好地理解决其设计理念和实现细节，我决定通过详细阅读源码的方式来学习，并将学习过程中的理解和思考整理成系列文章。</p>
-
-<p><strong>IndexLib 整体架构</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TB
-    subgraph Application["应用层 Application Layer"]
-        direction LR
-        Havenask["Havenask&lt;br/&gt;业务应用"]
-    end
-    
-    subgraph Framework["框架层 Framework Layer"]
-        direction LR
-        Tablet["Tablet&lt;br/&gt;索引表&lt;br/&gt;管理索引生命周期"]
-        Segment["Segment&lt;br/&gt;索引段&lt;br/&gt;基本存储单元"]
-        Version["Version&lt;br/&gt;版本管理&lt;br/&gt;记录Segment列表"]
-        Tablet --&gt;|包含多个| Segment
-        Tablet --&gt;|维护| Version
-        Version --&gt;|记录| Segment
-    end
-    
-    subgraph Index["索引层 Index Layer"]
-        direction LR
-        Normal["Normal Index&lt;br/&gt;普通索引&lt;br/&gt;全文检索"]
-        KKV["KKV Index&lt;br/&gt;键值对索引&lt;br/&gt;多值存储"]
-        KV["KV Index&lt;br/&gt;键值索引&lt;br/&gt;简单存储"]
-        Normal -.-&gt;|可选实现| KKV
-        KKV -.-&gt;|可选实现| KV
-    end
-    
-    subgraph Document["文档层 Document Layer"]
-        direction LR
-        Doc["Document&lt;br/&gt;文档&lt;br/&gt;索引基本单位"]
-        Field["Field&lt;br/&gt;字段&lt;br/&gt;文档组成部分"]
-        Doc --&gt;|包含多个| Field
-    end
-    
-    subgraph FileSystem["文件系统层 File System Layer"]
-        direction LR
-        Directory["Directory&lt;br/&gt;目录&lt;br/&gt;文件组织"]
-        File["File&lt;br/&gt;文件&lt;br/&gt;数据存储"]
-        Directory --&gt;|包含| File
-    end
-    
-    Application --&gt;|使用| Framework
-    Framework --&gt;|构建| Index
-    Index --&gt;|处理| Document
-    Document --&gt;|持久化| FileSystem
-    FileSystem -.-&gt;|加载| Framework
-</code></pre>
-
-<h2 id="1-indexlib-是什么">1. IndexLib 是什么</h2>
-
-<p>IndexLib 是 Havenask 搜索引擎的底层索引库，负责：</p>
-
-<ul>
-  <li><strong>索引构建</strong>：从原始文档构建倒排索引、正排索引等</li>
-  <li><strong>索引存储</strong>：管理索引文件的存储格式和布局</li>
-  <li><strong>索引查询</strong>：提供高效的索引查询接口</li>
-  <li><strong>增量更新</strong>：支持实时写入和增量更新</li>
-  <li><strong>版本管理</strong>：管理索引版本和增量合并</li>
-</ul>
-
-<p>IndexLib 采用 C++ 实现，追求极致性能，支持大规模数据实时检索和高并发查询与写入。</p>
-
-<h2 id="2-整体架构设计">2. 整体架构设计</h2>
-
-<h3 id="21-分层架构">2.1 分层架构</h3>
-
-<p>IndexLib 采用清晰的分层架构：</p>
-
-<pre><code class="language-mermaid">flowchart TB
-    subgraph App["应用层 Application Layer"]
-        direction LR
-        Havenask["Havenask&lt;br/&gt;业务应用"]
-    end
-    
-    subgraph Framework["框架层 Framework Layer"]
-        direction LR
-        Tablet["Tablet&lt;br/&gt;索引表管理"] --- Segment["Segment&lt;br/&gt;索引段存储"] --- Version["Version&lt;br/&gt;版本控制"]
-    end
-    
-    subgraph Index["索引层 Index Layer"]
-        direction LR
-        Normal["Normal Index&lt;br/&gt;全文检索索引"] --- KKV["KKV Index&lt;br/&gt;键值对索引"] --- KV["KV Index&lt;br/&gt;键值索引"]
-    end
-    
-    subgraph Document["文档层 Document Layer"]
-        direction LR
-        Doc["Document&lt;br/&gt;文档对象"] --- Field["Field&lt;br/&gt;字段定义"]
-    end
-    
-    subgraph FileSystem["文件系统层 File System Layer"]
-        direction LR
-        Directory["Directory&lt;br/&gt;目录抽象"] --- File["File&lt;br/&gt;文件操作"]
-    end
-    
-    App --&gt;|调用| Framework
-    Framework --&gt;|构建| Index
-    Index --&gt;|处理| Document
-    Document --&gt;|持久化| FileSystem
-    FileSystem -.-&gt;|加载| Framework
-    
-    style App fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Framework fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Index fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Document fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style FileSystem fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-</code></pre>
-
-<p><strong>各层职责</strong>：</p>
-
-<ul>
-  <li><strong>Framework Layer</strong>：提供 Tablet、Segment、Version 等核心抽象，管理索引生命周期</li>
-  <li><strong>Index Layer</strong>：实现具体的索引类型（Normal、KKV、KV），提供索引构建和查询能力</li>
-  <li><strong>Document Layer</strong>：处理文档的解析、验证、转换</li>
-  <li><strong>File System Layer</strong>：抽象文件系统，支持本地文件系统、分布式文件系统等</li>
-</ul>
-
-<h3 id="22-核心组件关系">2.2 核心组件关系</h3>
-
-<p>IndexLib 的核心组件采用清晰的职责划分和接口设计，通过组合和依赖注入实现灵活的扩展。让我们通过类图来理解各组件的关系：</p>
-
-<p><strong>核心组件类图</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class ITablet {
-        &lt;&lt;interface&gt;&gt;
-        +Open()
-        +Build()
-        +Flush()
-        +Seal()
-        +Commit()
-        +GetTabletReader()
-    }
-    
-    class TabletData {
-        -Version _onDiskVersion
-        -vector~Segment~ _segments
-        -ResourceMap _resourceMap
-        +CreateSlice()
-        +GetSegment()
-        +GetSegmentWithBaseDocid()
-        +UpdateVersion()
-    }
-    
-    class Segment {
-        &lt;&lt;abstract&gt;&gt;
-        +GetSegmentId()
-        +GetSegmentStatus()
-        +GetIndexer()
-        +GetDocCount()
-    }
-    
-    class MemSegment {
-        -map~string,IIndexer~ _indexers
-        +Build()
-        +NeedDump()
-        +CreateSegmentDumpItems()
-        +Seal()
-        +EvaluateCurrentMemUsed()
-    }
-    
-    class DiskSegment {
-        -map~string,IIndexer~ _indexers
-        +Open()
-        +Reopen()
-        +GetIndexer()
-    }
-    
-    class Version {
-        -versionid_t _versionId
-        -vector~SegmentInVersion~ _segments
-        -Locator _locator
-        +AddSegment()
-        +GetVersionId()
-        +GetLocator()
-        +IncVersionId()
-    }
-    
-    class TabletReader {
-        -map~IndexReaderKey,IIndexReader~ _indexReaderMap
-        +Open()
-        +Search()
-        +GetIndexReader()
-        +CreateIndexReader()
-    }
-    
-    ITablet --&gt; TabletData : 管理
-    TabletData "1" *-- "many" Segment : 包含
-    Segment &lt;|-- MemSegment : 继承
-    Segment &lt;|-- DiskSegment : 继承
-    TabletData "1" --&gt; "1" Version : 包含
-    TabletReader --&gt; TabletData : 读取
-    TabletReader --&gt; Segment : 查询
-    ITablet ..&gt; TabletReader : 创建
-</code></pre>
-
-<p><strong>核心组件职责</strong>：</p>
-
-<ol>
-  <li><strong>ITablet</strong>：索引表的核心接口，管理索引的构建、查询、版本等
-    <ul>
-      <li><strong>设计模式</strong>：接口隔离原则，通过接口定义核心能力，具体实现由子类完成</li>
-      <li><strong>生命周期管理</strong>：管理 Tablet 从 Open 到 Close 的完整生命周期</li>
-      <li><strong>线程安全</strong>：接口设计考虑并发场景，支持多线程构建和查询</li>
-    </ul>
-  </li>
-  <li><strong>TabletData</strong>：管理索引数据，包含多个 Segment
-    <ul>
-      <li><strong>数据组织</strong>：通过有序的 Segment 列表组织索引数据</li>
-      <li><strong>资源管理</strong>：通过 ResourceMap 共享内存池、缓存等资源，减少内存开销</li>
-      <li><strong>Slice 机制</strong>：提供灵活的 Segment 筛选接口，支持按状态、类型等条件筛选</li>
-    </ul>
-  </li>
-  <li><strong>Segment</strong>：索引的基本单元，分为 MemSegment（内存段）和 DiskSegment（磁盘段）
-    <ul>
-      <li><strong>多态设计</strong>：通过抽象基类定义统一接口，MemSegment 和 DiskSegment 实现不同策略</li>
-      <li><strong>状态管理</strong>：通过 SegmentStatus 管理 Segment 的状态转换</li>
-      <li><strong>索引管理</strong>：每个 Segment 包含多个 Indexer（倒排索引、正排索引等）</li>
-    </ul>
-  </li>
-  <li><strong>Version</strong>：版本信息，记录索引包含哪些 Segment
-    <ul>
-      <li><strong>版本控制</strong>：通过单调递增的 VersionId 保证版本顺序</li>
-      <li><strong>Schema 演进</strong>：每个 Segment 记录自己的 SchemaId，支持 Schema 变更</li>
-      <li><strong>增量更新</strong>：通过 Locator 记录数据处理位置，支持增量更新</li>
-    </ul>
-  </li>
-  <li><strong>TabletReader</strong>：提供索引查询接口
-    <ul>
-      <li><strong>查询抽象</strong>：通过 JSON 格式的查询接口，隐藏底层实现细节</li>
-      <li><strong>IndexReader 缓存</strong>：缓存 IndexReader 实例，避免重复创建</li>
-      <li><strong>并行查询</strong>：支持对多个 Segment 进行并行查询，提高查询性能</li>
-    </ul>
-  </li>
-  <li><strong>TabletWriter</strong>：提供索引构建接口
-    <ul>
-      <li><strong>批量写入</strong>：支持批量写入文档，提高写入性能</li>
-      <li><strong>内存管理</strong>：通过 MemoryQuotaController 控制内存使用</li>
-      <li><strong>异步转储</strong>：MemSegment 转储是异步的，不阻塞写入</li>
-    </ul>
-  </li>
-</ol>
-
-<h2 id="3-核心概念详解">3. 核心概念详解</h2>
-
-<h3 id="31-tablet索引表">3.1 Tablet：索引表</h3>
-
-<p><strong>Tablet</strong> 是 IndexLib 中最核心的概念，代表一个完整的索引表。它采用组合模式，将 Schema、TabletData、Version、Options 等组件组合在一起，形成一个完整的索引抽象。</p>
-
-<p><strong>Tablet 的结构</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class ITablet {
-        &lt;&lt;interface&gt;&gt;
-        + Open()
-        + Build()
-        + Flush()
-        + Seal()
-        + Commit()
-        + GetTabletReader()
-    }
-    
-    class TabletSchema {
-        - vector_FieldConfig _fields
-        - map_string_IndexConfig _indexConfigs
-        + GetFieldConfig()
-        + GetIndexConfig()
-    }
-    
-    class TabletData {
-        - Version _onDiskVersion
-        - vector_Segment _segments
-        - ResourceMap _resourceMap
-    }
-    
-    class Version {
-        - versionid_t _versionId
-        - set_SegmentInVersion _segments
-        - Locator _locator
-    }
-    
-    class TabletOptions {
-        - BuildOptions _buildOptions
-        - ReadOptions _readOptions
-        - MemoryOptions _memoryOptions
-    }
-    
-    ITablet --&gt; TabletSchema : 包含
-    ITablet --&gt; TabletData : 管理
-    ITablet --&gt; Version : 维护
-    ITablet --&gt; TabletOptions : 使用
-    TabletData --&gt; Version : 包含
-</code></pre>
-
-<p><strong>Tablet 的组成</strong>：</p>
-
-<ol>
-  <li><strong>Schema</strong>：索引的 schema 定义，描述字段、索引类型等
-    <ul>
-      <li><strong>字段定义</strong>：定义索引包含哪些字段，每个字段的类型、是否索引等</li>
-      <li><strong>索引配置</strong>：定义倒排索引、正排索引、摘要等的配置</li>
-      <li><strong>Schema 演进</strong>：支持 Schema 变更，每个 Segment 可以有不同的 SchemaId</li>
-    </ul>
-  </li>
-  <li><strong>TabletData</strong>：索引数据，包含多个 Segment
-    <ul>
-      <li><strong>Segment 管理</strong>：管理所有 Segment（MemSegment + DiskSegment）的生命周期</li>
-      <li><strong>资源共享</strong>：通过 ResourceMap 共享内存池、缓存等资源</li>
-      <li><strong>版本管理</strong>：通过 Version 记录哪些 Segment 已持久化</li>
-    </ul>
-  </li>
-  <li><strong>Version</strong>：当前版本信息
-    <ul>
-      <li><strong>版本号</strong>：单调递增的版本号，保证版本顺序</li>
-      <li><strong>Segment 列表</strong>：记录该版本包含哪些 Segment</li>
-      <li><strong>Locator</strong>：记录数据处理位置，用于增量更新</li>
-    </ul>
-  </li>
-  <li><strong>Options</strong>：配置选项
-    <ul>
-      <li><strong>构建配置</strong>：控制构建行为（批量大小、内存限制等）</li>
-      <li><strong>查询配置</strong>：控制查询行为（缓存策略、并行度等）</li>
-      <li><strong>内存配置</strong>：控制内存使用（内存配额、回收策略等）</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>设计原理</strong>：</p>
-
-<ul>
-  <li><strong>组合优于继承</strong>：Tablet 通过组合 Schema、TabletData、Version 等组件，而不是通过继承，提高了灵活性和可测试性</li>
-  <li><strong>接口隔离</strong>：通过 ITablet 接口定义核心能力，具体实现由子类完成，支持多种索引类型（Normal、KKV、KV）</li>
-  <li><strong>依赖注入</strong>：Schema、Options 等通过构造函数或方法参数注入，便于测试和扩展</li>
-</ul>
-
-<p>现在让我们看看代码中的定义（<code class="language-plaintext highlighter-rouge">framework/ITablet.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ITablet</span> <span class="o">:</span> <span class="k">private</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// 打开索引：从磁盘加载已有索引或创建新索引</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">IndexRoot</span><span class="o">&amp;</span> <span class="n">indexRoot</span><span class="p">,</span> 
-                       <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">TabletOptions</span><span class="o">&gt;&amp;</span> <span class="n">options</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="n">VersionCoord</span><span class="o">&amp;</span> <span class="n">versionCoord</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 构建索引：接收文档批次并写入内存段</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Build</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">&gt;&amp;</span> <span class="n">batch</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 刷新：将内存数据刷新到磁盘</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Flush</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 封存：封存当前 Segment，准备合并</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Seal</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 提交版本：创建新版本并持久化</span>
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">VersionMeta</span><span class="o">&gt;</span> <span class="n">Commit</span><span class="p">(</span><span class="k">const</span> <span class="n">CommitOptions</span><span class="o">&amp;</span> <span class="n">commitOptions</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 获取查询接口</span>
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ITabletReader</span><span class="o">&gt;</span> <span class="n">GetTabletReader</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>Tablet 的生命周期流程</strong>：</p>
-
-<p>Tablet 生命周期：从 Open 到 Commit 的完整流程：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    Start([开始]) --&gt; Open[Open&lt;br/&gt;打开索引&lt;br/&gt;加载Schema和配置]
-    
-    Open --&gt; Build[Build&lt;br/&gt;开始构建&lt;br/&gt;接收文档批次]
-    
-    Build --&gt; Building{持续构建}
-    
-    Building --&gt;|接收文档| WriteDoc[写入文档&lt;br/&gt;写入MemSegment&lt;br/&gt;更新索引]
-    
-    WriteDoc --&gt; CheckMem{检查内存}
-    
-    CheckMem --&gt;|内存充足| Building
-    CheckMem --&gt;|需要转储| Flush[Flush&lt;br/&gt;触发转储&lt;br/&gt;NeedDump返回true]
-    
-    Flush --&gt; Dump[转储MemSegment&lt;br/&gt;创建DiskSegment&lt;br/&gt;更新TabletData]
-    
-    Dump --&gt; Building
-    
-    Building --&gt;|需要封存| Seal[Seal&lt;br/&gt;封存Segment&lt;br/&gt;标记为只读]
-    
-    Seal --&gt; WaitDump{等待转储完成}
-    
-    WaitDump --&gt;|转储完成| Commit[Commit&lt;br/&gt;提交版本&lt;br/&gt;创建新Version]
-    
-    Commit --&gt; PrepareVersion[准备Version&lt;br/&gt;收集Segment列表&lt;br/&gt;更新Locator]
-    
-    PrepareVersion --&gt; CreateFence[创建Fence目录&lt;br/&gt;保证原子性]
-    
-    CreateFence --&gt; WriteVersion[写入Version文件&lt;br/&gt;序列化为JSON]
-    
-    WriteVersion --&gt; AtomicSwitch[原子切换&lt;br/&gt;重命名Fence目录]
-    
-    AtomicSwitch --&gt; UpdateTablet[更新TabletData&lt;br/&gt;切换到新版本]
-    
-    UpdateTablet --&gt; Continue{继续构建?}
-    
-    Continue --&gt;|是| Building
-    Continue --&gt;|否| Reopen[Reopen&lt;br/&gt;重新打开&lt;br/&gt;加载新版本]
-    
-    Reopen --&gt; Building
-    
-    Building --&gt;|关闭索引| End([结束])
-    
-    style Open fill:#e3f2fd
-    style Build fill:#fff3e0
-    style Flush fill:#f3e5f5
-    style Seal fill:#e8f5e9
-    style Commit fill:#fce4ec
-    style PrepareVersion fill:#fff9c4
-    style AtomicSwitch fill:#ffccbc
-</code></pre>
-
-<p><strong>Tablet 生命周期状态图</strong>：</p>
-
-<pre><code class="language-mermaid">stateDiagram-v2
-    [*] --&gt; Open: Open()
-    
-    Open --&gt; Building: Build()
-    
-    state Building {
-        [*] --&gt; Receiving: 接收文档
-        Receiving --&gt; Writing: 写入MemSegment
-        Writing --&gt; Checking: 检查内存
-        Checking --&gt; Receiving: 继续接收
-        Checking --&gt; [*]: 触发转储
-    }
-    
-    Building --&gt; Flushing: NeedDump()
-    
-    state Flushing {
-        [*] --&gt; Dumping: 转储MemSegment
-        Dumping --&gt; Creating: 创建DiskSegment
-        Creating --&gt; Updating: 更新TabletData
-        Updating --&gt; [*]
-    }
-    
-    Flushing --&gt; Building: 转储完成
-    
-    Building --&gt; Sealing: Seal()
-    
-    state Sealing {
-        [*] --&gt; SealingSegment: 封存Segment
-        SealingSegment --&gt; Waiting: 等待转储完成
-        Waiting --&gt; [*]
-    }
-    
-    Sealing --&gt; Committing: 提交版本
-    
-    state Committing {
-        [*] --&gt; Preparing: 准备Version
-        Preparing --&gt; WritingVersion: 写入Version文件
-        WritingVersion --&gt; AtomicSwitch: 原子切换
-        AtomicSwitch --&gt; UpdatingData: 更新TabletData
-        UpdatingData --&gt; [*]
-    }
-    
-    Committing --&gt; Building: 继续构建
-    Committing --&gt; Reopening: 重新打开
-    
-    Reopening --&gt; Building: 加载新版本
-    
-    Building --&gt; [*]: 关闭索引
-    
-    note right of Building
-        核心构建状态
-        持续接收和写入文档
-    end note
-    
-    note right of Flushing
-        异步转储过程
-        不阻塞构建
-    end note
-    
-    note right of Committing
-        Fence机制保证原子性
-        版本号递增
-    end note
-</code></pre>
-
-<ol>
-  <li><strong>Open</strong>：打开已有索引或创建新索引，加载 Schema 和配置</li>
-  <li><strong>Build</strong>：持续构建，接收文档并写入内存段（MemSegment）</li>
-  <li><strong>Flush</strong>：将内存段刷新到磁盘，创建磁盘段（DiskSegment）</li>
-  <li><strong>Seal</strong>：封存 Segment，标记为只读，准备合并</li>
-  <li><strong>Commit</strong>：提交新版本，更新 Version，持久化到磁盘</li>
-  <li><strong>Reopen</strong>：重新打开，加载新版本，更新 TabletData</li>
-</ol>
-
-<h3 id="32-segment索引段">3.2 Segment：索引段</h3>
-
-<p><strong>Segment</strong> 是索引的基本存储单元，一个 Tablet 包含多个 Segment。让我们先通过图来理解 Segment 的类型和关系：</p>
-
-<p><strong>Segment 类型关系</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class Segment {
-        &lt;&lt;abstract&gt;&gt;
-        # segmentid_t _segmentId
-        # SegmentStatus _status
-        + GetSegmentId() segmentid_t
-        + GetDocCount() uint32_t
-        + GetSegmentStatus() SegmentStatus
-        + GetIndexer(string) IIndexer
-    }
-    
-    class MemSegment {
-        - map~string,IIndexer~ _indexers
-        + Build(IDocumentBatch) Status
-        + NeedDump() bool
-        + CreateSegmentDumpItems() vector~SegmentDumpItem~
-        + Seal() void
-        + EvaluateCurrentMemUsed() size_t
-    }
-    
-    class DiskSegment {
-        - map~string,IIndexer~ _indexers
-        + Open(string) Status
-        + Reopen() Status
-        + GetIndexer(string) IIndexer
-    }
-    
-    Segment &lt;|-- MemSegment : 继承
-    Segment &lt;|-- DiskSegment : 继承
-    
-    note for Segment "抽象基类&lt;br/&gt;定义Segment通用接口&lt;br/&gt;管理SegmentId和状态"
-    note for MemSegment "内存段&lt;br/&gt;实时写入和构建&lt;br/&gt;支持转储到磁盘"
-    note for DiskSegment "磁盘段&lt;br/&gt;持久化存储&lt;br/&gt;支持查询和重新打开"
-</code></pre>
-
-<p>从图中可以看到，Segment 有两种类型：</p>
-<ul>
-  <li><strong>MemSegment</strong>：内存段，用于实时写入</li>
-  <li><strong>DiskSegment</strong>：磁盘段，用于持久化存储和查询</li>
-</ul>
-
-<h4 id="memsegment内存段">MemSegment：内存段</h4>
-
-<p>MemSegment 在内存中构建，支持实时写入。让我们看看关键代码（<code class="language-plaintext highlighter-rouge">framework/MemSegment.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MemSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Segment</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// 构建文档：将文档写入内存段</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Build</span><span class="p">(</span><span class="n">document</span><span class="o">::</span><span class="n">IDocumentBatch</span><span class="o">*</span> <span class="n">batch</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 是否需要转储：判断是否达到转储条件（内存大小、文档数量等）</span>
-    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">NeedDump</span><span class="p">()</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 创建转储项：准备转储到磁盘</span>
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Status</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">SegmentDumpItem</span><span class="o">&gt;&gt;&gt;</span> 
-        <span class="n">CreateSegmentDumpItems</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 封存：标记为只读，不再接收新文档</span>
-    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Seal</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>MemSegment 的工作流程</strong>：</p>
-
-<p><strong>MemSegment 工作流程</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    subgraph Input["输入阶段"]
-        A1[接收文档批次&lt;br/&gt;IDocumentBatch]
-        A2[文档验证&lt;br/&gt;格式/Schema验证]
-        A1 --&gt; A2
-    end
-    
-    subgraph Build["构建阶段"]
-        B1[分配DocId&lt;br/&gt;BaseDocId + LocalDocId]
-        B2[写入Indexer]
-        B3[倒排索引&lt;br/&gt;InvertedIndexer]
-        B4[正排索引&lt;br/&gt;AttributeIndexer]
-        B5[主键索引&lt;br/&gt;PrimaryKeyIndexer]
-        B6[更新SegmentInfo&lt;br/&gt;docCount/Locator]
-        B7[评估内存使用&lt;br/&gt;EvaluateCurrentMemUsed]
-        B8{转储条件检查&lt;br/&gt;NeedDump?}
-        
-        A2 --&gt; B1
-        B1 --&gt; B2
-        B2 --&gt; B3
-        B2 --&gt; B4
-        B2 --&gt; B5
-        B3 --&gt; B6
-        B4 --&gt; B6
-        B5 --&gt; B6
-        B6 --&gt; B7
-        B7 --&gt; B8
-        B8 --&gt;|否| B1
-    end
-    
-    subgraph Dump["转储阶段"]
-        D1[设置状态&lt;br/&gt;ST_BUILDING → ST_DUMPING]
-        D2[创建转储项&lt;br/&gt;CreateSegmentDumpItems]
-        D3[索引文件转储]
-        D4[元数据文件转储]
-        D5[异步转储到磁盘&lt;br/&gt;Dump]
-        D6[创建DiskSegment]
-        D7[Seal封存&lt;br/&gt;标记为只读]
-        
-        B8 --&gt;|是| D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D2 --&gt; D4
-        D3 --&gt; D5
-        D4 --&gt; D5
-        D5 --&gt; D6
-        D6 --&gt; D7
-    end
-    
-    subgraph Output["输出阶段"]
-        E1[DiskSegment&lt;br/&gt;状态: ST_BUILT]
-        E2[更新TabletData&lt;br/&gt;添加DiskSegment]
-        E3[释放MemSegment内存]
-        
-        D7 --&gt; E1
-        E1 --&gt; E2
-        E2 --&gt; E3
-    end
-    
-    subgraph Conditions["转储条件"]
-        C1[内存使用 &gt; 阈值&lt;br/&gt;默认80%]
-        C2[文档数 &gt; 阈值&lt;br/&gt;默认100万]
-        C3[时间间隔 &gt; 阈值&lt;br/&gt;默认5分钟]
-        B8 -.-&gt; C1
-        B8 -.-&gt; C2
-        B8 -.-&gt; C3
-    end
-    
-    style Input fill:#e3f2fd
-    style Build fill:#fff3e0
-    style Dump fill:#f3e5f5
-    style Output fill:#e8f5e9
-    style Conditions fill:#f5f5f5
-</code></pre>
-
-<ol>
-  <li><strong>Build</strong>：接收文档批次，写入内存中的索引结构</li>
-  <li><strong>NeedDump</strong>：检查是否达到转储条件（内存阈值、文档数量等）</li>
-  <li><strong>CreateSegmentDumpItems</strong>：创建转储任务，准备将内存数据写入磁盘</li>
-  <li><strong>Dump</strong>：异步转储到磁盘，创建 DiskSegment</li>
-  <li><strong>Seal</strong>：封存，标记为只读</li>
-</ol>
-
-<p><strong>关键特性</strong>：</p>
-<ul>
-  <li><strong>状态</strong>：<code class="language-plaintext highlighter-rouge">ST_BUILDING</code>（构建中）或 <code class="language-plaintext highlighter-rouge">ST_DUMPING</code>（转储中）</li>
-  <li><strong>特点</strong>：在内存中构建，支持实时写入，转储是异步的</li>
-  <li><strong>用途</strong>：接收实时写入的文档，提供低延迟写入能力</li>
-</ul>
-
-<p><strong>性能优化设计</strong>：</p>
-
-<ol>
-  <li><strong>内存管理</strong>：
-    <ul>
-      <li><strong>内存池</strong>：使用内存池减少内存分配开销，提高写入性能</li>
-      <li><strong>内存配额</strong>：通过 MemoryQuotaController 控制内存使用，防止内存溢出</li>
-      <li><strong>内存回收</strong>：当内存不足时，触发 MemSegment 转储，释放内存</li>
-    </ul>
-  </li>
-  <li><strong>写入优化</strong>：
-    <ul>
-      <li><strong>批量写入</strong>：支持批量写入文档，减少函数调用开销</li>
-      <li><strong>异步转储</strong>：转储操作是异步的，不阻塞写入，提高写入吞吐量</li>
-      <li><strong>索引构建优化</strong>：倒排索引、正排索引等采用高效的数据结构（如跳表、B+树）</li>
-    </ul>
-  </li>
-  <li><strong>并发控制</strong>：
-    <ul>
-      <li><strong>线程安全</strong>：MemSegment 的 Build 操作是线程安全的，支持多线程并发写入</li>
-      <li><strong>锁粒度优化</strong>：采用细粒度锁，减少锁竞争，提高并发性能</li>
-    </ul>
-  </li>
-</ol>
-
-<h4 id="disksegment磁盘段">DiskSegment：磁盘段</h4>
-
-<p>DiskSegment 存储在磁盘上，用于持久化存储和查询。关键代码（<code class="language-plaintext highlighter-rouge">framework/DiskSegment.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">DiskSegment</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Segment</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="k">enum</span> <span class="k">class</span> <span class="nc">OpenMode</span> <span class="p">{</span>
-        <span class="n">NORMAL</span><span class="p">,</span>  <span class="c1">// 正常模式：立即加载所有索引</span>
-        <span class="n">LAZY</span><span class="p">,</span>    <span class="c1">// 懒加载模式：按需加载（用于离线场景）</span>
-    <span class="p">};</span>
-
-    <span class="c1">// 打开磁盘段：从磁盘加载索引数据</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MemoryQuotaController</span><span class="o">&gt;&amp;</span> <span class="n">memoryQuotaController</span><span class="p">,</span>
-                       <span class="n">OpenMode</span> <span class="n">mode</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="c1">// 重新打开：当 Schema 变更时，需要重新加载</span>
-    <span class="k">virtual</span> <span class="n">Status</span> <span class="n">Reopen</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&gt;&amp;</span> <span class="n">schemas</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>DiskSegment 的加载策略</strong>：</p>
-
-<p><strong>DiskSegment 加载策略</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    A[DiskSegment.Open] --&gt; B{OpenMode选择}
-    
-    subgraph Normal["NORMAL 模式&lt;br/&gt;适合在线查询"]
-        N1[读取SegmentInfo&lt;br/&gt;元数据信息]
-        N2[立即加载所有索引]
-        N3[倒排索引&lt;br/&gt;InvertedIndex]
-        N4[正排索引&lt;br/&gt;AttributeIndex]
-        N5[主键索引&lt;br/&gt;PrimaryKeyIndex]
-        N6[摘要索引&lt;br/&gt;SummaryIndex]
-        N7[所有索引在内存&lt;br/&gt;查询延迟低]
-        
-        B --&gt;|NORMAL| N1
-        N1 --&gt; N2
-        N2 --&gt; N3
-        N2 --&gt; N4
-        N2 --&gt; N5
-        N2 --&gt; N6
-        N3 --&gt; N7
-        N4 --&gt; N7
-        N5 --&gt; N7
-        N6 --&gt; N7
-    end
-    
-    subgraph Lazy["LAZY 模式&lt;br/&gt;适合离线场景"]
-        L1[读取SegmentInfo&lt;br/&gt;元数据信息]
-        L2[延迟加载索引&lt;br/&gt;不加载索引数据]
-        L3[查询请求到达]
-        L4[GetIndexer调用]
-        L5{索引已加载?}
-        L6[按需加载索引]
-        L7[索引数据加载到内存]
-        L8[返回IndexReader]
-        
-        B --&gt;|LAZY| L1
-        L1 --&gt; L2
-        L2 --&gt; L3
-        L3 --&gt; L4
-        L4 --&gt; L5
-        L5 --&gt;|否| L6
-        L5 --&gt;|是| L8
-        L6 --&gt; L7
-        L7 --&gt; L8
-    end
-    
-    subgraph Memory["内存管理"]
-        M1[MemoryQuotaController&lt;br/&gt;内存配额控制]
-        M2[检查内存配额]
-        M3[分配内存]
-        M4[缓存管理]
-        
-        N2 -.-&gt; M1
-        L6 -.-&gt; M1
-        M1 --&gt; M2
-        M2 --&gt; M3
-        M3 --&gt; M4
-    end
-    
-    style Normal fill:#e3f2fd
-    style Lazy fill:#fff3e0
-    style Memory fill:#f5f5f5
-</code></pre>
-
-<ul>
-  <li><strong>NORMAL 模式</strong>：立即加载所有索引数据到内存，适合在线查询场景</li>
-  <li><strong>LAZY 模式</strong>：按需加载，只在查询时加载相关索引，适合离线场景，节省内存</li>
-</ul>
-
-<p><strong>关键特性</strong>：</p>
-<ul>
-  <li><strong>状态</strong>：<code class="language-plaintext highlighter-rouge">ST_BUILT</code>（已构建）</li>
-  <li><strong>特点</strong>：存储在磁盘上，支持按需加载，可以参与合并</li>
-  <li><strong>用途</strong>：持久化存储，支持查询，可以长期保存</li>
-</ul>
-
-<p><strong>性能优化设计</strong>：</p>
-
-<ol>
-  <li><strong>加载策略</strong>：
-    <ul>
-      <li><strong>NORMAL 模式</strong>：立即加载所有索引数据到内存，适合在线查询场景，查询延迟低</li>
-      <li><strong>LAZY 模式</strong>：按需加载，只在查询时加载相关索引，适合离线场景，节省内存</li>
-      <li><strong>混合模式</strong>：可以配置哪些索引立即加载，哪些按需加载，平衡内存和性能</li>
-    </ul>
-  </li>
-  <li><strong>存储优化</strong>：
-    <ul>
-      <li><strong>压缩存储</strong>：索引数据采用压缩格式存储，减少磁盘空间和 IO 开销</li>
-      <li><strong>分块存储</strong>：大索引文件分块存储，支持按需加载部分数据</li>
-      <li><strong>缓存策略</strong>：常用索引数据可以缓存在内存中，提高查询性能</li>
-    </ul>
-  </li>
-  <li><strong>查询优化</strong>：
-    <ul>
-      <li><strong>索引剪枝</strong>：通过 Locator 等机制判断哪些 Segment 需要查询，减少不必要的查询</li>
-      <li><strong>并行查询</strong>：多个 DiskSegment 可以并行查询，提高查询吞吐量</li>
-      <li><strong>结果合并</strong>：查询结果采用高效的合并算法（如堆合并），减少内存开销</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>Segment 的状态转换</strong>：</p>
-
-<p><strong>Segment 状态转换</strong>：</p>
-
-<pre><code class="language-mermaid">stateDiagram-v2
-    [*] --&gt; ST_BUILDING: MemSegment创建
-    ST_BUILDING --&gt; ST_DUMPING: 触发转储
-    ST_DUMPING --&gt; ST_BUILT: 转储完成
-    ST_BUILT --&gt; ST_SEALED: 封存
-    ST_SEALED --&gt; [*]: 合并或删除
-    note right of ST_BUILDING
-        内存段构建中
-        接收文档写入
-    end note
-    note right of ST_DUMPING
-        转储到磁盘
-        创建DiskSegment
-    end note
-    note right of ST_BUILT
-        磁盘段已构建
-        可以参与查询
-    end note
-</code></pre>
-
-<p>状态转换的代码逻辑（<code class="language-plaintext highlighter-rouge">framework/Segment.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">enum</span> <span class="k">class</span> <span class="nc">SegmentStatus</span> <span class="p">{</span> 
-    <span class="n">ST_UNSPECIFY</span><span class="p">,</span>  <span class="c1">// 未指定（用于筛选所有状态）</span>
-    <span class="n">ST_BUILT</span><span class="p">,</span>      <span class="c1">// 已构建（DiskSegment）</span>
-    <span class="n">ST_DUMPING</span><span class="p">,</span>    <span class="c1">// 转储中（MemSegment）</span>
-    <span class="n">ST_BUILDING</span>     <span class="c1">// 构建中（MemSegment）</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p>状态转换流程：</p>
-<ol>
-  <li><strong>ST_BUILDING</strong>：MemSegment 正在构建，接收文档，调用 <code class="language-plaintext highlighter-rouge">Build()</code></li>
-  <li><strong>ST_DUMPING</strong>：MemSegment 正在转储到磁盘，调用 <code class="language-plaintext highlighter-rouge">CreateSegmentDumpItems()</code></li>
-  <li><strong>ST_BUILT</strong>：DiskSegment 已构建完成，可以查询，调用 <code class="language-plaintext highlighter-rouge">Open()</code></li>
-</ol>
-
-<h3 id="33-version版本管理">3.3 Version：版本管理</h3>
-
-<p>Version 管理索引的版本信息。让我们先通过图理解 Version 的结构：</p>
-
-<p><strong>Version 的结构</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class Version {
-        -versionid_t _versionId
-        -set_SegmentInVersion _segments
-        -Locator _locator
-        +AddSegment()
-        +GetVersionId()
-        +GetLocator()
-    }
-    
-    class SegmentInVersion {
-        -segmentid_t _segmentId
-        -schemavid_t _schemaId
-    }
-    
-    class Locator {
-        -int64_t _timestamp
-        -int32_t _concurrentIdx
-        -int32_t _hashId
-    }
-    
-    Version "1" *-- "many" SegmentInVersion : 包含
-    Version "1" --&gt; "1" Locator : 包含
-</code></pre>
-
-<p>从图中可以看到，Version 记录：</p>
-<ul>
-  <li><strong>VersionId</strong>：版本号，单调递增</li>
-  <li><strong>Segments</strong>：该版本包含的 Segment 列表</li>
-  <li><strong>Locator</strong>：数据位置信息</li>
-  <li><strong>Timestamp</strong>：时间戳</li>
-</ul>
-
-<p>关键代码（<code class="language-plaintext highlighter-rouge">framework/Version.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Version</span> <span class="o">:</span> <span class="k">public</span> <span class="n">autil</span><span class="o">::</span><span class="n">legacy</span><span class="o">::</span><span class="n">Jsonizable</span>
-<span class="p">{</span>
-<span class="nl">private:</span>
-    <span class="k">struct</span> <span class="nc">SegmentInVersion</span> <span class="p">{</span>
-        <span class="n">segmentid_t</span> <span class="n">segmentId</span> <span class="o">=</span> <span class="n">INVALID_SEGMENTID</span><span class="p">;</span>
-        <span class="n">schemaid_t</span> <span class="n">schemaId</span> <span class="o">=</span> <span class="n">DEFAULT_SCHEMAID</span><span class="p">;</span>  <span class="c1">// 每个 Segment 可以有不同的 Schema</span>
-    <span class="p">};</span>
-
-<span class="nl">public:</span>
-    <span class="c1">// Segment 管理</span>
-    <span class="kt">void</span> <span class="n">AddSegment</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">,</span> <span class="n">schemaid_t</span> <span class="n">schemaId</span><span class="p">);</span>
-    <span class="kt">void</span> <span class="n">RemoveSegment</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">);</span>
-    
-    <span class="c1">// 版本信息</span>
-    <span class="n">versionid_t</span> <span class="n">GetVersionId</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_versionId</span><span class="p">;</span> <span class="p">}</span>
-    <span class="kt">void</span> <span class="n">IncVersionId</span><span class="p">()</span> <span class="p">{</span> <span class="o">++</span><span class="n">_versionId</span><span class="p">;</span> <span class="p">}</span>  <span class="c1">// 每次 Commit 时递增</span>
-    
-    <span class="c1">// Locator：数据位置信息</span>
-    <span class="kt">void</span> <span class="n">SetLocator</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">locator</span><span class="p">);</span>
-    <span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">GetLocator</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">_locator</span><span class="p">;</span> <span class="p">}</span>
-
-<span class="nl">private:</span>
-    <span class="n">versionid_t</span> <span class="n">_versionId</span><span class="p">;</span>                    <span class="c1">// 版本号，单调递增</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">set</span><span class="o">&lt;</span><span class="n">SegmentInVersion</span><span class="o">&gt;</span> <span class="n">_segments</span><span class="p">;</span>      <span class="c1">// Segment 列表（有序）</span>
-    <span class="n">Locator</span> <span class="n">_locator</span><span class="p">;</span>                          <span class="c1">// 位置信息，用于增量更新</span>
-    <span class="kt">int64_t</span> <span class="n">_timestamp</span><span class="p">;</span>                        <span class="c1">// 时间戳</span>
-    <span class="kt">bool</span> <span class="n">_sealed</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>                      <span class="c1">// 是否封存</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>Version 的演进过程</strong>：</p>
-
-<p><strong>Version 演进</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TB
-    Start([版本演进流程&lt;br/&gt;Version Evolution Flow]) --&gt; V1Layer[Version 1 层&lt;br/&gt;Version 1 Layer]
-    
-    subgraph V1Group["Version 1 版本信息"]
-        direction TB
-        V1_ID[versionId: 1&lt;br/&gt;版本号1]
-        V1_TS[timestamp: 100&lt;br/&gt;时间戳100]
-        V1_S1[Segment 1&lt;br/&gt;索引段1]
-        V1_S2[Segment 2&lt;br/&gt;索引段2]
-        V1_S3[Segment 3&lt;br/&gt;索引段3]
-        V1_L[Locator&lt;br/&gt;ts=100&lt;br/&gt;处理位置信息]
-        V1_ID --&gt; V1_TS
-        V1_TS --&gt; V1_S1
-        V1_S1 --&gt; V1_S2
-        V1_S2 --&gt; V1_S3
-        V1_S3 --&gt; V1_L
-    end
-    
-    V1Layer --&gt; Commit1Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
-    
-    subgraph Commit1Group["Commit 操作 Commit Operation"]
-        direction TB
-        C1_1[新增Segment 4&lt;br/&gt;Add Segment 4]
-        C1_2[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=200]
-        C1_3[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;1→2]
-        C1_1 --&gt; C1_2
-        C1_2 --&gt; C1_3
-    end
-    
-    Commit1Layer --&gt; V2Layer[Version 2 层&lt;br/&gt;Version 2 Layer]
-    
-    subgraph V2Group["Version 2 版本信息"]
-        direction TB
-        V2_ID[versionId: 2&lt;br/&gt;版本号2]
-        V2_TS[timestamp: 200&lt;br/&gt;时间戳200]
-        V2_S1[Segment 1&lt;br/&gt;复用]
-        V2_S2[Segment 2&lt;br/&gt;复用]
-        V2_S3[Segment 3&lt;br/&gt;复用]
-        V2_S4[Segment 4&lt;br/&gt;新增]
-        V2_L[Locator&lt;br/&gt;ts=200&lt;br/&gt;处理位置信息]
-        V2_ID --&gt; V2_TS
-        V2_TS --&gt; V2_S1
-        V2_S1 --&gt; V2_S2
-        V2_S2 --&gt; V2_S3
-        V2_S3 --&gt; V2_S4
-        V2_S4 --&gt; V2_L
-    end
-    
-    V2Layer --&gt; Commit2Layer[Commit 操作层&lt;br/&gt;Commit Operation Layer]
-    
-    subgraph Commit2Group["Commit 操作 Commit Operation"]
-        direction TB
-        C2_1[新增Segment 5&lt;br/&gt;Add Segment 5]
-        C2_2[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=300]
-        C2_3[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;2→3]
-        C2_1 --&gt; C2_2
-        C2_2 --&gt; C2_3
-    end
-    
-    Commit2Layer --&gt; V3Layer[Version 3 层&lt;br/&gt;Version 3 Layer]
-    
-    subgraph V3Group["Version 3 版本信息"]
-        direction TB
-        V3_ID[versionId: 3&lt;br/&gt;版本号3]
-        V3_TS[timestamp: 300&lt;br/&gt;时间戳300]
-        V3_S1[Segment 1&lt;br/&gt;复用]
-        V3_S2[Segment 2&lt;br/&gt;复用]
-        V3_S3[Segment 3&lt;br/&gt;复用]
-        V3_S4[Segment 4&lt;br/&gt;复用]
-        V3_S5[Segment 5&lt;br/&gt;新增]
-        V3_L[Locator&lt;br/&gt;ts=300&lt;br/&gt;处理位置信息]
-        V3_ID --&gt; V3_TS
-        V3_TS --&gt; V3_S1
-        V3_S1 --&gt; V3_S2
-        V3_S2 --&gt; V3_S3
-        V3_S3 --&gt; V3_S4
-        V3_S4 --&gt; V3_S5
-        V3_S5 --&gt; V3_L
-    end
-    
-    V3Layer --&gt; MergeLayer[合并操作层&lt;br/&gt;Merge Operation Layer]
-    
-    subgraph MergeGroup["合并操作 Merge Operation"]
-        direction TB
-        M1[合并Segment 1-5&lt;br/&gt;Merge Segments 1-5]
-        M2[创建Segment 6&lt;br/&gt;Create Segment 6]
-        M3[删除旧Segment&lt;br/&gt;Delete Old Segments]
-        M4[更新Locator&lt;br/&gt;Update Locator&lt;br/&gt;ts=400]
-        M5[递增版本号&lt;br/&gt;Increment VersionId&lt;br/&gt;3→4]
-        M1 --&gt; M2
-        M2 --&gt; M3
-        M3 --&gt; M4
-        M4 --&gt; M5
-    end
-    
-    MergeLayer --&gt; V4Layer[Version 4 层&lt;br/&gt;Version 4 Layer]
-    
-    subgraph V4Group["Version 4 版本信息"]
-        direction TB
-        V4_ID[versionId: 4&lt;br/&gt;版本号4]
-        V4_TS[timestamp: 400&lt;br/&gt;时间戳400]
-        V4_S6[Segment 6&lt;br/&gt;合并后]
-        V4_L[Locator&lt;br/&gt;ts=400&lt;br/&gt;处理位置信息]
-        V4_ID --&gt; V4_TS
-        V4_TS --&gt; V4_S6
-        V4_S6 --&gt; V4_L
-    end
-    
-    V4Layer --&gt; End([版本演进完成&lt;br/&gt;Version Evolution Complete])
-    
-    V1Layer -.-&gt;|包含| V1Group
-    Commit1Layer -.-&gt;|包含| Commit1Group
-    V2Layer -.-&gt;|包含| V2Group
-    Commit2Layer -.-&gt;|包含| Commit2Group
-    V3Layer -.-&gt;|包含| V3Group
-    MergeLayer -.-&gt;|包含| MergeGroup
-    V4Layer -.-&gt;|包含| V4Group
-    
-    V1Group -.-&gt;|提交| Commit1Group
-    Commit1Group -.-&gt;|创建| V2Group
-    V2Group -.-&gt;|提交| Commit2Group
-    Commit2Group -.-&gt;|创建| V3Group
-    V3Group -.-&gt;|合并| MergeGroup
-    MergeGroup -.-&gt;|创建| V4Group
-    
-    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style V1Layer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Commit1Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style V2Layer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style Commit2Layer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style V3Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style MergeLayer fill:#fce4ec,stroke:#c2185b,stroke-width:3px
-    style V4Layer fill:#fff9c4,stroke:#f9a825,stroke-width:3px
-    style V1Group fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style V1_ID fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style V1_TS fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style V1_S1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style V1_S2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style V1_S3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style V1_L fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style Commit1Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style C1_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C1_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C1_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style V2Group fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style V2_ID fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style V2_TS fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style V2_S1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style V2_S2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style V2_S3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style V2_S4 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
-    style V2_L fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style Commit2Group fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style C2_1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C2_2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C2_3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style V3Group fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style V3_ID fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_TS fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_S1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_S2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_S3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_S4 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style V3_S5 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
-    style V3_L fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style MergeGroup fill:#fce4ec,stroke:#c2185b,stroke-width:3px
-    style M1 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
-    style M2 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
-    style M3 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
-    style M4 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
-    style M5 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
-    style V4Group fill:#fff9c4,stroke:#f9a825,stroke-width:3px
-    style V4_ID fill:#ffe082,stroke:#f9a825,stroke-width:2px
-    style V4_TS fill:#ffe082,stroke:#f9a825,stroke-width:2px
-    style V4_S6 fill:#4caf50,stroke:#1b5e20,stroke-width:2px
-    style V4_L fill:#ffe082,stroke:#f9a825,stroke-width:2px
-</code></pre>
-
-<p>版本演进示例：</p>
-<ul>
-  <li><strong>V1</strong>：包含 Segment [1, 2]，Locator 记录处理到 timestamp=100</li>
-  <li><strong>V2</strong>：新增 Segment 3，Locator 更新到 timestamp=200</li>
-  <li><strong>V3</strong>：Segment 1 和 2 合并为 Segment 4，Locator 更新到 timestamp=300</li>
-</ul>
-
-<p><strong>关键设计</strong>：</p>
-<ul>
-  <li><strong>版本号递增</strong>：每次 Commit 时 <code class="language-plaintext highlighter-rouge">VersionId</code> 自动递增，保证版本顺序</li>
-  <li><strong>Schema 演进</strong>：每个 Segment 记录自己的 <code class="language-plaintext highlighter-rouge">SchemaId</code>，支持 Schema 变更</li>
-  <li><strong>Locator 更新</strong>：每次 Commit 时更新 Locator，记录最新的数据处理位置</li>
-</ul>
-
-<p><strong>版本演进机制</strong>：</p>
-
-<pre><code class="language-mermaid">sequenceDiagram
-    participant Writer as TabletWriter
-    participant MemSeg as MemSegment
-    participant DiskSeg as DiskSegment
-    participant Version as Version
-    participant TabletData as TabletData
-    
-    Writer-&gt;&gt;MemSeg: Build(documents)
-    MemSeg--&gt;&gt;Writer: Success
-    
-    Writer-&gt;&gt;MemSeg: NeedDump()?
-    MemSeg--&gt;&gt;Writer: true
-    
-    Writer-&gt;&gt;MemSeg: CreateSegmentDumpItems()
-    MemSeg--&gt;&gt;Writer: DumpItems
-    
-    Writer-&gt;&gt;DiskSeg: Dump(DumpItems)
-    DiskSeg--&gt;&gt;Writer: Success
-    
-    Writer-&gt;&gt;Version: AddSegment(segmentId, schemaId)
-    Version--&gt;&gt;Writer: Success
-    
-    Writer-&gt;&gt;Version: SetLocator(locator)
-    Version--&gt;&gt;Writer: Success
-    
-    Writer-&gt;&gt;Version: IncVersionId()
-    Version--&gt;&gt;Writer: newVersionId
-    
-    Writer-&gt;&gt;TabletData: UpdateVersion(Version)
-    TabletData--&gt;&gt;Writer: Success
-</code></pre>
-
-<p><strong>设计原理</strong>：</p>
-
-<ol>
-  <li><strong>原子性保证</strong>：
-    <ul>
-      <li><strong>Fence 机制</strong>：通过 Fence 目录保证版本提交的原子性，避免部分提交导致的数据不一致</li>
-      <li><strong>版本文件</strong>：Version 信息写入版本文件，通过文件系统保证原子性</li>
-      <li><strong>回滚支持</strong>：如果提交失败，可以回滚到上一个版本，保证数据一致性</li>
-    </ul>
-  </li>
-  <li><strong>性能优化</strong>：
-    <ul>
-      <li><strong>增量更新</strong>：只记录新增的 Segment，不记录已删除的 Segment，减少版本文件大小</li>
-      <li><strong>版本压缩</strong>：定期压缩历史版本，删除不再需要的版本信息</li>
-      <li><strong>并行提交</strong>：多个 Tablet 可以并行提交版本，提高系统吞吐量</li>
-    </ul>
-  </li>
-  <li><strong>Schema 演进</strong>：
-    <ul>
-      <li><strong>向后兼容</strong>：新 Schema 向后兼容旧 Schema，旧 Segment 可以继续使用</li>
-      <li><strong>渐进式迁移</strong>：新 Segment 使用新 Schema，旧 Segment 保持原样，通过合并逐步迁移</li>
-      <li><strong>版本标记</strong>：每个 Segment 记录自己的 SchemaId，查询时根据 SchemaId 选择对应的 Schema</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>Version 的作用</strong>：</p>
-
-<ol>
-  <li><strong>版本控制</strong>：记录索引的演进历史</li>
-  <li><strong>增量更新</strong>：通过 Locator 判断数据是否已处理</li>
-  <li><strong>Schema 演进</strong>：支持 Schema 变更，每个 Segment 记录自己的 SchemaId</li>
-  <li><strong>回滚支持</strong>：可以回滚到历史版本</li>
-</ol>
-
-<h3 id="34-tabletdata索引数据管理">3.4 TabletData：索引数据管理</h3>
-
-<p><code class="language-plaintext highlighter-rouge">TabletData</code> 管理 Tablet 的所有数据。让我们先通过图理解其结构：</p>
-
-<p><strong>TabletData 的结构</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class TabletData {
-        -Version _onDiskVersion
-        -vector_Segment _segments
-        -ResourceMap _resourceMap
-        +CreateSlice()
-        +GetSegment()
-    }
-    
-    class Version {
-        -versionid_t _versionId
-        -set_SegmentInVersion _segments
-    }
-    
-    class Segment {
-        &lt;&lt;abstract&gt;&gt;
-        +GetSegmentId()
-    }
-    
-    class ResourceMap {
-        -MemoryPool _memoryPool
-        -Cache _cache
-    }
-    
-    TabletData "1" --&gt; "1" Version : 包含
-    TabletData "1" *-- "many" Segment : 包含
-    TabletData "1" --&gt; "1" ResourceMap : 包含
-</code></pre>
-
-<p>从图中可以看到，TabletData 包含：</p>
-<ul>
-  <li><strong>Segments</strong>：所有 Segment 的列表（MemSegment + DiskSegment）</li>
-  <li><strong>Version</strong>：当前磁盘版本</li>
-  <li><strong>ResourceMap</strong>：共享资源（内存池、缓存等）</li>
-</ul>
-
-<p>关键代码（<code class="language-plaintext highlighter-rouge">framework/TabletData.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TabletData</span> <span class="o">:</span> <span class="k">private</span> <span class="n">autil</span><span class="o">::</span><span class="n">NoCopyable</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// Slice：Segment 的视图，支持按状态筛选</span>
-    <span class="k">class</span> <span class="nc">Slice</span> <span class="p">{</span>
-        <span class="c1">// 提供迭代器，可以遍历筛选后的 Segment</span>
-    <span class="p">};</span>
-
-    <span class="c1">// 创建 Slice：按状态筛选 Segment</span>
-    <span class="n">Slice</span> <span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span> <span class="n">segmentStatus</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
-    
-    <span class="c1">// 获取指定 Segment</span>
-    <span class="n">SegmentPtr</span> <span class="n">GetSegment</span><span class="p">(</span><span class="n">segmentid_t</span> <span class="n">segmentId</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
-
-<span class="nl">private:</span>
-    <span class="n">Version</span> <span class="n">_onDiskVersion</span><span class="p">;</span>                               <span class="c1">// 磁盘版本</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Segment</span><span class="o">&gt;&gt;</span> <span class="n">_segments</span><span class="p">;</span>     <span class="c1">// Segment 列表</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ResourceMap</span><span class="o">&gt;</span> <span class="n">_resourceMap</span><span class="p">;</span>           <span class="c1">// 共享资源</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>Slice 机制的使用场景</strong>：</p>
-
-<p><strong>TabletData Slice 机制</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    A[TabletData] --&gt; B[CreateSlice&lt;br/&gt;创建切片视图]
-    B --&gt; C{筛选条件&lt;br/&gt;SegmentStatus}
-    
-    subgraph Segments["Segment 列表&lt;br/&gt;_segments"]
-        S1[MemSegment1&lt;br/&gt;ST_BUILDING]
-        S2[MemSegment2&lt;br/&gt;ST_DUMPING]
-        S3[DiskSegment1&lt;br/&gt;ST_BUILT]
-        S4[DiskSegment2&lt;br/&gt;ST_BUILT]
-        S5[DiskSegment3&lt;br/&gt;ST_SEALED]
-    end
-    
-    subgraph Filter["筛选结果"]
-        F1[ST_BUILT&lt;br/&gt;已构建的Segment]
-        F2[ST_BUILDING&lt;br/&gt;构建中的Segment]
-        F3[ST_DUMPING&lt;br/&gt;转储中的Segment]
-        F4[ST_SEALED&lt;br/&gt;已封存的Segment]
-        F5[无筛选&lt;br/&gt;所有Segment]
-        
-        C --&gt;|ST_BUILT| F1
-        C --&gt;|ST_BUILDING| F2
-        C --&gt;|ST_DUMPING| F3
-        C --&gt;|ST_SEALED| F4
-        C --&gt;|无参数| F5
-    end
-    
-    subgraph Usage["使用场景"]
-        U1[查询场景&lt;br/&gt;TabletReader.Search]
-        U2[写入场景&lt;br/&gt;TabletWriter.Build]
-        U3[合并场景&lt;br/&gt;MergeTask]
-        U4[监控场景&lt;br/&gt;Metrics统计]
-        U5[管理场景&lt;br/&gt;Segment管理]
-        
-        F1 --&gt; U1
-        F2 --&gt; U2
-        F3 --&gt; U4
-        F4 --&gt; U3
-        F5 --&gt; U5
-    end
-    
-    subgraph Slice["Slice特性"]
-        SL1[轻量级视图&lt;br/&gt;不复制数据]
-        SL2[迭代器支持&lt;br/&gt;begin/end/rbegin/rend]
-        SL3[线程安全&lt;br/&gt;支持并发访问]
-        SL4[按需筛选&lt;br/&gt;延迟计算]
-        
-        B -.-&gt; SL1
-        B -.-&gt; SL2
-        B -.-&gt; SL3
-        B -.-&gt; SL4
-    end
-    
-    S3 --&gt; F1
-    S4 --&gt; F1
-    S1 --&gt; F2
-    S2 --&gt; F3
-    S5 --&gt; F4
-    
-    style Segments fill:#e3f2fd
-    style Filter fill:#fff3e0
-    style Usage fill:#f3e5f5
-    style Slice fill:#f5f5f5
-</code></pre>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 获取所有已构建的 Segment（用于查询）</span>
-<span class="k">auto</span> <span class="n">builtSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_BUILT</span><span class="p">);</span>
-
-<span class="c1">// 获取所有构建中的 Segment（用于写入）</span>
-<span class="k">auto</span> <span class="n">buildingSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_BUILDING</span><span class="p">);</span>
-
-<span class="c1">// 获取所有 Segment</span>
-<span class="k">auto</span> <span class="n">allSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">();</span>
-</code></pre></div></div>
-
-<p><strong>关键设计</strong>：</p>
-<ul>
-  <li><strong>Slice 机制</strong>：提供灵活的 Segment 筛选，避免直接暴露内部实现</li>
-  <li><strong>共享资源</strong>：多个 Segment 共享 ResourceMap，减少资源开销</li>
-  <li><strong>版本管理</strong>：通过 Version 记录哪些 Segment 已持久化</li>
-</ul>
-
-<p><strong>Slice 机制的设计原理</strong>：</p>
-
-<pre><code class="language-mermaid">graph TD
-    A[TabletData] --&gt; B[CreateSlice]
-    B --&gt; C{筛选条件}
-    C --&gt;|ST_BUILT| D[已构建的 Segment]
-    C --&gt;|ST_BUILDING| E[构建中的 Segment]
-    C --&gt;|ST_DUMPING| F[转储中的 Segment]
-    C --&gt;|无筛选| G[所有 Segment]
-    
-    D --&gt; H[用于查询]
-    E --&gt; I[用于写入]
-    F --&gt; J[用于监控]
-    G --&gt; K[用于管理]
-    
-    style B fill:#e3f2fd
-    style C fill:#fff3e0
-    style H fill:#e8f5e9
-    style I fill:#f3e5f5
-</code></pre>
-
-<p><strong>设计优势</strong>：</p>
-
-<ol>
-  <li><strong>封装性</strong>：Slice 机制隐藏了 TabletData 的内部实现，外部代码不需要知道 Segment 的存储方式</li>
-  <li><strong>灵活性</strong>：支持按状态、类型、时间等多种条件筛选 Segment</li>
-  <li><strong>性能</strong>：Slice 是轻量级的视图，不复制数据，只是提供迭代器接口</li>
-  <li><strong>线程安全</strong>：Slice 的创建和遍历是线程安全的，支持并发查询</li>
-</ol>
-
-<p><strong>ResourceMap 的共享机制</strong>：</p>
-
-<ul>
-  <li><strong>内存池共享</strong>：多个 Segment 共享内存池，减少内存分配开销</li>
-  <li><strong>缓存共享</strong>：常用索引数据缓存在 ResourceMap 中，多个 Segment 可以共享</li>
-  <li><strong>文件句柄共享</strong>：文件句柄可以共享，减少文件打开/关闭的开销</li>
-</ul>
-
-<p><strong>TabletData 的 Slice 机制</strong>：</p>
-
-<p>TabletData 提供 <code class="language-plaintext highlighter-rouge">CreateSlice</code> 方法，可以按状态筛选 Segment：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 获取所有构建完成的 Segment</span>
-<span class="k">auto</span> <span class="n">builtSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">(</span><span class="n">Segment</span><span class="o">::</span><span class="n">SegmentStatus</span><span class="o">::</span><span class="n">ST_BUILT</span><span class="p">);</span>
-
-<span class="c1">// 获取所有 Segment</span>
-<span class="k">auto</span> <span class="n">allSegments</span> <span class="o">=</span> <span class="n">tabletData</span><span class="o">-&gt;</span><span class="n">CreateSlice</span><span class="p">();</span>
-</code></pre></div></div>
-
-<h3 id="35-locator数据位置信息">3.5 Locator：数据位置信息</h3>
-
-<p>Locator 是增量更新的核心，记录数据的位置信息。让我们先通过图理解 Locator 的结构：</p>
-
-<p><strong>Locator 的结构</strong>：</p>
-
-<pre><code class="language-mermaid">classDiagram
-    class Locator {
-        -int64_t _timestamp
-        -int32_t _concurrentIdx
-        -int32_t _hashId
-        -int32_t _sourceIdx
-        +IsFasterThan()
-        +Update()
-    }
-    
-    class Progress {
-        -int64_t _from
-        -int64_t _to
-        -int64_t _offset
-    }
-    
-    Locator "1" *-- "many" Progress : 包含多个进度
-</code></pre>
-
-<p>从图中可以看到，Locator 包含：</p>
-<ul>
-  <li><strong>timestamp</strong>：时间戳，记录数据的时间位置</li>
-  <li><strong>concurrentIdx</strong>：并发索引，处理时间戳相同的情况</li>
-  <li><strong>hashId</strong>：Hash ID，用于分片</li>
-  <li><strong>sourceIdx</strong>：数据源索引，支持多数据源</li>
-</ul>
-
-<p>关键代码（<code class="language-plaintext highlighter-rouge">framework/Locator.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Locator</span> <span class="k">final</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// Locator 比较结果</span>
-    <span class="k">enum</span> <span class="k">class</span> <span class="nc">LocatorCompareResult</span> <span class="p">{</span>
-        <span class="n">LCR_INVALID</span><span class="p">,</span>        <span class="c1">// 无效</span>
-        <span class="n">LCR_SLOWER</span><span class="p">,</span>         <span class="c1">// 比这个 locator 慢</span>
-        <span class="n">LCR_PARTIAL_FASTER</span><span class="p">,</span> <span class="c1">// 部分 hash id 更快</span>
-        <span class="n">LCR_FULLY_FASTER</span>    <span class="c1">// 完全比这个 locator 快（包括相等）</span>
-    <span class="p">};</span>
-
-    <span class="c1">// 文档信息：记录文档在数据源中的位置</span>
-    <span class="k">struct</span> <span class="nc">DocInfo</span> <span class="p">{</span>
-        <span class="kt">int64_t</span> <span class="n">timestamp</span><span class="p">;</span>        <span class="c1">// 时间戳</span>
-        <span class="kt">uint32_t</span> <span class="n">concurrentIdx</span><span class="p">;</span>   <span class="c1">// 并发索引（时间戳相同时的序号）</span>
-        <span class="kt">uint16_t</span> <span class="n">hashId</span><span class="p">;</span>          <span class="c1">// Hash ID（用于分片）</span>
-        <span class="kt">uint8_t</span> <span class="n">sourceIdx</span><span class="p">;</span>        <span class="c1">// 数据源索引</span>
-    <span class="p">};</span>
-
-    <span class="c1">// 比较两个 Locator：判断数据是否已处理</span>
-    <span class="n">LocatorCompareResult</span> <span class="n">IsFasterThan</span><span class="p">(</span><span class="k">const</span> <span class="n">Locator</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> 
-                                      <span class="kt">bool</span> <span class="n">ignoreLegacyDiffSrc</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
-
-<span class="nl">private:</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">base</span><span class="o">::</span><span class="n">Progress</span><span class="o">&gt;</span> <span class="n">_progress</span><span class="p">;</span>  <span class="c1">// 进度信息（每个 hashId 的进度）</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>Locator 的比较逻辑</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    Start[Locator A vs Locator B&lt;br/&gt;IsFasterThan比较] --&gt; Step1{Step 1: 比较 timestamp}
-    
-    Step1 --&gt;|A.timestamp &gt; B.timestamp| Step2{Step 2: 比较 hashId集合}
-    Step1 --&gt;|A.timestamp &lt; B.timestamp| Result1[B 更快&lt;br/&gt;LCR_SLOWER&lt;br/&gt;A 落后于 B]
-    Step1 --&gt;|A.timestamp == B.timestamp| Step3{Step 3: 比较 concurrentIdx}
-    
-    Step2 --&gt;|A 包含所有 B 的 hashId&lt;br/&gt;A.progress 覆盖 B.progress| Result2[A 更快&lt;br/&gt;LCR_FULLY_FASTER&lt;br/&gt;A 完全领先 B]
-    Step2 --&gt;|A 部分包含 B 的 hashId&lt;br/&gt;A.progress 部分覆盖 B.progress| Result3[A 部分更快&lt;br/&gt;LCR_PARTIAL_FASTER&lt;br/&gt;A 部分领先 B]
-    Step2 --&gt;|A 不包含 B 的 hashId&lt;br/&gt;A.progress 未覆盖 B.progress| Result1
-    
-    Step3 --&gt;|A.concurrentIdx &gt; B.concurrentIdx| Result2
-    Step3 --&gt;|A.concurrentIdx &lt; B.concurrentIdx| Result1
-    Step3 --&gt;|A.concurrentIdx == B.concurrentIdx| Step4{Step 4: 比较 sourceIdx}
-    
-    Step4 --&gt;|A.sourceIdx &gt;= B.sourceIdx| Result2
-    Step4 --&gt;|A.sourceIdx &lt; B.sourceIdx| Result1
-    
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Step1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Step2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Step3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Step4 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Result1 fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style Result2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Result3 fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-</code></pre>
-
-<p>比较示例：</p>
-<ul>
-  <li><strong>Locator A</strong>：timestamp=100, hashId=0</li>
-  <li><strong>Locator B</strong>：timestamp=200, hashId=0</li>
-  <li><strong>结果</strong>：B 比 A 快（<code class="language-plaintext highlighter-rouge">LCR_FULLY_FASTER</code>），说明 B 包含 A 的所有数据</li>
-</ul>
-
-<p><strong>Locator 的关键作用</strong>：</p>
-<ol>
-  <li><strong>增量更新</strong>：通过 <code class="language-plaintext highlighter-rouge">IsFasterThan()</code> 判断哪些数据已处理，避免重复处理</li>
-  <li><strong>数据一致性</strong>：保证数据不重复、不丢失，支持多数据源场景</li>
-  <li><strong>进度追踪</strong>：记录每个 HashId 的处理进度，支持分片处理</li>
-  <li><strong>并发控制</strong>：通过 <code class="language-plaintext highlighter-rouge">concurrentIdx</code> 处理时间戳相同的情况</li>
-</ol>
-
-<p><strong>Locator 比较算法详解</strong>：</p>
-
-<p>Locator 的比较是增量更新的核心，通过比较两个 Locator 可以判断数据是否已处理。比较算法需要考虑多个维度：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    Start[比较 Locator A 和 Locator B] --&gt; TS{ timestamp 比较&lt;br/&gt;A.ts vs B.ts}
-    
-    subgraph Level1["第一层：timestamp 比较结果"]
-        direction LR
-        TS --&gt;|A.ts &lt; B.ts| SLOWER1[LCR_SLOWER]
-        TS --&gt;|A.ts &gt; B.ts| Branch1[进入分支1]
-        TS --&gt;|A.ts == B.ts| Branch2[进入分支2]
-    end
-    
-    subgraph Level2["第二层：hashId 集合检查（分支1）"]
-        direction LR
-        Branch1 --&gt; HashCheck{hashId 集合&lt;br/&gt;A.progress 覆盖 B.progress?}
-        HashCheck --&gt;|完全覆盖| FASTER1[LCR_FULLY_FASTER]
-        HashCheck --&gt;|部分覆盖| PARTIAL1[LCR_PARTIAL_FASTER]
-        HashCheck --&gt;|未覆盖| SLOWER2[LCR_SLOWER]
-    end
-    
-    subgraph Level3["第二层：concurrentIdx 比较（分支2）"]
-        direction LR
-        Branch2 --&gt; ConcurrentCheck{concurrentIdx&lt;br/&gt;A.concurrentIdx vs B.concurrentIdx}
-        ConcurrentCheck --&gt;|A &gt; B| FASTER2[LCR_FULLY_FASTER]
-        ConcurrentCheck --&gt;|A &lt; B| SLOWER3[LCR_SLOWER]
-        ConcurrentCheck --&gt;|A == B| Branch3[进入分支3]
-    end
-    
-    subgraph Level4["第三层：sourceIdx 比较（分支3）"]
-        direction LR
-        Branch3 --&gt; SourceCheck{sourceIdx&lt;br/&gt;A.sourceIdx vs B.sourceIdx}
-        SourceCheck --&gt;|A &gt;= B| FASTER3[LCR_FULLY_FASTER]
-        SourceCheck --&gt;|A &lt; B| SLOWER4[LCR_SLOWER]
-    end
-    
-    style Start fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style TS fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Level1 fill:#f5f5f5,stroke:#757575,stroke-width:1px
-    style Level2 fill:#f5f5f5,stroke:#757575,stroke-width:1px
-    style Level3 fill:#f5f5f5,stroke:#757575,stroke-width:1px
-    style Level4 fill:#f5f5f5,stroke:#757575,stroke-width:1px
-    style HashCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style ConcurrentCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style SourceCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style SLOWER1 fill:#ffebee,stroke:#c62828,stroke-width:3px
-    style SLOWER2 fill:#ffebee,stroke:#c62828,stroke-width:3px
-    style SLOWER3 fill:#ffebee,stroke:#c62828,stroke-width:3px
-    style SLOWER4 fill:#ffebee,stroke:#c62828,stroke-width:3px
-    style FASTER1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style FASTER2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style FASTER3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style PARTIAL1 fill:#fff9c4,stroke:#f57f17,stroke-width:3px
-    style Branch1 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
-    style Branch2 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
-    style Branch3 fill:#e1f5fe,stroke:#0277bd,stroke-width:1px
-</code></pre>
-
-<p><strong>性能优化</strong>：</p>
-
-<ol>
-  <li><strong>快速路径</strong>：如果 timestamp 不同，直接比较 timestamp，避免遍历 Progress</li>
-  <li><strong>缓存优化</strong>：比较结果可以缓存，避免重复计算</li>
-  <li><strong>位运算</strong>：使用位运算优化 hashId 的比较，提高性能</li>
-  <li><strong>内存优化</strong>：Progress 采用紧凑的数据结构，减少内存占用</li>
-</ol>
-
-<p><strong>Locator 的作用</strong>：</p>
-
-<ol>
-  <li><strong>增量更新</strong>：判断哪些数据已经处理过</li>
-  <li><strong>数据一致性</strong>：保证数据不重复、不丢失</li>
-  <li><strong>多数据源</strong>：支持从多个数据源读取数据</li>
-</ol>
-
-<p><strong>Locator 比较</strong>：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">enum</span> <span class="k">class</span> <span class="nc">LocatorCompareResult</span> <span class="p">{</span>
-    <span class="n">LCR_INVALID</span><span class="p">,</span>        <span class="c1">// 无效</span>
-    <span class="n">LCR_SLOWER</span><span class="p">,</span>         <span class="c1">// 更慢</span>
-    <span class="n">LCR_PARTIAL_FASTER</span><span class="p">,</span> <span class="c1">// 部分更快</span>
-    <span class="n">LCR_FULLY_FASTER</span>    <span class="c1">// 完全更快（包含相等）</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<h3 id="36-tabletreader查询接口">3.6 TabletReader：查询接口</h3>
-
-<p>TabletReader 提供索引查询接口。让我们先通过图理解查询流程：</p>
-
-<p><strong>TabletReader 查询流程</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TB
-    Start([查询流程开始&lt;br/&gt;Query Flow Start]) --&gt; InputLayer[输入阶段&lt;br/&gt;Input Phase]
-    
-    subgraph InputGroup["1. 输入阶段 Input Phase"]
-        direction TB
-        A1[JSON 查询请求&lt;br/&gt;JSON Query Request]
-        A2[解析JSON查询&lt;br/&gt;Parse JSON Query&lt;br/&gt;QueryParser]
-        A3[提取查询类型和条件&lt;br/&gt;Extract Query Type and Conditions&lt;br/&gt;TermQuery/RangeQuery等]
-        A4[创建内部Query对象&lt;br/&gt;Create Internal Query Object]
-        A1 --&gt; A2
-        A2 --&gt; A3
-        A3 --&gt; A4
-    end
-    
-    InputLayer --&gt; ReaderLayer[IndexReader获取阶段&lt;br/&gt;IndexReader Acquisition Phase]
-    
-    subgraph ReaderGroup["2. IndexReader获取 IndexReader Acquisition"]
-        direction TB
-        B1[GetIndexReader&lt;br/&gt;indexType, indexName]
-        B2{缓存中存在?&lt;br/&gt;Cache Exists?}
-        B3[返回缓存的IndexReader&lt;br/&gt;Return Cached IndexReader]
-        B4[创建新的IndexReader&lt;br/&gt;Create New IndexReader&lt;br/&gt;InvertedIndexReader&lt;br/&gt;AttributeReader&lt;br/&gt;PrimaryKeyReader]
-        B5[缓存IndexReader&lt;br/&gt;Cache IndexReader]
-        B6[IndexReader就绪&lt;br/&gt;IndexReader Ready]
-        B1 --&gt; B2
-        B2 --&gt;|是| B3
-        B2 --&gt;|否| B4
-        B4 --&gt; B5
-        B3 --&gt; B6
-        B5 --&gt; B6
-    end
-    
-    ReaderLayer --&gt; QueryLayer[查询执行阶段&lt;br/&gt;Query Execution Phase]
-    
-    subgraph QueryGroup["3. 查询执行阶段 Query Execution Phase"]
-        direction TB
-        C1[TabletData.CreateSlice&lt;br/&gt;获取Segment列表&lt;br/&gt;Get Segment List]
-        C2[遍历Segment&lt;br/&gt;Traverse Segments]
-        C3[并行查询各Segment&lt;br/&gt;Parallel Query Segments&lt;br/&gt;Segment1/Segment2/Segment3]
-        C4[DocId转换&lt;br/&gt;DocId Conversion&lt;br/&gt;GlobalDocId → LocalDocId]
-        C5[IndexReader.Search&lt;br/&gt;执行索引查询&lt;br/&gt;Execute Index Query]
-        C1 --&gt; C2
-        C2 --&gt; C3
-        C3 --&gt; C4
-        C4 --&gt; C5
-    end
-    
-    QueryLayer --&gt; ProcessLayer[结果处理阶段&lt;br/&gt;Result Processing Phase]
-    
-    subgraph ProcessGroup["4. 结果处理阶段 Result Processing Phase"]
-        direction TB
-        D1[收集各Segment结果&lt;br/&gt;Collect Segment Results]
-        D2[DocId去重&lt;br/&gt;DocId Deduplication]
-        D3[排序&lt;br/&gt;Sorting&lt;br/&gt;相关性分数或指定字段]
-        D4[分页处理&lt;br/&gt;Pagination&lt;br/&gt;offset/limit]
-        D5[聚合统计&lt;br/&gt;Aggregation&lt;br/&gt;可选]
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D3 --&gt; D4
-        D4 --&gt; D5
-    end
-    
-    ProcessLayer --&gt; OutputLayer[输出阶段&lt;br/&gt;Output Phase]
-    
-    subgraph OutputGroup["5. 输出阶段 Output Phase"]
-        direction TB
-        E1[字段选择&lt;br/&gt;Field Selection]
-        E2[序列化为JSON&lt;br/&gt;Serialize to JSON]
-        E3[返回JSON结果&lt;br/&gt;Return JSON Result]
-        E1 --&gt; E2
-        E2 --&gt; E3
-    end
-    
-    OutputLayer --&gt; End([查询完成&lt;br/&gt;Query Complete])
-    
-    InputLayer -.-&gt;|包含| InputGroup
-    ReaderLayer -.-&gt;|包含| ReaderGroup
-    QueryLayer -.-&gt;|包含| QueryGroup
-    ProcessLayer -.-&gt;|包含| ProcessGroup
-    OutputLayer -.-&gt;|包含| OutputGroup
-    
-    A4 --&gt; B1
-    B6 --&gt; C1
-    C5 --&gt; D1
-    D5 --&gt; E1
-    
-    style Start fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style End fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style InputLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style ReaderLayer fill:#fff9c4,stroke:#f57f17,stroke-width:3px
-    style QueryLayer fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style ProcessLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style OutputLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style InputGroup fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style A1 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style A2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style A3 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style A4 fill:#90caf9,stroke:#1976d2,stroke-width:2px
-    style ReaderGroup fill:#fff9c4,stroke:#f57f17,stroke-width:3px
-    style B1 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style B2 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style B3 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style B4 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style B5 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style B6 fill:#ffe082,stroke:#f57f17,stroke-width:2px
-    style QueryGroup fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style C1 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C2 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C3 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C4 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style C5 fill:#ffcc80,stroke:#f57c00,stroke-width:2px
-    style ProcessGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
-    style D1 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style D2 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style D3 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style D4 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style D5 fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
-    style OutputGroup fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
-    style E1 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style E2 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-    style E3 fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px
-</code></pre>
-
-<p>从图中可以看到查询流程：</p>
-<ol>
-  <li>解析 JSON 查询</li>
-  <li>获取 IndexReader</li>
-  <li>遍历 Segment 查询</li>
-  <li>合并结果</li>
-  <li>返回 JSON 结果</li>
-</ol>
-
-<p>关键代码（<code class="language-plaintext highlighter-rouge">framework/TabletReader.h</code>）：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TabletReader</span> <span class="o">:</span> <span class="k">public</span> <span class="n">ITabletReader</span>
-<span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// 打开：初始化 TabletData 和读取资源</span>
-    <span class="n">Status</span> <span class="n">Open</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">TabletData</span><span class="o">&gt;&amp;</span> <span class="n">tabletData</span><span class="p">,</span> 
-                <span class="k">const</span> <span class="n">ReadResource</span><span class="o">&amp;</span> <span class="n">readResource</span><span class="p">);</span>
-
-    <span class="c1">// 搜索：JSON 格式的查询</span>
-    <span class="n">Status</span> <span class="n">Search</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">jsonQuery</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">result</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span><span class="p">;</span>
-    
-    <span class="c1">// 获取索引 Reader：根据索引类型和名称获取</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;</span> <span class="n">GetIndexReader</span><span class="p">(</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexType</span><span class="p">,</span>
-        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">indexName</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span><span class="p">;</span>
-
-<span class="nl">protected:</span>
-    <span class="k">using</span> <span class="n">IndexReaderMapKey</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">;</span>  <span class="c1">// (indexType, indexName)</span>
-    
-    <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;</span> <span class="n">_schema</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">IndexReaderMapKey</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">index</span><span class="o">::</span><span class="n">IIndexReader</span><span class="o">&gt;&gt;</span> <span class="n">_indexReaderMap</span><span class="p">;</span>  <span class="c1">// 索引 Reader 缓存</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>查询流程详解</strong>：</p>
-
-<ol>
-  <li><strong>解析查询</strong>：<code class="language-plaintext highlighter-rouge">Search()</code> 将 JSON 查询解析为内部查询对象</li>
-  <li><strong>获取 IndexReader</strong>：根据索引类型和名称从 <code class="language-plaintext highlighter-rouge">_indexReaderMap</code> 获取或创建</li>
-  <li><strong>遍历 Segment</strong>：通过 <code class="language-plaintext highlighter-rouge">TabletData-&gt;CreateSlice(ST_BUILT)</code> 获取所有已构建的 Segment</li>
-  <li><strong>并行查询</strong>：对多个 Segment 的 Indexer 进行查询（如果支持并行）</li>
-  <li><strong>合并结果</strong>：将各 Segment 的查询结果合并（去重、排序等）</li>
-  <li><strong>返回结果</strong>：序列化为 JSON 格式返回</li>
-</ol>
-
-<p><strong>IndexReader 缓存机制</strong>：</p>
-
-<p><strong>TabletReader IndexReader 缓存</strong>：</p>
-
-<pre><code class="language-mermaid">flowchart TD
-    A[GetIndexReader请求&lt;br/&gt;indexType, indexName] --&gt; B[构建缓存Key&lt;br/&gt;pair indexType, indexName]
-    B --&gt; C{在_indexReaderMap中查找}
-    
-    subgraph Cache["缓存命中路径"]
-        C1[找到缓存的IndexReader]
-        C2[返回shared_ptr&lt;br/&gt;共享使用]
-        C3[避免重复创建&lt;br/&gt;提高性能]
-        
-        C --&gt;|存在| C1
-        C1 --&gt; C2
-        C2 --&gt; C3
-    end
-    
-    subgraph Create["缓存未命中路径"]
-        D1[未找到缓存]
-        D2[调用DoGetIndexReader&lt;br/&gt;子类实现]
-        D3[创建IndexReader实例]
-        D4[InvertedIndexReader&lt;br/&gt;倒排索引]
-        D5[AttributeReader&lt;br/&gt;正排索引]
-        D6[PrimaryKeyReader&lt;br/&gt;主键索引]
-        D7[初始化IndexReader&lt;br/&gt;Open方法]
-        D8[加载索引数据&lt;br/&gt;按需加载]
-        D9[缓存到_indexReaderMap&lt;br/&gt;shared_ptr管理]
-        
-        C --&gt;|不存在| D1
-        D1 --&gt; D2
-        D2 --&gt; D3
-        D3 --&gt; D4
-        D3 --&gt; D5
-        D3 --&gt; D6
-        D4 --&gt; D7
-        D5 --&gt; D7
-        D6 --&gt; D7
-        D7 --&gt; D8
-        D8 --&gt; D9
-    end
-    
-    subgraph CacheInfo["缓存信息"]
-        CI1[缓存Key&lt;br/&gt;indexType + indexName]
-        CI2[缓存Value&lt;br/&gt;shared_ptr IIndexReader]
-        CI3[生命周期&lt;br/&gt;与TabletReader相同]
-        CI4[线程安全&lt;br/&gt;支持并发查询]
-        
-        B -.-&gt; CI1
-        C1 -.-&gt; CI2
-        C2 -.-&gt; CI3
-        C2 -.-&gt; CI4
-    end
-    
-    C3 --&gt; E[返回IndexReader]
-    D9 --&gt; E
-    
-    style Cache fill:#e3f2fd
-    style Create fill:#fff3e0
-    style CacheInfo fill:#f5f5f5
-    style E fill:#f3e5f5
-</code></pre>
-
-<ul>
-  <li><strong>缓存 Key</strong>：<code class="language-plaintext highlighter-rouge">(indexType, indexName)</code> 对</li>
-  <li><strong>缓存 Value</strong>：<code class="language-plaintext highlighter-rouge">IIndexReader</code> 指针</li>
-  <li><strong>优势</strong>：避免重复创建 IndexReader，提高查询性能</li>
-</ul>
-
-<p><strong>TabletReader 的查询流程</strong>：</p>
-
-<pre><code class="language-mermaid">sequenceDiagram
-    participant Client
-    participant TabletReader
-    participant TabletData
-    participant Segment
-    participant IndexReader
-    participant Indexer
-    
-    Client-&gt;&gt;TabletReader: Search(jsonQuery)
-    TabletReader-&gt;&gt;TabletReader: ParseQuery(jsonQuery)
-    TabletReader-&gt;&gt;TabletData: CreateSlice(ST_BUILT)
-    TabletData--&gt;&gt;TabletReader: Segments
-    
-    loop 遍历每个 Segment
-        TabletReader-&gt;&gt;Segment: GetIndexer(indexType, indexName)
-        Segment--&gt;&gt;TabletReader: Indexer
-        TabletReader-&gt;&gt;IndexReader: GetOrCreate(indexType, indexName)
-        IndexReader--&gt;&gt;TabletReader: IndexReader (cached)
-        TabletReader-&gt;&gt;IndexReader: Search(query)
-        IndexReader-&gt;&gt;Indexer: Query(query)
-        Indexer--&gt;&gt;IndexReader: Results
-        IndexReader--&gt;&gt;TabletReader: Results
-    end
-    
-    TabletReader-&gt;&gt;TabletReader: MergeResults(allResults)
-    TabletReader-&gt;&gt;TabletReader: Deduplicate()
-    TabletReader-&gt;&gt;TabletReader: Sort()
-    TabletReader-&gt;&gt;TabletReader: Paginate()
-    TabletReader-&gt;&gt;TabletReader: SerializeToJson()
-    TabletReader--&gt;&gt;Client: jsonResult
-</code></pre>
-
-<p><strong>查询优化策略</strong>：</p>
-
-<ol>
-  <li><strong>IndexReader 缓存</strong>：
-    <ul>
-      <li><strong>缓存 Key</strong>：<code class="language-plaintext highlighter-rouge">(indexType, indexName)</code> 对，相同类型的索引共享 IndexReader</li>
-      <li><strong>缓存生命周期</strong>：IndexReader 的生命周期与 TabletReader 相同，避免重复创建</li>
-      <li><strong>内存控制</strong>：通过 LRU 等策略控制缓存大小，防止内存溢出</li>
-    </ul>
-  </li>
-  <li><strong>并行查询</strong>：
-    <ul>
-      <li><strong>Segment 并行</strong>：多个 Segment 可以并行查询，提高查询吞吐量</li>
-      <li><strong>索引并行</strong>：同一个 Segment 的多个索引可以并行查询</li>
-      <li><strong>结果合并</strong>：查询结果采用高效的合并算法（如堆合并），减少内存开销</li>
-    </ul>
-  </li>
-  <li><strong>查询剪枝</strong>：
-    <ul>
-      <li><strong>Locator 剪枝</strong>：通过 Locator 判断哪些 Segment 需要查询，跳过已处理的 Segment</li>
-      <li><strong>时间范围剪枝</strong>：如果查询有时间范围，可以跳过不在范围内的 Segment</li>
-      <li><strong>索引剪枝</strong>：如果查询条件不匹配索引，可以跳过该索引的查询</li>
-    </ul>
-  </li>
-</ol>
-
-<h2 id="4-索引类型">4. 索引类型</h2>
-
-<p>IndexLib 支持多种索引类型：</p>
-
-<h3 id="41-normal-table标准表">4.1 Normal Table：标准表</h3>
-
-<ul>
-  <li><strong>特点</strong>：支持倒排索引、正排索引、摘要等</li>
-  <li><strong>用途</strong>：全文检索、复杂查询</li>
-  <li><strong>实现</strong>：<code class="language-plaintext highlighter-rouge">NormalTableFactory</code></li>
-</ul>
-
-<h3 id="42-kkv-tablekey-key-value-表">4.2 KKV Table：Key-Key-Value 表</h3>
-
-<ul>
-  <li><strong>特点</strong>：两级 Key，支持按主 Key 和次 Key 查询</li>
-  <li><strong>用途</strong>：用户行为数据、推荐系统</li>
-  <li><strong>实现</strong>：<code class="language-plaintext highlighter-rouge">KKVTableFactory</code></li>
-</ul>
-
-<h3 id="43-kv-tablekey-value-表">4.3 KV Table：Key-Value 表</h3>
-
-<ul>
-  <li><strong>特点</strong>：简单的 Key-Value 存储</li>
-  <li><strong>用途</strong>：缓存、简单查询</li>
-  <li><strong>实现</strong>：<code class="language-plaintext highlighter-rouge">KVTableFactory</code></li>
-</ul>
-
-<h2 id="5-设计模式与架构特点">5. 设计模式与架构特点</h2>
-
-<h3 id="51-工厂模式">5.1 工厂模式</h3>
-
-<p>IndexLib 使用工厂模式创建不同类型的 Tablet：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ITabletFactory</span> <span class="p">{</span>
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">TabletWriter</span><span class="o">&gt;</span> 
-        <span class="n">CreateTabletWriter</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">TabletReader</span><span class="o">&gt;</span> 
-        <span class="n">CreateTabletReader</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">config</span><span class="o">::</span><span class="n">ITabletSchema</span><span class="o">&gt;&amp;</span> <span class="n">schema</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">MemSegment</span><span class="o">&gt;</span> 
-        <span class="n">CreateMemSegment</span><span class="p">(</span><span class="k">const</span> <span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="k">virtual</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">DiskSegment</span><span class="o">&gt;</span> 
-        <span class="n">CreateDiskSegment</span><span class="p">(</span><span class="k">const</span> <span class="n">SegmentMeta</span><span class="o">&amp;</span> <span class="n">segmentMeta</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="n">BuildResource</span><span class="o">&amp;</span> <span class="n">buildResource</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div></div>
-
-<p><strong>注册机制</strong>：</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 注册 Tablet Factory</span>
-<span class="n">REGISTER_TABLET_FACTORY</span><span class="p">(</span><span class="n">normal</span><span class="p">,</span> <span class="n">NormalTableFactory</span><span class="p">);</span>
-<span class="n">REGISTER_TABLET_FACTORY</span><span class="p">(</span><span class="n">kkv</span><span class="p">,</span> <span class="n">KKVTableFactory</span><span class="p">);</span>
-<span class="n">REGISTER_TABLET_FACTORY</span><span class="p">(</span><span class="n">kv</span><span class="p">,</span> <span class="n">KVTableFactory</span><span class="p">);</span>
-</code></pre></div></div>
-
-<h3 id="52-资源管理">5.2 资源管理</h3>
-
-<p>IndexLib 采用 RAII 和智能指针管理资源：</p>
-
-<ul>
-  <li><strong>内存管理</strong>：使用 <code class="language-plaintext highlighter-rouge">MemoryQuotaController</code> 控制内存使用</li>
-  <li><strong>文件管理</strong>：使用 <code class="language-plaintext highlighter-rouge">Directory</code> 抽象文件系统</li>
-  <li><strong>生命周期</strong>：通过智能指针自动管理对象生命周期</li>
-</ul>
-
-<h3 id="53-异步与并发">5.3 异步与并发</h3>
-
-<ul>
-  <li><strong>构建并发</strong>：支持多线程构建</li>
-  <li><strong>查询并发</strong>：支持并发查询多个 Segment</li>
-  <li><strong>异步转储</strong>：MemSegment 转储是异步的</li>
-</ul>
-
-<h2 id="6-性能优化设计">6. 性能优化设计</h2>
-
-<p>IndexLib 在性能优化方面做了大量工作，从内存管理、查询优化、写入优化等多个维度提升系统性能。</p>
-
-<h3 id="61-内存优化">6.1 内存优化</h3>
-
-<p><strong>内存管理策略</strong>：</p>
-
-<ol>
-  <li><strong>按需加载</strong>：
-    <ul>
-      <li>DiskSegment 支持懒加载模式，只在查询时加载相关索引数据</li>
-      <li>可以配置哪些索引立即加载，哪些按需加载，平衡内存和性能</li>
-      <li>通过 MemoryQuotaController 控制内存使用上限，防止内存溢出</li>
-    </ul>
-  </li>
-  <li><strong>内存池</strong>：
-    <ul>
-      <li>使用内存池减少内存分配开销，提高写入性能</li>
-      <li>内存池采用预分配策略，减少系统调用</li>
-      <li>支持不同大小的内存块，减少内存碎片</li>
-    </ul>
-  </li>
-  <li><strong>内存回收</strong>：
-    <ul>
-      <li>当内存不足时，触发 MemSegment 转储，释放内存</li>
-      <li>采用 LRU 等策略回收不常用的索引数据</li>
-      <li>支持内存配额动态调整，根据系统负载调整内存使用</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>内存优化效果</strong>：</p>
-<ul>
-  <li><strong>内存使用</strong>：通过懒加载和内存池，有效降低内存使用</li>
-  <li><strong>分配性能</strong>：内存池减少分配开销，提升写入性能</li>
-  <li><strong>稳定性</strong>：内存配额控制避免 OOM，系统稳定性大幅提升</li>
-</ul>
-
-<h3 id="62-查询优化">6.2 查询优化</h3>
-
-<p><strong>查询性能优化</strong>：</p>
-
-<ol>
-  <li><strong>Segment 并行查询</strong>：
-    <ul>
-      <li>多个 Segment 可以并行查询，充分利用多核 CPU</li>
-      <li>查询结果采用高效的合并算法（如堆合并），减少内存开销</li>
-      <li>支持查询任务的优先级调度，保证重要查询的响应时间</li>
-    </ul>
-  </li>
-  <li><strong>索引缓存</strong>：
-    <ul>
-      <li>常用索引数据缓存在内存中，减少磁盘 IO</li>
-      <li>缓存采用 LRU 策略，自动淘汰不常用的数据</li>
-      <li>支持缓存预热，系统启动时预加载常用索引</li>
-    </ul>
-  </li>
-  <li><strong>查询剪枝</strong>：
-    <ul>
-      <li>通过 Locator 判断哪些 Segment 需要查询，跳过已处理的 Segment</li>
-      <li>如果查询有时间范围，可以跳过不在范围内的 Segment</li>
-      <li>如果查询条件不匹配索引，可以跳过该索引的查询</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>查询优化效果</strong>：</p>
-<ul>
-  <li><strong>查询延迟</strong>：通过并行查询和缓存，有效降低查询延迟</li>
-  <li><strong>吞吐量</strong>：并行查询显著提高吞吐量</li>
-  <li><strong>资源利用</strong>：查询剪枝减少不必要的查询，提升 CPU 和 IO 利用率</li>
-</ul>
-
-<h3 id="63-写入优化">6.3 写入优化</h3>
-
-<p><strong>写入性能优化</strong>：</p>
-
-<ol>
-  <li><strong>批量写入</strong>：
-    <ul>
-      <li>支持批量写入文档，减少函数调用开销</li>
-      <li>批量写入时采用批量索引构建，提高构建效率</li>
-      <li>支持批量写入的大小动态调整，根据系统负载调整</li>
-    </ul>
-  </li>
-  <li><strong>异步转储</strong>：
-    <ul>
-      <li>MemSegment 转储是异步的，不阻塞写入</li>
-      <li>转储任务采用队列管理，支持优先级调度</li>
-      <li>转储失败时支持重试，保证数据可靠性</li>
-    </ul>
-  </li>
-  <li><strong>增量更新</strong>：
-    <ul>
-      <li>通过 Locator 实现高效的增量更新，避免重复处理数据</li>
-      <li>增量更新时只处理新增数据，减少处理量</li>
-      <li>支持多数据源增量更新，提高数据同步效率</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>写入优化效果</strong>：</p>
-<ul>
-  <li><strong>写入吞吐量</strong>：批量写入和异步转储显著提高吞吐量</li>
-  <li><strong>写入延迟</strong>：异步转储有效降低写入延迟</li>
-  <li><strong>数据一致性</strong>：增量更新保证数据不重复、不丢失，保证数据一致性</li>
-</ul>
-
-<h3 id="64-存储优化">6.4 存储优化</h3>
-
-<p><strong>存储性能优化</strong>：</p>
-
-<ol>
-  <li><strong>压缩存储</strong>：
-    <ul>
-      <li>索引数据采用压缩格式存储（如 LZ4、Zstd），减少磁盘空间和 IO 开销</li>
-      <li>压缩算法支持快速压缩和解压，平衡压缩率和性能</li>
-      <li>可以配置不同索引采用不同的压缩策略</li>
-    </ul>
-  </li>
-  <li><strong>分块存储</strong>：
-    <ul>
-      <li>大索引文件分块存储，支持按需加载部分数据</li>
-      <li>分块大小可以配置，平衡内存和 IO 性能</li>
-      <li>支持分块的并行加载，提高加载速度</li>
-    </ul>
-  </li>
-  <li><strong>存储格式优化</strong>：
-    <ul>
-      <li>索引文件采用列式存储格式，提高查询性能</li>
-      <li>支持索引文件的版本化，支持 Schema 演进</li>
-      <li>索引文件的元数据采用紧凑格式，减少元数据大小</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>存储优化效果</strong>：</p>
-<ul>
-  <li><strong>磁盘空间</strong>：压缩存储有效减少磁盘空间占用</li>
-  <li><strong>IO 性能</strong>：分块存储和列式存储显著提高 IO 性能</li>
-  <li><strong>加载速度</strong>：并行加载显著提高加载速度</li>
-</ul>
-
-<h2 id="7-使用场景与最佳实践">7. 使用场景与最佳实践</h2>
-
-<p>IndexLib 适用于多种场景，从全文检索到实时搜索，从大数据量到高并发查询。</p>
-
-<h3 id="71-典型使用场景">7.1 典型使用场景</h3>
-
-<ol>
-  <li><strong>全文检索</strong>：
-    <ul>
-      <li><strong>场景</strong>：支持倒排索引，适合全文检索场景</li>
-      <li><strong>特点</strong>：支持多字段检索、模糊匹配、相关性排序等</li>
-      <li><strong>性能</strong>：支持低延迟查询和高并发 QPS</li>
-    </ul>
-  </li>
-  <li><strong>实时搜索</strong>：
-    <ul>
-      <li><strong>场景</strong>：支持实时写入和查询，适合实时搜索场景</li>
-      <li><strong>特点</strong>：数据写入后立即可查，延迟较低</li>
-      <li><strong>性能</strong>：支持高并发 TPS 写入，查询延迟较低</li>
-    </ul>
-  </li>
-  <li><strong>大数据量</strong>：
-    <ul>
-      <li><strong>场景</strong>：支持大规模数据，适合大规模数据场景</li>
-      <li><strong>特点</strong>：采用 Segment 分片存储，支持水平扩展</li>
-      <li><strong>性能</strong>：单机和集群均支持大规模数据存储</li>
-    </ul>
-  </li>
-  <li><strong>高并发查询</strong>：
-    <ul>
-      <li><strong>场景</strong>：支持高并发 QPS，适合高并发查询场景</li>
-      <li><strong>特点</strong>：支持并行查询、查询缓存、查询剪枝等优化</li>
-      <li><strong>性能</strong>：单机和集群均支持高并发 QPS</li>
-    </ul>
-  </li>
-</ol>
-
-<h3 id="72-最佳实践">7.2 最佳实践</h3>
-
-<p><strong>配置优化</strong>：</p>
-
-<ol>
-  <li><strong>内存配置</strong>：
-    <ul>
-      <li>根据数据量和查询负载配置内存配额</li>
-      <li>在线场景使用 NORMAL 模式，离线场景使用 LAZY 模式</li>
-      <li>合理配置内存池大小，平衡内存和性能</li>
-    </ul>
-  </li>
-  <li><strong>查询优化</strong>：
-    <ul>
-      <li>合理设置查询并行度，充分利用多核 CPU</li>
-      <li>启用查询缓存，提高常用查询的性能</li>
-      <li>使用查询剪枝，减少不必要的查询</li>
-    </ul>
-  </li>
-  <li><strong>写入优化</strong>：
-    <ul>
-      <li>使用批量写入，提高写入吞吐量</li>
-      <li>合理设置 Flush 和 Seal 的触发条件，平衡写入和查询性能</li>
-      <li>使用增量更新，避免重复处理数据</li>
-    </ul>
-  </li>
-</ol>
-
-<p><strong>监控与调优</strong>：</p>
-
-<ol>
-  <li><strong>性能监控</strong>：
-    <ul>
-      <li>监控查询延迟、吞吐量、错误率等指标</li>
-      <li>监控内存使用、磁盘 IO、CPU 使用率等资源指标</li>
-      <li>设置告警阈值，及时发现问题</li>
-    </ul>
-  </li>
-  <li><strong>调优策略</strong>：
-    <ul>
-      <li>根据监控数据调整配置参数</li>
-      <li>定期分析慢查询，优化查询逻辑</li>
-      <li>根据数据分布调整 Segment 合并策略</li>
-    </ul>
-  </li>
-</ol>
-
-<h2 id="8-设计模式与架构原则">8. 设计模式与架构原则</h2>
-
-<p>IndexLib 在架构设计上遵循了多个设计模式和架构原则，这些设计使得系统具有良好的可扩展性、可维护性和高性能。</p>
-
-<h3 id="81-设计模式">8.1 设计模式</h3>
-
-<ol>
-  <li><strong>工厂模式</strong>：
-    <ul>
-      <li><strong>应用</strong>：通过 <code class="language-plaintext highlighter-rouge">ITabletFactory</code> 创建不同类型的 Tablet（Normal、KKV、KV）</li>
-      <li><strong>优势</strong>：解耦对象创建和使用，支持灵活的扩展</li>
-      <li><strong>实现</strong>：通过注册机制注册不同的 Factory，运行时根据配置选择</li>
-    </ul>
-  </li>
-  <li><strong>策略模式</strong>：
-    <ul>
-      <li><strong>应用</strong>：MemSegment 和 DiskSegment 实现不同的存储策略</li>
-      <li><strong>优势</strong>：算法可以独立变化，支持运行时切换策略</li>
-      <li><strong>实现</strong>：通过抽象基类定义接口，子类实现不同策略</li>
-    </ul>
-  </li>
-  <li><strong>观察者模式</strong>：
-    <ul>
-      <li><strong>应用</strong>：Segment 状态变化时通知 TabletData 更新</li>
-      <li><strong>优势</strong>：解耦观察者和被观察者，支持动态添加观察者</li>
-      <li><strong>实现</strong>：通过回调函数或事件机制实现</li>
-    </ul>
-  </li>
-  <li><strong>组合模式</strong>：
-    <ul>
-      <li><strong>应用</strong>：Tablet 通过组合 Schema、TabletData、Version 等组件</li>
-      <li><strong>优势</strong>：部分-整体层次结构，支持递归组合</li>
-      <li><strong>实现</strong>：通过成员变量组合，通过接口统一访问</li>
-    </ul>
-  </li>
-</ol>
-
-<h3 id="82-架构原则">8.2 架构原则</h3>
-
-<ol>
-  <li><strong>单一职责原则</strong>：
-    <ul>
-      <li>每个类只负责一个功能，职责清晰</li>
-      <li>Tablet 负责生命周期管理，TabletData 负责数据管理，Segment 负责存储</li>
-    </ul>
-  </li>
-  <li><strong>开闭原则</strong>：
-    <ul>
-      <li>对扩展开放，对修改关闭</li>
-      <li>通过接口和工厂模式支持扩展，不需要修改现有代码</li>
-    </ul>
-  </li>
-  <li><strong>依赖倒置原则</strong>：
-    <ul>
-      <li>高层模块不依赖低层模块，都依赖抽象</li>
-      <li>通过接口定义依赖关系，具体实现可以替换</li>
-    </ul>
-  </li>
-  <li><strong>接口隔离原则</strong>：
-    <ul>
-      <li>客户端不应该依赖它不需要的接口</li>
-      <li>ITablet、ITabletReader、ITabletWriter 等接口职责单一</li>
-    </ul>
-  </li>
-</ol>
-
-<h3 id="83-性能设计原则">8.3 性能设计原则</h3>
-
-<ol>
-  <li><strong>零拷贝</strong>：
-    <ul>
-      <li>尽可能避免数据拷贝，减少内存开销</li>
-      <li>使用引用和移动语义，减少不必要的拷贝</li>
-    </ul>
-  </li>
-  <li><strong>缓存友好</strong>：
-    <ul>
-      <li>数据结构设计考虑 CPU 缓存，提高缓存命中率</li>
-      <li>相关数据放在一起，减少缓存失效</li>
-    </ul>
-  </li>
-  <li><strong>批量处理</strong>：
-    <ul>
-      <li>批量写入、批量查询，减少函数调用开销</li>
-      <li>批量操作时采用批量算法，提高处理效率</li>
-    </ul>
-  </li>
-  <li><strong>异步处理</strong>：
-    <ul>
-      <li>异步转储、异步合并，不阻塞主流程</li>
-      <li>异步操作采用队列管理，支持优先级调度</li>
-    </ul>
-  </li>
-</ol>
-
-<h2 id="9-小结">9. 小结</h2>
-
-<p>IndexLib 是一个设计精良的 C++ 索引库，采用分层架构和清晰的抽象，支持多种索引类型和高性能查询。通过本文的深入分析，我们了解了 IndexLib 的核心概念、设计原理和性能优化策略。</p>
-
-<p><strong>核心概念总结</strong>：</p>
-
-<ul>
-  <li><strong>Tablet</strong>：索引表，管理索引的完整生命周期，采用组合模式组织各个组件</li>
-  <li><strong>Segment</strong>：索引段，分为内存段和磁盘段，采用策略模式实现不同的存储策略</li>
-  <li><strong>Version</strong>：版本管理，支持增量更新和 Schema 演进，通过 Fence 机制保证原子性</li>
-  <li><strong>Locator</strong>：位置信息，保证数据一致性，通过多维度比较实现增量更新</li>
-  <li><strong>TabletReader/Writer</strong>：查询和构建接口，通过接口隔离原则实现职责分离</li>
-</ul>
-
-<p><strong>设计亮点</strong>：</p>
-
-<ol>
-  <li><strong>分层架构</strong>：清晰的职责划分，每层只关注自己的职责</li>
-  <li><strong>接口设计</strong>：通过接口定义核心能力，支持灵活的扩展</li>
-  <li><strong>资源管理</strong>：通过 RAII 和智能指针自动管理资源，避免内存泄漏</li>
-  <li><strong>性能优化</strong>：从内存、查询、写入、存储等多个维度优化性能</li>
-</ol>
-
-<p><strong>关键要点</strong>：</p>
-
-<ul>
-  <li>IndexLib 采用分层架构，职责清晰，便于理解和维护</li>
-  <li>Tablet 是核心抽象，管理索引生命周期，采用组合模式组织组件</li>
-  <li>Segment 是基本存储单元，支持内存和磁盘两种形式，采用策略模式实现</li>
-  <li>Version 管理索引版本，支持增量更新，通过 Fence 机制保证原子性</li>
-  <li>Locator 保证数据一致性，支持增量更新，通过多维度比较实现</li>
-  <li>支持多种索引类型，通过工厂模式扩展，符合开闭原则</li>
-</ul>
-
-<p>理解这些核心概念和设计原理是掌握 IndexLib 的基础。在后续文章中，我们将深入介绍各个组件的实现细节、使用方法和性能调优技巧，帮助读者更好地理解和使用 IndexLib。</p>]]></content><author><name>周智龙</name></author><category term="IndexLib" /><category term="搜索引擎" /><category term="存储" /><summary type="html"><![CDATA[前言]]></summary></entry></feed>
+<p>理解 Tablet 和 Segment 的组织方式，是掌握 IndexLib 索引构建和查询机制的基础。在下一篇文章中，我们将深入介绍索引构建的完整流程，包括 Build、Flush、Seal、Commit 等各个阶段的实现细节和性能优化策略。</p>]]></content><author><name>周智龙</name></author><category term="IndexLib" /><category term="搜索引擎" /><category term="存储" /><summary type="html"><![CDATA[在上一篇文章中，我们介绍了 IndexLib 的整体架构和核心概念。本文将继续深入，详细解析 Tablet 和 Segment 的组织方式，这是理解 IndexLib 索引机制的关键。]]></summary></entry></feed>

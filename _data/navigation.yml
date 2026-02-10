@@ -116,6 +116,8 @@ consensus:
 paper_notes:
   - title: "论文笔记"
     children:
+      - title: "VSAG：图 ANNS 的优化搜索框架（论文笔记）"
+        url: /paper-notes/storage/vsag/
       - title: "Bigtable：A Distributed Storage System for Structured Data（论文笔记）"
         url: /paper-notes/storage/bigtable/
       - title: "RAID：A Case for Redundant Arrays of Inexpensive Disks（论文笔记）"
